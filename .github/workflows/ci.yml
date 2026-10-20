@@ -60,7 +60,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install the SDK (editable)
