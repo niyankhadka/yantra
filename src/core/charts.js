@@ -6,9 +6,13 @@
  * (`data-hue` + `currentColor`), so light, dark and print all follow the page.
  */
 import { HUES } from './theme.js';
-import { escapeHtml as h, mdInline as mi } from './text.js';
+import { escapeHtml as h, mdInline as mi, textWidth } from './text.js';
 
-/** User-visible words drawn by charts, plans and matrices, kept together for translation. */
+/**
+ * User-visible words drawn by charts, plans and matrices (English). Rendering
+ * reads the active set `S`: withChartLocale() swaps in the page language's
+ * words from src/core/i18n.js (chart.* keys) and its number format.
+ */
 export const CHART_STRINGS = {
   total: 'Total',
   today: 'Today',
@@ -27,11 +31,61 @@ export const CHART_STRINGS = {
   series: (n) => `Series ${n}`,
   more: (n) => `+${n} more`,
   days: (n) => `${n} day${n === 1 ? '' : 's'}`,
+  dayN: (n) => `Day ${n}`,
   quadrants: ['Top left', 'Top right', 'Bottom left', 'Bottom right'],
   months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
   kinds: { bar: 'Bar chart', column: 'Column chart', line: 'Line chart', area: 'Area chart', pie: 'Pie chart', donut: 'Donut chart', gantt: 'Gantt chart', matrix: 'Matrix', heat: 'Heat map', trend: 'Trend' },
   summary: (kind, n, s) => `${kind}, ${n} ${n === 1 ? 'point' : 'points'}${s > 1 ? `, ${s} series` : ''}; values in the table that follows.`
 };
+
+let S = CHART_STRINGS;
+let NUM_LANG = 'en-GB';
+
+/** Chart words for a locale (localeOf() result); the English set when none. Months come from Intl. */
+export function chartStringsFor(L) {
+  // English without chart overrides keeps the original set (and its exact wording)
+  if (!L || (L.ui === 'en' && !Object.keys(L.overrides || {}).some((k) => k.startsWith('chart.')))) return CHART_STRINGS;
+  const { t, num } = L;
+  let months = CHART_STRINGS.months;
+  if (L.ui !== 'en') {
+    try {
+      const f = new Intl.DateTimeFormat(L.lang, { month: 'short', timeZone: 'UTC' });
+      months = months.map((_, m) => f.format(Date.UTC(2026, m, 15)));
+    } catch {
+      // keep English month names
+    }
+  }
+  const kinds = Object.fromEntries(Object.keys(CHART_STRINGS.kinds).map((k) => [k, t(`chart.kind.${k}`)]));
+  const words = ['total', 'today', 'value', 'share', 'task', 'group', 'start', 'end', 'after', 'milestone', 'item', 'noData'];
+  return {
+    ...Object.fromEntries(words.map((w) => [w, t(`chart.${w}`)])),
+    day: t('chart.day', { n: '' }).trim(),
+    trend: t('chart.trend'),
+    series: (n) => t('chart.series', { n: num(n) }),
+    more: (n) => t('chart.more', { n: num(n) }),
+    days: (n) => t(n === 1 ? 'chart.day1' : 'chart.days', { n: num(n) }),
+    dayN: (n) => t('chart.day', { n: num(n) }),
+    quadrants: ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].map((q) => t(`chart.${q}`)),
+    months,
+    kinds,
+    summary: (kind, n, s) => t('chart.summary', { kind, points: `${t(n === 1 ? 'chart.point1' : 'chart.points', { n: num(n) })}${s > 1 ? `, ${t('chart.seriesCount', { n: num(s) })}` : ''}` })
+  };
+}
+
+/**
+ * Render with the chart words and number format of locale L (synchronous; the
+ * previous set is restored afterwards, so nested and later renders are unaffected).
+ */
+export function withChartLocale(L, fn) {
+  const prev = [S, NUM_LANG];
+  S = chartStringsFor(L);
+  NUM_LANG = L && L.ui !== 'en' ? L.lang : 'en-GB';
+  try {
+    return fn();
+  } finally {
+    [S, NUM_LANG] = prev;
+  }
+}
 
 export const CHART_KINDS = ['bar', 'column', 'line', 'area', 'pie', 'donut'];
 /** Series colours in order: neighbours stay distinct for common colour-vision deficiencies. */
@@ -47,7 +101,7 @@ export const toneHue = (t, fallback = 'blue') => (own(TONES, t) ? TONES[t] : own
 const list = (v) => (Array.isArray(v) ? v : []);
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const r1 = (v) => Math.round(v * 10) / 10;
-const textW = (s, fs = 12) => String(s).length * fs * 0.58;
+const textW = (s, fs = 12) => textWidth(s, fs);
 const clip = (s, max) => {
   const t = String(s ?? '');
   return t.length > max ? `${t.slice(0, Math.max(1, max - 1))}…` : t;
@@ -86,7 +140,7 @@ function fmtNum(v, dec = null, compact = false) {
   if (compact && a >= 1e3) {
     const [d, u] = a >= 1e9 ? [1e9, 'B'] : a >= 1e6 ? [1e6, 'M'] : [1e3, 'k'];
     s = `${+(a / d).toFixed(2)}${u}`;
-  } else s = a.toLocaleString('en-GB', dec === null ? { maximumFractionDigits: 2 } : { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  } else s = a.toLocaleString(NUM_LANG, dec === null ? { maximumFractionDigits: 2 } : { minimumFractionDigits: dec, maximumFractionDigits: dec });
   return `${v < 0 && /[1-9]/.test(s) ? '−' : ''}${s}`;
 }
 
@@ -132,7 +186,7 @@ const fmtDayShort = (n) => {
 
 // Scales with its block, but never below minW (the block scrolls) or far above its design width
 const svgOpen = (w, hgt, label, minW, maxScale = 1.25) =>
-  `<svg class="p-chart-svg" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${h(label)}" style="min-width:${minW}px;max-width:${Math.round(w * maxScale)}px"><title>${h(label)}</title>`;
+  `<svg class="p-chart-svg" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${h(label)}" direction="ltr" style="min-width:${minW}px;max-width:${Math.round(w * maxScale)}px"><title>${h(label)}</title>`;
 
 /** Word-wrap to at most `lines` lines of `chars` characters; the last line is clipped. */
 const wrap = (s, chars, lines = 2) => {
@@ -150,7 +204,7 @@ const wrap = (s, chars, lines = 2) => {
   return out.length > lines ? [...out.slice(0, lines - 1), clip(out.slice(lines - 1).join(' '), chars)] : out.map((l) => clip(l, chars));
 };
 
-const label = (kind, b) => `${CHART_STRINGS.kinds[kind]}${b.title ? `: ${b.title}` : ''}`;
+const label = (kind, b) => `${S.kinds[kind]}${b.title ? `: ${b.title}` : ''}`;
 
 const txt = (x, y, s, { cls = '', anchor = 'start', size = 11, extra = '' } = {}) =>
   `<text x="${r1(x)}" y="${r1(y)}" font-size="${size}"${anchor !== 'start' ? ` text-anchor="${anchor}"` : ''}${cls ? ` class="${cls}"` : ''}${extra}>${h(s)}</text>`;
@@ -168,7 +222,7 @@ const legendHtml = (series, line) =>
     : '';
 
 const figure = (kind, inner, caption) => `<figure class="p-chart p-chart--${kind}">${inner}${caption ? `<figcaption>${caption}</figcaption>` : ''}</figure>`;
-const empty = () => `<p class="p-muted">${h(CHART_STRINGS.noData)}</p>`;
+const empty = () => `<p class="p-muted">${h(S.noData)}</p>`;
 
 // --- chart model -------------------------------------------------------------
 
@@ -179,7 +233,7 @@ export function chartSeries(b) {
     const series = b.series
       .filter((s) => s && typeof s === 'object')
       .map((s, i) => ({
-        name: String(s.name ?? CHART_STRINGS.series(i + 1)),
+        name: String(s.name ?? S.series(i + 1)),
         hue: toneHue(s.tone, hueOf(i)),
         values: cats.map((_, j) => (isNum(list(s.values)[j]) ? s.values[j] : null))
       }));
@@ -188,7 +242,7 @@ export function chartSeries(b) {
   const data = list(b.data).filter((d) => d && isNum(d.value));
   return {
     cats: data.map((d) => String(d.label ?? '')),
-    series: [{ name: CHART_STRINGS.value, hue: 'blue', values: data.map((d) => d.value), hues: data.map((d) => (d.tone ? toneHue(d.tone) : null)) }]
+    series: [{ name: S.value, hue: 'blue', values: data.map((d) => d.value), hues: data.map((d) => (d.tone ? toneHue(d.tone) : null)) }]
   };
 }
 
@@ -435,11 +489,11 @@ function pieChart(b, { cats, series }, kind, opts) {
     }
     a = b2;
   }
-  if (donut) out.push(txt(c, c + 4, fmtValue(total, b, { compact: total >= 1e5 }), { anchor: 'middle', size: 24, cls: 'c-total' }), txt(c, c + 24, CHART_STRINGS.total, { anchor: 'middle', size: 11.5 }));
+  if (donut) out.push(txt(c, c + 4, fmtValue(total, b, { compact: total >= 1e5 }), { anchor: 'middle', size: 24, cls: 'c-total' }), txt(c, c + 24, S.total, { anchor: 'middle', size: 11.5 }));
   const svg = `${svgOpen(240, 240, label(kind, b), 0)}${out.join('')}</svg>`;
   const legend = `<ul class="p-legend p-legend--pie">${items
     .map((d) => `<li data-hue="${d.hue}"><i></i><span>${h(d.label)}</span><b>${h(fmtValue(d.value, b))}</b><em>${h(pct(d.value))}</em></li>`)
-    .join('')}${donut ? '' : `<li class="is-total"><i></i><span>${h(CHART_STRINGS.total)}</span><b>${h(fmtValue(total, b))}</b><em>100%</em></li>`}</ul>`;
+    .join('')}${donut ? '' : `<li class="is-total"><i></i><span>${h(S.total)}</span><b>${h(fmtValue(total, b))}</b><em>100%</em></li>`}</ul>`;
   return figure(kind, `<div class="p-pie">${svg}${legend}</div>`, opts.caption);
 }
 
@@ -451,7 +505,7 @@ export function sparkline(values, hue = 'blue') {
   const [w, hh] = [100, 24];
   const y = (v) => (hi === lo ? hh / 2 : 2 + (1 - (v - lo) / (hi - lo)) * (hh - 4));
   const pts = vals.map((v, i) => `${r1((i / (vals.length - 1)) * w)} ${r1(y(v))}`);
-  const desc = `${CHART_STRINGS.kinds.trend}: ${vals.map((v) => fmtNum(v)).join(', ')}`;
+  const desc = `${S.kinds.trend}: ${vals.map((v) => fmtNum(v)).join(', ')}`;
   return `<svg class="p-spark" data-hue="${hue}" viewBox="0 0 ${w} ${hh}" preserveAspectRatio="none" role="img" aria-label="${h(desc)}"><title>${h(desc)}</title><path class="a" d="M${pts.join('L')}L${w} ${hh}L0 ${hh}Z"/><path class="l" d="M${pts.join('L')}"/></svg>`;
 }
 
@@ -574,7 +628,7 @@ function ganttRows(g) {
   return rows;
 }
 
-const dayLabel = (g, n) => (g.mode === 'date' ? fmtDay(n) : `${CHART_STRINGS.day} ${n}`);
+const dayLabel = (g, n) => (g.mode === 'date' ? fmtDay(n) : S.dayN(n));
 
 /** Axis ticks for a gantt: days, weeks (Mondays), fortnights or months, as space allows. */
 function dayTicks(g, lo, hi, ppd) {
@@ -582,7 +636,7 @@ function dayTicks(g, lo, hi, ppd) {
   const ticks = [];
   if (g.mode === 'day') {
     const step = [1, 2, 5, 7, 14, 28, 56, 91, 182, 364].find((s) => s * ppd >= gap) || 364;
-    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push({ at: v, text: `${CHART_STRINGS.day} ${v}` });
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push({ at: v, text: S.dayN(v) });
     return ticks;
   }
   if (ppd >= gap) {
@@ -601,7 +655,7 @@ function dayTicks(g, lo, hi, ppd) {
   for (let i = 0; i < 400; i++) {
     const v = Math.round(Date.UTC(y, m, 1) / 864e5);
     if (v > hi) break;
-    if (v >= lo && m % every === 0) ticks.push({ at: v, text: m === 0 || !ticks.length ? `${CHART_STRINGS.months[m]} ${y}` : CHART_STRINGS.months[m] });
+    if (v >= lo && m % every === 0) ticks.push({ at: v, text: m === 0 || !ticks.length ? `${S.months[m]} ${y}` : S.months[m] });
     if (++m === 12) [m, y] = [0, y + 1];
   }
   return ticks;
@@ -642,7 +696,7 @@ export function renderGantt(b, opts = {}) {
   const tipFor = (t) => {
     const it = t.item;
     if (it.milestone) return `${it.title}: ${dayLabel(g, t.s)}`;
-    return `${it.title}: ${dayLabel(g, t.s)} – ${dayLabel(g, t.e - 1)} (${CHART_STRINGS.days(t.e - t.s)})${isNum(it.progress) ? `, ${Math.round(it.progress)}%` : ''}`;
+    return `${it.title}: ${dayLabel(g, t.s)} – ${dayLabel(g, t.e - 1)} (${S.days(t.e - t.s)})${isNum(it.progress) ? `, ${Math.round(it.progress)}%` : ''}`;
   };
   const edge = (t, side) => (t.item.milestone ? dx(t.s) + (side === 'end' ? 7 : -7) : dx(side === 'end' ? t.e : t.s));
 
@@ -694,11 +748,11 @@ export function renderGantt(b, opts = {}) {
   if (showToday) {
     const x = dx(todayDay);
     const bottom = top + rows.length * rowH;
-    out.push(`<line class="c-today" x1="${r1(x)}" x2="${r1(x)}" y1="${top - 6}" y2="${bottom + 2}"/>`, txt(x, bottom + 15, CHART_STRINGS.today, { anchor: 'middle', size: 10.5, cls: 'c-today-l' }));
+    out.push(`<line class="c-today" x1="${r1(x)}" x2="${r1(x)}" y1="${top - 6}" y2="${bottom + 2}"/>`, txt(x, bottom + 15, S.today, { anchor: 'middle', size: 10.5, cls: 'c-today-l' }));
   }
 
   const title = label('gantt', b);
-  const head = [CHART_STRINGS.task, ...(g.groups.length ? [CHART_STRINGS.group] : []), CHART_STRINGS.start, CHART_STRINGS.end, CHART_STRINGS.after];
+  const head = [S.task, ...(g.groups.length ? [S.group] : []), S.start, S.end, S.after];
   const table = srTable(title, head, ganttTable(g).map((r) => (g.groups.length ? r : [r[0], ...r.slice(2)])));
   const svg = `${svgOpen(W, H, title, Math.round(W * 0.72))}${out.join('')}</svg>`;
   return figure('gantt', `<div class="p-scroll">${svg}</div>${table}`, opts.caption);
@@ -712,7 +766,7 @@ function ganttTable(g) {
       String(t.item.title ?? ''),
       t.group ?? '',
       t.s === null ? '' : dayLabel(g, t.s),
-      t.s === null ? '' : t.item.milestone ? CHART_STRINGS.milestone : dayLabel(g, t.e - 1),
+      t.s === null ? '' : t.item.milestone ? S.milestone : dayLabel(g, t.e - 1),
       t.deps.map((j) => g.tasks[j].item.title).join(', ')
     ]);
 }
@@ -827,7 +881,7 @@ export function renderMatrix(b, opts = {}) {
           line += ls.length;
           shown++;
         }
-        if (shown < here.length) out.push(txt(x + 16, y + 16 + line * 14, CHART_STRINGS.more(here.length - shown), { size: 11 }));
+        if (shown < here.length) out.push(txt(x + 16, y + 16 + line * 14, S.more(here.length - shown), { size: 11 }));
       }
     for (let i = 1; i <= grid; i++) {
       out.push(txt(x0 + (i - 0.5) * cw, y1 + 16, clip(ax.labels?.[i - 1] ?? i, Math.floor(cw / 6.4)), { anchor: 'middle', size: 11 }));
@@ -838,7 +892,7 @@ export function renderMatrix(b, opts = {}) {
   if (ay.label) out.push(txt(12, (y0 + y1) / 2, ay.label, { anchor: 'middle', size: 12, cls: 'c-axis', extra: ` transform="rotate(-90 12 ${r1((y0 + y1) / 2)})"` }));
 
   const title = label(grid > 2 ? 'heat' : 'matrix', b);
-  const head = [CHART_STRINGS.item, ax.label || 'x', ay.label || 'y'];
+  const head = [S.item, ax.label || 'x', ay.label || 'y'];
   const table = srTable(title, head, items.map((it) => [String(it.label ?? ''), String(it.x), String(it.y)]));
   const svg = `${svgOpen(x1 + mr, H, title, Math.round((x1 + mr) * 0.7), 1.1)}${out.join('')}</svg>`;
   return figure('matrix', `<div class="p-scroll">${svg}</div>${table}`, opts.caption);
@@ -854,12 +908,12 @@ export function chartMarkdown(b) {
   if (b.type === 'gantt') {
     const g = resolveGantt(b);
     const rows = ganttTable(g);
-    const head = [CHART_STRINGS.task, CHART_STRINGS.group, CHART_STRINGS.start, CHART_STRINGS.end, CHART_STRINGS.after];
+    const head = [S.task, S.group, S.start, S.end, S.after];
     const keep = head.map((_, c) => c !== 1 || g.groups.length).map((x, c) => (c === 4 ? rows.some((r) => r[4]) : x));
     const pick = (r) => r.filter((_, c) => keep[c]);
     const out = mdTable(pick(head), rows.map(pick));
     const today = typeof b.today === 'string' ? parseDay(b.today) : null;
-    if (today !== null) out.push('', `*${CHART_STRINGS.today}: ${fmtDay(today)}*`);
+    if (today !== null) out.push('', `*${S.today}: ${fmtDay(today)}*`);
     return out;
   }
   if (b.type === 'matrix') {
@@ -875,7 +929,7 @@ export function chartMarkdown(b) {
       const midY = (ay.min + ay.max) / 2;
       [0, 1, 2, 3].forEach((q) => {
         const inQ = items.filter((it) => (it.x >= midX ? 1 : 0) === q % 2 && (it.y >= midY ? 0 : 1) === Math.floor(q / 2));
-        out.push(`- **${mi(qs[q]?.title || CHART_STRINGS.quadrants[q])}:** ${inQ.length ? inQ.map((it) => mi(it.label)).join(', ') : '-'}`);
+        out.push(`- **${mi(qs[q]?.title || S.quadrants[q])}:** ${inQ.length ? inQ.map((it) => mi(it.label)).join(', ') : '-'}`);
       });
       return out;
     }
@@ -893,7 +947,7 @@ export function chartMarkdown(b) {
   if (kind === 'pie' || kind === 'donut') {
     const total = vals.filter((v) => v > 0).reduce((a, v) => a + v, 0);
     const pct = (v) => (total > 0 ? ` (${+((v / total) * 100).toFixed(1)}%)` : '');
-    return [...cats.map((c, j) => `- ${mi(c)}: ${fmtValue(vals[j], b, { ascii: true })}${pct(vals[j])}`), `- **${CHART_STRINGS.total}:** ${fmtValue(total, b, { ascii: true })}`];
+    return [...cats.map((c, j) => `- ${mi(c)}: ${fmtValue(vals[j], b, { ascii: true })}${pct(vals[j])}`), `- **${S.total}:** ${fmtValue(total, b, { ascii: true })}`];
   }
   return cats.map((c, j) => `- ${mi(c)}: ${fmtValue(vals[j], b, { ascii: true })}`);
 }

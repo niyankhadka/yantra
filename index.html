@@ -27,113 +27,113 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l7 8 7-8M12 13v7"/></svg>
         </span>
         <div class="y-titles">
-          <nav id="crumbs" class="y-crumbs" aria-label="Diagram levels" hidden></nav>
+          <nav id="crumbs" class="y-crumbs" aria-label="Diagram levels" data-i18n-label="drill.crumbs" hidden></nav>
           <h1 id="doc-title">Yantra</h1>
           <p id="doc-desc"></p>
         </div>
       </div>
 
       <div class="y-tools">
-        <select id="example-select" class="y-select" aria-label="Example diagram" hidden><button><selectedcontent></selectedcontent></button></select>
-        <div id="mode-switch" class="y-segmented" role="radiogroup" aria-label="Mode" hidden></div>
-        <div id="view-switch" class="y-segmented" role="radiogroup" aria-label="View" hidden>
-          <button role="radio" aria-checked="true" data-view="flow" title="Flow: the system as a graph (V)">Flow</button>
-          <button role="radio" aria-checked="false" data-view="sequence" title="Sequence: messages in time order (V)" tabindex="-1">Sequence</button>
+        <select id="example-select" class="y-select" aria-label="Example diagram" data-i18n-label="app.examples" hidden><button><selectedcontent></selectedcontent></button></select>
+        <div id="mode-switch" class="y-segmented" role="radiogroup" aria-label="Mode" data-i18n-label="app.mode" hidden></div>
+        <div id="view-switch" class="y-segmented" role="radiogroup" aria-label="View" data-i18n-label="app.view" hidden>
+          <button role="radio" aria-checked="true" data-view="flow" title="Flow: the system as a graph (V)" data-i18n-tip="view.flowTip" data-kbd="V" data-i18n="view.flow">Flow</button>
+          <button role="radio" aria-checked="false" data-view="sequence" title="Sequence: messages in time order (V)" data-i18n-tip="view.sequenceTip" data-kbd="V" data-i18n="view.sequence" tabindex="-1">Sequence</button>
         </div>
         <div class="y-group">
-          <button id="btn-zoom-out" class="y-icon-btn" title="Zoom out (-)" aria-label="Zoom out">
+          <button id="btn-zoom-out" class="y-icon-btn" title="Zoom out (-)" aria-label="Zoom out" data-i18n-tip="zoom.out" data-kbd="-" data-i18n-label="zoom.out">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
           </button>
-          <button id="btn-fit" class="y-zoom" title="Fit to screen (R)" aria-label="Fit to screen"><span id="zoom-label">100%</span></button>
-          <button id="btn-zoom-in" class="y-icon-btn" title="Zoom in (+)" aria-label="Zoom in">
+          <button id="btn-fit" class="y-zoom" title="Fit to screen (R)" aria-label="Fit to screen" data-i18n-tip="zoom.fit" data-kbd="R" data-i18n-label="zoom.fit"><span id="zoom-label">100%</span></button>
+          <button id="btn-zoom-in" class="y-icon-btn" title="Zoom in (+)" aria-label="Zoom in" data-i18n-tip="zoom.in" data-kbd="+" data-i18n-label="zoom.in">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           </button>
         </div>
-        <button id="btn-inspector" class="y-icon-btn" title="Inspector (I)" aria-label="Toggle inspector" aria-pressed="false">
+        <button id="btn-inspector" class="y-icon-btn" title="Inspector (I)" aria-label="Toggle inspector" data-i18n-tip="inspector.title" data-kbd="I" data-i18n-label="inspector.toggle" aria-pressed="false">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg>
         </button>
-        <button id="btn-theme" class="y-icon-btn" title="Light / dark (T)" aria-label="Toggle theme">
+        <button id="btn-theme" class="y-icon-btn" title="Light / dark (T)" aria-label="Toggle theme" data-i18n-tip="theme.title" data-kbd="T" data-i18n-label="theme.toggle">
           <svg class="y-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           <svg class="y-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
         </button>
         <div class="y-menu">
-          <button id="btn-export" class="y-icon-btn" title="Export" aria-label="Export" aria-haspopup="menu" aria-expanded="false">
+          <button id="btn-export" class="y-icon-btn" title="Export" aria-label="Export" data-i18n-tip="export.title" data-i18n-label="export.title" aria-haspopup="menu" aria-expanded="false">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           </button>
           <div id="export-menu" class="y-menu-list" role="menu" hidden>
-            <button role="menuitem" tabindex="-1" data-action="png">PNG image</button>
-            <button role="menuitem" tabindex="-1" data-action="svg">SVG vector</button>
-            <button role="menuitem" tabindex="-1" data-action="html">Standalone HTML</button>
-            <button role="menuitem" tabindex="-1" data-action="md">Markdown spec</button>
-            <button role="menuitem" tabindex="-1" data-action="md-all" hidden>Markdown, all levels</button>
+            <button role="menuitem" tabindex="-1" data-action="png" data-i18n="export.png">PNG image</button>
+            <button role="menuitem" tabindex="-1" data-action="svg" data-i18n="export.svg">SVG vector</button>
+            <button role="menuitem" tabindex="-1" data-action="html" data-i18n="export.html">Standalone HTML</button>
+            <button role="menuitem" tabindex="-1" data-action="md" data-i18n="export.md">Markdown spec</button>
+            <button role="menuitem" tabindex="-1" data-action="md-all" data-i18n="export.mdAll" hidden>Markdown, all levels</button>
             <hr role="separator" />
-            <button role="menuitem" tabindex="-1" data-action="json">Copy JSON with positions</button>
-            <button role="menuitem" tabindex="-1" data-action="reset-layout">Reset layout</button>
+            <button role="menuitem" tabindex="-1" data-action="json" data-i18n="export.json">Copy JSON with positions</button>
+            <button role="menuitem" tabindex="-1" data-action="reset-layout" data-i18n="export.reset">Reset layout</button>
           </div>
         </div>
-        <button id="btn-help" class="y-icon-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+        <button id="btn-help" class="y-icon-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" data-i18n-tip="help.title" data-kbd="?" data-i18n-label="help.title">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>
         </button>
       </div>
     </header>
 
-    <main id="viewport" class="y-viewport" aria-label="Diagram canvas">
+    <main id="viewport" class="y-viewport" aria-label="Diagram canvas" data-i18n-label="canvas.label">
       <div id="world" class="y-world"></div>
     </main>
 
     <div id="legend" class="y-legend">
-      <div id="legend-list" class="y-legend-list" role="menu" aria-label="Filter by role" hidden></div>
+      <div id="legend-list" class="y-legend-list" role="menu" aria-label="Filter by role" data-i18n-label="legend.filter" hidden></div>
       <button id="btn-legend" class="y-fab" title="Roles (L)" aria-label="Roles legend" aria-expanded="false" aria-controls="legend-list">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="5"/><circle cx="15" cy="9" r="5"/><circle cx="12" cy="15" r="5"/></svg>
       </button>
     </div>
 
-    <section id="story" class="y-story" aria-label="Walkthrough">
+    <section id="story" class="y-story" aria-label="Walkthrough" data-i18n-label="story.label">
       <div class="y-story-head">
         <span id="story-count" class="y-count"></span>
         <span id="story-live" class="y-sr" aria-live="polite" aria-atomic="true"></span>
-        <select id="scenario-select" class="y-select y-select-sm" aria-label="Scenario" hidden><button><selectedcontent></selectedcontent></button></select>
+        <select id="scenario-select" class="y-select y-select-sm" aria-label="Scenario" data-i18n-label="story.scenario" hidden><button><selectedcontent></selectedcontent></button></select>
         <span class="y-spacer"></span>
-        <button id="btn-follow" class="y-icon-btn y-sm" title="Camera follows each step (C)" aria-label="Camera follows each step" aria-pressed="true">
+        <button id="btn-follow" class="y-icon-btn y-sm" title="Camera follows each step (C)" aria-label="Camera follows each step" data-i18n-tip="story.follow" data-kbd="C" data-i18n-label="story.follow" aria-pressed="true">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
         </button>
-        <button id="btn-present" class="y-icon-btn y-sm" title="Present full screen (F)" aria-label="Present full screen">
+        <button id="btn-present" class="y-icon-btn y-sm" title="Present full screen (F)" aria-label="Present full screen" data-i18n-tip="story.present" data-kbd="F" data-i18n-label="story.present">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
-        <button id="btn-story-toggle" class="y-icon-btn y-sm" title="Collapse (S)" aria-label="Collapse walkthrough" aria-expanded="true">
+        <button id="btn-story-toggle" class="y-icon-btn y-sm" title="Collapse (S)" aria-label="Collapse walkthrough" data-i18n-label="story.collapseLabel" aria-expanded="true">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>
         </button>
       </div>
-      <div id="story-steps" class="y-steps" role="tablist" aria-label="Steps"></div>
+      <div id="story-steps" class="y-steps" role="tablist" aria-label="Steps" data-i18n-label="story.steps"></div>
       <div class="y-story-body">
         <h2 id="story-title"></h2>
         <p id="story-desc"></p>
         <button id="btn-story-more" class="y-link" hidden>Show more</button>
       </div>
       <div class="y-story-controls">
-        <button id="btn-restart" class="y-icon-btn y-sm" title="Back to the first step (Home)" aria-label="Back to the first step">
+        <button id="btn-restart" class="y-icon-btn y-sm" title="Back to the first step (Home)" aria-label="Back to the first step" data-i18n-tip="story.restart" data-kbd="Home" data-i18n-label="story.restart">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
-        <button id="btn-play" class="y-btn y-btn-play" title="Autoplay (P)" aria-pressed="false">
+        <button id="btn-play" class="y-btn y-btn-play" title="Autoplay (P)" data-i18n-tip="story.autoplay" data-kbd="P" aria-pressed="false">
           <svg class="y-ico-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg>
           <svg class="y-ico-pause" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
           <span>Play</span>
         </button>
-        <select id="speed-select" class="y-select y-select-sm" aria-label="Autoplay speed" title="Autoplay speed"><button><selectedcontent></selectedcontent></button></select>
+        <select id="speed-select" class="y-select y-select-sm" aria-label="Autoplay speed" title="Autoplay speed" data-i18n-label="story.speed" data-i18n-tip="story.speed"><button><selectedcontent></selectedcontent></button></select>
         <span class="y-spacer"></span>
-        <button id="btn-prev" class="y-btn" title="Previous step (←)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg>Back
+        <button id="btn-prev" class="y-btn" title="Previous step (←)" data-i18n-tip="story.prevStep" data-kbd="←">
+          <svg class="y-flip" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg><span data-i18n="story.back">Back</span>
         </button>
-        <button id="btn-next" class="y-btn y-btn-primary" title="Next step (→)">
-          Next<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg>
+        <button id="btn-next" class="y-btn y-btn-primary" title="Next step (→)" data-i18n-tip="story.nextStep" data-kbd="→">
+          <span data-i18n="story.next">Next</span><svg class="y-flip" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg>
         </button>
       </div>
     </section>
 
-    <aside id="inspector" class="y-inspector" aria-label="Inspector" inert>
+    <aside id="inspector" class="y-inspector" aria-label="Inspector" data-i18n-label="inspector.title" inert>
       <div class="y-inspector-head">
-        <div id="inspector-tabs" class="y-subtabs" role="tablist" aria-label="Inspector sections"></div>
-        <button id="btn-close-inspector" class="y-icon-btn y-sm" title="Close (Esc)" aria-label="Close inspector">
+        <div id="inspector-tabs" class="y-subtabs" role="tablist" aria-label="Inspector sections" data-i18n-label="inspector.sections"></div>
+        <button id="btn-close-inspector" class="y-icon-btn y-sm" title="Close (Esc)" aria-label="Close inspector" data-i18n-tip="common.close" data-kbd="Esc" data-i18n-label="inspector.close">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
@@ -142,35 +142,35 @@
 
     <div id="help" class="y-help" role="dialog" aria-labelledby="help-title" tabindex="-1" hidden>
       <div class="y-help-head">
-        <h3 id="help-title">Keyboard shortcuts</h3>
-        <button id="btn-close-help" class="y-icon-btn y-sm" title="Close (Esc)" aria-label="Close keyboard shortcuts">
+        <h3 id="help-title" data-i18n="help.title">Keyboard shortcuts</h3>
+        <button id="btn-close-help" class="y-icon-btn y-sm" title="Close (Esc)" aria-label="Close keyboard shortcuts" data-i18n-tip="common.close" data-kbd="Esc" data-i18n-label="help.close">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
       <dl>
-        <dt><kbd>→</kbd> <kbd>Space</kbd></dt><dd>Next step</dd>
-        <dt><kbd>←</kbd></dt><dd>Previous step</dd>
-        <dt><kbd>P</kbd></dt><dd>Play / pause</dd>
-        <dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>First / last step</dd>
-        <dt><kbd>C</kbd></dt><dd>Camera follows steps</dd>
-        <dt><kbd>V</kbd></dt><dd>Flow / sequence view</dd>
-        <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>Switch scenario</dd>
-        <dt><kbd>M</kbd></dt><dd>Next mode</dd>
-        <dt><kbd>D</kbd></dt><dd>Open the card's detail diagram</dd>
-        <dt><kbd>I</kbd></dt><dd>Inspector</dd>
-        <dt><kbd>L</kbd></dt><dd>Roles legend</dd>
-        <dt><kbd>S</kbd></dt><dd>Collapse walkthrough</dd>
-        <dt><kbd>X</kbd></dt><dd>Fold / unfold selected branch</dd>
-        <dt><kbd>R</kbd></dt><dd>Fit to screen</dd>
-        <dt><kbd>+</kbd> <kbd>-</kbd></dt><dd>Zoom</dd>
-        <dt><kbd>T</kbd></dt><dd>Light / dark</dd>
-        <dt><kbd>F</kbd></dt><dd>Fullscreen</dd>
-        <dt><kbd>Esc</kbd></dt><dd>Clear selection, then back up a level</dd>
+        <dt><kbd data-arrow="next">→</kbd> <kbd>Space</kbd></dt><dd data-i18n="help.next">Next step</dd>
+        <dt><kbd data-arrow="prev">←</kbd></dt><dd data-i18n="help.prev">Previous step</dd>
+        <dt><kbd>P</kbd></dt><dd data-i18n="help.play">Play / pause</dd>
+        <dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd data-i18n="help.ends">First / last step</dd>
+        <dt><kbd>C</kbd></dt><dd data-i18n="help.follow">Camera follows steps</dd>
+        <dt><kbd>V</kbd></dt><dd data-i18n="help.view">Flow / sequence view</dd>
+        <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd data-i18n="help.scenario">Switch scenario</dd>
+        <dt><kbd>M</kbd></dt><dd data-i18n="help.mode">Next mode</dd>
+        <dt><kbd>D</kbd></dt><dd data-i18n="help.drill">Open the card's detail diagram</dd>
+        <dt><kbd>I</kbd></dt><dd data-i18n="help.inspector">Inspector</dd>
+        <dt><kbd>L</kbd></dt><dd data-i18n="help.legend">Roles legend</dd>
+        <dt><kbd>S</kbd></dt><dd data-i18n="help.story">Collapse walkthrough</dd>
+        <dt><kbd>X</kbd></dt><dd data-i18n="help.fold">Fold / unfold selected branch</dd>
+        <dt><kbd>R</kbd></dt><dd data-i18n="help.fit">Fit to screen</dd>
+        <dt><kbd>+</kbd> <kbd>-</kbd></dt><dd data-i18n="help.zoom">Zoom</dd>
+        <dt><kbd>T</kbd></dt><dd data-i18n="help.theme">Light / dark</dd>
+        <dt><kbd>F</kbd></dt><dd data-i18n="help.fullscreen">Fullscreen</dd>
+        <dt><kbd>Esc</kbd></dt><dd data-i18n="help.clear">Clear selection, then back up a level</dd>
       </dl>
-      <p>Drag cards to rearrange; edges re-route live. Scroll or pinch to zoom.</p>
+      <p data-i18n="help.hint">Drag cards to rearrange; edges re-route live. Scroll or pinch to zoom.</p>
     </div>
 
-    <a id="watermark" class="y-watermark" target="_blank" rel="noopener noreferrer" title="Yantra on GitHub">
+    <a id="watermark" class="y-watermark" target="_blank" rel="noopener noreferrer" title="Yantra on GitHub" data-i18n-tip="watermark.title">
       <span class="y-watermark-face"><span id="watermark-logo" class="y-watermark-logo" aria-hidden="true"></span><span id="watermark-text" class="y-watermark-label">Made with Yantra</span></span>
       <span id="watermark-github" class="y-watermark-face y-watermark-github" aria-hidden="true"><span class="y-watermark-label">GitHub</span></span>
     </a>

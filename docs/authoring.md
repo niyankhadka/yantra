@@ -342,6 +342,288 @@ Edges take a marker at each end, independent of `style`:
 
 See `examples/ecommerce-schema.json` and `examples/payment-classes.json`.
 
+## Languages and right to left
+
+```json
+"meta": { "title": "…", "lang": "ne" }
+```
+
+- `meta.lang` is the BCP 47 tag of the content (`es`, `pt-BR`, `ne`, `zh`, `ja`, `ar` …).
+  It sets `<html lang>` (built HTML) and `xml:lang` (SVG), the number format of metrics,
+  charts, counters and zoom (`Intl.NumberFormat`), and the language of every fixed label:
+  toolbar, tooltips, walkthrough, inspector, help dialog, toasts, export menu, the badge,
+  and the SVG and Markdown exports. Built-in tables: `en es fr de pt hi ne zh ja ar`.
+  A region tag uses its language (`pt-BR` → `pt`). Any other language keeps English labels
+  and the validator warns `i18n/unknown-lang`; the content still gets its `lang`.
+- Write the payload text (titles, labels, steps) in that language yourself; Yantra only
+  translates its own interface. Keyboard keys, Yantra and GitHub are never translated.
+- `meta.strings` overrides labels by key, e.g. `{ "story.next": "Continue" }`; placeholders
+  are written `{n}`, `{total}`, `{title}`, `{role}`, `{name}`. The keys are `STRING_KEYS` in
+  `src/core/i18n.js` (listed below). `meta.inspector.labels` still renames the built-in tabs.
+- **Right to left.** `ar`, `he`, `fa`, `ur` (and `yi ps sd ckb dv ug`), or `meta.dir: "rtl"`,
+  set `dir="rtl"`: the toolbar, walkthrough, step chips, inspector (docks left), legend and
+  badge (bottom-left) mirror, arrow keys follow the reading direction, and the text inside
+  cards, group titles, the SVG title, legend and badge are right-aligned.
+  `meta.dir: "ltr"` forces left to right.
+- **The diagram keeps its layout direction.** `LR` stays left to right in an RTL document:
+  arrows, ranks, edge routes and sequence-view columns are the same as in any language, so
+  one payload translated into Arabic has the same geometry, the validator checks the same
+  scene, and technical flows read the way their source code and protocols are written. If a
+  process should run right to left for its readers, reverse the order of the nodes yourself
+  (e.g. with `rank`); a mirrored layout is not generated automatically.
+- Text is measured per script: Han, kana and Hangul count as full width, Devanagari and
+  Arabic letters have their own widths and combining marks count as zero, so cards are
+  sized without clipping. Chinese and Japanese wrap between characters without spaces
+  (no line starts with `、。」` or ends with `「`). Character budgets (`content/title-too-long`
+  at 42 characters, labels at 28) count characters, so CJK titles are about twice as wide
+  at the limit; keep them shorter.
+
+| Code | Fix |
+|---|---|
+| `i18n/unknown-lang` (warning) | No built-in labels for that language: English labels are used. Translate them with `meta.strings`, or use a built-in language. |
+| `i18n/bad-lang` (warning) | Use a BCP 47 tag such as `en`, `pt-BR`, `zh-Hans`. |
+| `i18n/bad-dir` (warning) | `meta.dir` is `ltr` or `rtl`. |
+| `i18n/unknown-string`, `i18n/bad-strings` (warnings) | Use a key from the list below, with a string value. |
+
+Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-arabic.json`.
+
+<details><summary>String keys</summary>
+
+<!-- string-keys:start -->
+| Key | English |
+|---|---|
+| `app.untitled` | Untitled diagram |
+| `app.examples` | Example diagram |
+| `app.mode` | Mode |
+| `app.view` | View |
+| `view.flow` | Flow |
+| `view.flowTip` | Flow: the system as a graph |
+| `view.sequence` | Sequence |
+| `view.sequenceTip` | Sequence: messages in time order |
+| `view.flowToast` | Flow view |
+| `view.sequenceToast` | Sequence view |
+| `zoom.in` | Zoom in |
+| `zoom.out` | Zoom out |
+| `zoom.fit` | Fit to screen |
+| `inspector.title` | Inspector |
+| `inspector.toggle` | Toggle inspector |
+| `inspector.sections` | Inspector sections |
+| `inspector.close` | Close inspector |
+| `theme.title` | Light / dark |
+| `theme.toggle` | Toggle theme |
+| `export.title` | Export |
+| `export.png` | PNG image |
+| `export.svg` | SVG vector |
+| `export.html` | Standalone HTML |
+| `export.md` | Markdown spec |
+| `export.json` | Copy JSON with positions |
+| `export.reset` | Reset layout |
+| `export.diagram` | Diagram |
+| `export.mdAll` | Markdown, all levels |
+| `help.title` | Keyboard shortcuts |
+| `help.close` | Close keyboard shortcuts |
+| `help.next` | Next step |
+| `help.prev` | Previous step |
+| `help.play` | Play / pause |
+| `help.ends` | First / last step |
+| `help.follow` | Camera follows steps |
+| `help.view` | Flow / sequence view |
+| `help.scenario` | Switch scenario |
+| `help.mode` | Next mode |
+| `help.inspector` | Inspector |
+| `help.legend` | Roles legend |
+| `help.story` | Collapse walkthrough |
+| `help.fit` | Fit to screen |
+| `help.zoom` | Zoom |
+| `help.theme` | Light / dark |
+| `help.fullscreen` | Fullscreen |
+| `help.clear` | Clear selection, then back up a level |
+| `help.hint` | Drag cards to rearrange; edges re-route live. Scroll or pinch to zoom. |
+| `help.drill` | Open the card's detail diagram |
+| `help.fold` | Fold / unfold selected branch |
+| `common.close` | Close |
+| `canvas.label` | Diagram canvas |
+| `legend.title` | Roles |
+| `legend.label` | Roles legend |
+| `legend.filter` | Filter by role |
+| `legend.all` | All roles |
+| `legend.showing` | Showing: {role} |
+| `legend.labelShowing` | Roles legend, showing {role} |
+| `story.label` | Walkthrough |
+| `story.steps` | Steps |
+| `story.scenario` | Scenario |
+| `story.scenarioN` | Scenario {n} |
+| `story.follow` | Camera follows each step |
+| `story.followOff` | Camera stays where you put it |
+| `story.present` | Present full screen |
+| `story.collapse` | Collapse |
+| `story.collapseLabel` | Collapse walkthrough |
+| `story.expand` | Expand |
+| `story.more` | Show more |
+| `story.less` | Show less |
+| `story.restart` | Back to the first step |
+| `story.play` | Play |
+| `story.pause` | Pause |
+| `story.replay` | Replay |
+| `story.autoplay` | Autoplay |
+| `story.speed` | Autoplay speed |
+| `story.back` | Back |
+| `story.next` | Next |
+| `story.prevStep` | Previous step |
+| `story.nextStep` | Next step |
+| `story.step` | Step {n} |
+| `story.stepOf` | Step {n} of {total}: {title} |
+| `story.empty` | No steps in this scenario |
+| `tab.summary` | Summary |
+| `tab.step` | Step |
+| `tab.node` | Details |
+| `summary.components` | Components |
+| `summary.connections` | Connections |
+| `summary.steps` | Steps |
+| `summary.modes` | Modes |
+| `summary.points` | Key points |
+| `summary.facts` | Facts |
+| `summary.roles` | Roles |
+| `summary.scenarios` | Scenarios |
+| `step.none` | This diagram has no walkthrough steps. |
+| `step.payload` | Payload |
+| `step.copy` | Copy |
+| `node.none` | Select a card to see its details and connections. |
+| `node.tech` | Technology |
+| `node.runtime` | Runtime |
+| `node.ports` | Ports |
+| `node.status` | Status |
+| `node.source` | Source |
+| `node.connections` | Connections |
+| `node.noConnections` | No connections. |
+| `panel.for` | For {name} |
+| `panel.showAll` | Show all cards |
+| `panel.hint` | Select a card to see the items for that component. |
+| `panel.empty` | Nothing recorded for this component. |
+| `toast.payloadCopied` | Payload copied |
+| `toast.jsonCopied` | JSON copied with current positions |
+| `toast.layoutReset` | Layout reset |
+| `toast.buildHint` | Run 'yantra build diagram.json' to produce a standalone file |
+| `toast.pngFailed` | PNG export failed; exported SVG instead |
+| `toast.noFullscreen` | Full screen is not available here |
+| `watermark.text` | Made with Yantra |
+| `watermark.title` | Yantra on GitHub |
+| `watermark.label` | {text} – Yantra on GitHub (opens in a new tab) |
+| `page.answer` | Answer |
+| `page.question` | Question |
+| `page.contents` | Contents |
+| `page.updated` | Updated {date} |
+| `page.theme` | Toggle light or dark theme |
+| `page.recommended` | Recommended |
+| `page.done` | Done: |
+| `page.todo` | To do: |
+| `page.diagram` | Diagram |
+| `page.interactive` | {title} (interactive) |
+| `page.diagramMissing` | Diagram missing. |
+| `page.imageOmitted` | Image omitted: only https: and data:image/ sources are allowed. |
+| `page.diagramNote` | Diagram: {title} |
+| `page.seeHtml` | see the HTML page |
+| `page.image` | Image: {alt} |
+| `md.component` | Component |
+| `md.role` | Role |
+| `md.description` | Description |
+| `md.groups` | Groups |
+| `md.group` | Group |
+| `md.inside` | Inside |
+| `md.members` | Members |
+| `md.groupSuffix` | {name} (group) |
+| `md.from` | From |
+| `md.to` | To |
+| `md.label` | Label |
+| `md.hides` | hides: {list} |
+| `md.version` | Version {v} |
+| `md.fields` | Fields |
+| `md.methods` | Methods |
+| `md.field` | Field |
+| `md.method` | Method |
+| `md.type` | Type |
+| `md.returns` | Returns |
+| `md.key` | Key |
+| `md.visibility` | Visibility |
+| `md.notes` | Notes |
+| `md.nullable` | nullable |
+| `md.static` | static |
+| `md.abstract` | abstract |
+| `md.direction` | Direction |
+| `md.relationship` | Relationship |
+| `md.both` | both ways |
+| `md.undirected` | undirected |
+| `md.selfLoop` | self-loop |
+| `md.link` | link |
+| `md.more` | More: {url} |
+| `md.detail` | detail: {title} |
+| `drill.crumbs` | Diagram levels |
+| `drill.back` | Back to {title} |
+| `drill.open` | Open detail: {title} |
+| `drill.cardHint` | opens a detail diagram |
+| `drill.opened` | Opened {title} |
+| `drill.details` | Detail diagrams |
+| `drill.link` | Open link |
+| `drill.newTab` | (opens in a new tab) |
+| `drill.edgeLink` | Open link for {label} |
+| `drill.overview` | Overview |
+| `drill.hasDetail` | Has a detail diagram |
+| `card.more` | + {n} more |
+| `vis.public` | public |
+| `vis.private` | private |
+| `vis.protected` | protected |
+| `vis.package` | package |
+| `end.one` | exactly one |
+| `end.zero-or-one` | zero or one |
+| `end.many` | many |
+| `end.one-or-many` | one or more |
+| `end.zero-or-many` | zero or more |
+| `end.any` | any |
+| `end.between` | {a} to {b} |
+| `chart.total` | Total |
+| `chart.today` | Today |
+| `chart.day` | Day {n} |
+| `chart.day1` | {n} day |
+| `chart.days` | {n} days |
+| `chart.trend` | trend |
+| `chart.value` | Value |
+| `chart.share` | Share |
+| `chart.task` | Task |
+| `chart.group` | Group |
+| `chart.start` | Start |
+| `chart.end` | End |
+| `chart.after` | After |
+| `chart.milestone` | Milestone |
+| `chart.item` | Item |
+| `chart.noData` | No data to chart. |
+| `chart.series` | Series {n} |
+| `chart.more` | +{n} more |
+| `chart.topLeft` | Top left |
+| `chart.topRight` | Top right |
+| `chart.bottomLeft` | Bottom left |
+| `chart.bottomRight` | Bottom right |
+| `chart.kind.bar` | Bar chart |
+| `chart.kind.column` | Column chart |
+| `chart.kind.line` | Line chart |
+| `chart.kind.area` | Area chart |
+| `chart.kind.pie` | Pie chart |
+| `chart.kind.donut` | Donut chart |
+| `chart.kind.gantt` | Gantt chart |
+| `chart.kind.matrix` | Matrix |
+| `chart.kind.heat` | Heat map |
+| `chart.kind.trend` | Trend |
+| `chart.point1` | {n} point |
+| `chart.points` | {n} points |
+| `chart.seriesCount` | {n} series |
+| `chart.summary` | {kind}, {points}; values in the table that follows. |
+| `fold.expand` | Expand {title} ({n} hidden) |
+| `fold.collapse` | Collapse {title} |
+| `fold.folded` | Folded |
+| `fold.expanded` | Expanded |
+<!-- string-keys:end -->
+
+</details>
+
 ## Limits
 
 - Card titles, subtitles and edge labels over 200 characters are cut with an ellipsis;

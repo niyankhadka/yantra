@@ -62,9 +62,10 @@
   opacity: 0.35;
 }
 
+/* Mirrors to the top-right corner in RTL, like the SVG export */
 .y-group-title {
   position: absolute;
-  left: 12px;
+  inset-inline-start: 12px;
   top: 8px;
   height: 16px;
   line-height: 16px;
@@ -215,7 +216,7 @@
 }
 
 .y-row-key {
-  left: 0;
+  inset-inline-start: 0;
   color: var(--y-hue, var(--y-ink-3));
   font: 700 9.5px/20px var(--y-font-mono);
 }
@@ -242,7 +243,7 @@
 }
 
 .y-row-type {
-  right: 0;
+  inset-inline-end: 0;
   color: var(--y-ink-3);
   font: 11px/20px var(--y-font-mono);
 }
@@ -551,7 +552,7 @@
 .y-node-drill {
   position: absolute;
   top: 9px;
-  right: 9px;
+  inset-inline-end: 9px;
   display: grid;
   place-items: center;
   width: 22px;
@@ -569,4 +570,11 @@
 
 .y-node.has-drill {
   cursor: grab;
+}
+
+/* RTL cards: code-like text (tech line, column types) keeps its own left-to-right order */
+[dir='rtl'] .y-node-tech,
+[dir='rtl'] .y-row-type {
+  unicode-bidi: plaintext;
+  text-align: right;
 }

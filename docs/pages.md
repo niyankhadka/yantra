@@ -144,6 +144,12 @@ label string or `{ label, low?, high?, labels?, min?, max? }`.
 - Prefer a `compare` with a `recommended` option over a vague "it depends".
 - Numbers need units and context (`note`).
 - `meta.watermark: false` removes the "Made with Yantra" badge; a string replaces its text.
+- `meta.lang` (BCP 47) sets `<html lang dir>`, the fixed labels (Answer, Contents, Updated …,
+  Recommended, the badge) and number formats in `metrics` and `chart` values (numbers given as
+  numbers, not strings). Arabic, Hebrew, Persian and Urdu, or `meta.dir: "rtl"`, lay the page
+  out right to left; diagram figures keep their own layout direction. Diagram blocks without
+  their own `meta.lang` inherit the page's. `meta.strings` overrides labels by key. See
+  `authoring.md` (Languages and right to left) and `examples/answer-order-fulfilment-arabic.json`.
 
 ## Validation codes
 
@@ -167,4 +173,5 @@ label string or `{ label, low?, high?, labels?, min?, max? }`.
 | `page/heavy-embed` (warning) | More than 2 `interactive` diagrams; make the rest static. |
 | `page/bad-height`, `page/bad-toc` (warnings) | `height` is a number ≥ 240; `meta.toc` is `true` or `false`. |
 | `page/headline-too-long`, `page/too-many-blocks` | Cut. |
+| `i18n/*` (warnings) | See `authoring.md`: `meta.lang` is a BCP 47 tag, `meta.dir` is `ltr`/`rtl`, `meta.strings` keys exist. |
 | diagram codes (`geometry/*`, `ref/*`, …) | Fix the embedded diagram; see `authoring.md`. |

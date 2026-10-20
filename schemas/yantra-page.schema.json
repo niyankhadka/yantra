@@ -44,7 +44,22 @@
         },
         "lang": {
           "type": "string",
-          "default": "en"
+          "default": "en",
+          "description": "BCP 47 language of the content, e.g. en, es, pt-BR, ne, zh, ja, ar. Sets <html lang> / xml:lang, number formats and the interface strings (built in: en, es, fr, de, pt, hi, ne, zh, ja, ar; other languages use English labels). ar, he, fa, ur and other RTL languages turn on right-to-left."
+        },
+        "dir": {
+          "enum": [
+            "ltr",
+            "rtl"
+          ],
+          "description": "Text direction; default from lang. rtl mirrors the chrome (toolbar, walkthrough, inspector, legend, badge) and the text inside cards; the diagram layout keeps its direction."
+        },
+        "strings": {
+          "type": "object",
+          "description": "Overrides for interface strings by key (see docs/authoring.md), e.g. {\"story.next\": \"Continue\"}. Placeholders are written {name}. Unknown keys are reported by the validator (i18n/unknown-string).",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "watermark": {
           "type": [

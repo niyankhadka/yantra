@@ -13,6 +13,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 
 from . import blocks as B
 from ._cli import YantraError, build_payload, validate_payload
+from .i18n import language_meta
 
 __all__ = ["Page"]
 
@@ -26,11 +27,13 @@ class Page:
 
     def __init__(self, question: str, title: Optional[str] = None, kicker: Optional[str] = None,
                  author: Optional[str] = None, date: Optional[str] = None, description: Optional[str] = None,
-                 footer: Optional[str] = None, base_dir: Optional[str] = None):
+                 footer: Optional[str] = None, base_dir: Optional[str] = None, lang: Optional[str] = None):
         self.meta: Dict[str, Any] = {k: v for k, v in {
             "question": question, "title": title, "kicker": kicker, "description": description,
             "author": author, "date": date, "footer": footer,
         }.items() if v is not None}
+        if lang is not None:
+            self.language(lang)
         self._answer: Optional[Dict[str, Any]] = None
         self.blocks: List[Dict[str, Any]] = []
         self.base_dir = base_dir
@@ -43,6 +46,15 @@ class Page:
         if points:
             a["points"] = list(points)
         self._answer = a
+        return self
+
+    def language(self, lang: str, dir: Optional[str] = None,
+                 strings: Optional[Mapping[str, str]] = None) -> "Page":
+        """Page language (BCP 47): <html lang dir>, fixed labels and number formats. Diagram blocks
+        without their own language inherit it. RTL languages lay the page out right to left."""
+        for key in ("lang", "dir", "strings"):
+            self.meta.pop(key, None)
+        self.meta.update(language_meta(lang, dir, strings))
         return self
 
     def watermark(self, value: Union[bool, str]) -> "Page":

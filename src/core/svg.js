@@ -9,6 +9,7 @@ import { ICONS, DRILL_ICON } from './icons.js';
 import { sequenceLive } from './sequence.js';
 import { POINT_SHAPES } from './model.js';
 import { escapeXml as x, textWidth } from './text.js';
+import { localeOf } from './i18n.js';
 import { ROWS } from './entity.js';
 import { markerDef } from './notation.js';
 
@@ -21,15 +22,21 @@ const LEGEND = 44;
  * @param options {
  *   theme: 'light'|'dark', highlight?: { nodes:Set, edges:Set },
  *   header?: show title/description (default true),
- *   watermark?: text | false (default meta.watermark, else "Made with Yantra"),
- *   logo?: raw SVG string shown next to the watermark
+ *   watermark?: text | false (default meta.watermark, else "Made with Yantra" in the page language),
+ *   logo?: raw SVG string shown next to the watermark,
+ *   locale?: localeOf() result (default: from meta.lang, meta.dir and meta.strings)
  * }
+ * The root carries xml:lang and direction. Right-to-left documents mirror the
+ * chrome and the text inside cards (title, legend, badge, card lines, group
+ * titles) but keep the diagram's layout: an LR flow still runs left to right.
  */
 export function renderSvg(scene, options = {}) {
   if (scene.kind === 'sequence') return renderSequenceSvg(scene, options);
   const { theme = 'light', header = true, watermark, logo = null } = options;
   const highlight = folded(options.highlight || null, scene.collapse);
   const t = TOKENS[theme] || TOKENS.light;
+  const L = options.locale || localeOf(scene.model.meta);
+  const rtl = L.dir === 'rtl';
   const hue = (name) => ((typeof name === 'string' && Object.hasOwn(HUES, name) ? HUES[name] : HUES.slate))[theme === 'dark' ? 'dark' : 'light'];
   const b = scene.bounds;
   const meta = scene.model.meta;
@@ -37,7 +44,7 @@ export function renderSvg(scene, options = {}) {
   const roles = scene.branchColors ? [] : Object.entries(scene.model.roles).filter(([type]) => scene.nodes.some((n) => (n.node.type || 'node') === type));
 
   const mark = watermark ?? meta.watermark;
-  const markText = mark === false ? '' : typeof mark === 'string' ? mark : 'Made with Yantra';
+  const markText = mark === false ? '' : typeof mark === 'string' ? mark : L.t('watermark.text');
   const headerH = header ? HEADER : 0;
   const footer = roles.length || markText;
   const width = Math.ceil(b.w + PAD * 2);
@@ -109,50 +116,54 @@ export function renderSvg(scene, options = {}) {
       const on = !focus || g.members.some((id) => highlight.nodes.has(id));
       const dash = g.dashed ? ' stroke-dasharray="5 4"' : '';
       return `<g opacity="${on ? 1 : 0.35}"><rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${GROUP.radius}" fill="${c}" fill-opacity="${theme === 'dark' ? 0.07 : 0.045}" stroke="${c}" stroke-opacity="0.55"${dash}/>` +
-        `<text x="${g.x + GROUP.titleX}" y="${g.y + GROUP.titleY + 11.5}" font-size="${GROUP.titleSize}" font-weight="600" letter-spacing="0.06em" fill="${c}">${x(g.label)}</text></g>`;
+        `${groupTitle(g, c, rtl)}</g>`;
     })
     .join('\n    ');
 
-  const nodes = scene.nodes.map((n) => nodeSvg(n, t, hue(n.hue), focus ? active('nodes', n.id) : null)).join('\n    ');
+  const nodes = scene.nodes.map((n) => nodeSvg(n, t, hue(n.hue), focus ? active('nodes', n.id) : null, rtl, L)).join('\n    ');
 
   const defs = `${[...usedHues].map((h) => arrowMarker(`arrow-${h}`, hue(h))).join('')}${[...notation.values()].join('')}
     ${gradients.join('')}`;
-  return frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body: [groups, edges, nodes, labels], ox, oy });
+  return frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body: [groups, edges, nodes, labels], ox, oy, L });
 }
 
 /** Document shell shared by the flow and sequence exports: title, legend, watermark. */
-function frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body, ox, oy }) {
+function frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body, ox, oy, L }) {
   const meta = scene.model.meta;
+  const rtl = L.dir === 'rtl';
+  // RTL: title and legend start at the right; "start"-anchored text then grows leftwards
+  const sx = rtl ? -1 : 1;
+  const edge = rtl ? width - PAD : PAD;
   const legend = roles.length
     ? (() => {
-        let lx = PAD;
+        let lx = edge;
         const ly = height - LEGEND / 2 - 4;
         return roles
           .map(([, role]) => {
             const label = x(role.label);
-            const out = `<circle cx="${lx + 4}" cy="${ly - 4}" r="4" fill="${hue(role.hue)}"/><text x="${lx + 14}" y="${ly}" font-size="12" fill="${t.ink2}">${label}</text>`;
-            lx += 30 + role.label.length * 7;
+            const out = `<circle cx="${lx + sx * 4}" cy="${ly - 4}" r="4" fill="${hue(role.hue)}"/><text x="${lx + sx * 14}" y="${ly}" font-size="12" fill="${t.ink2}">${label}</text>`;
+            lx += sx * (30 + textWidth(role.label, 12));
             return out;
           })
           .join('');
       })()
     : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${x(FONT_SANS)}" role="img" aria-labelledby="y-title y-desc">
-  <title id="y-title">${x(meta.title || 'Diagram')}</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" xml:lang="${x(L.lang)}" direction="${L.dir}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${x(FONT_SANS)}" role="img" aria-labelledby="y-title y-desc">
+  <title id="y-title">${x(meta.title || L.t('export.diagram'))}</title>
   <desc id="y-desc">${x(meta.description || '')}</desc>
   <defs>
     ${arrowMarker('arrow', t.edge)}
     ${defs}
   </defs>
   <rect width="100%" height="100%" fill="${t.bg}"/>
-  ${header ? `<text x="${PAD}" y="${PAD + 8}" font-size="20" font-weight="650" fill="${t.ink}">${x(meta.title || '')}</text>` : ''}
-  ${header && meta.description ? `<text x="${PAD}" y="${PAD + 32}" font-size="13" fill="${t.ink3}">${x(meta.description)}</text>` : ''}
+  ${header ? `<text x="${edge}" y="${PAD + 8}" font-size="20" font-weight="650" fill="${t.ink}">${x(meta.title || '')}</text>` : ''}
+  ${header && meta.description ? `<text x="${edge}" y="${PAD + 32}" font-size="13" fill="${t.ink3}">${x(meta.description)}</text>` : ''}
   <g transform="translate(${ox} ${oy})">
     ${body.filter(Boolean).join('\n    ')}
   </g>
   ${legend}
-  ${markText ? watermarkSvg(markText, logo, width, height, t) : ''}
+  ${markText ? watermarkSvg(markText, logo, width, height, t, rtl) : ''}
 </svg>
 `;
 }
@@ -167,15 +178,17 @@ const arrowMarker = (id, fill) => `<marker id="${id}" viewBox="0 0 10 10" refX="
  * Sequence view (computeSequenceScene): headers, lifelines, numbered step rows
  * and messages. `step` (0-based) highlights that row and dims the others.
  */
-export function renderSequenceSvg(scene, { theme = 'light', step = null, header = true, watermark, logo = null } = {}) {
+export function renderSequenceSvg(scene, { theme = 'light', step = null, header = true, watermark, logo = null, locale = null } = {}) {
   const t = TOKENS[theme] || TOKENS.light;
+  const L = locale || localeOf(scene.model.meta);
+  const rtl = L.dir === 'rtl';
   const dark = theme === 'dark';
   const hue = (name) => ((typeof name === 'string' && Object.hasOwn(HUES, name) ? HUES[name] : HUES.slate))[dark ? 'dark' : 'light'];
   const b = scene.bounds;
   const meta = scene.model.meta;
   const roles = Object.entries(scene.model.roles).filter(([type]) => scene.participants.some((n) => (n.node.type || 'node') === type));
   const mark = watermark ?? meta.watermark;
-  const markText = mark === false ? '' : typeof mark === 'string' ? mark : 'Made with Yantra';
+  const markText = mark === false ? '' : typeof mark === 'string' ? mark : L.t('watermark.text');
   const headerH = header ? HEADER : 0;
   const footer = roles.length || markText;
   const width = Math.ceil(b.w + PAD * 2);
@@ -210,7 +223,7 @@ export function renderSequenceSvg(scene, { theme = 'light', step = null, header 
       const c = hue(g.hue);
       const dash = g.dashed ? ' stroke-dasharray="5 4"' : '';
       return `<g><rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${GROUP.radius}" fill="${c}" fill-opacity="${dark ? 0.07 : 0.045}" stroke="${c}" stroke-opacity="0.55"${dash}/>` +
-        `<text x="${g.x + GROUP.titleX}" y="${g.y + GROUP.titleY + 11.5}" font-size="${GROUP.titleSize}" font-weight="600" letter-spacing="0.06em" fill="${c}">${x(g.label)}</text></g>`;
+        `${groupTitle(g, c, rtl)}</g>`;
     })
     .join('\n    ');
 
@@ -254,22 +267,28 @@ export function renderSequenceSvg(scene, { theme = 'light', step = null, header 
     })
     .join('\n    ');
 
-  const heads = scene.participants.map((p) => nodeSvg(p, t, hue(p.hue), focus ? live.has(p.id) : null)).join('\n    ');
+  const heads = scene.participants.map((p) => nodeSvg(p, t, hue(p.hue), focus ? live.has(p.id) : null, rtl, L)).join('\n    ');
   const defs = `${[...usedHues].map((h) => arrowMarker(`arrow-${h}`, hue(h))).join('')}
     ${gradients.join('')}`;
-  return frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body: [rows, groups, lifelines, notes, messages, heads], ox, oy });
+  return frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body: [rows, groups, lifelines, notes, messages, heads], ox, oy, L });
 }
 
 
-/** "Made with Yantra" badge in the bottom-right corner. */
-function watermarkSvg(text, logo, width, height, t) {
+/** "Made with Yantra" badge in the bottom-right corner (bottom-left, logo on the right, when RTL). */
+function watermarkSvg(text, logo, width, height, t, rtl) {
   const tw = Math.ceil(textWidth(text, 11.5, { weight: 600 }));
   const logoW = logo ? 22 : 0;
   const w = tw + logoW + 20;
-  const bx = width - PAD - w;
+  const bx = rtl ? PAD : width - PAD - w;
   const by = height - LEGEND / 2 - 4 - 15;
-  const img = logo ? `<image x="${bx + 6}" y="${by + 4}" width="16" height="16" href="data:image/svg+xml,${encodeURIComponent(logo)}"/>` : '';
-  return `<g opacity="0.9"><rect x="${bx}" y="${by}" width="${w}" height="24" rx="12" fill="${t.surface}" stroke="${t.border}"/>${img}<text x="${bx + 10 + logoW}" y="${by + 16}" font-size="11.5" font-weight="600" fill="${t.ink2}">${x(text)}</text></g>`;
+  const img = logo ? `<image x="${rtl ? bx + w - 22 : bx + 6}" y="${by + 4}" width="16" height="16" href="data:image/svg+xml,${encodeURIComponent(logo)}"/>` : '';
+  return `<g opacity="0.9"><rect x="${bx}" y="${by}" width="${w}" height="24" rx="12" fill="${t.surface}" stroke="${t.border}"/>${img}<text x="${rtl ? bx + w - 10 - logoW : bx + 10 + logoW}" y="${by + 16}" font-size="11.5" font-weight="600" fill="${t.ink2}">${x(text)}</text></g>`;
+}
+
+/** Group title in the box's top-left corner (top-right when RTL, without letter-spacing so scripts stay joined). */
+function groupTitle(g, color, rtl) {
+  const tx = rtl ? g.x + g.w - GROUP.titleX : g.x + GROUP.titleX;
+  return `<text x="${tx}" y="${g.y + GROUP.titleY + 11.5}" font-size="${GROUP.titleSize}" font-weight="600"${rtl ? '' : ' letter-spacing="0.06em"'} fill="${color}">${x(g.label)}</text>`;
 }
 
 /** Pseudo-states: a filled dot (initial), a ringed dot (final), a diamond (choice). */
@@ -285,68 +304,77 @@ function pointSvg(n, t, hueColor, isActive) {
   return `<g transform="translate(${n.x} ${n.y})" opacity="${isActive === false ? 0.25 : 1}"><title>${x(n.node.data?.title || n.id)}</title>${ring}${body}</g>`;
 }
 
-function nodeSvg(n, t, hueColor, isActive) {
+/**
+ * One card. RTL mirrors its inside (icon, kicker, lines and table rows against
+ * the right padding, text anchored at "start" of the rtl root); the wrapped
+ * lines and so the card height are the same in both directions.
+ */
+function nodeSvg(n, t, hueColor, isActive, rtl = false, L = localeOf()) {
   if (POINT_SHAPES.has(n.shape)) return pointSvg(n, t, hueColor, isActive);
   const C = CARD;
   const dim = isActive === false;
   const rx = n.shape === 'state' ? 16 : 8;
+  const tx = rtl ? n.w - C.padX : C.padX;
   const lines = [];
   let y = C.padY + C.kicker + C.kickerGap;
   n.lines.title.forEach((line) => {
-    lines.push(`<text x="${C.padX}" y="${baseline(y, C.titleLine, C.titleSize)}" font-size="${C.titleSize}" font-weight="600" fill="${t.ink}">${x(line)}</text>`);
+    lines.push(`<text x="${tx}" y="${baseline(y, C.titleLine, C.titleSize)}" font-size="${C.titleSize}" font-weight="600" fill="${t.ink}">${x(line)}</text>`);
     y += C.titleLine;
   });
   if (n.lines.subtitle.length) {
     y += C.subGap;
     n.lines.subtitle.forEach((line) => {
-      lines.push(`<text x="${C.padX}" y="${baseline(y, C.subLine, C.subSize)}" font-size="${C.subSize}" fill="${t.ink2}">${x(line)}</text>`);
+      lines.push(`<text x="${tx}" y="${baseline(y, C.subLine, C.subSize)}" font-size="${C.subSize}" fill="${t.ink2}">${x(line)}</text>`);
       y += C.subLine;
     });
   }
   if (n.lines.tech) {
     y += C.techGap;
-    lines.push(`<text x="${C.padX}" y="${baseline(y, C.techLine, C.techSize)}" font-size="${C.techSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(n.lines.tech)}</text>`);
+    // Code-like text stays left to right on RTL cards (anchored at its right end)
+    lines.push(`<text x="${tx}" y="${baseline(y, C.techLine, C.techSize)}"${rtl ? ' direction="ltr" text-anchor="end"' : ''} font-size="${C.techSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(n.lines.tech)}</text>`);
   }
   // A folded subtree or group shows how many cards it holds
   let chip = '';
   if (n.collapsed) {
-    const text = `+${n.collapsed}`;
+    const text = `+${L.num(n.collapsed)}`;
     const cw = Math.ceil(textWidth(text, 11, { weight: 600 })) + 14;
-    const at = { bottom: [n.w / 2, n.h], right: [n.w, n.h / 2], left: [0, n.h / 2], corner: [n.w - cw / 2 - 10, 0] }[n.toggle] || [n.w / 2, n.h];
+    const at = { bottom: [n.w / 2, n.h], right: [n.w, n.h / 2], left: [0, n.h / 2], corner: [rtl ? cw / 2 + 10 : n.w - cw / 2 - 10, 0] }[n.toggle] || [n.w / 2, n.h];
     chip = `<g transform="translate(${at[0] - cw / 2} ${at[1] - 9})"><rect width="${cw}" height="18" rx="9" fill="${hueColor}"/><text x="${cw / 2}" y="12.5" text-anchor="middle" font-size="11" font-weight="600" fill="${t.surface}">${text}</text></g>`;
   }
-  if (n.lines.rows) lines.push(rowsSvg(n, t, hueColor));
+  if (n.lines.rows) lines.push(rowsSvg(n, t, hueColor, rtl, L));
   // Cards that open a detail diagram carry the drill mark top-right, as in the viewer
   const drill = typeof n.node?.data?.drill === 'string' && n.node.data.drill
-    ? `<g transform="translate(${n.w - C.padX - 14} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><title>Has a detail diagram</title>${DRILL_ICON}</g>`
+    ? `<g transform="translate(${rtl ? C.padX : n.w - C.padX - 14} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><title>${x(L.t('drill.hasDetail'))}</title>${DRILL_ICON}</g>`
     : '';
   const ring = isActive ? `<rect x="-3" y="-3" width="${n.w + 6}" height="${n.h + 6}" rx="${rx + 3}" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>` : '';
   return `<g transform="translate(${n.x} ${n.y})" opacity="${dim ? 0.25 : 1}">
       ${ring}<rect width="${n.w}" height="${n.h}" rx="${rx}" fill="${t.surface}" stroke="${isActive ? hueColor : t.border}" stroke-width="${isActive ? 1.5 : 1}"/>
-      <g transform="translate(${C.padX} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${(typeof n.icon === 'string' && Object.hasOwn(ICONS, n.icon) ? ICONS[n.icon] : ICONS.cpu)}</g>
-      <text x="${C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600"${n.stereotype ? ' font-style="italic"' : ' letter-spacing="0.06em"'} fill="${hueColor}">${x(n.stereotype ? n.kicker : String(n.kicker).toUpperCase())}</text>${drill}
+      <g transform="translate(${rtl ? n.w - C.padX - 14 : C.padX} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${(typeof n.icon === 'string' && Object.hasOwn(ICONS, n.icon) ? ICONS[n.icon] : ICONS.cpu)}</g>
+      <text x="${rtl ? n.w - C.padX - 21 : C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600"${n.stereotype ? ' font-style="italic"' : rtl ? '' : ' letter-spacing="0.06em"'} fill="${hueColor}">${x(n.stereotype ? n.kicker : String(n.kicker).toUpperCase())}</text>${drill}
       ${lines.join('\n      ')}${chip}
     </g>`;
 }
 
 /** Field / method rows of an entity or class card: a divider per section, key column, name, type on the right. */
-function rowsSvg(n, t, hueColor) {
+function rowsSvg(n, t, hueColor, rtl = false, L = localeOf()) {
   const C = CARD;
   const R = ROWS;
   const { nameX, sections } = n.lines.rows;
+  // RTL: key column on the right, names right-aligned, types against the left padding
+  const at = (dx) => (rtl ? n.w - C.padX - dx : C.padX + dx);
   const out = [];
   for (const sec of sections) {
     out.push(`<line x1="0" y1="${sec.rule}" x2="${n.w}" y2="${sec.rule}" stroke="${t.border}"/>`);
     for (const r of sec.rows) {
       const by = baseline(r.y, R.line, R.nameSize);
       if (r.more) {
-        out.push(`<text x="${C.padX + nameX}" y="${by}" font-size="${R.nameSize}" font-style="italic" fill="${t.ink3}">+ ${r.more} more</text>`);
+        out.push(`<text x="${at(nameX)}" y="${by}" font-size="${R.nameSize}" font-style="italic" fill="${t.ink3}">${x(L.t('card.more', { n: L.num(r.more) }))}</text>`);
         continue;
       }
-      if (r.key) out.push(`<text x="${C.padX}" y="${by}" font-size="${R.keySize}" font-weight="700" font-family="${x(FONT_MONO)}" fill="${hueColor}">${x(r.key)}</text>`);
+      if (r.key) out.push(`<text x="${at(0)}" y="${by}" font-size="${R.keySize}" font-weight="700" font-family="${x(FONT_MONO)}" fill="${hueColor}">${x(r.key)}</text>`);
       const style = `${r.pk ? ' font-weight="600"' : ''}${r.abstract ? ' font-style="italic"' : ''}${r.static ? ' text-decoration="underline"' : ''}`;
-      out.push(`<text x="${C.padX + nameX}" y="${by}" font-size="${R.nameSize}"${style} fill="${t.ink}">${x(r.name)}</text>`);
-      if (r.type) out.push(`<text x="${n.w - C.padX}" y="${by}" text-anchor="end" font-size="${R.typeSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(r.type)}</text>`);
+      out.push(`<text x="${at(nameX)}" y="${by}" font-size="${R.nameSize}"${style} fill="${t.ink}">${x(r.name)}</text>`);
+      if (r.type) out.push(`<text x="${rtl ? C.padX : n.w - C.padX}" y="${by}"${rtl ? ' direction="ltr" text-anchor="start"' : ' text-anchor="end"'} font-size="${R.typeSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(r.type)}</text>`);
     }
   }
   return out.join('\n      ');

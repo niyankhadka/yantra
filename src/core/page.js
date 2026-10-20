@@ -8,8 +8,9 @@ import { renderSvg } from './svg.js';
 import { themeCss, HUES } from './theme.js';
 import { escapeHtml as h, mdInline as mi, mdBlock } from './text.js';
 import { REPO_URL, GITHUB_MARK } from './icons.js';
-import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartMarkdown, CHART_CSS, CHART_STRINGS } from './charts.js';
+import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartMarkdown, CHART_CSS, withChartLocale } from './charts.js';
 import { getLevel } from './drill.js';
+import { localeOf } from './i18n.js';
 
 export const BLOCK_TYPES = ['text', 'points', 'steps', 'metrics', 'table', 'compare', 'callout', 'diagram', 'chart', 'code', 'sources', 'timeline', 'faq', 'checklist', 'quote', 'image', 'kv', 'gantt', 'matrix'];
 const TONES = { info: 'blue', good: 'green', warn: 'amber', bad: 'rose', neutral: 'slate' };
@@ -82,10 +83,23 @@ export function blockAnchors(blocks) {
 /** Escape a whole HTML document for an iframe srcdoc attribute (only & and " matter inside it). */
 export const srcdocAttr = (html) => String(html).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
-/** Static diagram figure (both themes); SVG ids are suffixed with ctx.uid to stay unique. */
+/**
+ * A diagram block's payload with the page language filled in: a diagram
+ * without meta.lang inherits the page's lang and dir (its own strings stay).
+ */
+export function withPageLang(diagram, pageMeta) {
+  const m = pageMeta && typeof pageMeta === 'object' ? pageMeta : {};
+  if (!diagram || typeof diagram !== 'object' || !m.lang || diagram.meta?.lang) return diagram;
+  return { ...diagram, meta: { lang: m.lang, ...(m.dir ? { dir: m.dir } : {}), ...(diagram.meta || {}) } };
+}
+
+/**
+ * Static diagram figure (both themes); SVG ids are suffixed with ctx.uid to stay unique.
+ * The scrollers are dir="ltr": a diagram keeps its layout direction on RTL pages.
+ */
 function staticFigure(b, ctx) {
   // `level` shows one of the diagram's detail diagrams (drill-down) instead of its overview
-  const diagram = (b.level && getLevel(b.diagram, b.level)) || b.diagram;
+  const diagram = withPageLang((b.level && getLevel(b.diagram, b.level)) || b.diagram, ctx.pageMeta);
   const scene = computeScene(diagram, { modeId: b.mode });
   let highlight = null;
   const steps = diagram.scenarios?.[0]?.steps || diagram.steps || [];
@@ -93,8 +107,8 @@ function staticFigure(b, ctx) {
   if (step && (step.highlightNodes || []).length) highlight = { nodes: new Set(step.highlightNodes), edges: new Set(step.highlightEdges || []) };
   const opts = { highlight, header: false, watermark: false, logo: null };
   return `<figure class="p-figure">
-      <div class="p-scroll p-only-light">${renderSvg(scene, { ...opts, theme: 'light' })}</div>
-      <div class="p-scroll p-only-dark">${renderSvg(scene, { ...opts, theme: 'dark' })}</div>
+      <div class="p-scroll p-only-light" dir="ltr">${renderSvg(scene, { ...opts, theme: 'light' })}</div>
+      <div class="p-scroll p-only-dark" dir="ltr">${renderSvg(scene, { ...opts, theme: 'dark' })}</div>
       ${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}
     </figure>`.replace(/id="(y-title|y-desc|arrow[\w-]*|end-[\w-]+|g\d+)"/g, (_, id) => `id="${id}-${ctx.uid}"`)
     .replace(/url\(#(arrow[\w-]*|end-[\w-]+|g\d+)\)/g, (_, id) => `url(#${id}-${ctx.uid})`)
@@ -114,9 +128,9 @@ const BLOCKS = {
       .map((it) => `<li><div><h4>${inline(it.title || '')}</h4>${it.text ? md(it.text) : ''}</div></li>`)
       .join('')}</ol>`,
 
-  metrics: (b) =>
+  metrics: (b, { L }) =>
     `<div class="p-metrics">${list(b.items)
-      .map((it) => `<div class="p-metric" data-hue="${tone(it.tone)}"><span>${inline(it.label || '')}</span><strong>${h(it.value ?? '')}</strong>${it.note ? `<em>${inline(it.note)}</em>` : ''}${Array.isArray(it.trend) ? sparkline(it.trend, tone(it.tone)) : ''}</div>`)
+      .map((it) => `<div class="p-metric" data-hue="${tone(it.tone)}"><span>${inline(it.label || '')}</span><strong>${h(L.num(it.value) ?? '')}</strong>${it.note ? `<em>${inline(it.note)}</em>` : ''}${Array.isArray(it.trend) ? sparkline(it.trend, tone(it.tone)) : ''}</div>`)
       .join('')}</div>`,
 
   table: (b) =>
@@ -124,11 +138,11 @@ const BLOCKS = {
       .map((r) => `<tr>${list(r).map((c) => `<td>${inline(c ?? '')}</td>`).join('')}</tr>`)
       .join('')}</tbody></table></div>`,
 
-  compare: (b) =>
+  compare: (b, { L }) =>
     `<div class="p-compare">${list(b.options)
       .map(
         (o) => `<div class="p-option${o.recommended ? ' is-pick' : ''}">
-          <div class="p-option-head"><h4>${inline(o.name || '')}</h4>${o.recommended ? '<span class="p-chip">Recommended</span>' : ''}</div>
+          <div class="p-option-head"><h4>${inline(o.name || '')}</h4>${o.recommended ? `<span class="p-chip">${h(L.t('page.recommended'))}</span>` : ''}</div>
           ${o.summary ? `<p class="p-muted">${inline(o.summary)}</p>` : ''}
           ${list(o.pros).length ? `<ul class="p-pros">${o.pros.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>` : ''}
           ${list(o.cons).length ? `<ul class="p-cons">${o.cons.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>` : ''}
@@ -140,16 +154,16 @@ const BLOCKS = {
   callout: (b) => `<div class="p-callout" data-hue="${tone(b.tone || 'info')}">${b.label ? `<strong>${inline(b.label)}</strong>` : ''}${md(b.body)}</div>`,
 
   diagram: (b, ctx) => {
-    if (!b.diagram || typeof b.diagram !== 'object') return '<p class="p-muted">Diagram missing.</p>';
+    if (!b.diagram || typeof b.diagram !== 'object') return `<p class="p-muted">${h(ctx.L.t('page.diagramMissing'))}</p>`;
     const fig = staticFigure(b, ctx);
     // A live viewer gets the whole diagram (every level); `level` only picks where it opens
-    const live = b.level ? { ...b.diagram, meta: { ...(b.diagram.meta || {}), startLevel: b.level } } : b.diagram;
+    const live = withPageLang(b.level ? { ...b.diagram, meta: { ...(b.diagram.meta || {}), startLevel: b.level } } : b.diagram, ctx.pageMeta);
     const viewer = b.interactive && typeof ctx.viewerHtml === 'function' ? ctx.viewerHtml(live, b) : null;
     if (!viewer) return fig;
     // Live viewer on screen, the static figure on paper
     const height = Number.isFinite(b.height) && b.height >= 240 ? Math.round(b.height) : 560;
-    const label = ((b.level && getLevel(b.diagram, b.level)) || b.diagram).meta?.title || b.title || 'Diagram';
-    return `<figure class="p-figure p-live p-screen-only"><iframe class="p-frame" title="${h(label)} (interactive)" sandbox="allow-scripts allow-popups" style="height:${height}px" srcdoc="${srcdocAttr(viewer)}"></iframe>${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}</figure>
+    const label = ((b.level && getLevel(b.diagram, b.level)) || b.diagram).meta?.title || b.title || ctx.L.t('page.diagram');
+    return `<figure class="p-figure p-live p-screen-only"><iframe class="p-frame" title="${h(ctx.L.t('page.interactive', { title: label }))}" sandbox="allow-scripts allow-popups" style="height:${height}px" srcdoc="${srcdocAttr(viewer)}"></iframe>${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}</figure>
     <div class="p-print-only">${fig}</div>`;
   },
 
@@ -163,11 +177,11 @@ const BLOCKS = {
       .map((it) => `<details><summary>${inline(it.q || '')}</summary><div class="p-faq-a">${md(it.a)}</div></details>`)
       .join('')}</div>`,
 
-  checklist: (b) =>
+  checklist: (b, { L }) =>
     `<ul class="p-checklist">${list(b.items)
       .map(
         (it) =>
-          `<li class="${it.done ? 'is-done' : 'is-open'}"><span class="p-box" aria-hidden="true"></span><div><span class="p-sr">${it.done ? 'Done: ' : 'To do: '}</span>${inline(it.text || '')}${it.note ? `<em>${inline(it.note)}</em>` : ''}</div></li>`
+          `<li class="${it.done ? 'is-done' : 'is-open'}"><span class="p-box" aria-hidden="true"></span><div><span class="p-sr">${h(L.t(it.done ? 'page.done' : 'page.todo'))} </span>${inline(it.text || '')}${it.note ? `<em>${inline(it.note)}</em>` : ''}</div></li>`
       )
       .join('')}</ul>`,
 
@@ -176,8 +190,8 @@ const BLOCKS = {
       b.by || b.source ? `<figcaption>${b.by ? inline(b.by) : ''}${b.by && b.source ? ', ' : ''}${b.source ? `<cite>${inline(b.source)}</cite>` : ''}</figcaption>` : ''
     }</figure>`,
 
-  image: (b) => {
-    if (!isSafeImageSrc(b.src)) return '<p class="p-muted">Image omitted: only https: and data:image/ sources are allowed.</p>';
+  image: (b, { L }) => {
+    if (!isSafeImageSrc(b.src)) return `<p class="p-muted">${h(L.t('page.imageOmitted'))}</p>`;
     const w = Number.isFinite(b.width) && b.width > 0 ? ` style="max-width:min(100%,${Math.round(b.width)}px)"` : '';
     return `<figure class="p-figure p-image"><img src="${h(b.src.trim())}" alt="${h(b.alt || '')}"${w}>${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}</figure>`;
   },
@@ -187,12 +201,13 @@ const BLOCKS = {
   // Single-series bars without negatives keep the HTML bar list; every other chart is inline SVG (charts.js)
   chart: (b, ctx) => {
     if (!isSimpleBars(b)) return renderChart(b, { half: ctx.half, caption: b.caption ? inline(b.caption) : '' });
+    const { L } = ctx;
     const data = list(b.data).filter((d) => typeof d.value === 'number');
     const max = Math.max(1e-9, ...data.map((d) => Math.abs(d.value)));
     const unit = b.unit ? h(b.unit) : '';
     return `<div class="p-bars" role="list">${data
       .map(
-        (d) => `<div class="p-bar" role="listitem" data-hue="${tone(d.tone)}"><span>${inline(d.label || '')}</span><div><i style="width:${((Math.abs(d.value) / max) * 100).toFixed(1)}%"></i></div><b>${h(d.value)}${unit}</b></div>`
+        (d) => `<div class="p-bar" role="listitem" data-hue="${tone(d.tone)}"><span>${inline(d.label || '')}</span><div><i style="width:${((Math.abs(d.value) / max) * 100).toFixed(1)}%"></i></div><b>${h(L.num(d.value))}${unit}</b></div>`
       )
       .join('')}</div>`;
   },
@@ -216,11 +231,15 @@ const BLOCKS = {
 /**
  * One block as a <section>. `uid` keeps SVG ids unique when several diagrams
  * share a document. Used by answer pages and by inspector panels in the viewer.
+ * `pageMeta` gives fixed strings and number formats their language (meta.lang,
+ * meta.strings); diagram blocks inherit its lang and dir.
  */
-export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null } = {}) {
+export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null, pageMeta = null, locale = null } = {}) {
   const render = BLOCKS[b?.type];
   if (!render) return '';
-  const body = render(b, { uid, viewerHtml, half: b.span === 'half' });
+  const L = locale || localeOf(pageMeta);
+  // Charts draw their words and numbers in the page language too
+  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L }));
   return `<section class="p-block p-block--${b.type}${b.span === 'half' ? ' is-half' : ''}"${anchor ? ` id="${h(anchor)}"` : ''}>${b.title ? `<h3>${inline(b.title)}</h3>` : ''}${body}</section>`;
 }
 
@@ -236,6 +255,7 @@ export const TOC_MIN_BLOCKS = 6;
 export function renderPage(page, { logos = {}, viewerHtml = null } = {}) {
   const meta = page.meta || {};
   const answer = page.answer || {};
+  const L = localeOf(meta);
   const toData = (svg) => (svg ? `data:image/svg+xml,${encodeURIComponent(svg)}` : null);
   const logoLight = toData(logos.light || logos.dark);
   const logoDark = toData(logos.dark || logos.light);
@@ -243,25 +263,26 @@ export function renderPage(page, { logos = {}, viewerHtml = null } = {}) {
     logoLight
       ? `<img class="${cls} p-only-light" src="${logoLight}" alt=""><img class="${cls} p-only-dark" src="${logoDark}" alt="">`
       : `<span class="${cls} p-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l7 8 7-8M12 13v7"/></svg></span>`;
-  const watermark = meta.watermark === false ? '' : `<a class="p-badge" href="${REPO_URL}" target="_blank" rel="noopener noreferrer" title="Yantra on GitHub"><span class="p-badge-face">${mark('p-badge-logo')}<span>${h(typeof meta.watermark === 'string' ? meta.watermark : 'Made with Yantra')}</span></span><span class="p-badge-face p-badge-github" aria-hidden="true">${GITHUB_MARK}<span>GitHub</span></span></a>`;
-  const byline = [meta.author, meta.date, meta.updated ? `Updated ${meta.updated}` : null].filter(Boolean).map(h).join(' · ');
+  const markText = typeof meta.watermark === 'string' ? meta.watermark : L.t('watermark.text');
+  const watermark = meta.watermark === false ? '' : `<a class="p-badge" href="${REPO_URL}" target="_blank" rel="noopener noreferrer" title="${h(L.t('watermark.title'))}" aria-label="${h(L.t('watermark.label', { text: markText }))}"><span class="p-badge-face">${mark('p-badge-logo')}<span>${h(markText)}</span></span><span class="p-badge-face p-badge-github" aria-hidden="true">${GITHUB_MARK}<span>GitHub</span></span></a>`;
+  const byline = [meta.author, meta.date, meta.updated ? L.t('page.updated', { date: meta.updated }) : null].filter(Boolean).map(h).join(' · ');
 
   const all = list(page.blocks);
   const anchors = blockAnchors(all);
   let uid = 0;
-  const blocks = all.map((b, i) => renderBlock(b, `b${++uid}`, { anchor: anchors[i], viewerHtml })).join('\n');
+  const blocks = all.map((b, i) => renderBlock(b, `b${++uid}`, { anchor: anchors[i], viewerHtml, pageMeta: meta, locale: L })).join('\n');
   const titled = all.map((b, i) => (anchors[i] && BLOCKS[b?.type] ? { id: anchors[i], title: b.title } : null)).filter(Boolean);
   const showToc = meta.toc === true ? titled.length > 0 : meta.toc !== false && titled.length >= TOC_MIN_BLOCKS;
   const toc = showToc
-    ? `<nav class="p-toc" aria-label="Contents"><span class="p-label">Contents</span><ol>${titled.map((t) => `<li><a href="#${h(t.id)}">${inline(t.title)}</a></li>`).join('')}</ol></nav>`
+    ? `<nav class="p-toc" aria-label="${h(L.t('page.contents'))}"><span class="p-label">${h(L.t('page.contents'))}</span><ol>${titled.map((t) => `<li><a href="#${h(t.id)}">${inline(t.title)}</a></li>`).join('')}</ol></nav>`
     : '';
 
   return `<!DOCTYPE html>
-<html lang="${h(meta.lang || 'en')}">
+<html lang="${h(L.lang)}" dir="${L.dir}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${h(meta.title || 'Answer')}</title>
+<title>${h(meta.title || L.t('page.answer'))}</title>
 ${meta.description || answer.headline ? `<meta name="description" content="${h(meta.description || answer.headline)}">` : ''}
 ${logoLight ? `<link rel="icon" href="${logoLight}">` : ''}
 <script>(function(){var m=/theme=(light|dark)/.exec(location.hash),s=null;try{s=localStorage.getItem('yantra:theme')}catch(e){}var d=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',m?m[1]:s||(d?'dark':'light'))})();</script>
@@ -274,16 +295,16 @@ ${PAGE_CSS}
 <body>
 <article class="p-page">
   <header class="p-head">
-    <div class="p-brand">${mark('p-logo')}${meta.kicker || meta.question ? `<span class="p-kicker">${h(meta.kicker || 'Question')}</span>` : ''}</div>
-    <button class="p-theme" type="button" aria-label="Toggle light or dark theme" onclick="var r=document.documentElement,n=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('yantra:theme',n)}catch(e){}">
+    <div class="p-brand">${mark('p-logo')}${meta.kicker || meta.question ? `<span class="p-kicker">${h(meta.kicker || L.t('page.question'))}</span>` : ''}</div>
+    <button class="p-theme" type="button" aria-label="${h(L.t('page.theme'))}" onclick="var r=document.documentElement,n=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('yantra:theme',n)}catch(e){}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
     </button>
   </header>
   <h1>${inline(meta.question || meta.title || '')}</h1>
   ${meta.question && meta.title && meta.title !== meta.question ? `<p class="p-subtitle">${inline(meta.title)}</p>` : ''}
   ${byline ? `<p class="p-byline">${byline}</p>` : ''}
-  <section class="p-answer" aria-label="Answer">
-    <span class="p-label">Answer</span>
+  <section class="p-answer" aria-label="${h(L.t('page.answer'))}">
+    <span class="p-label">${h(L.t('page.answer'))}</span>
     <p class="p-headline">${inline(answer.headline || '')}</p>
     ${answer.text ? md(answer.text) : ''}
     ${list(answer.points).length ? `<ul class="p-keypoints">${answer.points.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>` : ''}
@@ -310,9 +331,14 @@ ${SCROLL_SCRIPT}
 
 /** Markdown version of a page (for chat, docs or tickets). */
 export function pageToMarkdown(page) {
+  return withChartLocale(localeOf(page?.meta), () => pageMarkdown(page));
+}
+
+function pageMarkdown(page) {
   const meta = page.meta || {};
   const answer = page.answer || {};
-  const out = [`# ${mi(meta.question || meta.title || 'Answer')}`, ''];
+  const { t } = localeOf(meta);
+  const out = [`# ${mi(meta.question || meta.title || t('page.answer'))}`, ''];
   if (answer.headline) out.push(`**${mi(answer.headline)}**`, '');
   if (answer.text) out.push(mdBlock(answer.text), '');
   list(answer.points).forEach((p) => out.push(`- ${mi(p)}`));
@@ -330,7 +356,7 @@ export function pageToMarkdown(page) {
         out.push('');
         break;
       case 'metrics':
-        list(b.items).forEach((it) => out.push(`- **${mi(it?.label)}:** ${mi(it?.value)}${it?.note ? ` (${mi(it.note)})` : ''}${Array.isArray(it?.trend) ? `; ${CHART_STRINGS.trend} ${it.trend.map((v) => mi(v)).join(' → ')}` : ''}`));
+        list(b.items).forEach((it) => out.push(`- **${mi(it?.label)}:** ${mi(it?.value)}${it?.note ? ` (${mi(it.note)})` : ''}${Array.isArray(it?.trend) ? `; ${t('chart.trend')} ${it.trend.map((v) => mi(v)).join(' → ')}` : ''}`));
         out.push('');
         break;
       case 'table':
@@ -340,7 +366,7 @@ export function pageToMarkdown(page) {
         break;
       case 'compare':
         list(b.options).forEach((o) => {
-          out.push(`### ${mi(o?.name)}${o?.recommended ? ' (recommended)' : ''}`, '');
+          out.push(`### ${mi(o?.name)}${o?.recommended ? ` (${mi(t('page.recommended'))})` : ''}`, '');
           if (o?.summary) out.push(mdBlock(o.summary), '');
           list(o?.pros).forEach((x) => out.push(`- + ${mi(x)}`));
           list(o?.cons).forEach((x) => out.push(`- − ${mi(x)}`));
@@ -375,7 +401,7 @@ export function pageToMarkdown(page) {
         out.push('');
         break;
       case 'diagram':
-        out.push(`*Diagram: ${mi(b.diagram?.meta?.title || b.caption || 'see the HTML page')}*`, '');
+        out.push(`*${mi(t('page.diagramNote', { title: b.diagram?.meta?.title || b.caption || t('page.seeHtml') }))}*`, '');
         break;
       case 'timeline':
         list(b.items).forEach((it) => out.push(`- **${mi(it?.date)}** - ${mi(it?.title)}${it?.text ? `: ${mi(it.text)}` : ''}`));
@@ -394,7 +420,7 @@ export function pageToMarkdown(page) {
         out.push('');
         break;
       case 'image':
-        if (isSafeImageSrc(b.src)) out.push(/^data:/i.test(b.src.trim()) ? `*Image: ${mi(b.alt || b.caption || '')}*` : `![${mi(b.alt || '')}](${mdUrl(b.src)})`);
+        if (isSafeImageSrc(b.src)) out.push(/^data:/i.test(b.src.trim()) ? `*${mi(t('page.image', { alt: b.alt || b.caption || '' }))}*` : `![${mi(b.alt || '')}](${mdUrl(b.src)})`);
         if (b.caption) out.push(`*${mi(b.caption)}*`);
         out.push('');
         break;
@@ -413,11 +439,11 @@ function send(f){try{f.contentWindow.postMessage({yantraTheme:r.getAttribute('da
 fs.forEach(function(f){f.addEventListener('load',function(){send(f)});send(f)});
 new MutationObserver(function(){fs.forEach(send)}).observe(r,{attributes:true,attributeFilter:['data-theme']})})();`;
 
-/** Drag / shift-wheel scrolling with edge fades for wide tables and figures on pages. */
+/** Drag / shift-wheel scrolling with edge fades for wide tables and figures on pages (RTL scrollLeft runs negative). */
 const SCROLL_SCRIPT = `(function(){document.querySelectorAll('.p-scroll').forEach(function(el){
-function u(){var m=el.scrollWidth-el.clientWidth;el.classList.toggle('can-prev',m>1&&el.scrollLeft>1);el.classList.toggle('can-next',m>1&&el.scrollLeft<m-1)}
+function u(){var m=el.scrollWidth-el.clientWidth,s=Math.abs(el.scrollLeft);el.classList.toggle('can-prev',m>1&&s>1);el.classList.toggle('can-next',m>1&&s<m-1)}
 el.addEventListener('scroll',u,{passive:true});addEventListener('resize',u);u();
-el.addEventListener('wheel',function(e){if(e.shiftKey&&el.scrollWidth>el.clientWidth){el.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+el.addEventListener('wheel',function(e){if(e.shiftKey&&el.scrollWidth>el.clientWidth){el.scrollLeft+=getComputedStyle(el).direction==='rtl'?-e.deltaY:e.deltaY;e.preventDefault()}},{passive:false});
 var d=null;el.addEventListener('pointerdown',function(e){if(e.pointerType==='mouse'&&e.button===0&&el.scrollWidth>el.clientWidth)d={x:e.clientX,l:el.scrollLeft,m:false,id:e.pointerId}});
 el.addEventListener('pointermove',function(e){if(!d)return;var dx=e.clientX-d.x;if(!d.m){if(Math.abs(dx)<5)return;d.m=true;el.setPointerCapture(d.id);el.classList.add('is-dragging')}el.scrollLeft=d.l-dx});
 function end(){if(d&&d.m)el.classList.remove('is-dragging');d=null}el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end)})})();`;
@@ -427,7 +453,7 @@ export const BLOCK_CSS = `
 :root[data-theme="dark"] .p-only-light,:root:not([data-theme="dark"]) .p-only-dark{display:none!important}
 .p-block,.p-answer{min-width:0}
 .p-block p,.p-answer p{margin:0 0 10px}
-.p-block ul,.p-block ol,.p-answer ul{margin:0 0 10px;padding-left:20px}
+.p-block ul,.p-block ol,.p-answer ul{margin:0 0 10px;padding-inline-start:20px}
 .p-block li{margin:3px 0}
 .p-block a,.p-answer a{color:var(--y-accent)}
 .p-block code,.p-answer code{padding:1px 5px;border-radius:4px;background:var(--y-surface-2);font:.88em var(--y-font-mono)}
@@ -440,7 +466,7 @@ export const BLOCK_CSS = `
 .p-steps{margin:0;padding:0!important;list-style:none;counter-reset:s}
 .p-steps li{counter-increment:s;position:relative;display:flex;gap:14px;margin:0;padding:0 0 16px}
 .p-steps li::before{content:counter(s);flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--y-ink);color:var(--y-bg);font-size:13px;font-weight:700}
-.p-steps li:not(:last-child)::after{content:"";position:absolute;left:13px;top:30px;bottom:2px;width:2px;background:var(--y-border)}
+.p-steps li:not(:last-child)::after{content:"";position:absolute;inset-inline-start:13px;top:30px;bottom:2px;width:2px;background:var(--y-border)}
 .p-steps p{color:var(--y-ink-2);margin:0}
 .p-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .p-metric{display:flex;flex-direction:column;padding:14px 16px;border:1px solid var(--y-border);border-radius:10px;background:var(--y-surface)}
@@ -448,13 +474,14 @@ export const BLOCK_CSS = `
 .p-metric strong{margin:4px 0 2px;color:var(--y-hue);font-size:26px;line-height:1.1;letter-spacing:-.02em}
 .p-metric em{color:var(--y-ink-3);font-size:12.5px;font-style:normal}
 .p-scroll{overflow-x:auto;scrollbar-width:none;--fl:0px;--fr:0px;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%)}
+.p-scroll:dir(rtl){-webkit-mask-image:linear-gradient(to left,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%);mask-image:linear-gradient(to left,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%)}
 .p-scroll::-webkit-scrollbar{display:none}
 .p-scroll.can-prev{--fl:32px}
 .p-scroll.can-next{--fr:32px}
 .p-scroll.can-prev,.p-scroll.can-next{cursor:grab}
 .p-scroll.is-dragging{cursor:grabbing;user-select:none}
 .p-block table{width:100%;border-collapse:collapse;font-size:14px}
-.p-block th,.p-block td{padding:9px 12px;border-bottom:1px solid var(--y-border);text-align:left;vertical-align:top}
+.p-block th,.p-block td{padding:9px 12px;border-bottom:1px solid var(--y-border);text-align:start;vertical-align:top}
 .p-block th{color:var(--y-ink-3);font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
 .p-compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .p-option{padding:16px;border:1px solid var(--y-border);border-radius:10px;background:var(--y-surface)}
@@ -462,9 +489,9 @@ export const BLOCK_CSS = `
 .p-option-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .p-chip{padding:2px 8px;border-radius:999px;background:var(--y-accent);color:var(--y-accent-ink);font-size:11px;font-weight:700;white-space:nowrap}
 .p-pros,.p-cons{padding:0!important;list-style:none;font-size:14px}
-.p-pros li,.p-cons li{position:relative;padding-left:20px}
-.p-pros li::before{content:"+";position:absolute;left:3px;color:var(--y-hue-green);font-weight:800}
-.p-cons li::before{content:"\\2212";position:absolute;left:3px;color:var(--y-hue-rose);font-weight:800}
+.p-pros li,.p-cons li{position:relative;padding-inline-start:20px}
+.p-pros li::before{content:"+";position:absolute;inset-inline-start:3px;color:var(--y-hue-green);font-weight:800}
+.p-cons li::before{content:"\\2212";position:absolute;inset-inline-start:3px;color:var(--y-hue-rose);font-weight:800}
 .p-verdict{margin:8px 0 0!important;padding-top:8px;border-top:1px solid var(--y-border);font-weight:600;font-size:14px}
 .p-callout{padding:14px 16px;border:1px solid color-mix(in srgb,var(--y-hue) 35%,var(--y-border));border-radius:10px;background:color-mix(in srgb,var(--y-hue) 9%,var(--y-surface))}
 .p-callout>strong:first-child{display:block;margin-bottom:4px;color:var(--y-hue)}
@@ -482,16 +509,16 @@ export const BLOCK_CSS = `
 .p-sources{font-size:14px;color:var(--y-ink-2)}
 .p-timeline{margin:0;padding:0!important;list-style:none}
 .p-timeline li{position:relative;display:grid;grid-template-columns:100px 1fr;margin:0;padding:0 0 16px}
-.p-timeline li::before{content:"";position:absolute;left:104px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--y-hue);box-shadow:0 0 0 3px var(--y-bg)}
-.p-timeline li:not(:last-child)::after{content:"";position:absolute;left:108px;top:19px;bottom:3px;width:2px;background:var(--y-border)}
-.p-timeline li>div{padding-left:30px}
+.p-timeline li::before{content:"";position:absolute;inset-inline-start:104px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--y-hue);box-shadow:0 0 0 3px var(--y-bg)}
+.p-timeline li:not(:last-child)::after{content:"";position:absolute;inset-inline-start:108px;top:19px;bottom:3px;width:2px;background:var(--y-border)}
+.p-timeline li>div{padding-inline-start:30px}
 .p-date{padding-top:1px;color:var(--y-ink-3);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
 .p-timeline p{color:var(--y-ink-2);margin:0;font-size:14px}
 .p-faq{border-top:1px solid var(--y-border)}
 .p-faq details{border-bottom:1px solid var(--y-border)}
-.p-faq summary{position:relative;padding:11px 32px 11px 2px;font-weight:600;cursor:pointer;list-style:none}
+.p-faq summary{position:relative;padding-block:11px;padding-inline:2px 32px;font-weight:600;cursor:pointer;list-style:none}
 .p-faq summary::-webkit-details-marker{display:none}
-.p-faq summary::after{content:"";position:absolute;right:8px;top:16px;width:8px;height:8px;border-right:2px solid var(--y-ink-3);border-bottom:2px solid var(--y-ink-3);transform:rotate(45deg);transition:transform .15s}
+.p-faq summary::after{content:"";position:absolute;inset-inline-end:8px;top:16px;width:8px;height:8px;border-right:2px solid var(--y-ink-3);border-bottom:2px solid var(--y-ink-3);transform:rotate(45deg);transition:transform .15s}
 .p-faq details[open] summary::after{top:20px;transform:rotate(-135deg)}
 .p-faq summary:focus-visible{outline:2px solid var(--y-accent);outline-offset:2px;border-radius:4px}
 .p-faq-a{padding:0 2px 12px;color:var(--y-ink-2);font-size:14px}
@@ -503,7 +530,7 @@ export const BLOCK_CSS = `
 .is-done>.p-box{border-color:var(--y-hue-green);background:var(--y-hue-green)}
 .is-done>.p-box::after{content:"";position:absolute;left:4px;top:0;width:5px;height:10px;border:solid var(--y-bg);border-width:0 2px 2px 0;transform:rotate(45deg)}
 .p-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.p-quote{margin:0;padding:4px 0 4px 20px;border-left:4px solid var(--y-accent)}
+.p-quote{margin:0;padding-block:4px;padding-inline:20px 0;border-inline-start:4px solid var(--y-accent)}
 .p-quote blockquote{margin:0;font-size:19px;line-height:1.5;font-weight:500;letter-spacing:-.005em}
 .p-quote blockquote p{margin:0 0 8px}
 .p-quote figcaption{color:var(--y-ink-3);font-size:13.5px}
@@ -539,15 +566,16 @@ a{color:var(--y-accent)}
 h1{margin:0 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.15;letter-spacing:-.02em;font-weight:700}
 .p-subtitle{margin:0 0 6px;color:var(--y-ink-2);font-size:17px}
 .p-byline{margin:0;color:var(--y-ink-3);font-size:13px}
-.p-answer{margin:26px 0 30px;padding:22px 24px;border:1px solid var(--y-border);border-left:4px solid var(--y-accent);border-radius:12px;background:var(--y-surface)}
+.p-answer{margin:26px 0 30px;padding:22px 24px;border:1px solid var(--y-border);border-inline-start:4px solid var(--y-accent);border-radius:12px;background:var(--y-surface)}
+:root[dir="rtl"] .p-label,:root[dir="rtl"] .p-kicker,:root[dir="rtl"] .p-block h3,:root[dir="rtl"] .p-block th{letter-spacing:0}
 .p-label{display:inline-block;margin-bottom:8px;color:var(--y-accent);font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 .p-headline{margin:0 0 10px;font-size:20px;line-height:1.4;font-weight:650;letter-spacing:-.01em}
 .p-answer>p:not(.p-headline){color:var(--y-ink-2)}
 .p-keypoints{margin:12px 0 0!important;padding:0!important;list-style:none;display:grid;gap:6px}
-.p-keypoints li{position:relative;padding-left:24px}
-.p-keypoints li::before{content:"";position:absolute;left:2px;top:.45em;width:12px;height:7px;border-left:2px solid var(--y-accent);border-bottom:2px solid var(--y-accent);transform:rotate(-45deg)}
+.p-keypoints li{position:relative;padding-inline-start:24px}
+.p-keypoints li::before{content:"";position:absolute;inset-inline-start:2px;top:.45em;width:12px;height:7px;border-left:2px solid var(--y-accent);border-bottom:2px solid var(--y-accent);transform:rotate(-45deg)}
 .p-toc{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin:-8px 0 28px}
-.p-toc .p-label{margin:0 4px 0 0}
+.p-toc .p-label{margin:0;margin-inline-end:4px}
 .p-toc ol{display:contents;list-style:none}
 .p-toc li{display:block}
 .p-toc a{display:inline-block;padding:3px 10px;border:1px solid var(--y-border);border-radius:999px;background:var(--y-surface);color:var(--y-ink-2);font-size:13px;text-decoration:none}
@@ -557,7 +585,7 @@ h1{margin:0 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.15;letter-spacing
 .p-grid>.p-block{grid-column:1/-1}
 .p-grid>.p-block.is-half{grid-column:span 1}
 .p-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:36px;padding-top:16px;border-top:1px solid var(--y-border);color:var(--y-ink-3);font-size:12.5px}
-.p-badge{display:inline-grid;padding:4px 10px 4px 5px;border:1px solid var(--y-border);border-radius:999px;background:var(--y-surface);color:var(--y-ink-2);font-size:12px;font-weight:600;text-decoration:none;transition:border-color .15s,color .15s}
+.p-badge{display:inline-grid;padding-block:4px;padding-inline:5px 10px;border:1px solid var(--y-border);border-radius:999px;background:var(--y-surface);color:var(--y-ink-2);font-size:12px;font-weight:600;text-decoration:none;transition:border-color .15s,color .15s}
 .p-badge:hover,.p-badge:focus-visible{border-color:var(--y-ink-3);color:var(--y-ink)}
 .p-badge-face{grid-area:1/1;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s}
 .p-badge-github,.p-badge:hover .p-badge-face:first-child,.p-badge:focus-visible .p-badge-face:first-child{opacity:0}

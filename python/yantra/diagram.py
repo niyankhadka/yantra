@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from ._cli import YantraError, build_payload, validate_payload
+from .i18n import language_meta
 
 __all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO",
            "RELATIONS", "END_KINDS", "VISIBILITY", "ALGORITHMS", "field", "method"]
@@ -304,6 +305,16 @@ class Diagram:
         if facts:
             s["facts"] = dict(facts)
         self.meta["summary"] = s
+        return self
+
+    def language(self, lang: str, dir: Optional[str] = None,
+                 strings: Optional[Mapping[str, str]] = None) -> "Diagram":
+        """Content language (BCP 47, e.g. "ne", "pt-BR", "ar"): interface labels, number formats and
+        <html lang>. ar/he/fa/ur (or dir="rtl") mirror the chrome; the layout keeps its direction.
+        strings overrides labels by key, e.g. {"story.next": "Continue"}."""
+        for key in ("lang", "dir", "strings"):
+            self.meta.pop(key, None)
+        self.meta.update(language_meta(lang, dir, strings))
         return self
 
     def watermark(self, value: Union[bool, str]) -> "Diagram":

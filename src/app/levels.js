@@ -6,7 +6,10 @@
 import { collectDiagrams, levelPath, drillOf, replaceLevel } from '../core/drill.js';
 import { escapeHtml as h } from '../core/text.js';
 
-/** UI strings of the drill-down and link features, kept together for translation. */
+/**
+ * UI strings of the drill-down and link features (English defaults);
+ * setDrillLocale() refills them from src/core/i18n.js (drill.* keys).
+ */
 export const DRILL_TEXT = {
   crumbs: 'Diagram levels',
   back: (title) => `Back to ${title} (Esc)`,
@@ -16,10 +19,27 @@ export const DRILL_TEXT = {
   details: 'Detail diagrams',
   link: 'Open link',
   newTab: '(opens in a new tab)',
-  edgeLink: (label) => `Open link for ${label}`
+  edgeLink: (label) => `Open link for ${label}`,
+  overview: 'Overview'
 };
 
-const BACK_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+/** Switch DRILL_TEXT to a locale (localeOf() result). */
+export function setDrillLocale(L) {
+  Object.assign(DRILL_TEXT, {
+    crumbs: L.t('drill.crumbs'),
+    back: (title) => `${L.t('drill.back', { title })} (Esc)`,
+    open: (title) => L.t('drill.open', { title }),
+    cardHint: `${L.t('drill.cardHint')} (D)`,
+    opened: (title) => L.t('drill.opened', { title }),
+    details: L.t('drill.details'),
+    link: L.t('drill.link'),
+    newTab: L.t('drill.newTab'),
+    edgeLink: (label) => L.t('drill.edgeLink', { label }),
+    overview: L.t('drill.overview')
+  });
+}
+
+const BACK_ICON = '<svg class="y-flip" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
 
 export class Levels {
   constructor(root) {
@@ -51,7 +71,7 @@ export class Levels {
 
   title(id) {
     const p = id ? this.map.get(id) : this.root;
-    return p?.meta?.title || id || 'Overview';
+    return p?.meta?.title || id || DRILL_TEXT.overview;
   }
 
   /** Diagram id a card opens, or null (unknown target, or already on the path: no loops). */

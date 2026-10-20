@@ -16,11 +16,12 @@ import { getMode } from '../core/model.js';
 import { isEntity, members, memberKey, memberName, memberType } from '../core/entity.js';
 import { notationText } from '../core/notation.js';
 import { REPO_URL, GITHUB_MARK } from '../core/icons.js';
+import { localeOf } from '../core/i18n.js';
 import { hscroll, menu, tooltips } from './ui.js';
 import { hashParams } from './hash.js';
 import { Renderer } from './renderer.js';
 import { InteractionManager } from './interact.js';
-import { Levels, DRILL_TEXT } from './levels.js';
+import { Levels, DRILL_TEXT, setDrillLocale } from './levels.js';
 // The example gallery is loaded only when no payload is embedded, so built
 // files (always embedded) do not carry it: `vite build` puts it in its own chunk.
 let EXAMPLES = [];
@@ -36,13 +37,18 @@ const PRISTINE = `<!DOCTYPE html>\n${document.documentElement.outerHTML}`;
 
 const $ = (id) => document.getElementById(id);
 
-/** Autoplay speeds: label -> ms per step. */
+/** Autoplay speeds: factor -> ms per step. */
 const SPEEDS = [
-  ['0.5×', 9000],
-  ['1×', 4500],
-  ['1.5×', 3000],
-  ['2×', 2250]
+  [0.5, 9000],
+  [1, 4500],
+  [1.5, 3000],
+  [2, 2250]
 ];
+
+/** Arrow keys swap meaning in right-to-left documents. */
+const MIRROR_KEY = { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft', '←': '→', '→': '←' };
+const isRtl = () => document.documentElement.dir === 'rtl';
+const logicalKey = (key) => (isRtl() && MIRROR_KEY[key]) || key;
 
 /**
  * Printable area in CSS px for a landscape page with 10mm margins (fits both
@@ -50,8 +56,8 @@ const SPEEDS = [
  */
 const PRINT_PAGE = { w: 980, h: 660 };
 
-/** Built-in inspector tabs; each appears only when the payload has content for it. */
-const BUILTIN_TABS = { summary: 'Summary', step: 'Step', node: 'Details' };
+/** Built-in inspector tabs (string keys); each appears only when the payload has content for it. */
+const BUILTIN_TABS = { summary: 'tab.summary', step: 'tab.step', node: 'tab.node' };
 
 const pref = (key, fallback) => {
   try {
@@ -89,6 +95,7 @@ class App {
     this.levels = new Levels(initial);
     this.levels.setPath(this.levelFromHash() ?? initial?.meta?.startLevel);
     this.engine = new YantraEngine(this.levels.current());
+    this.L = localeOf(this.localeMeta());
     this.engine.setSpeed(Number(pref('speed', 4500)) || 4500);
     this.renderer = new Renderer($('world'));
     this.interact = new InteractionManager($('viewport'), $('world'), {
@@ -98,7 +105,7 @@ class App {
       onNodeMoveEnd: () => this.engine.commitMoves(),
       onNodeClick: (id, how) => (how?.drill ? this.drillInto(id) : this.select(id)),
       onBackgroundClick: () => this.clearFocus(),
-      onZoom: (z) => ($('zoom-label').textContent = `${Math.round(z * 100)}%`)
+      onZoom: (z) => ($('zoom-label').textContent = this.L.num(Math.round(z * 100) / 100, { style: 'percent' }))
     });
 
     this.exportMenu = menu($('btn-export'), $('export-menu'));
@@ -170,13 +177,15 @@ class App {
   // --- Lifecycle ----------------------------------------------------------
   loadPayloadUi() {
     const meta = this.engine.model.meta;
-    $('doc-title').textContent = meta.title || 'Untitled diagram';
+    this.applyLocale();
+    $('doc-title').textContent = meta.title || this.L.t('app.untitled');
     $('doc-desc').textContent = meta.description || '';
     $('doc-desc').title = meta.description || '';
     document.title = meta.title ? `${meta.title} · Yantra` : 'Yantra';
     this.renderCrumbs();
     this.renderExamples();
     this.renderScenarios();
+    this.renderSpeed();
     this.renderModes();
     this.renderView();
     this.renderLegend();
@@ -187,6 +196,33 @@ class App {
     if (this.inspectorOpen && !this.inspectorTabs().length) this.setInspector(false);
     this.renderInspector();
     requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
+  }
+
+  /**
+   * Language and direction from meta.lang / meta.dir (and meta.strings):
+   * sets <html lang dir> and relabels the static chrome marked with
+   * data-i18n (text), data-i18n-label (aria-label) and data-i18n-tip (tooltip,
+   * plus its data-kbd key hint).
+   */
+  applyLocale() {
+    const L = (this.L = localeOf(this.localeMeta()));
+    setDrillLocale(L);
+    this.renderer.L = L;
+    const root = document.documentElement;
+    root.lang = L.lang;
+    root.dir = L.dir;
+    document.querySelectorAll('[data-i18n]').forEach((el) => (el.textContent = L.t(el.dataset.i18n)));
+    document.querySelectorAll('[data-i18n-label]').forEach((el) => el.setAttribute('aria-label', L.t(el.dataset.i18nLabel)));
+    document.querySelectorAll('[data-i18n-tip]').forEach((el) => setTip(el, L.t(el.dataset.i18nTip) + (el.dataset.kbd ? ` (${logicalKey(el.dataset.kbd)})` : '')));
+    document.querySelectorAll('[data-arrow]').forEach((el) => (el.textContent = logicalKey(el.dataset.arrow === 'next' ? '→' : '←')));
+    this.setStoryCollapsed(this.storyCollapsed, false);
+  }
+
+  /** Language settings come from the overview: detail diagrams inherit its lang, dir and strings unless they set a lang. */
+  localeMeta() {
+    const root = this.levels?.root?.meta || {};
+    const here = this.engine?.model.meta || {};
+    return here.lang ? here : root;
   }
 
   redraw() {
@@ -255,7 +291,7 @@ class App {
     this.engine.toggleCollapse(id);
     const after = anchor(this.engine.getScene());
     if (before && after) this.interact.panBy((before.x - after.x) * this.interact.zoom, (before.y - after.y) * this.interact.zoom);
-    this.toast(folding ? 'Folded' : 'Expanded');
+    this.toast(this.L.t(folding ? 'fold.folded' : 'fold.expanded'));
     requestAnimationFrame(() => this.renderer.toggles.get(id)?.focus({ preventScroll: true }));
   }
 
@@ -318,7 +354,7 @@ class App {
     e.on('viewChanged', (view) => {
       this.renderView();
       this.redraw();
-      if (this.hashReady) this.toast(view === 'sequence' ? 'Sequence view' : 'Flow view');
+      if (this.hashReady) this.toast(this.L.t(view === 'sequence' ? 'view.sequenceToast' : 'view.flowToast'));
       requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
       this.syncHash();
     });
@@ -347,7 +383,7 @@ class App {
       const btn = $('btn-play');
       btn.classList.toggle('is-on', playing);
       btn.setAttribute('aria-pressed', String(playing));
-      btn.querySelector('span').textContent = playing ? 'Pause' : this.engine.isLastStep() ? 'Replay' : 'Play';
+      btn.querySelector('span').textContent = this.L.t(playing ? 'story.pause' : this.engine.isLastStep() ? 'story.replay' : 'story.play');
       $('story').classList.toggle('is-playing', playing);
       this.updateStory();
     });
@@ -384,11 +420,11 @@ class App {
     const sel = $('scenario-select');
     const scenarios = this.engine.getScenarios();
     sel.hidden = scenarios.length < 2;
-    fillSelect(sel, scenarios.map((s, i) => [String(i), s.name || `Scenario ${i + 1}`]), String(this.engine.scenarioIndex));
+    fillSelect(sel, scenarios.map((s, i) => [String(i), s.name || this.L.t('story.scenarioN', { n: this.L.num(i + 1) })]), String(this.engine.scenarioIndex));
   }
 
   renderSpeed() {
-    fillSelect($('speed-select'), SPEEDS.map(([label, ms]) => [String(ms), label]), String(this.engine.playSpeed));
+    fillSelect($('speed-select'), SPEEDS.map(([factor, ms]) => [String(ms), `${this.L.num(factor)}×`]), String(this.engine.playSpeed));
   }
 
   renderFollow() {
@@ -399,7 +435,7 @@ class App {
     this.followCamera = on;
     savePref('follow', on ? '1' : '0');
     this.renderFollow();
-    this.toast(on ? 'Camera follows each step' : 'Camera stays where you put it');
+    this.toast(this.L.t(on ? 'story.follow' : 'story.followOff'));
     if (on) this.followStep();
   }
 
@@ -437,18 +473,17 @@ class App {
     fab.classList.toggle('is-filtered', !!active);
     if (active) fab.dataset.hue = active[1].hue;
     else delete fab.dataset.hue;
-    const label = active ? `Showing: ${active[1].label} (L)` : 'Roles (L)';
-    if (fab.dataset.tip !== undefined) fab.dataset.tip = label;
-    else fab.title = label;
-    fab.setAttribute('aria-label', active ? `Roles legend, showing ${active[1].label}` : 'Roles legend');
+    const L = this.L;
+    setTip(fab, `${active ? L.t('legend.showing', { role: active[1].label }) : L.t('legend.title')} (L)`);
+    fab.setAttribute('aria-label', active ? L.t('legend.labelShowing', { role: active[1].label }) : L.t('legend.label'));
     const list = $('legend-list');
     const focused = list.contains(document.activeElement) ? document.activeElement.dataset.role : null;
     list.innerHTML =
-      `<button role="menuitemradio" tabindex="-1" data-role="" aria-checked="${!this.roleFilter}"><i class="y-all"></i>All roles</button>` +
+      `<button role="menuitemradio" tabindex="-1" data-role="" aria-checked="${!this.roleFilter}"><i class="y-all"></i>${h(L.t('legend.all'))}</button>` +
       roles
         .map(([type, r]) => {
           const count = scene.nodes.filter((n) => (n.node.type || 'node') === type).length;
-          return `<button role="menuitemradio" tabindex="-1" data-role="${h(type)}" data-hue="${r.hue}" aria-checked="${this.roleFilter === type}"><i></i>${h(r.label)}<em>${count}</em></button>`;
+          return `<button role="menuitemradio" tabindex="-1" data-role="${h(type)}" data-hue="${r.hue}" aria-checked="${this.roleFilter === type}"><i></i>${h(r.label)}<em>${L.num(count)}</em></button>`;
         })
         .join('');
     // Re-rendering must not drop keyboard focus out of an open menu
@@ -471,7 +506,7 @@ class App {
     $('story-steps').innerHTML = steps
       .map(
         (s, k) =>
-          `<button role="tab" class="y-step${k < at ? ' is-done' : ''}" data-step="${k}" aria-selected="${k === at}" tabindex="${k === at ? 0 : -1}"><b>${k + 1}</b><span>${h(s.title || `Step ${k + 1}`)}</span><i class="y-step-progress"></i></button>`
+          `<button role="tab" class="y-step${k < at ? ' is-done' : ''}" data-step="${k}" aria-selected="${k === at}" tabindex="${k === at ? 0 : -1}"><b>${this.L.num(k + 1)}</b><span>${h(s.title || this.L.t('story.step', { n: this.L.num(k + 1) }))}</span><i class="y-step-progress"></i></button>`
       )
       .join('');
     this.stepsScroller.update();
@@ -484,20 +519,22 @@ class App {
   /** Per-step update: text, active chip, button states. */
   updateStory(smooth = true) {
     const steps = this.engine.getSteps();
+    const L = this.L;
     if (!steps.length) {
-      $('story-title').textContent = 'No steps in this scenario';
+      $('story-title').textContent = L.t('story.empty');
       $('story-desc').textContent = '';
       $('story-count').textContent = '';
       return;
     }
     const i = Math.min(this.engine.stepIndex, steps.length - 1);
     const step = steps[i];
-    $('story-count').textContent = `${String(i + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
-    $('story-title').textContent = step.title || `Step ${i + 1}`;
+    const two = { minimumIntegerDigits: 2, useGrouping: false };
+    $('story-count').textContent = `${L.num(i + 1, two)} / ${L.num(steps.length, two)}`;
+    $('story-title').textContent = step.title || L.t('story.step', { n: L.num(i + 1) });
     const desc = $('story-desc');
     desc.textContent = step.description || '';
     desc.classList.remove('is-expanded');
-    $('btn-story-more').textContent = 'Show more';
+    $('btn-story-more').textContent = L.t('story.more');
     requestAnimationFrame(() => ($('btn-story-more').hidden = this.storyCollapsed || desc.scrollHeight <= desc.clientHeight + 1));
 
     const chips = $('story-steps').querySelectorAll('.y-step');
@@ -511,7 +548,7 @@ class App {
     $('btn-prev').disabled = i === 0;
     $('btn-next').disabled = i === steps.length - 1;
     $('btn-restart').disabled = i === 0;
-    if (!this.engine.playing) $('btn-play').querySelector('span').textContent = i === steps.length - 1 ? 'Replay' : 'Play';
+    if (!this.engine.playing) $('btn-play').querySelector('span').textContent = L.t(i === steps.length - 1 ? 'story.replay' : 'story.play');
   }
 
   /**
@@ -523,15 +560,15 @@ class App {
     const step = this.engine.getStep();
     if (!live || !step || this.engine.playing || document.activeElement?.closest?.('#story-steps')) return;
     const total = this.engine.getSteps().length;
-    live.textContent = `Step ${this.engine.stepIndex + 1} of ${total}: ${step.title || ''}`;
+    live.textContent = this.L.t('story.stepOf', { n: this.L.num(this.engine.stepIndex + 1), total: this.L.num(total), title: step.title || '' });
   }
 
-  setStoryCollapsed(v) {
+  setStoryCollapsed(v, update = true) {
     this.storyCollapsed = v;
     $('story').classList.toggle('is-collapsed', v);
     $('btn-story-toggle').setAttribute('aria-expanded', String(!v));
-    $('btn-story-toggle').dataset.tip = v ? 'Expand (S)' : 'Collapse (S)';
-    this.updateStory(false);
+    setTip($('btn-story-toggle'), `${this.L.t(v ? 'story.expand' : 'story.collapse')} (S)`);
+    if (update) this.updateStory(false);
   }
 
   // --- Inspector ----------------------------------------------------------
@@ -550,7 +587,7 @@ class App {
         return d.description || d.tech || d.runtime || d.ports || d.status || d.sourceFile || Object.keys(d.metadata || {}).length || this.levels.target(n) || safeUrl(d.url) || isEntity(d);
       })
     };
-    const labels = { ...BUILTIN_TABS, ...(inspector.labels || {}) };
+    const labels = { ...Object.fromEntries(Object.entries(BUILTIN_TABS).map(([id, key]) => [id, this.L.t(key)])), ...(inspector.labels || {}) };
     const all = [
       ...Object.keys(BUILTIN_TABS).map((id) => ({ id, label: labels[id], show: has[id] })),
       ...panels.filter((p) => p.id && p.title).map((p) => ({ id: p.id, label: p.title, panel: p, show: true }))
@@ -627,29 +664,34 @@ class App {
    * blocks without it always show.
    */
   panelHtml(panel) {
+    const L = this.L;
     const sel = this.engine.getSelected();
     const blocks = (panel.blocks || []).filter((b) => !Array.isArray(b.nodes) || (sel && b.nodes.includes(sel.id)));
     const scoped = (panel.blocks || []).some((b) => Array.isArray(b.nodes));
     const head = scoped
       ? sel
-        ? `<div class="y-panel-scope" data-hue="${sel.hue}"><i></i>For <strong>${h(sel.node.data?.title || sel.id)}</strong><button class="y-link" data-clear-selection>Show all cards</button></div>`
-        : '<p class="y-panel-hint">Select a card to see the items for that component.</p>'
+        ? `<div class="y-panel-scope" data-hue="${sel.hue}"><i></i><span>${L.tHtml('panel.for', { name: `<strong>${h(sel.node.data?.title || sel.id)}</strong>` })}</span><button class="y-link" data-clear-selection>${h(L.t('panel.showAll'))}</button></div>`
+        : `<p class="y-panel-hint">${h(L.t('panel.hint'))}</p>`
       : '';
-    const body = blocks.length ? blocks.map((b, i) => renderBlock({ ...b, span: 'full' }, `${panel.id}-${i}`)).join('') : '<p class="y-empty">Nothing recorded for this component.</p>';
+    const meta = this.engine.model.meta;
+    const body = blocks.length
+      ? blocks.map((b, i) => renderBlock({ ...b, span: 'full' }, `${panel.id}-${i}`, { pageMeta: meta, locale: L })).join('')
+      : `<p class="y-empty">${h(L.t('panel.empty'))}</p>`;
     return `<div class="y-panel">${head}${body}</div>`;
   }
 
   /** Summary card: what the diagram explains, key points, facts and counts. */
   summaryHtml() {
     const { meta, roles, scenarios } = this.engine.model;
+    const L = this.L;
     const scene = this.engine.getFlowScene();
     const summary = meta.summary && typeof meta.summary === 'object' ? meta.summary : {};
     const steps = scenarios.reduce((n, s) => n + (s.steps?.length || 0), 0);
     const stats = [
-      ['Components', scene.nodes.length],
-      ['Connections', scene.edges.length],
-      ['Steps', steps],
-      ...(this.engine.getModes().length > 1 ? [['Modes', this.engine.getModes().length]] : [])
+      ['summary.components', scene.nodes.length],
+      ['summary.connections', scene.edges.length],
+      ['summary.steps', steps],
+      ...(this.engine.getModes().length > 1 ? [['summary.modes', this.engine.getModes().length]] : [])
     ];
     const used = Object.entries(roles)
       .map(([type, r]) => [type, r, scene.nodes.filter((n) => (n.node.type || 'node') === type).length])
@@ -657,22 +699,22 @@ class App {
     const facts = Object.entries(summary.facts || {});
     return `
       <div class="y-summary">
-        <span class="y-kicker">Summary</span>
-        <h3>${h(meta.title || 'Untitled diagram')}</h3>
+        <span class="y-kicker">${h(L.t('tab.summary'))}</span>
+        <h3>${h(meta.title || L.t('app.untitled'))}</h3>
         ${summary.headline ? `<p class="y-summary-headline">${h(summary.headline)}</p>` : ''}
         ${meta.description ? `<p class="y-muted">${h(meta.description)}</p>` : ''}
-        <div class="y-stats">${stats.map(([k, v]) => `<div><strong>${v}</strong><span>${k}</span></div>`).join('')}</div>
-        ${(summary.points || []).length ? `<h4>Key points</h4><ul class="y-points">${summary.points.map((p) => `<li>${h(p)}</li>`).join('')}</ul>` : ''}
-        ${facts.length ? `<h4>Facts</h4><dl class="y-fields">${facts.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
-        ${used.length > 1 ? `<h4>Roles</h4><ul class="y-role-list">${used.map(([type, r, count]) => `<li><button data-filter-role="${h(type)}" data-hue="${r.hue}"><i></i>${h(r.label)}<em>${count}</em></button></li>`).join('')}</ul>` : ''}
+        <div class="y-stats">${stats.map(([k, v]) => `<div><strong>${L.num(v)}</strong><span>${h(L.t(k))}</span></div>`).join('')}</div>
+        ${(summary.points || []).length ? `<h4>${h(L.t('summary.points'))}</h4><ul class="y-points">${summary.points.map((p) => `<li>${h(p)}</li>`).join('')}</ul>` : ''}
+        ${facts.length ? `<h4>${h(L.t('summary.facts'))}</h4><dl class="y-fields">${facts.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
+        ${used.length > 1 ? `<h4>${h(L.t('summary.roles'))}</h4><ul class="y-role-list">${used.map(([type, r, count]) => `<li><button data-filter-role="${h(type)}" data-hue="${r.hue}"><i></i>${h(r.label)}<em>${L.num(count)}</em></button></li>`).join('')}</ul>` : ''}
         ${this.detailsHtml(scene)}
-        ${scenarios.length > 1 ? `<h4>Scenarios</h4><ul class="y-points">${scenarios.map((s) => `<li>${h(s.name || s.id)}${s.description ? ` <span class="y-muted">- ${h(s.description)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+        ${scenarios.length > 1 ? `<h4>${h(L.t('summary.scenarios'))}</h4><ul class="y-points">${scenarios.map((s) => `<li>${h(s.name || s.id)}${s.description ? ` <span class="y-muted">- ${h(s.description)}</span>` : ''}</li>`).join('')}</ul>` : ''}
       </div>`;
   }
 
   stepHtml() {
     const step = this.engine.getStep();
-    if (!step) return '<p class="y-empty">This diagram has no walkthrough steps.</p>';
+    if (!step) return `<p class="y-empty">${h(this.L.t('step.none'))}</p>`;
     const p = step.payload;
     let html = `<h3>${h(step.title || '')}</h3>${step.description ? `<p class="y-muted">${h(step.description)}</p>` : ''}${linkHtml(step.url)}`;
     if (!p || typeof p !== 'object') return html;
@@ -682,22 +724,23 @@ class App {
     const rest = Object.fromEntries(Object.entries(p).filter(([k]) => !['method', 'status', 'latency', 'protocol', 'endpoint'].includes(k)));
     const body = Object.keys(rest).length === 1 && rest.body !== undefined ? rest.body : rest;
     if (body !== undefined && Object.keys(rest).length) {
-      html += `<div class="y-code-head"><span>Payload</span><button class="y-link" data-copy="payload">Copy</button></div><pre class="y-code">${h(JSON.stringify(body, null, 2))}</pre>`;
+      html += `<div class="y-code-head"><span>${h(this.L.t('step.payload'))}</span><button class="y-link" data-copy="payload">${h(this.L.t('step.copy'))}</button></div><pre class="y-code">${h(JSON.stringify(body, null, 2))}</pre>`;
     }
     return html;
   }
 
   nodeHtml() {
     const sel = this.engine.getSelected();
-    if (!sel) return '<p class="y-empty">Select a card to see its details and connections.</p>';
+    const L = this.L;
+    if (!sel) return `<p class="y-empty">${h(L.t('node.none'))}</p>`;
     const d = sel.node.data || {};
     const role = this.engine.model.roles[sel.node.type || 'node'];
     const fields = [
-      ['Technology', d.tech],
-      ['Runtime', d.runtime],
-      ['Ports', d.ports],
-      ['Status', d.status],
-      ['Source', d.sourceFile],
+      [L.t('node.tech'), d.tech],
+      [L.t('node.runtime'), d.runtime],
+      [L.t('node.ports'), d.ports],
+      [L.t('node.status'), d.status],
+      [L.t('node.source'), d.sourceFile],
       ...Object.entries(d.metadata || {})
     ].filter(([, v]) => v !== undefined && v !== null && v !== '');
     const conns = this.engine.edgesOf(sel.id).map((e) => {
@@ -706,20 +749,20 @@ class App {
       const url = safeUrl(e.edge.url);
       const link = url ? `<a class="y-conn-link" href="${h(url)}" target="_blank" rel="noopener noreferrer" data-tip="${h(DRILL_TEXT.link)}" aria-label="${h(`${DRILL_TEXT.edgeLink(e.edge.label || e.id)} ${DRILL_TEXT.newTab}`)}">${icon(LINK_ICON, 13)}</a>` : '';
       // ↻ self-loop, ↔ both ways, — undirected, else → out / ← in
-      const glyph = e.edge.source === e.edge.target ? '↻' : e.arrow === 'both' ? '↔' : e.arrow === 'none' ? '—' : out ? '→' : '←';
-      return `<li${url ? ' class="has-link"' : ''}><button class="y-conn" data-node="${h(other)}"><span>${glyph}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || notationText(e.edge))}</em></button>${link}</li>`;
+      const glyph = e.edge.source === e.edge.target ? '↻' : e.arrow === 'both' ? '↔' : e.arrow === 'none' ? '—' : logicalKey(out ? '→' : '←');
+      return `<li${url ? ' class="has-link"' : ''}><button class="y-conn" data-node="${h(other)}"><span>${glyph}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || notationText(e.edge, L))}</em></button>${link}</li>`;
     });
     // Columns (ER) or attributes and methods (class): key / visibility, name, type, notes
     const memberRows = (kind) =>
       members(d[kind])
         .map((m) => {
-          const notes = [m.ref && `→ ${m.ref}`, m.nullable && 'nullable', m.static && 'static', m.abstract && 'abstract', m.note].filter(Boolean).join(' · ');
+          const notes = [m.ref && `→ ${m.ref}`, m.nullable && L.t('md.nullable'), m.static && L.t('md.static'), m.abstract && L.t('md.abstract'), m.note].filter(Boolean).join(' · ');
           return `<tr><td class="y-member-key">${h(memberKey(m, kind))}</td><td>${h(memberName(m, kind))}${notes ? `<small>${h(notes)}</small>` : ''}</td><td class="y-member-type">${h(memberType(m))}</td></tr>`;
         })
         .join('');
     const tables = ['fields', 'methods']
       .filter((kind) => members(d[kind]).length)
-      .map((kind) => `<h4>${kind === 'fields' ? 'Fields' : 'Methods'}</h4><table class="y-members"><tbody>${memberRows(kind)}</tbody></table>`)
+      .map((kind) => `<h4>${h(L.t(kind === 'fields' ? 'md.fields' : 'md.methods'))}</h4><table class="y-members"><tbody>${memberRows(kind)}</tbody></table>`)
       .join('');
     return `
       <div class="y-kicker" data-hue="${sel.hue}">${h(sel.kicker || role?.label || '')}</div>
@@ -729,8 +772,8 @@ class App {
       ${this.drillButton(sel.node)}${linkHtml(d.url)}
       ${fields.length ? `<dl class="y-fields">${fields.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
       ${tables}
-      <h4>Connections</h4>
-      ${conns.length ? `<ul class="y-conns">${conns.join('')}</ul>` : '<p class="y-empty">No connections.</p>'}`;
+      <h4>${h(L.t('node.connections'))}</h4>
+      ${conns.length ? `<ul class="y-conns">${conns.join('')}</ul>` : `<p class="y-empty">${h(L.t('node.noConnections'))}</p>`}`;
   }
 
   // --- Levels (drill-down) ---------------------------------------------------
@@ -871,8 +914,8 @@ class App {
     if (!story.hidden) bottom = Math.max(bottom, vp.bottom - story.getBoundingClientRect().top + 8);
     const fab = $('btn-legend').getBoundingClientRect();
     if (!$('legend').hidden && fab.top > vp.top + vp.height / 2) bottom = Math.max(bottom, vp.bottom - fab.top + 8);
-    const right = this.inspectorOpen && window.innerWidth > 720 ? $('inspector').getBoundingClientRect().width + 16 : 16;
-    return { top: bar.bottom - vp.top + 8, bottom, left: 16, right };
+    const side = this.inspectorOpen && window.innerWidth > 720 ? $('inspector').getBoundingClientRect().width + 16 : 16;
+    return { top: bar.bottom - vp.top + 8, bottom, left: isRtl() ? side : 16, right: isRtl() ? 16 : side };
   }
 
   // --- UI events ----------------------------------------------------------
@@ -886,7 +929,7 @@ class App {
     $('btn-present').onclick = () => this.togglePresent();
     $('btn-story-more').onclick = () => {
       const open = $('story-desc').classList.toggle('is-expanded');
-      $('btn-story-more').textContent = open ? 'Show less' : 'Show more';
+      $('btn-story-more').textContent = this.L.t(open ? 'story.less' : 'story.more');
     };
     $('story-steps').onclick = (ev) => {
       const k = ev.target.closest('[data-step]')?.dataset.step;
@@ -962,7 +1005,7 @@ class App {
       if (ev.target.closest('[data-clear-selection]')) this.engine.clearSelection();
       if (ev.target.closest('[data-copy]')) {
         const pre = $('inspector-body').querySelector('pre');
-        this.copy(pre?.textContent || '', 'Payload copied');
+        this.copy(pre?.textContent || '', this.L.t('toast.payloadCopied'));
       }
     };
 
@@ -1021,7 +1064,7 @@ class App {
         // Esc closes help, then clears the selection or filter, then goes up a level
         Escape: () => (!$('help').hidden ? this.setHelp(false) : this.engine.selectedNodeId || this.roleFilter || !this.levels.depth ? this.clearFocus() : this.goUp(this.levels.depth - 1))
       };
-      const fn = map[k] || map[k.toLowerCase()];
+      const fn = map[logicalKey(k)] || map[k.toLowerCase()];
       if (fn) {
         ev.preventDefault();
         fn();
@@ -1063,7 +1106,7 @@ class App {
   togglePresent() {
     if (document.fullscreenElement) return document.exitFullscreen?.();
     this.setStoryCollapsed(false);
-    document.documentElement.requestFullscreen?.().catch(() => this.toast('Full screen is not available here'));
+    document.documentElement.requestFullscreen?.().catch(() => this.toast(this.L.t('toast.noFullscreen')));
   }
 
   /**
@@ -1090,9 +1133,9 @@ class App {
     const own = this.engine.model.meta.watermark;
     const mark = own !== undefined ? own : this.levels.root?.meta?.watermark;
     $('watermark').hidden = mark === false;
-    $('watermark-text').textContent = typeof mark === 'string' ? mark : 'Made with Yantra';
+    $('watermark-text').textContent = typeof mark === 'string' ? mark : this.L.t('watermark.text');
     $('watermark').href = REPO_URL;
-    $('watermark').setAttribute('aria-label', `${$('watermark-text').textContent} – Yantra on GitHub (opens in a new tab)`);
+    $('watermark').setAttribute('aria-label', this.L.t('watermark.label', { text: $('watermark-text').textContent }));
     if (!$('watermark-github').querySelector('svg')) $('watermark-github').insertAdjacentHTML('afterbegin', GITHUB_MARK);
   }
 
@@ -1109,15 +1152,16 @@ class App {
   }
 
   // --- Export -------------------------------------------------------------
+  /** File name from the title; letters of any script are kept (no spaces or punctuation). */
   fileBase() {
-    return String(this.engine.model.meta.title || 'diagram').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'diagram';
+    return String(this.engine.model.meta.title || 'diagram').toLowerCase().replace(/[^\p{L}\p{M}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'diagram';
   }
 
   svgString() {
     const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
     const hl = this.engine.getHighlight();
     const logo = theme === 'dark' ? LOGO_DARK : LOGO_LIGHT;
-    return renderSvg(this.engine.getScene(), { theme, highlight: hl.overview ? null : hl, step: this.engine.stepIndex, logo });
+    return renderSvg(this.engine.getScene(), { theme, highlight: hl.overview ? null : hl, step: this.engine.stepIndex, logo, locale: this.L });
   }
 
   exportAs(action) {
@@ -1126,12 +1170,12 @@ class App {
     else if (action === 'png') this.exportPng(base);
     else if (action === 'md') download(`${base}.md`, toMarkdown(this.engine.payload), 'text/markdown');
     else if (action === 'md-all') download(`${base}-all-levels.md`, toMarkdown(this.levels.root, { levels: true }), 'text/markdown');
-    else if (action === 'json') this.copy(JSON.stringify(this.engine.exportPayload(), null, 2), 'JSON copied with current positions');
+    else if (action === 'json') this.copy(JSON.stringify(this.engine.exportPayload(), null, 2), this.L.t('toast.jsonCopied'));
     else if (action === 'reset-layout') {
       this.engine.resetLayout();
-      this.toast('Layout reset');
+      this.toast(this.L.t('toast.layoutReset'));
     } else if (action === 'html') {
-      if (!this.standalone) return this.toast('Run `yantra build diagram.json` to produce a standalone file');
+      if (!this.standalone) return this.toast(this.L.t('toast.buildHint'));
       download(`${base}.html`, withPayload(PRISTINE, this.levels.exportRoot(this.engine.exportPayload())), 'text/html');
     }
   }
@@ -1153,7 +1197,7 @@ class App {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      this.toast('PNG export failed; exported SVG instead');
+      this.toast(this.L.t('toast.pngFailed'));
       download(`${base}.svg`, svg, 'image/svg+xml');
     };
     img.src = url;
@@ -1252,12 +1296,18 @@ function fillSelect(sel, items, value) {
   if (value !== undefined) sel.value = value;
 }
 
-/** Arrow / Home / End keys move between tabs or step chips (roving tabindex). */
+/** Tooltip text: the tooltips() helper keeps it in data-tip once it has moved it out of title. */
+function setTip(el, text) {
+  if (el.dataset.tip !== undefined) el.dataset.tip = text;
+  else el.title = text;
+}
+
+/** Arrow / Home / End keys move between tabs or step chips (roving tabindex; arrows follow the reading direction). */
 function rovingKeys(ev, selector, activate) {
   const items = [...ev.currentTarget.querySelectorAll(selector)];
   const i = items.indexOf(ev.target.closest(selector));
   if (i < 0) return;
-  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: items.length - 1 }[ev.key];
+  const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: items.length - 1 }[logicalKey(ev.key)];
   if (next === undefined) return;
   ev.preventDefault();
   ev.stopPropagation();

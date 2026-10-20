@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "python"))
 
-from yantra import Diagram, Page, YantraError, blocks, field, method  # noqa: E402
+from yantra import LANGUAGES, RTL_LANGUAGES, Diagram, Page, YantraError, blocks, field, is_rtl, method  # noqa: E402
 
 SCHEMAS = {p.name: json.loads(p.read_text(encoding="utf-8")) for p in (ROOT / "schemas").glob("*.json")}
 HAS_NODE = shutil.which("node") is not None and (ROOT / "node_modules").exists()
@@ -499,6 +499,73 @@ class CliTests(unittest.TestCase):
             self.assertNotIn("error:", res.stdout)
             for name in outputs:
                 self.assertTrue(Path(self.tmp, name).exists(), name)
+
+
+class LanguageTests(unittest.TestCase):
+    """meta.lang / meta.dir / meta.strings parity with src/core/i18n.js."""
+
+    def test_diagram_language(self) -> None:
+        d = Diagram("रेफरल").language("ne", strings={"story.next": "अर्को"})
+        d.add_node("a", "स्वास्थ्य चौकी").connect(d.add_node("b", "अस्पताल"), "रेफर")
+        d.add_step("सबै")
+        p = d.to_dict()
+        self.assertEqual(p["meta"]["lang"], "ne")
+        self.assertEqual(p["meta"]["strings"], {"story.next": "अर्को"})
+        self.assertNotIn("dir", p["meta"])
+        self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
+        d.language("ar")
+        self.assertEqual(d.meta["lang"], "ar")
+        self.assertNotIn("strings", d.meta, "language() replaces earlier settings")
+
+    def test_page_language(self) -> None:
+        pg = Page("لماذا؟", lang="ar").answer("لأن.")
+        self.assertEqual(pg.to_dict()["meta"]["lang"], "ar")
+        pg.language("en", dir="rtl")
+        self.assertEqual(pg.meta["dir"], "rtl")
+        self.assertEqual(check(pg.to_dict(), SCHEMAS["yantra-page.schema.json"], "yantra-page.schema.json"), [])
+
+    def test_rtl_and_bad_input(self) -> None:
+        for lang in ("ar", "he", "fa", "ur", "ar-EG"):
+            self.assertTrue(is_rtl(lang), lang)
+        self.assertFalse(is_rtl("ne"))
+        self.assertTrue(is_rtl("en", "rtl"))
+        self.assertFalse(is_rtl("ar", "ltr"))
+        with self.assertRaises(YantraError):
+            Diagram("X").language("not a tag")
+        with self.assertRaises(YantraError):
+            Diagram("X").language("en", dir="up")
+        with self.assertRaises(YantraError):
+            Page("Q").language("en", strings={"story.next": 3})  # type: ignore[dict-item]
+
+    @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are required")
+    def test_constants_match_js_table(self) -> None:
+        script = ("import('./src/core/i18n.js').then(m => console.log(JSON.stringify("
+                  "{langs: m.LANGUAGES, rtl: m.RTL_LANGS})))")
+        res = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        js = json.loads(res.stdout)
+        self.assertEqual(list(LANGUAGES), js["langs"])
+        self.assertEqual(list(RTL_LANGUAGES), js["rtl"])
+
+    @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are required")
+    def test_language_validates_and_builds(self) -> None:
+        d = Diagram("طلب").language("ar")
+        d.add_node("a", "المتجر").connect(d.add_node("b", "خدمة الطلبات"), "طلب جديد")
+        d.add_step("نظرة عامة")
+        d.add_step("الطلب", nodes=["a", "b"], edges=["a-b"])
+        report = d.validate()
+        self.assertTrue(report["valid"], report)
+        self.assertEqual(report["warnings"], [])
+        tmp = tempfile.mkdtemp(prefix="yantra-py-")
+        try:
+            out = d.build_html(str(Path(tmp, "ar.html")))
+            self.assertIn('<html lang="ar" dir="rtl"', Path(out).read_text(encoding="utf-8"))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        unknown = Diagram("X").language("sw")
+        unknown.add_node("a", "A")
+        codes = [w["code"] for w in unknown.validate()["warnings"]]
+        self.assertIn("i18n/unknown-lang", codes)
 
 
 if __name__ == "__main__":

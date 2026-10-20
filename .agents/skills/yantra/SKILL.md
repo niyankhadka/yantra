@@ -99,4 +99,9 @@ With the MCP server connected the same actions are tools: `yantra_get_schema` (p
 - Static SVG: `node bin/yantra.js export diagram.json -f svg [--theme dark] [--view sequence]`
 - Markdown: `node bin/yantra.js export file.json -f md` (`--all-levels` adds every detail diagram)
 - `meta.watermark: false` hides the "Made with Yantra" badge; a string replaces its text.
+- Content not in English: set `meta.lang` (BCP 47; built in: en es fr de pt hi ne zh ja ar) and
+  write all payload text in that language. Labels, number formats and `<html lang>` follow it;
+  ar/he/fa/ur (or `meta.dir: "rtl"`) mirror the chrome while the diagram keeps its layout.
+  `meta.strings` overrides a label by key. Screenshot both themes to check the script renders.
+  See `docs/authoring.md` (Languages and right to left).
 - Exact hand layout (rare): `meta.layout.mode: "manual"` plus `x`/`y` on the 10px grid.

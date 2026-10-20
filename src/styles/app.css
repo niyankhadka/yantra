@@ -120,7 +120,8 @@ kbd {
   align-items: center;
   gap: 16px;
   min-height: 52px;
-  padding: 7px 8px 7px 12px;
+  padding-block: 7px;
+  padding-inline: 12px 8px;
 }
 
 .y-brand {
@@ -265,7 +266,8 @@ kbd {
 .y-select {
   height: 34px;
   max-width: 220px;
-  padding: 0 30px 0 11px;
+  padding-block: 0;
+  padding-inline: 11px 30px;
   border: 1px solid var(--y-border);
   border-radius: 8px;
   background: var(--y-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b707a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
@@ -287,9 +289,17 @@ kbd {
 
 .y-select.y-select-sm {
   height: 28px;
-  padding: 0 26px 0 9px;
+  padding-inline: 9px 26px;
   background-position: right 8px center;
   font-size: 12px;
+}
+
+[dir='rtl'] .y-select {
+  background-position: left 10px center;
+}
+
+[dir='rtl'] .y-select.y-select-sm {
+  background-position: left 8px center;
 }
 
 /* Customizable <select>: styled trigger, picker and options (Chromium 135+).
@@ -303,7 +313,7 @@ kbd {
   .y-select {
     display: inline-flex;
     align-items: center;
-    padding-right: 9px;
+    padding-inline-end: 9px;
     background-image: none;
   }
 
@@ -317,7 +327,7 @@ kbd {
   }
 
   .y-select::picker-icon {
-    margin-left: 8px;
+    margin-inline-start: 8px;
     color: var(--y-ink-3);
     transition: rotate 160ms ease;
   }
@@ -376,7 +386,7 @@ kbd {
 
   .y-select option::checkmark {
     order: 1;
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--y-accent);
   }
 }
@@ -393,7 +403,7 @@ kbd {
 .y-menu-list {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  inset-inline-end: 0;
   z-index: 30;
   min-width: 210px;
   padding: 5px;
@@ -408,7 +418,7 @@ kbd {
   border-radius: 6px;
   background: none;
   font-size: 13px;
-  text-align: left;
+  text-align: start;
 }
 
 .y-menu-list button:hover {
@@ -424,7 +434,7 @@ kbd {
 /* --- Legend: round button, menu opens upwards ----------------------------- */
 .y-legend {
   position: absolute;
-  left: 12px;
+  inset-inline-start: 12px;
   bottom: 12px;
   z-index: 18;
 }
@@ -458,7 +468,7 @@ kbd {
 
 .y-legend-list {
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   bottom: 54px;
   min-width: 200px;
   padding: 5px;
@@ -487,7 +497,7 @@ kbd {
   background: none;
   color: var(--y-ink-2);
   font-size: 13px;
-  text-align: left;
+  text-align: start;
 }
 
 .y-legend-list button:hover {
@@ -514,7 +524,7 @@ kbd {
 }
 
 .y-legend-list em {
-  margin-left: auto;
+  margin-inline-start: auto;
   color: var(--y-ink-3);
   font: 11px var(--y-font-mono);
   font-style: normal;
@@ -527,7 +537,8 @@ kbd {
   bottom: 12px;
   z-index: 15;
   width: min(620px, calc(100vw - 24px));
-  padding: 10px 12px 12px 14px;
+  padding: 10px 12px 12px;
+  padding-inline-start: 14px;
   transform: translateX(-50%);
 }
 
@@ -539,7 +550,7 @@ kbd {
 }
 
 .y-count {
-  margin-right: 4px;
+  margin-inline-end: 4px;
   color: var(--y-ink-3);
   font: 600 11.5px var(--y-font-mono);
   letter-spacing: 0.04em;
@@ -566,7 +577,8 @@ kbd {
   gap: 7px;
   max-width: 200px;
   height: 30px;
-  padding: 0 11px 0 4px;
+  padding-block: 0;
+  padding-inline: 4px 11px;
   overflow: hidden;
   border: 1px solid var(--y-border);
   border-radius: 999px;
@@ -625,7 +637,7 @@ kbd {
 /* Autoplay dwell: a bar fills the active chip until the next step */
 .y-step-progress {
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   bottom: 0;
   width: 0;
   height: 3px;
@@ -718,7 +730,14 @@ kbd {
 }
 
 .y-btn-play {
-  padding: 0 12px 0 10px;
+  padding-block: 0;
+  padding-inline: 10px 12px;
+}
+
+/* Back / Next chevrons point along the reading direction */
+[dir='rtl'] .y-flip,
+[dir='rtl'] .y-hscroll-btn svg {
+  transform: scaleX(-1);
 }
 
 .y-btn-play .y-ico-pause,
@@ -774,6 +793,10 @@ kbd {
     width: min(620px, calc(100% - 364px - 24px));
   }
 
+  [dir='rtl'] .y-app:has(.y-inspector.is-open) .y-story {
+    left: calc(364px + (100% - 364px) / 2);
+  }
+
   .y-app:has(.y-inspector.is-open) .y-watermark {
     display: none;
   }
@@ -815,6 +838,11 @@ kbd {
   mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
 }
 
+[dir='rtl'] .y-hscroll {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
+  mask-image: linear-gradient(to left, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
+}
+
 .y-hscroll::-webkit-scrollbar {
   display: none;
 }
@@ -849,11 +877,11 @@ kbd {
 }
 
 .y-hscroll-btn.is-prev {
-  left: 0;
+  inset-inline-start: 0;
 }
 
 .y-hscroll-btn.is-next {
-  right: 0;
+  inset-inline-end: 0;
 }
 
 .y-hscroll-btn:hover {
@@ -916,7 +944,7 @@ kbd {
 .y-inspector {
   position: absolute;
   top: 76px;
-  right: 12px;
+  inset-inline-end: 12px;
   bottom: 12px;
   z-index: 25;
   display: flex;
@@ -940,17 +968,23 @@ kbd {
     visibility 0s;
 }
 
+/* RTL: the inspector docks on the left and slides out to the left */
+[dir='rtl'] .y-inspector:not(.is-open) {
+  transform: translateX(calc(-100% - 48px));
+}
+
 .y-inspector-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 8px 8px 10px;
+  padding: 8px;
+  padding-inline-start: 10px;
   border-bottom: 1px solid var(--y-border);
 }
 
 .y-inspector-head > .y-hscroll-wrap {
   flex: 1;
-  margin-right: 6px;
+  margin-inline-end: 6px;
 }
 
 .y-subtabs {
@@ -1171,7 +1205,7 @@ kbd {
   border: 0;
   border-radius: 6px;
   background: none;
-  text-align: left;
+  text-align: start;
 }
 
 .y-conn:hover {
@@ -1183,20 +1217,21 @@ kbd {
 }
 
 .y-conn em {
-  margin-left: auto;
+  margin-inline-start: auto;
   color: var(--y-ink-3);
   font-size: 12px;
   font-style: normal;
 }
 
-/* --- Watermark badge (bottom-right) ----------------------------------------- */
+/* --- Watermark badge (bottom-right; bottom-left in RTL) --------------------- */
 .y-watermark {
   position: absolute;
-  right: 12px;
+  inset-inline-end: 12px;
   bottom: 12px;
   z-index: 12;
   display: grid;
-  padding: 5px 11px 5px 6px;
+  padding-block: 5px;
+  padding-inline: 6px 11px;
   border: 1px solid var(--y-border);
   border-radius: 999px;
   background: var(--y-overlay);
@@ -1332,7 +1367,7 @@ kbd {
   background: var(--y-hue);
 }
 
-.y-panel-scope strong {
+.y-panel-scope > span {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -1341,7 +1376,7 @@ kbd {
 
 .y-panel-scope .y-link {
   flex: none;
-  margin-left: auto;
+  margin-inline-start: auto;
   white-space: nowrap;
 }
 
@@ -1395,7 +1430,7 @@ kbd {
 
 .y-points {
   margin: 0;
-  padding-left: 18px;
+  padding-inline-start: 18px;
 }
 
 .y-points li {
@@ -1417,7 +1452,7 @@ kbd {
   border: 0;
   border-radius: 6px;
   background: none;
-  text-align: left;
+  text-align: start;
 }
 
 .y-role-list button:hover {
@@ -1432,7 +1467,7 @@ kbd {
 }
 
 .y-role-list em {
-  margin-left: auto;
+  margin-inline-start: auto;
   color: var(--y-ink-3);
   font: 11px var(--y-font-mono);
   font-style: normal;
@@ -1454,7 +1489,8 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: -4px -6px 8px 0;
+  margin: -4px 0 8px;
+  margin-inline-end: -6px;
 }
 
 .y-help h3 {
@@ -1517,6 +1553,10 @@ kbd {
     left: 12px;
     width: auto;
     height: 60vh;
+    transform: translateY(calc(100% + 48px));
+  }
+
+  [dir='rtl'] .y-inspector:not(.is-open) {
     transform: translateY(calc(100% + 48px));
   }
 
@@ -1632,13 +1672,25 @@ kbd {
   .y-watermark {
     top: auto;
     bottom: 0;
-    right: 0;
+    inset-inline-end: 0;
     backdrop-filter: none;
   }
 
   .y-watermark-label {
     display: inline;
   }
+}
+
+/* --- Right-to-left and joined scripts --------------------------------------- */
+/* Letter-spacing breaks cursive joining (Arabic) and uppercase does not apply */
+[dir='rtl'] .y-segmented button,
+[dir='rtl'] .y-count,
+[dir='rtl'] .y-kicker,
+[dir='rtl'] .y-code-head,
+[dir='rtl'] .y-inspector-body h4,
+[dir='rtl'] .y-node-kicker,
+[dir='rtl'] .y-group-title {
+  letter-spacing: 0;
 }
 
 /* --- Drill-down breadcrumb and links ---------------------------------------- */
@@ -1674,6 +1726,10 @@ kbd {
   content: '›';
   padding: 0 6px;
   color: var(--y-ink-3);
+}
+
+[dir='rtl'] .y-crumbs li + li::before {
+  content: '‹';
 }
 
 .y-crumbs li span,

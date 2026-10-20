@@ -10,8 +10,14 @@ const CHEVRON = (d) =>
 const scrollBehavior = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
 
 /**
+ * +1 when "forward" scrolls to the right, -1 in right-to-left containers,
+ * where scrollLeft starts at 0 and runs negative (CSSOM View).
+ */
+const flow = (el) => (getComputedStyle(el).direction === 'rtl' ? -1 : 1);
+
+/**
  * Turn an element into a horizontal scroller. Safe to call repeatedly; returns
- * { update, reveal(child) }.
+ * { update, reveal(child) }. "prev" is the inline start (the right in RTL).
  */
 export function hscroll(el) {
   if (el.__hscroll) {
@@ -31,7 +37,7 @@ export function hscroll(el) {
     b.tabIndex = -1; // keyboard users scroll by moving focus through the items
     b.setAttribute('aria-hidden', 'true');
     b.innerHTML = CHEVRON(dir === 'prev' ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6');
-    b.addEventListener('click', () => el.scrollBy({ left: (dir === 'prev' ? -1 : 1) * el.clientWidth * 0.7, behavior: scrollBehavior() }));
+    b.addEventListener('click', () => el.scrollBy({ left: (dir === 'prev' ? -1 : 1) * flow(el) * el.clientWidth * 0.7, behavior: scrollBehavior() }));
     return b;
   };
   wrap.prepend(arrow('prev'));
@@ -43,8 +49,9 @@ export function hscroll(el) {
     const gutters = wrap.classList.contains('is-overflow') ? 56 : 0;
     wrap.classList.toggle('is-overflow', el.scrollWidth > el.clientWidth + gutters + 1);
     const max = el.scrollWidth - el.clientWidth;
-    wrap.classList.toggle('can-prev', max > 1 && el.scrollLeft > 1);
-    wrap.classList.toggle('can-next', max > 1 && el.scrollLeft < max - 1);
+    const pos = Math.abs(el.scrollLeft);
+    wrap.classList.toggle('can-prev', max > 1 && pos > 1);
+    wrap.classList.toggle('can-next', max > 1 && pos < max - 1);
   };
   el.addEventListener('scroll', update, { passive: true });
   if (typeof ResizeObserver === 'function') new ResizeObserver(update).observe(el);
@@ -54,7 +61,7 @@ export function hscroll(el) {
     'wheel',
     (e) => {
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
-      el.scrollLeft += e.deltaY;
+      el.scrollLeft += e.deltaY * flow(el);
       e.preventDefault();
     },
     { passive: false }
@@ -100,7 +107,7 @@ export function hscroll(el) {
     reveal(child, smooth = true) {
       if (!child) return;
       const left = child.offsetLeft - (el.clientWidth - child.offsetWidth) / 2;
-      el.scrollTo({ left: Math.max(0, left), behavior: smooth ? scrollBehavior() : 'auto' });
+      el.scrollTo({ left: flow(el) < 0 ? Math.min(0, left) : Math.max(0, left), behavior: smooth ? scrollBehavior() : 'auto' });
     }
   };
   el.__hscroll = api;

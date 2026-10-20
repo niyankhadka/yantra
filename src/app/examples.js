@@ -9,6 +9,8 @@ import mlPipeline from '../../examples/ml-training-pipeline.json';
 import supportEscalation from '../../examples/customer-support-escalation.json';
 import manufacturing from '../../examples/manufacturing-quality.json';
 import researchPaper from '../../examples/research-paper-lifecycle.json';
+import healthReferralNepali from '../../examples/health-referral-nepali.json';
+import orderFulfilmentArabic from '../../examples/order-fulfilment-arabic.json';
 import orgChart from '../../examples/org-chart.json';
 import studyPlan from '../../examples/study-plan-mindmap.json';
 import triageTree from '../../examples/incident-triage-decision-tree.json';
@@ -36,5 +38,7 @@ export const EXAMPLES = [
   { id: 'ticket-lifecycle', name: 'Ticket lifecycle (states)', data: ticketLifecycle },
   { id: 'org-chart', name: 'Org chart (tree)', data: orgChart },
   { id: 'study-plan-mindmap', name: 'Revision plan (mind map)', data: studyPlan },
-  { id: 'incident-triage-decision-tree', name: 'Incident triage (decision tree)', data: triageTree }
+  { id: 'incident-triage-decision-tree', name: 'Incident triage (decision tree)', data: triageTree },
+  { id: 'health-referral-nepali', name: 'Patient referral (Nepali)', data: healthReferralNepali },
+  { id: 'order-fulfilment-arabic', name: 'Order fulfilment (Arabic, RTL)', data: orderFulfilmentArabic }
 ];

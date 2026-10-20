@@ -144,7 +144,7 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 
 ## Examples
 
-18 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
+20 diagrams and 8 answer pages in [`examples/`](examples) (`yantra examples` lists them):
 
 - Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
   `platform-overview` (drill-down into two detail diagrams, links),
@@ -152,11 +152,13 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
   (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
   `healthcare-clinical`, `ticket-lifecycle` (state machine), `org-chart` (tree),
-  `study-plan-mindmap` (mind map), `incident-triage-decision-tree` (decision tree, opens folded).
+  `study-plan-mindmap` (mind map), `incident-triage-decision-tree` (decision tree, opens folded),
+  `health-referral-nepali` (Nepali), `order-fulfilment-arabic` (Arabic, right to left).
 - Pages: `answer-checkout-saga`, `answer-how-to-choose-database` (interactive diagram),
   `answer-incident-review`, `answer-project-kickoff`, `answer-explain-photosynthesis`,
   `answer-quarterly-review` (line, area, column, bar and donut charts, sparklines),
-  `answer-launch-plan` (gantt, 2x2 matrix, risk heat map).
+  `answer-launch-plan` (gantt, 2x2 matrix, risk heat map),
+  `answer-order-fulfilment-arabic` (Arabic, right to left).
 
 ## Viewer
 
@@ -176,6 +178,18 @@ Drag cards to rearrange (edges re-route live); **Export → Copy JSON with posit
 the arrangement back as a manual layout. The state is mirrored in the URL hash, so links
 reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&collapsed=<id,id>&theme=dark`
 (dev server also `#example=<name>`). Printing switches to the light theme and hides the chrome.
+
+## Languages and right to left
+
+Set `meta.lang` (BCP 47) on a diagram or page: the viewer chrome, answer-page labels, the
+badge and the SVG / Markdown exports switch language, `<html lang>` and `xml:lang` are set,
+and numbers in metrics and charts use that language's format. Built in: English, Spanish,
+French, German, Portuguese, Hindi, Nepali, Chinese, Japanese and Arabic; other languages keep
+English labels (the validator warns) and `meta.strings` overrides any label by key.
+Arabic, Hebrew, Persian and Urdu (or `meta.dir: "rtl"`) mirror the toolbar, walkthrough,
+inspector, legend and badge; the diagram itself keeps its layout direction. Card text is
+measured per script (full-width CJK, Devanagari, Arabic) and CJK wraps without spaces.
+See [`docs/authoring.md`](docs/authoring.md#languages-and-right-to-left).
 
 ## Branding
 
@@ -230,12 +244,13 @@ src/core/              Shared engine: model, layout, routing, scene, lint, SVG/M
   page.js              Answer pages
   charts.js            Page charts, gantt plans, matrices (inline SVG)
   drill.js             Drill-down levels and link sanitising
+  i18n.js              Interface strings (10 languages), RTL, number formats
 src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              18 diagrams, 7 answer pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
-docs/                  Authoring (diagrams, pages, imports) and architecture
+examples/              20 diagrams, 8 answer pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
+docs/                  Authoring (diagrams, pages, imports, languages) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite
 .github/workflows/     CI

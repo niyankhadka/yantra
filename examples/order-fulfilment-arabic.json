@@ -1,0 +1,186 @@
+{
+  "meta": {
+    "title": "تنفيذ الطلبات في متجر إلكتروني",
+    "description": "مسار الطلب من سلة العميل إلى التوصيل: الدفع والمخزون والمستودع وشركة الشحن.",
+    "lang": "ar",
+    "summary": {
+      "headline": "يُحجز المخزون قبل الدفع، ولا يُجهَّز الطلب في المستودع إلا بعد تأكيد الدفع.",
+      "points": [
+        "خدمة الطلبات هي نقطة التنسيق الوحيدة بين الأنظمة",
+        "حجز المخزون يمنع بيع القطعة نفسها مرتين",
+        "العميل يتلقى إشعارًا عند كل تغيير في حالة الطلب"
+      ],
+      "facts": {
+        "زمن التجهيز المستهدف": "أقل من ساعتين",
+        "الأرقام": "توضيحية لأغراض التدريب"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "client": {
+      "label": "واجهة العميل",
+      "color": "blue",
+      "icon": "monitor"
+    },
+    "service": {
+      "label": "خدمة",
+      "color": "teal",
+      "icon": "server"
+    },
+    "external": {
+      "label": "جهة خارجية",
+      "color": "amber",
+      "icon": "globe"
+    },
+    "operations": {
+      "label": "العمليات",
+      "color": "violet",
+      "icon": "warehouse"
+    }
+  },
+  "nodes": [
+    {
+      "id": "shop",
+      "type": "client",
+      "data": {
+        "title": "تطبيق المتجر",
+        "subtitle": "السلة وإتمام الشراء",
+        "tech": "React Native",
+        "description": "يرسل الطلب بعد أن يؤكد العميل العنوان وطريقة الدفع."
+      }
+    },
+    {
+      "id": "orders",
+      "type": "service",
+      "data": {
+        "title": "خدمة الطلبات",
+        "subtitle": "تنسيق خطوات الطلب",
+        "tech": "Node.js",
+        "description": "تنشئ الطلب وتحجز المخزون وتطلب الدفع ثم ترسل الطلب إلى المستودع."
+      }
+    },
+    {
+      "id": "stock",
+      "type": "service",
+      "data": {
+        "title": "خدمة المخزون",
+        "subtitle": "حجز الكميات",
+        "tech": "PostgreSQL",
+        "description": "تحجز القطع لمدة ١٥ دقيقة وتلغي الحجز إذا فشل الدفع."
+      }
+    },
+    {
+      "id": "payment",
+      "type": "external",
+      "data": {
+        "title": "بوابة الدفع",
+        "subtitle": "تفويض البطاقة",
+        "description": "تتحقق من البطاقة وتعيد نتيجة التفويض."
+      }
+    },
+    {
+      "id": "warehouse",
+      "type": "operations",
+      "data": {
+        "title": "المستودع",
+        "subtitle": "الالتقاط والتغليف",
+        "description": "يجهز الطلب ويطبع بوليصة الشحن."
+      }
+    },
+    {
+      "id": "courier",
+      "type": "external",
+      "data": {
+        "title": "شركة الشحن",
+        "subtitle": "التوصيل إلى العميل",
+        "description": "تستلم الطرد من المستودع وتحدّث حالة التوصيل."
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "platform",
+      "title": "منصة المتجر",
+      "nodes": ["orders", "stock"],
+      "color": "teal"
+    }
+  ],
+  "edges": [
+    { "id": "e-order", "source": "shop", "target": "orders", "label": "طلب جديد" },
+    { "id": "e-reserve", "source": "orders", "target": "stock", "label": "حجز الكميات" },
+    { "id": "e-pay", "source": "orders", "target": "payment", "label": "طلب الدفع" },
+    { "id": "e-pick", "source": "orders", "target": "warehouse", "label": "أمر التجهيز" },
+    { "id": "e-ship", "source": "warehouse", "target": "courier", "label": "تسليم الطرد" },
+    { "id": "e-notify", "source": "orders", "target": "shop", "label": "تحديث الحالة", "style": "dashed" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "مسار الطلب",
+      "steps": [
+        {
+          "id": "s1",
+          "title": "نظرة عامة",
+          "description": "ستة أنظمة تشارك في الطلب، وخدمة الطلبات تنسق بينها."
+        },
+        {
+          "id": "s2",
+          "title": "العميل يرسل الطلب",
+          "description": "يرسل التطبيق السلة والعنوان إلى خدمة الطلبات.",
+          "highlightNodes": ["shop", "orders"],
+          "highlightEdges": ["e-order"],
+          "payload": { "method": "POST", "endpoint": "/orders", "status": "201", "body": { "items": 3, "total": 249.5 } }
+        },
+        {
+          "id": "s3",
+          "title": "حجز المخزون",
+          "description": "تُحجز الكميات قبل الدفع حتى لا تُباع القطعة نفسها لعميلين.",
+          "highlightNodes": ["orders", "stock"],
+          "highlightEdges": ["e-reserve"]
+        },
+        {
+          "id": "s4",
+          "title": "تفويض الدفع",
+          "description": "تطلب الخدمة تفويض البطاقة؛ إذا رُفض الدفع يُلغى الحجز.",
+          "highlightNodes": ["orders", "payment"],
+          "highlightEdges": ["e-pay"]
+        },
+        {
+          "id": "s5",
+          "title": "التجهيز والشحن",
+          "description": "بعد تأكيد الدفع يجهز المستودع الطرد ويسلمه لشركة الشحن، ويتلقى العميل إشعارًا.",
+          "highlightNodes": ["orders", "warehouse", "courier", "shop"],
+          "highlightEdges": ["e-pick", "e-ship", "e-notify"]
+        }
+      ]
+    }
+  ],
+  "panels": [
+    {
+      "id": "numbers",
+      "title": "أرقام اليوم",
+      "blocks": [
+        {
+          "type": "metrics",
+          "items": [
+            { "label": "طلبات اليوم", "value": 1284, "tone": "info" },
+            { "label": "متوسط التجهيز (دقيقة)", "value": 96.5, "tone": "good" }
+          ]
+        },
+        {
+          "type": "chart",
+          "title": "أسباب الإلغاء",
+          "unit": "%",
+          "data": [
+            { "label": "رفض الدفع", "value": 42.5, "tone": "bad" },
+            { "label": "نفاد المخزون", "value": 31, "tone": "warn" },
+            { "label": "طلب العميل", "value": 26.5 }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -140,10 +140,11 @@ export class Renderer {
       el.dataset.toggle = id;
       el.dataset.side = side;
       el.setAttribute('aria-expanded', String(!folded));
-      const label = folded ? `Expand ${title} (${count} hidden)` : `Collapse ${title}`;
+      const L = this.L;
+      const label = L ? L.t(folded ? 'fold.expand' : 'fold.collapse', { title, n: L.num(count) }) : folded ? `Expand ${title} (${count} hidden)` : `Collapse ${title}`;
       el.setAttribute('aria-label', label);
       el.title = label;
-      el.textContent = folded ? `+${count}` : '\u2212';
+      el.textContent = folded ? `+${L ? L.num(count) : count}` : '\u2212';
       this.toggleLayer.appendChild(el);
       this.toggles.set(id, el);
       return el;
@@ -156,17 +157,18 @@ export class Renderer {
       for (const g of scene.groups || []) make(g.id, g.title, false, 0, 'group').dataset.hue = g.hue;
   }
 
-  /** Toggle centre for a card side or a group box corner. */
+  /** Toggle centre for a card side or a group box corner (the top-left corner in RTL, clear of the mirrored title). */
   toggleAt(scene, id) {
+    const rtl = this.L?.dir === 'rtl';
     const n = scene.nodes.find((m) => m.id === id);
     if (n) {
       if (n.toggle === 'bottom') return { x: n.x + n.w / 2, y: n.y + n.h };
       if (n.toggle === 'right') return { x: n.x + n.w, y: n.y + n.h / 2 };
       if (n.toggle === 'left') return { x: n.x, y: n.y + n.h / 2 };
-      return { x: n.x + n.w - 26, y: n.y };
+      return { x: rtl ? n.x + 26 : n.x + n.w - 26, y: n.y };
     }
     const g = (scene.groups || []).find((m) => m.id === id);
-    return g ? { x: g.x + g.w - 20, y: g.y + 16 } : null;
+    return g ? { x: rtl ? g.x + 20 : g.x + g.w - 20, y: g.y + 16 } : null;
   }
 
   /** A node card; the sequence view reuses it for participant headers. */
@@ -198,7 +200,7 @@ export class Renderer {
       `<div class="y-node-title">${n.lines.title.map((l) => `<span>${h(l)}</span>`).join('')}</div>` +
       (n.lines.subtitle.length ? `<div class="y-node-sub">${n.lines.subtitle.map((l) => `<span>${h(l)}</span>`).join('')}</div>` : '') +
       (n.lines.tech ? `<div class="y-node-tech">${h(n.lines.tech)}</div>` : '') +
-      (n.lines.rows ? rowsHtml(n.lines.rows) : '');
+      (n.lines.rows ? rowsHtml(n.lines.rows, this.L) : '');
     if (n.stereotype) el.classList.add('is-stereotype');
     if (n.lines.rows) el.classList.add('is-entity');
     this.nodeLayer.appendChild(el);
@@ -491,16 +493,16 @@ function pointMarkup(n) {
  * Field / method rows, positioned from the core measurement (entity.js), so the
  * card matches the SVG export and the validated height exactly.
  */
-function rowsHtml(rows) {
+function rowsHtml(rows, L) {
   return rows.sections
     .map((sec) => {
       const items = sec.rows
         .map((r) =>
           r.more
-            ? `<div class="y-row is-more" style="top:${r.y}px"><span class="y-row-name" style="left:${rows.nameX}px">+ ${r.more} more</span></div>`
+            ? `<div class="y-row is-more" style="top:${r.y}px"><span class="y-row-name" style="inset-inline-start:${rows.nameX}px">${h(L ? L.t('card.more', { n: L.num(r.more) }) : `+ ${r.more} more`)}</span></div>`
             : `<div class="y-row${r.pk ? ' is-pk' : ''}${r.static ? ' is-static' : ''}${r.abstract ? ' is-abstract' : ''}" style="top:${r.y}px">` +
               (r.key ? `<span class="y-row-key">${h(r.key)}</span>` : '') +
-              `<span class="y-row-name" style="left:${rows.nameX}px">${h(r.name)}</span>` +
+              `<span class="y-row-name" style="inset-inline-start:${rows.nameX}px">${h(r.name)}</span>` +
               (r.type ? `<span class="y-row-type">${h(r.type)}</span>` : '') +
               '</div>'
         )

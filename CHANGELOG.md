@@ -28,6 +28,13 @@ All notable changes to Yantra are documented here. The format follows
   work breakdowns with the mind-map and tree layouts.
 - `yantra import --from mermaid|drawio|plantuml` with detection by extension or content,
   the `yantra_import` MCP tool and `yantra.import_diagram()` in the Python SDK.
+- Languages and right to left: `meta.lang` (BCP 47) translates the viewer, answer pages,
+  charts and the SVG / Markdown exports (built in: English, Spanish, French, German,
+  Portuguese, Hindi, Nepali, Chinese, Japanese, Arabic; `meta.strings` overrides any label),
+  sets `<html lang>` / `xml:lang` and number formats; Arabic, Hebrew, Persian and Urdu (or
+  `meta.dir: "rtl"`) mirror the chrome while diagrams keep their layout. Text is measured
+  per script (full-width CJK, Devanagari, Arabic) and CJK wraps without spaces.
+  `Diagram.language()` / `Page(lang=...)` in the Python SDK; Nepali and Arabic examples.
 - Release tooling: npm `files` whitelist with a prebuilt viewer (`prepack`), Python
   packaging metadata, a tag-triggered release workflow, contribution and security guides,
   issue and pull request templates.
@@ -37,10 +44,6 @@ All notable changes to Yantra are documented here. The format follows
 - The npm package is named `yantra-diagrams` (the `yantra` name on npm belongs to another
   project); the command is still `yantra`. Vite is now a development dependency.
 - The Python SDK can also run the CLI through `npx` when no local CLI is found.
-
-### Pending
-
-- Viewer translations and right-to-left layout (in progress on its own branch).
 
 ## [2.0.0] - 2026-10-20
 

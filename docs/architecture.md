@@ -15,7 +15,7 @@ validator checks is exactly what the viewer draws.
 | Module | Responsibility |
 |---|---|
 | `model.js` | Defaults (single mode, single scenario), role → colour resolution, mode visibility and per-mode data overrides. |
-| `text.js` | Width estimation and word wrapping without a DOM, HTML/XML escaping. |
+| `text.js` | Width estimation per script (full-width CJK, Devanagari, Arabic, zero-width marks) and word wrapping without a DOM (CJK breaks between characters, with kinsoku), HTML/XML escaping. |
 | `entity.js` | Entity / class cards: field and method rows (`ROWS` metrics, the "+ N more" cap), measured so the card height is known before layout. |
 | `notation.js` | Edge end markers: ER cardinality (crow's foot), UML heads, `relation` defaults; marker SVG shared by the viewer and the export. |
 | `layout.js` | Card sizing (`CARD` metrics) and the layered layout: DFS cycle breaking, longest-path ranking, dummy nodes for long edges, barycentre crossing reduction, cross-axis placement by weighted isotonic regression, rank gaps sized for labels, corridors for return edges. Positions snap to the 10px grid; card sizes are multiples of 20 so aligned centres stay aligned. |
@@ -28,6 +28,7 @@ validator checks is exactly what the viewer draws.
 | `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build. |
 | `page.js` | Answer pages: block renderers (shared with inspector panels), `renderPage`, page lint, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. |
 | `mermaid.js` | `fromMermaid(text, { title })`: flowchart, sequence, state, ER and class diagram importer (nodes, edges, subgraphs / namespaces / composite states to groups, state shapes, fields and methods, relationship markers, a generated walkthrough) with warnings for anything skipped. |
+| `i18n.js` | Interface strings for 10 languages (`STRINGS`, `STRING_KEYS`), `localeOf(meta)` -> `{ lang, dir, t, tHtml, num }` with `meta.strings` overrides and English fallback, RTL detection, `Intl.NumberFormat`. Used by the viewer, pages, SVG and Markdown exports and lint. |
 | `drawio.js` / `inflate.js` | `fromDrawio(text, { title, page })`: draw.io / diagrams.net importer (small XML reader, compressed pages inflated in JS, shapes to types, containers to groups). See `docs/import.md`. |
 | `plantuml.js` | `fromPlantUml(text, { title })`: PlantUML sequence, component / use-case, activity and state importer. |
 | `importkit.js` / `import.js` | Shared payload assembly for the importers; `importText` detects the format and dispatches (used by the CLI and MCP). |

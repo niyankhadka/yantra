@@ -12,6 +12,7 @@ import { computeScene } from './scene.js';
 import { computeSequenceScene, hasSequence } from './sequence.js';
 import { overlaps, segmentsOf, segmentHitsBox } from './route.js';
 import { ICONS } from './icons.js';
+import { STRING_KEYS, LANGUAGES, isLangTag, shippedLang } from './i18n.js';
 import { ALGORITHMS, isTreeAlgorithm, treeIndex } from './tree.js';
 import { ROWS, members } from './entity.js';
 import { END_KINDS, RELATIONS } from './notation.js';
@@ -61,6 +62,7 @@ function diagramFindings(payload, add) {
   const model = normalize(payload);
 
   if (!model.meta.title) add('error', 'schema/missing-title', 'meta.title is required.');
+  checkLocale(model.meta, add);
   if (model.meta.summary !== undefined) {
     const sm = model.meta.summary;
     if (typeof sm !== 'object' || Array.isArray(sm)) add('error', 'schema/summary-invalid', 'meta.summary must be an object with points and/or facts.');
@@ -582,6 +584,31 @@ function collinearOverlap(a, b) {
 
 const shrink = (r, m) => ({ x: r.x + m, y: r.y + m, w: r.w - m * 2, h: r.h - m * 2 });
 
+const KNOWN_KEYS = new Set(STRING_KEYS);
+
+/**
+ * meta.lang (BCP 47), meta.dir and meta.strings. A language without a built-in
+ * table still renders (English interface strings, the page keeps its lang);
+ * the warning says so, and meta.strings can fill the gaps.
+ */
+function checkLocale(meta, add) {
+  if (meta.lang !== undefined) {
+    if (!isLangTag(meta.lang))
+      add('warning', 'i18n/bad-lang', `meta.lang "${meta.lang}" is not a BCP 47 tag such as "en", "pt-BR" or "zh-Hans"; "en" is used.`);
+    else if (!shippedLang(meta.lang))
+      add('warning', 'i18n/unknown-lang', `meta.lang "${meta.lang}" has no built-in interface strings (${LANGUAGES.join(', ')}); English labels are used. Translate them with meta.strings.`);
+  }
+  if (meta.dir !== undefined && meta.dir !== 'ltr' && meta.dir !== 'rtl')
+    add('warning', 'i18n/bad-dir', `meta.dir is "${meta.dir}"; use "ltr" or "rtl" (default: from meta.lang).`);
+  if (meta.strings === undefined) return;
+  if (!meta.strings || typeof meta.strings !== 'object' || Array.isArray(meta.strings))
+    return add('warning', 'i18n/bad-strings', 'meta.strings must be an object of string-key -> text overrides.');
+  for (const [key, value] of Object.entries(meta.strings)) {
+    if (!KNOWN_KEYS.has(key)) add('warning', 'i18n/unknown-string', `meta.strings has unknown key "${key}"; see STRING_KEYS in src/core/i18n.js (docs/authoring.md lists them).`, { key });
+    else if (typeof value !== 'string') add('warning', 'i18n/bad-strings', `meta.strings["${key}"] must be a string.`, { key });
+  }
+}
+
 function report(findings) {
   const errors = findings.filter((f) => f.level === 'error');
   const warnings = findings.filter((f) => f.level === 'warning');
@@ -640,6 +667,7 @@ export function lintPage(page) {
   const add = (level, code, message, extra = {}) => findings.push({ level, code, message, ...extra });
   const meta = page.meta || {};
   if (!meta.title && !meta.question) add('error', 'schema/missing-title', 'meta.title or meta.question is required.');
+  checkLocale(meta, add);
   const answer = page.answer;
   if (!answer || typeof answer !== 'object' || !answer.headline)
     add('error', 'page/missing-answer', 'answer.headline is required: state the conclusion first, in one or two sentences.');

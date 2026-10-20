@@ -65,11 +65,13 @@ export function edgeEnds(edge) {
 }
 
 /** Short description of an edge's notation, e.g. "exactly one to zero or more" or "inheritance". */
-export function notationText(edge) {
+export function notationText(edge, L = null) {
   if (!hasNotation(edge)) return '';
   const s = kindOf(edge.sourceEnd);
   const t = kindOf(edge.targetEnd);
-  if ((s && END_LABELS[s]) || (t && END_LABELS[t])) return `${END_LABELS[s] || 'any'} to ${END_LABELS[t] || 'any'}`;
+  // Cardinalities in the payload language when a locale is given (src/core/i18n.js, end.* keys)
+  const end = (k) => (L ? L.t(`end.${k || 'any'}`) : END_LABELS[k] || 'any');
+  if ((s && END_LABELS[s]) || (t && END_LABELS[t])) return L ? L.t('end.between', { a: end(s), b: end(t) }) : `${end(s)} to ${end(t)}`;
   return relationOf(edge.relation) ? edge.relation : [s, t].filter(Boolean).join(' / ');
 }
 
