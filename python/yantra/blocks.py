@@ -16,12 +16,12 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 __all__ = [
     "Block", "BLOCK_TYPES", "TONES",
     "text", "points", "steps", "metrics", "table", "compare", "callout", "diagram", "chart", "code", "sources",
-    "gantt", "matrix", "CHART_KINDS",
+    "timeline", "faq", "checklist", "quote", "image", "kv", "gantt", "matrix", "CHART_KINDS",
 ]
 
 Block = Dict[str, Any]
 BLOCK_TYPES = ("text", "points", "steps", "metrics", "table", "compare", "callout", "diagram", "chart", "code", "sources",
-               "gantt", "matrix")
+               "timeline", "faq", "checklist", "quote", "image", "kv", "gantt", "matrix")
 CHART_KINDS = ("bar", "column", "line", "area", "pie", "donut")
 TONES = ("info", "good", "warn", "bad", "neutral")
 Item = Union[str, Sequence[Any], Mapping[str, Any]]
@@ -245,3 +245,41 @@ def sources(items: Iterable[Item], title: Optional[str] = None, span: Optional[s
             nodes: Optional[Iterable[Any]] = None) -> Block:
     """Where the facts come from: ``{title, url?, note?}`` (or ``(title, url, note)``)."""
     return _block("sources", title, span, nodes, items=_items(items, ("title", "url", "note")))
+
+
+def timeline(items: Iterable[Item], title: Optional[str] = None, span: Optional[str] = None,
+             nodes: Optional[Iterable[Any]] = None) -> Block:
+    """Dated events: items ``{date, title, text?, tone?}`` (or ``(date, title, text, tone)``)."""
+    return _block("timeline", title, span, nodes, items=_items(items, ("date", "title", "text", "tone")))
+
+
+def faq(items: Iterable[Item], title: Optional[str] = None, span: Optional[str] = None,
+        nodes: Optional[Iterable[Any]] = None) -> Block:
+    """Questions and answers: items ``{q, a}`` (or ``(q, a)``)."""
+    return _block("faq", title, span, nodes, items=_items(items, ("q", "a")))
+
+
+def checklist(items: Iterable[Item], title: Optional[str] = None, span: Optional[str] = None,
+              nodes: Optional[Iterable[Any]] = None) -> Block:
+    """Tasks to tick off: items ``{text, done?, note?}`` (or ``(text, done, note)``)."""
+    return _block("checklist", title, span, nodes, items=_items(items, ("text", "done", "note")))
+
+
+def quote(text: str, by: Optional[str] = None, source: Optional[str] = None, title: Optional[str] = None,
+          span: Optional[str] = None, nodes: Optional[Iterable[Any]] = None) -> Block:
+    """A quotation with an optional speaker and source."""
+    return _block("quote", title, span, nodes, text=text, by=by, source=source)
+
+
+def image(src: str, alt: str = "", caption: Optional[str] = None, width: Optional[int] = None,
+          title: Optional[str] = None, span: Optional[str] = None, nodes: Optional[Iterable[Any]] = None) -> Block:
+    """An image (https URL or data URI); ``alt`` describes it for screen readers."""
+    return _block("image", title, span, nodes, src=src, alt=alt, caption=caption, width=width)
+
+
+def kv(items: Union[Iterable[Item], Mapping[str, Any]], title: Optional[str] = None, span: Optional[str] = None,
+       nodes: Optional[Iterable[Any]] = None) -> Block:
+    """Key facts as label/value pairs: a mapping or items ``{k, v}`` (or ``(k, v)``)."""
+    if isinstance(items, Mapping):
+        items = [{"k": k, "v": v} for k, v in items.items()]
+    return _block("kv", title, span, nodes, items=_items(items, ("k", "v")))

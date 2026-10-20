@@ -394,6 +394,28 @@ class PayloadShapeTests(unittest.TestCase):
 
 
 @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are needed for the Yantra CLI")
+class BlockParityTests(unittest.TestCase):
+    def test_block_types_match_the_js_renderer(self) -> None:
+        import re
+        src = (ROOT / "src" / "core" / "page.js").read_text(encoding="utf-8")
+        js = re.search(r"BLOCK_TYPES = \[([^\]]*)\]", src).group(1)
+        self.assertEqual(sorted(re.findall(r"'([a-z]+)'", js)), sorted(blocks.BLOCK_TYPES))
+
+    def test_older_blocks_match_schema(self) -> None:
+        page = Page("What changed?", title="Release notes")
+        page.answer("Three fixes shipped.")
+        page.timeline([("01/10/2026", "Beta"), {"date": "20/10/2026", "title": "GA", "tone": "good"}], title="Dates")
+        page.faq([("Is it free?", "Yes.")]).checklist([("Docs", True), "Release"])
+        page.quote("Ship small.", by="Team lead").image("https://example.com/a.png", alt="Chart")
+        page.kv({"Version": "2.1.0", "Licence": "MIT"})
+        payload = page.to_dict()
+        self.assertEqual(check(payload, SCHEMAS["yantra-page.schema.json"], "yantra-page.schema.json"), [])
+        b = payload["blocks"]
+        self.assertEqual([x["type"] for x in b], ["timeline", "faq", "checklist", "quote", "image", "kv"])
+        self.assertEqual(b[2]["items"][0], {"text": "Docs", "done": True})
+        self.assertEqual(b[5]["items"][1], {"k": "Licence", "v": "MIT"})
+
+
 class CliTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.mkdtemp(prefix="yantra-py-")

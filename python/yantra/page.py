@@ -126,6 +126,27 @@ class Page:
     def sources(self, items: Iterable[Any], title: Optional[str] = None, span: Optional[str] = None) -> "Page":
         return self.add(B.sources(items, title, span))
 
+    def timeline(self, items: Iterable[Any], title: Optional[str] = None, span: Optional[str] = None) -> "Page":
+        return self.add(B.timeline(items, title, span))
+
+    def faq(self, items: Iterable[Any], title: Optional[str] = None, span: Optional[str] = None) -> "Page":
+        return self.add(B.faq(items, title, span))
+
+    def checklist(self, items: Iterable[Any], title: Optional[str] = None, span: Optional[str] = None) -> "Page":
+        return self.add(B.checklist(items, title, span))
+
+    def quote(self, text: str, by: Optional[str] = None, source: Optional[str] = None,
+              title: Optional[str] = None, span: Optional[str] = None) -> "Page":
+        return self.add(B.quote(text, by, source, title, span))
+
+    def image(self, src: str, alt: str = "", caption: Optional[str] = None, width: Optional[int] = None,
+              title: Optional[str] = None, span: Optional[str] = None) -> "Page":
+        return self.add(B.image(src, alt, caption, width, title, span))
+
+    def kv(self, items: Union[Iterable[Any], Mapping[str, Any]], title: Optional[str] = None,
+           span: Optional[str] = None) -> "Page":
+        return self.add(B.kv(items, title, span))
+
     # --- output -------------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
         """The payload as a JSON-ready dict."""
