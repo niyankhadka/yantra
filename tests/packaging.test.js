@@ -63,8 +63,8 @@ test('release workflow runs only on version tags and publishes after the tests',
   const on = /\non:\n([\s\S]*?)\n\S/.exec(yml)[1];
   assert.match(on, /tags:\s*\n\s*- 'v\*'/);
   assert.doesNotMatch(on, /branches|pull_request|workflow_dispatch/);
-  assert.match(yml, /npm publish/);
-  assert.match(yml, /secrets\.NPM_TOKEN/);
+  assert.match(yml, /npm@latest stage publish --provenance --access public/, 'npm releases are staged through trusted publishing');
+  assert.doesNotMatch(yml, /NPM_TOKEN|NODE_AUTH_TOKEN/, 'no long-lived npm token');
   assert.match(yml, /pypa\/gh-action-pypi-publish/);
   assert.match(yml, /id-token: write/);
   assert.equal((yml.match(/needs: test/g) || []).length, 2);

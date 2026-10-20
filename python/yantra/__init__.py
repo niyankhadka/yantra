@@ -16,7 +16,7 @@ from .diagram import ALGORITHMS, ARROWS, COLORS, END_KINDS, GROUP_KINDS, MINI_KI
 from .i18n import LANGUAGES, RTL_LANGUAGES, builtin_language, is_rtl
 from .page import Page, resolve_levels
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 __all__ = [
     "Diagram", "Node", "Edge", "Step", "Scenario", "Group", "Page", "blocks",

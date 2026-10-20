@@ -59,7 +59,12 @@ Node 18, 20 and 22 and Python 3.9 and 3.12.
 Maintainers tag `vX.Y.Z` on `main` after updating the version in `package.json`,
 `python/pyproject.toml` and `python/yantra/__init__.py` and moving the `Unreleased` notes
 under the new version in `CHANGELOG.md`. The `Release` workflow then runs the tests and
-publishes to npm and PyPI.
+publishes through trusted publishing, with no stored tokens:
+
+- **npm:** the version is staged; approve it on the package page on npmjs.com (or
+  `npm stage approve <id>`) with two-factor authentication to make it live.
+- **PyPI:** the job waits on the `pypi` environment; approve it under
+  **Review deployments** in the Actions run.
 
 ## Reporting security issues
 

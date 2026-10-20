@@ -14,12 +14,12 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: npm ci
@@ -40,18 +40,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # npm provenance
+      id-token: write # npm trusted publishing and provenance
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
       - run: npm ci
-      - run: npm publish --provenance --access public # prepack builds the viewer into dist/
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Trusted publishing (OIDC), no token. The version is staged on npm and goes
+      # live once it is approved on npmjs.com (or `npm stage approve <id>`) with 2FA.
+      # prepack builds the viewer into dist/.
+      - run: npx --yes npm@latest stage publish --provenance --access public
 
   pypi:
     name: Publish to PyPI
@@ -62,8 +63,8 @@ jobs:
       contents: read
       id-token: write # PyPI trusted publishing
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Build sdist and wheel
