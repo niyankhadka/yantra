@@ -7,12 +7,29 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The dev viewer's example menu has three labelled sections: Diagrams, Answer pages (Q&A)
+  and Charts & dashboards (labels in every interface language). Answer pages open in the
+  viewer shell (theme toggle and `#example=<id>` work; live diagram embeds run the viewer);
+  canvas-only controls are hidden while a page is shown. Built files are unchanged.
+- Seven chart pages (`examples/chart-*.json`: sales, marketing analytics, budget against
+  actual, customer survey, project portfolio, service levels, headcount) and five more answer
+  pages (card payment journey, what happens when you type a URL, safe feature rollout, build
+  or buy a CRM, Black Friday slowdown). Every answer page is in the example menu.
+- `renderPage(page, { frameSandbox })` sets the sandbox of live diagram embeds (default
+  unchanged).
+
 ### Changed
 
 - `examples/platform-overview.json` keeps its search level in `examples/levels/` as a `$ref`.
 
 ### Fixed
 
+- Answer pages no longer scroll sideways on wide screens: a chart's hidden data table is
+  clipped inside a wrapper (a table ignored the 1 px width).
+- Bar chart and gantt labels are shortened only when their measured width does not fit;
+  labels such as "Understood my problem" were cut to a few characters.
 - Field-row edges: two edges between the same pair of rows run on separate tracks, and a
   self-relationship on a row that another edge leaves from the same side nests inside it
   (both were `geometry/route-failed`). The Mermaid staff schema keeps every key row; the

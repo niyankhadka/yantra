@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'תרשים ללא שם',
   'app.examples': 'תרשים לדוגמה',
+  'app.galleryDiagrams': 'תרשימים',
+  'app.galleryPages': 'דפי תשובה (שאלות ותשובות)',
+  'app.galleryCharts': 'גרפים ולוחות מחוונים',
   'app.mode': 'מצב',
   'app.view': 'תצוגה',
   'view.flow': 'זרימה',

@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'बिना शीर्षक का आरेख',
   'app.examples': 'उदाहरण आरेख',
+  'app.galleryDiagrams': 'आरेख',
+  'app.galleryPages': 'उत्तर पृष्ठ (प्रश्नोत्तर)',
+  'app.galleryCharts': 'चार्ट और डैशबोर्ड',
   'app.mode': 'मोड',
   'app.view': 'दृश्य',
   'view.flow': 'प्रवाह',

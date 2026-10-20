@@ -1,0 +1,311 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Will we reach 240 people by the end of 2026, and where are we short?",
+    "title": "Headcount and hiring, October 2026",
+    "kicker": "People dashboard",
+    "author": "People team, Saltmarsh Software (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional company and data, for illustration only."
+  },
+  "answer": {
+    "headline": "No: on current hiring we finish 2026 at about 228 people, 12 short, almost all in engineering, where roles take 61 days to fill and two in five offers are declined.",
+    "text": "Headcount is 214 at 30/09/2026. Sales, support and operations are on plan; engineering has 14 open roles and is hiring about three people a month against the five needed.",
+    "points": [
+      "Engineering offer acceptance fell from 78% to 60% this year, mostly on salary",
+      "Leavers are down: 9 in Q3 against 15 in Q1",
+      "Raising engineering offers by 6% costs about £90k a year for the open roles"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "metrics",
+      "title": "People numbers",
+      "items": [
+        {
+          "label": "Headcount",
+          "value": "214",
+          "note": "plan for 31/12/2026: 240",
+          "trend": [
+            188,
+            192,
+            195,
+            199,
+            203,
+            205,
+            208,
+            211,
+            214
+          ]
+        },
+        {
+          "label": "Open roles",
+          "value": "22",
+          "note": "14 in engineering",
+          "tone": "warn"
+        },
+        {
+          "label": "Days to fill",
+          "value": "47",
+          "note": "engineering 61",
+          "tone": "warn",
+          "trend": [
+            39,
+            41,
+            40,
+            43,
+            44,
+            46,
+            47
+          ]
+        },
+        {
+          "label": "Annual staff turnover",
+          "value": "11%",
+          "note": "down from 15%",
+          "tone": "good",
+          "trend": [
+            15,
+            14.5,
+            14,
+            13,
+            12.5,
+            12,
+            11
+          ]
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "area",
+      "stacked": true,
+      "title": "Headcount by department",
+      "categories": [
+        "31/01/2026",
+        "28/02/2026",
+        "31/03/2026",
+        "30/04/2026",
+        "31/05/2026",
+        "30/06/2026",
+        "31/07/2026",
+        "31/08/2026",
+        "30/09/2026"
+      ],
+      "series": [
+        {
+          "name": "Engineering",
+          "values": [
+            92,
+            94,
+            95,
+            97,
+            99,
+            100,
+            101,
+            103,
+            104
+          ]
+        },
+        {
+          "name": "Sales and marketing",
+          "values": [
+            38,
+            39,
+            40,
+            41,
+            42,
+            42,
+            43,
+            43,
+            44
+          ]
+        },
+        {
+          "name": "Customer support",
+          "values": [
+            33,
+            33,
+            34,
+            35,
+            35,
+            36,
+            37,
+            37,
+            38
+          ]
+        },
+        {
+          "name": "Operations",
+          "values": [
+            25,
+            26,
+            26,
+            26,
+            27,
+            27,
+            27,
+            28,
+            28
+          ]
+        }
+      ],
+      "caption": "Month-end figures; full-time equivalents rounded to whole people."
+    },
+    {
+      "type": "chart",
+      "kind": "column",
+      "title": "Joiners, leavers and net change",
+      "span": "half",
+      "categories": [
+        "Q1",
+        "Q2",
+        "Q3"
+      ],
+      "series": [
+        {
+          "name": "Joiners",
+          "values": [
+            22,
+            21,
+            18
+          ],
+          "tone": "good"
+        },
+        {
+          "name": "Leavers",
+          "values": [
+            -15,
+            -11,
+            -9
+          ],
+          "tone": "bad"
+        },
+        {
+          "name": "Net change",
+          "values": [
+            7,
+            10,
+            9
+          ]
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "title": "Engineering hiring funnel, Q3",
+      "span": "half",
+      "data": [
+        {
+          "label": "Applications",
+          "value": 640
+        },
+        {
+          "label": "Screened",
+          "value": 154
+        },
+        {
+          "label": "Technical interview",
+          "value": 58
+        },
+        {
+          "label": "Offer made",
+          "value": 15
+        },
+        {
+          "label": "Offer accepted",
+          "value": 9,
+          "tone": "warn"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Year-end forecast by department",
+      "columns": [
+        "Department",
+        "Now",
+        "Plan 31/12/2026",
+        "Forecast",
+        "Gap"
+      ],
+      "rows": [
+        [
+          "Engineering",
+          "104",
+          "122",
+          "111",
+          "−11"
+        ],
+        [
+          "Sales and marketing",
+          "44",
+          "47",
+          "47",
+          "0"
+        ],
+        [
+          "Customer support",
+          "38",
+          "41",
+          "40",
+          "−1"
+        ],
+        [
+          "Operations",
+          "28",
+          "30",
+          "30",
+          "0"
+        ],
+        [
+          "**Total**",
+          "**214**",
+          "**240**",
+          "**228**",
+          "**−12**"
+        ]
+      ]
+    },
+    {
+      "type": "compare",
+      "title": "Ways to close the engineering gap",
+      "options": [
+        {
+          "name": "Raise offers by 6%",
+          "summary": "Match the market rate for mid-level engineers.",
+          "pros": [
+            "Fixes the main reason offers are declined"
+          ],
+          "cons": [
+            "About £90k a year; affects pay fairness for current staff"
+          ],
+          "recommended": true,
+          "verdict": "Recommended, with a pay review for current staff"
+        },
+        {
+          "name": "Use a recruitment agency",
+          "summary": "Add an agency for senior roles only.",
+          "pros": [
+            "Faster for senior roles"
+          ],
+          "cons": [
+            "Fees around 20% of salary"
+          ],
+          "verdict": "For the three senior roles"
+        },
+        {
+          "name": "Accept the gap",
+          "summary": "Move two projects into 2027.",
+          "pros": [
+            "No extra cost"
+          ],
+          "cons": [
+            "Delays the mobile app"
+          ],
+          "verdict": "Fallback"
+        }
+      ]
+    }
+  ]
+}

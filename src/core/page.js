@@ -17,6 +17,9 @@ const TONES = { info: 'blue', good: 'green', warn: 'amber', bad: 'rose', neutral
 const own = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
 const tone = (t) => (own(TONES, t) ? TONES[t] : own(HUES, t) ? t : 'blue');
 
+/** Sandbox flags of an embedded live viewer: scripts and new-tab links only (opaque origin). */
+export const FRAME_SANDBOX = 'allow-scripts allow-popups';
+
 export const isPage = (p) => p && typeof p === 'object' && p.kind === 'page';
 
 /** Inline markdown: **bold**, *italic*, `code`, [text](https://...). Input is escaped first. */
@@ -162,7 +165,7 @@ const BLOCKS = {
     // Live viewer on screen, the static figure on paper
     const height = Number.isFinite(b.height) && b.height >= 240 ? Math.round(b.height) : 560;
     const label = ((b.level && getLevel(b.diagram, b.level)) || b.diagram).meta?.title || b.title || ctx.L.t('page.diagram');
-    return `<figure class="p-figure p-live p-screen-only"><iframe class="p-frame" title="${h(ctx.L.t('page.interactive', { title: label }))}" sandbox="allow-scripts allow-popups" style="height:${height}px" srcdoc="${srcdocAttr(viewer)}"></iframe>${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}</figure>
+    return `<figure class="p-figure p-live p-screen-only"><iframe class="p-frame" title="${h(ctx.L.t('page.interactive', { title: label }))}" sandbox="${h(ctx.frameSandbox || FRAME_SANDBOX)}" style="height:${height}px" srcdoc="${srcdocAttr(viewer)}"></iframe>${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}</figure>
     <div class="p-print-only">${fig}</div>`;
   },
 
@@ -234,12 +237,12 @@ const BLOCKS = {
  * meta.strings); diagram blocks inherit its lang and dir. `width` (px): the
  * container's measured width, so charts fit it (inspector panels).
  */
-export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null, pageMeta = null, locale = null, width = null } = {}) {
+export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null, pageMeta = null, locale = null, width = null, frameSandbox = null } = {}) {
   const render = BLOCKS[b?.type];
   if (!render) return '';
   const L = locale || localeOf(pageMeta);
   // Charts draw their words and numbers in the page language too
-  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L, width }));
+  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L, width, frameSandbox }));
   return `<section class="p-block p-block--${b.type}${b.span === 'half' ? ' is-half' : ''}"${anchor ? ` id="${h(anchor)}"` : ''}>${b.title ? `<h3>${inline(b.title)}</h3>` : ''}${body}</section>`;
 }
 
@@ -250,9 +253,11 @@ export const TOC_MIN_BLOCKS = 6;
  * @param page    page payload (diagram `src` references must already be resolved)
  * @param options { logos: { light, dark } (raw SVG strings, optional),
  *                  viewerHtml: (diagramPayload, block) => standalone viewer HTML, for
- *                  diagram blocks with `interactive: true` (without it they stay static) }
+ *                  diagram blocks with `interactive: true` (without it they stay static),
+ *                  frameSandbox: sandbox flags for those frames (default FRAME_SANDBOX; the
+ *                  viewer's gallery adds allow-same-origin so its module scripts load) }
  */
-export function renderPage(page, { logos = {}, viewerHtml = null } = {}) {
+export function renderPage(page, { logos = {}, viewerHtml = null, frameSandbox = null } = {}) {
   const meta = page.meta || {};
   const answer = page.answer || {};
   const L = localeOf(meta);
@@ -270,7 +275,7 @@ export function renderPage(page, { logos = {}, viewerHtml = null } = {}) {
   const all = list(page.blocks);
   const anchors = blockAnchors(all);
   let uid = 0;
-  const blocks = all.map((b, i) => renderBlock(b, `b${++uid}`, { anchor: anchors[i], viewerHtml, pageMeta: meta, locale: L })).join('\n');
+  const blocks = all.map((b, i) => renderBlock(b, `b${++uid}`, { anchor: anchors[i], viewerHtml, pageMeta: meta, locale: L, frameSandbox })).join('\n');
   const titled = all.map((b, i) => (anchors[i] && BLOCKS[b?.type] ? { id: anchors[i], title: b.title } : null)).filter(Boolean);
   const showToc = meta.toc === true ? titled.length > 0 : meta.toc !== false && titled.length >= TOC_MIN_BLOCKS;
   const toc = showToc

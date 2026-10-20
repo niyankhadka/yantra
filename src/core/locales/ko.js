@@ -2,6 +2,9 @@
 export default {
   'app.untitled': '제목 없는 다이어그램',
   'app.examples': '예제 다이어그램',
+  'app.galleryDiagrams': '다이어그램',
+  'app.galleryPages': '답변 페이지(Q&A)',
+  'app.galleryCharts': '차트 및 대시보드',
   'app.mode': '모드',
   'app.view': '보기',
   'view.flow': '흐름',

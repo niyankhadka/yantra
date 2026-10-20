@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'Unbenanntes Diagramm',
   'app.examples': 'Beispieldiagramm',
+  'app.galleryDiagrams': 'Diagramme',
+  'app.galleryPages': 'Antwortseiten (Fragen & Antworten)',
+  'app.galleryCharts': 'Charts & Dashboards',
   'app.mode': 'Modus',
   'app.view': 'Ansicht',
   'view.flow': 'Fluss',

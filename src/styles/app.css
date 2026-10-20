@@ -96,6 +96,21 @@ kbd {
   cursor: grabbing;
 }
 
+/* --- Gallery answer pages: a frame below the toolbar replaces the canvas ---- */
+.y-page-frame {
+  position: absolute;
+  inset: 76px 0 0;
+  width: 100%;
+  height: calc(100% - 76px);
+  border: 0;
+  background: var(--y-bg);
+  color-scheme: normal;
+}
+
+.y-app.is-page :is(.y-viewport, .y-legend, .y-story, .y-inspector, .y-watermark, #crumbs, #mode-switch, #view-switch, .y-group, #btn-inspector, .y-menu, #btn-help) {
+  display: none !important;
+}
+
 /* --- Shared panel surface --------------------------------------------------- */
 .y-bar,
 .y-story,
@@ -338,6 +353,8 @@ kbd {
 
   .y-select::picker(select) {
     min-width: anchor-size(width);
+    max-height: min(72vh, 560px);
+    overflow-y: auto;
     margin-block: 6px;
     padding: 5px;
     border: 1px solid var(--y-border);
@@ -388,6 +405,31 @@ kbd {
     order: 1;
     margin-inline-start: auto;
     color: var(--y-accent);
+  }
+
+  /* Gallery sections (Diagrams, Answer pages, Charts & dashboards) */
+  .y-select optgroup {
+    padding-block-start: 4px;
+    color: var(--y-ink-3);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .y-select optgroup + optgroup {
+    margin-block-start: 4px;
+    border-block-start: 1px solid var(--y-border);
+  }
+
+  .y-select optgroup option {
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  .y-select optgroup option:checked {
+    font-weight: 600;
   }
 }
 

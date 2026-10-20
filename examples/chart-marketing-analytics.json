@@ -1,0 +1,331 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Which marketing channels should get more budget next quarter?",
+    "title": "Website and marketing analytics: Q3 2026",
+    "kicker": "Marketing dashboard",
+    "author": "Growth team, Pebble & Pine Homeware (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional company and data, for illustration only."
+  },
+  "answer": {
+    "headline": "Move £15k a quarter from paid social to email and search: they return £4.10 and £3.20 per £1 spent, while paid social returns £0.88 and is the only campaign losing money.",
+    "text": "Traffic grew 18% in Q3, but most of the growth came from organic search and email. The biggest leak in the funnel is between basket and checkout, so part of the saving should fund a checkout fix.",
+    "points": [
+      "Organic search and email bring 52% of visits and 61% of orders",
+      "Paid social brought 19% of visits but only 7% of orders",
+      "Only 38% of baskets reach checkout; the industry norm we track is closer to 50%"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "metrics",
+      "title": "Q3 at a glance",
+      "items": [
+        {
+          "label": "Sessions",
+          "value": "412k",
+          "note": "up 18% on Q2",
+          "tone": "good",
+          "trend": [
+            28,
+            29,
+            30,
+            31,
+            30,
+            32,
+            33,
+            34,
+            33,
+            35,
+            36,
+            37,
+            38
+          ]
+        },
+        {
+          "label": "Conversion rate",
+          "value": "2.4%",
+          "note": "up from 2.2%",
+          "tone": "good",
+          "trend": [
+            2.1,
+            2.2,
+            2.2,
+            2.1,
+            2.3,
+            2.2,
+            2.3,
+            2.4,
+            2.3,
+            2.4,
+            2.5,
+            2.4,
+            2.4
+          ]
+        },
+        {
+          "label": "Cost per order",
+          "value": "£11.60",
+          "note": "target £12",
+          "trend": [
+            13.2,
+            12.9,
+            12.8,
+            12.6,
+            12.4,
+            12.3,
+            12.1,
+            11.9,
+            12,
+            11.8,
+            11.7,
+            11.6,
+            11.6
+          ]
+        },
+        {
+          "label": "Return on ad spend",
+          "value": "2.6×",
+          "note": "blended, all paid channels",
+          "trend": [
+            2.2,
+            2.3,
+            2.3,
+            2.4,
+            2.4,
+            2.5,
+            2.5,
+            2.4,
+            2.6,
+            2.6,
+            2.5,
+            2.6,
+            2.6
+          ]
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "donut",
+      "title": "Where visits came from",
+      "span": "half",
+      "unit": "k",
+      "data": [
+        {
+          "label": "Organic search",
+          "value": 148
+        },
+        {
+          "label": "Email",
+          "value": 66
+        },
+        {
+          "label": "Paid social",
+          "value": 78
+        },
+        {
+          "label": "Paid search",
+          "value": 62
+        },
+        {
+          "label": "Direct",
+          "value": 41
+        },
+        {
+          "label": "Referral",
+          "value": 17
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "title": "Conversion funnel, Q3",
+      "span": "half",
+      "unit": "k",
+      "data": [
+        {
+          "label": "Visits",
+          "value": 412
+        },
+        {
+          "label": "Viewed a product",
+          "value": 236
+        },
+        {
+          "label": "Added to basket",
+          "value": 68
+        },
+        {
+          "label": "Started checkout",
+          "value": 26,
+          "tone": "warn"
+        },
+        {
+          "label": "Ordered",
+          "value": 9.9,
+          "tone": "good"
+        }
+      ],
+      "caption": "The drop from basket to checkout is the largest fix available."
+    },
+    {
+      "type": "chart",
+      "kind": "column",
+      "title": "Return on spend by campaign",
+      "unit": "%",
+      "data": [
+        {
+          "label": "Autumn emails",
+          "value": 310,
+          "tone": "good"
+        },
+        {
+          "label": "Brand search",
+          "value": 220,
+          "tone": "good"
+        },
+        {
+          "label": "Generic search",
+          "value": 64
+        },
+        {
+          "label": "Influencer kits",
+          "value": 18
+        },
+        {
+          "label": "Paid social",
+          "value": -12,
+          "tone": "bad"
+        }
+      ],
+      "caption": "Return = (revenue attributed − spend) ÷ spend. Last-click attribution."
+    },
+    {
+      "type": "chart",
+      "kind": "line",
+      "title": "Weekly sessions by channel group",
+      "unit": "k",
+      "categories": [
+        "06/07/2026",
+        "13/07/2026",
+        "20/07/2026",
+        "27/07/2026",
+        "03/08/2026",
+        "10/08/2026",
+        "17/08/2026",
+        "24/08/2026",
+        "31/08/2026",
+        "07/09/2026",
+        "14/09/2026",
+        "21/09/2026",
+        "28/09/2026"
+      ],
+      "series": [
+        {
+          "name": "Organic and email",
+          "values": [
+            14.1,
+            14.6,
+            15,
+            15.8,
+            15.2,
+            16.4,
+            17,
+            17.6,
+            17.1,
+            18.2,
+            18.9,
+            19.5,
+            20.1
+          ]
+        },
+        {
+          "name": "Paid",
+          "values": [
+            10.8,
+            11,
+            11.4,
+            11.2,
+            11,
+            11.6,
+            11.8,
+            12.1,
+            11.9,
+            12,
+            12.3,
+            12.2,
+            12.4
+          ]
+        },
+        {
+          "name": "Direct and referral",
+          "values": [
+            3.9,
+            4.2,
+            4,
+            4.4,
+            4.3,
+            4.4,
+            4.6,
+            4.5,
+            4.4,
+            4.7,
+            4.8,
+            4.9,
+            5.1
+          ]
+        }
+      ],
+      "caption": "Week commencing dates. Paid traffic stayed flat while spend rose 9%."
+    },
+    {
+      "type": "compare",
+      "title": "Options for the £15k a quarter",
+      "options": [
+        {
+          "name": "Email and search",
+          "summary": "Shift to the two channels with the best return.",
+          "pros": [
+            "Proven return above £3 per £1",
+            "Quick to scale"
+          ],
+          "cons": [
+            "Email list growth is the limit"
+          ],
+          "recommended": true,
+          "verdict": "Do this first"
+        },
+        {
+          "name": "Checkout fix",
+          "summary": "Fund a guest checkout and clearer delivery costs.",
+          "pros": [
+            "Lifts every channel at once"
+          ],
+          "cons": [
+            "Needs six weeks of development"
+          ],
+          "verdict": "Fund from the remainder"
+        },
+        {
+          "name": "Keep paid social",
+          "summary": "Leave budgets as they are.",
+          "pros": [
+            "Reaches new audiences"
+          ],
+          "cons": [
+            "Loses money on last-click figures"
+          ],
+          "verdict": "Not now"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warn",
+      "label": "Attribution caveat",
+      "body": "Last-click attribution undervalues channels that start journeys, such as paid social. Before cutting it entirely, run a four-week hold-out test in one region."
+    }
+  ]
+}

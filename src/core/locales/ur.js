@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'بے عنوان ڈایاگرام',
   'app.examples': 'مثالی ڈایاگرام',
+  'app.galleryDiagrams': 'خاکے',
+  'app.galleryPages': 'جوابی صفحات (سوال و جواب)',
+  'app.galleryCharts': 'چارٹس اور ڈیش بورڈز',
   'app.mode': 'موڈ',
   'app.view': 'منظر',
   'view.flow': 'بہاؤ',

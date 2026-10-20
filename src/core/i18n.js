@@ -22,6 +22,9 @@ const en = {
   // Toolbar and header
   'app.untitled': 'Untitled diagram',
   'app.examples': 'Example diagram',
+  'app.galleryDiagrams': 'Diagrams',
+  'app.galleryPages': 'Answer pages (Q&A)',
+  'app.galleryCharts': 'Charts & dashboards',
   'app.mode': 'Mode',
   'app.view': 'View',
   'view.flow': 'Flow',

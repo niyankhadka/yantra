@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'Diagram tanpa judul',
   'app.examples': 'Contoh diagram',
+  'app.galleryDiagrams': 'Diagram',
+  'app.galleryPages': 'Halaman jawaban (tanya jawab)',
+  'app.galleryCharts': 'Grafik & dasbor',
   'app.mode': 'Mode',
   'app.view': 'Tampilan',
   'view.flow': 'Alur',

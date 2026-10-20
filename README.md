@@ -153,7 +153,10 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 
 ## Examples
 
-20 diagrams and 8 answer pages in [`examples/`](examples) (`yantra examples` lists them):
+21 diagrams, 13 answer pages and 7 chart pages in [`examples/`](examples) (`yantra examples`
+lists them). In the dev viewer (`npm run dev`) the example menu has three sections: Diagrams,
+Answer pages (Q&A) and Charts & dashboards; a page opens in the viewer with its own theme and
+live diagram embeds.
 
 - Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
   `platform-overview` (drill-down into two detail diagrams, links),
@@ -168,7 +171,15 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
   `answer-incident-review`, `answer-project-kickoff`, `answer-explain-photosynthesis`,
   `answer-quarterly-review` (line, area, column, bar and donut charts, sparklines),
   `answer-launch-plan` (gantt, 2x2 matrix, risk heat map),
-  `answer-order-fulfilment-arabic` (Arabic, right to left).
+  `answer-order-fulfilment-arabic` (Arabic, right to left), `answer-card-payment-journey`
+  (interactive diagram), `answer-what-happens-url` (interactive sequence), `answer-safe-feature-rollout`
+  (how-to), `answer-build-or-buy-crm` (decision with a cost chart), `answer-black-friday-slowdown`
+  (incident explainer).
+- Chart pages: `chart-sales-dashboard`, `chart-marketing-analytics` (donut, funnel, campaign
+  return), `chart-budget-vs-actual` (variance with negative values, pie), `chart-survey-results`
+  (NPS, agree/disagree bars, 2x2 matrix, quotes), `chart-portfolio-status` (working-day gantt,
+  5x5 risk heat map), `chart-sla-monitoring` (incidents, restore time against target, timeline),
+  `chart-hr-headcount` (stacked area, joiners and leavers). Companies and data are fictional.
 
 ## Viewer
 
@@ -264,7 +275,7 @@ src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              20 diagrams, 8 answer pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
+examples/              21 diagrams, 20 answer and chart pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
 docs/                  Authoring (diagrams, pages, imports, languages) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite

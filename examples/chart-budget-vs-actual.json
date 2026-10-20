@@ -1,0 +1,197 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Why is the IT department £84k over budget at half year?",
+    "title": "IT budget against actual, April to September 2026",
+    "kicker": "Budget review",
+    "author": "Finance business partner, Larkspur Housing Group (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional organisation and data, for illustration only."
+  },
+  "answer": {
+    "headline": "Two items explain it: software licences renewed at higher prices (£61k over) and contractors covering two vacancies (£58k over). Underspends on hardware and training offset £35k.",
+    "text": "Spend for the first six months is £1.29m against a budget of £1.21m, 7% over. Without action the full year would end about £150k over; the actions below bring that to roughly £40k.",
+    "points": [
+      "Licence renewals rose 14% on average, against 5% assumed in the budget",
+      "Contractors cost about 1.6 times the salaried roles they cover",
+      "Hardware is £24k under because the laptop refresh moved to January"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "chart",
+      "kind": "column",
+      "title": "Budget and actual by category",
+      "prefix": "£",
+      "unit": "k",
+      "categories": [
+        "Staff",
+        "Contractors",
+        "Software",
+        "Cloud hosting",
+        "Hardware",
+        "Training"
+      ],
+      "series": [
+        {
+          "name": "Budget",
+          "values": [
+            520,
+            60,
+            290,
+            180,
+            120,
+            40
+          ],
+          "tone": "neutral"
+        },
+        {
+          "name": "Actual",
+          "values": [
+            498,
+            118,
+            351,
+            184,
+            96,
+            29
+          ]
+        }
+      ],
+      "caption": "Half-year figures, 01/04/2026 to 30/09/2026."
+    },
+    {
+      "type": "chart",
+      "kind": "column",
+      "title": "Variance by category",
+      "span": "half",
+      "prefix": "£",
+      "unit": "k",
+      "data": [
+        {
+          "label": "Staff",
+          "value": -22,
+          "tone": "good"
+        },
+        {
+          "label": "Contractors",
+          "value": 58,
+          "tone": "bad"
+        },
+        {
+          "label": "Software",
+          "value": 61,
+          "tone": "bad"
+        },
+        {
+          "label": "Cloud hosting",
+          "value": 4,
+          "tone": "warn"
+        },
+        {
+          "label": "Hardware",
+          "value": -24,
+          "tone": "good"
+        },
+        {
+          "label": "Training",
+          "value": -11,
+          "tone": "good"
+        }
+      ],
+      "caption": "Above zero is overspend."
+    },
+    {
+      "type": "chart",
+      "kind": "pie",
+      "title": "Where the money went",
+      "span": "half",
+      "prefix": "£",
+      "unit": "k",
+      "data": [
+        {
+          "label": "Staff",
+          "value": 498
+        },
+        {
+          "label": "Software",
+          "value": 351
+        },
+        {
+          "label": "Cloud hosting",
+          "value": 184
+        },
+        {
+          "label": "Contractors",
+          "value": 118
+        },
+        {
+          "label": "Hardware",
+          "value": 96
+        },
+        {
+          "label": "Training",
+          "value": 29
+        }
+      ]
+    },
+    {
+      "type": "kv",
+      "title": "Summary",
+      "span": "half",
+      "items": [
+        {
+          "k": "Budget to date",
+          "v": "£1,210k"
+        },
+        {
+          "k": "Actual to date",
+          "v": "£1,276k"
+        },
+        {
+          "k": "Committed, not yet invoiced",
+          "v": "£18k"
+        },
+        {
+          "k": "Variance including commitments",
+          "v": "£84k over (7%)"
+        },
+        {
+          "k": "Full-year forecast",
+          "v": "£150k over before actions"
+        },
+        {
+          "k": "Budget holder",
+          "v": "Head of IT"
+        }
+      ]
+    },
+    {
+      "type": "checklist",
+      "title": "Actions agreed",
+      "span": "half",
+      "items": [
+        {
+          "text": "Fill both developer vacancies and end the contracts",
+          "note": "offers made; start 01/12/2026"
+        },
+        {
+          "text": "Remove 140 unused software licences at renewal",
+          "done": true,
+          "note": "saves £19k a year"
+        },
+        {
+          "text": "Move the test environments to reserved cloud capacity",
+          "note": "saves about £9k a year"
+        },
+        {
+          "text": "Reforecast at month 8 with the finance team"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "title": "Notes",
+      "body": "- **Committed spend** is included in the variance because the purchase orders are already raised.\n- The staff underspend is temporary: it is the salary not paid on the two vacant roles, and it disappears when they are filled.\n- Budget figures are the approved budget from 01/04/2026, not the reforecast."
+    }
+  ]
+}

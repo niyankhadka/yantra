@@ -20,7 +20,7 @@ Every output is a single offline HTML file. Pick one:
 
 For "explain how X works", make the diagram first, then the page around it
 (`{ "type": "diagram", "src": "flow.json" }`). References: `examples/*.json`
-(`answer-*.json` are pages; `oauth-login.json` is a sequence; `aws-serverless.json` has groups;
+(`answer-*.json` are pages and `chart-*.json` are dashboard pages: sales, budget, survey, SLA; `oauth-login.json` is a sequence; `aws-serverless.json` has groups;
 `platform-overview.json` drills into detail diagrams; `ticket-lifecycle.json` is a state machine;
 `ecommerce-schema.json` is an ERD; `payment-classes.json` is a class diagram;
 `org-chart.json`, `incident-triage-decision-tree.json` and `study-plan-mindmap.json` are trees).

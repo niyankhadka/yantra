@@ -1,0 +1,313 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "How does a payment get from a card tap to the merchant's bank?",
+    "title": "From card tap to merchant's bank",
+    "kicker": "Explainer",
+    "author": "Payments explainer",
+    "date": "20/10/2026",
+    "footer": "A simplified, general explanation. Exact steps, timings and fees vary by card scheme, provider and country."
+  },
+  "answer": {
+    "headline": "In two passes: within about two seconds the card's bank approves and holds the money; one to three working days later the money itself moves through the card network to the merchant's bank.",
+    "text": "The tap itself only starts a conversation. The terminal sends an encrypted request through the merchant's payment provider and the card network to the bank that issued the card, which says yes or no. The actual money follows later, in batches.",
+    "points": [
+      "Authorisation: approve and reserve the funds, in about two seconds",
+      "Clearing: the merchant's provider submits the day's approved payments in a batch",
+      "Settlement: the network nets the amounts and the money reaches the merchant's account, less fees"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "diagram",
+      "title": "Who talks to whom",
+      "interactive": true,
+      "height": 520,
+      "caption": "Step through the walkthrough to follow authorisation, then settlement.",
+      "diagram": {
+        "meta": {
+          "title": "Card payment flow",
+          "description": "Authorisation travels from the terminal to the card's bank and back; money follows later through settlement.",
+          "layout": {
+            "direction": "LR"
+          }
+        },
+        "roles": {
+          "customer": {
+            "label": "Customer side",
+            "color": "amber"
+          },
+          "merchant": {
+            "label": "Merchant side",
+            "color": "blue"
+          },
+          "network": {
+            "label": "Card network",
+            "color": "violet"
+          },
+          "bank": {
+            "label": "Banks",
+            "color": "teal"
+          }
+        },
+        "nodes": [
+          {
+            "id": "card",
+            "type": "customer",
+            "data": {
+              "title": "Card or phone",
+              "subtitle": "Contactless chip",
+              "icon": "credit-card",
+              "description": "The chip creates a one-time cryptogram for this payment, so a copied card number alone cannot be replayed."
+            }
+          },
+          {
+            "id": "terminal",
+            "type": "merchant",
+            "data": {
+              "title": "Card terminal",
+              "subtitle": "In the shop",
+              "icon": "monitor",
+              "description": "Reads the card, adds the amount and sends an encrypted authorisation request."
+            }
+          },
+          {
+            "id": "acquirer",
+            "type": "merchant",
+            "data": {
+              "title": "Merchant's payment provider",
+              "subtitle": "Acquirer",
+              "icon": "server",
+              "description": "Signs up merchants, routes their payments to the right card network and pays them out."
+            }
+          },
+          {
+            "id": "scheme",
+            "type": "network",
+            "data": {
+              "title": "Card network",
+              "subtitle": "Routes and settles",
+              "icon": "globe",
+              "description": "Passes requests between acquirers and issuers, and calculates who owes whom at settlement."
+            }
+          },
+          {
+            "id": "issuer",
+            "type": "bank",
+            "data": {
+              "title": "Card issuer",
+              "subtitle": "Customer's bank",
+              "icon": "shield",
+              "description": "Checks the cryptogram, fraud signals and available balance, then approves or declines."
+            }
+          },
+          {
+            "id": "merchantbank",
+            "type": "bank",
+            "data": {
+              "title": "Merchant's bank account",
+              "subtitle": "Receives the payout",
+              "icon": "database",
+              "description": "Receives the day's takings, less fees, from the payment provider."
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "tap",
+            "source": "card",
+            "target": "terminal",
+            "label": "Tap"
+          },
+          {
+            "id": "auth-req",
+            "source": "terminal",
+            "target": "acquirer",
+            "label": "Authorisation request"
+          },
+          {
+            "id": "route",
+            "source": "acquirer",
+            "target": "scheme",
+            "label": "Route"
+          },
+          {
+            "id": "ask",
+            "source": "scheme",
+            "target": "issuer",
+            "label": "Approve?"
+          },
+          {
+            "id": "settle",
+            "source": "issuer",
+            "target": "scheme",
+            "label": "Settlement funds",
+            "type": "async"
+          },
+          {
+            "id": "payout",
+            "source": "acquirer",
+            "target": "merchantbank",
+            "label": "Payout less fees",
+            "type": "async"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "main",
+            "name": "One contactless payment",
+            "steps": [
+              {
+                "id": "overview",
+                "title": "Overview",
+                "description": "Six parties: the customer's card, the shop's terminal, the merchant's payment provider, the card network, the customer's bank and the merchant's bank."
+              },
+              {
+                "id": "s-tap",
+                "title": "Tap",
+                "description": "The card's chip signs the amount with a one-time cryptogram.",
+                "highlightNodes": [
+                  "card",
+                  "terminal"
+                ],
+                "highlightEdges": [
+                  "tap"
+                ]
+              },
+              {
+                "id": "s-auth",
+                "title": "Ask for approval",
+                "description": "The request travels through the payment provider and the card network to the card's bank.",
+                "highlightNodes": [
+                  "terminal",
+                  "acquirer",
+                  "scheme",
+                  "issuer"
+                ],
+                "highlightEdges": [
+                  "auth-req",
+                  "route",
+                  "ask"
+                ]
+              },
+              {
+                "id": "s-decide",
+                "title": "Approve and hold",
+                "description": "The bank checks the cryptogram, fraud signals and balance, approves, and holds the amount. The answer returns the same way in about two seconds.",
+                "highlightNodes": [
+                  "issuer"
+                ]
+              },
+              {
+                "id": "s-settle",
+                "title": "Settle",
+                "description": "Later, the network nets the day's payments and the card's bank sends the money.",
+                "highlightNodes": [
+                  "issuer",
+                  "scheme"
+                ],
+                "highlightEdges": [
+                  "settle"
+                ]
+              },
+              {
+                "id": "s-payout",
+                "title": "Pay out",
+                "description": "The payment provider pays the merchant's account, minus its fees.",
+                "highlightNodes": [
+                  "acquirer",
+                  "merchantbank"
+                ],
+                "highlightEdges": [
+                  "payout"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "steps",
+      "title": "The three stages",
+      "items": [
+        {
+          "title": "Authorisation (seconds)",
+          "text": "The card's bank approves the payment and **reserves** the amount on the customer's account. No money has moved yet."
+        },
+        {
+          "title": "Clearing (end of day)",
+          "text": "The merchant's provider sends the day's approved payments to the card network as a batch, with the final amounts."
+        },
+        {
+          "title": "Settlement (usually one to three working days)",
+          "text": "The network works out the net amount each bank owes, the money moves, and the provider pays the merchant less its fees."
+        }
+      ]
+    },
+    {
+      "type": "kv",
+      "title": "Who is who",
+      "span": "half",
+      "items": [
+        {
+          "k": "Issuer",
+          "v": "The bank that gave the customer the card"
+        },
+        {
+          "k": "Acquirer",
+          "v": "The bank or provider that accepts card payments for the merchant"
+        },
+        {
+          "k": "Card network",
+          "v": "The scheme whose logo is on the card"
+        },
+        {
+          "k": "Interchange",
+          "v": "The fee the acquirer pays the issuer on each payment"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "span": "half",
+      "tone": "info",
+      "label": "Why the money shows as 'pending'",
+      "body": "After authorisation the customer sees the amount as pending: it is held, not taken. It becomes a completed transaction when the payment is cleared, and a hold that is never cleared drops off after some days."
+    },
+    {
+      "type": "faq",
+      "title": "Common questions",
+      "items": [
+        {
+          "q": "What happens when a payment is declined?",
+          "a": "The issuer answers 'no' at the authorisation stage, with a reason code such as insufficient funds or suspected fraud. Nothing is held and nothing settles."
+        },
+        {
+          "q": "How is a refund different?",
+          "a": "A refund is a new transaction in the opposite direction. It goes through clearing and settlement too, which is why it can take several days to appear."
+        },
+        {
+          "q": "Is a phone payment different from a card tap?",
+          "a": "The route is the same. The phone uses a token in place of the real card number, so the merchant never sees the card number itself."
+        }
+      ]
+    },
+    {
+      "type": "sources",
+      "title": "Further reading",
+      "items": [
+        {
+          "title": "EMVCo",
+          "url": "https://www.emvco.com/",
+          "note": "Body that manages the EMV chip and contactless specifications."
+        },
+        {
+          "title": "PCI Security Standards Council",
+          "url": "https://www.pcisecuritystandards.org/",
+          "note": "Security standards for handling card data."
+        }
+      ]
+    }
+  ]
+}

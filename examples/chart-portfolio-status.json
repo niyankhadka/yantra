@@ -1,0 +1,276 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Which projects in the 2026 change portfolio need attention?",
+    "title": "Project portfolio status, October 2026",
+    "kicker": "Portfolio report",
+    "author": "Portfolio office, Marlow & Finch Logistics (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional company and data, for illustration only."
+  },
+  "answer": {
+    "headline": "Two of eight projects need a decision this month: the warehouse system is three weeks late on data migration, and the driver app has an unfunded security fix. The other six are on track.",
+    "text": "The portfolio is 58% complete against 61% planned. Most of the gap is the warehouse system, which is on the critical path for the peak season freeze on 30/11/2026.",
+    "points": [
+      "Warehouse system: migration rehearsal failed on 09/10/2026; a second rehearsal is booked",
+      "Driver app: penetration test found two high-severity issues needing £45k of work",
+      "Spend is £3.1m against £3.3m budgeted to date"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "metrics",
+      "title": "Portfolio health",
+      "items": [
+        {
+          "label": "Projects on track",
+          "value": "6 of 8",
+          "tone": "good"
+        },
+        {
+          "label": "Complete",
+          "value": "58%",
+          "note": "61% planned",
+          "tone": "warn",
+          "trend": [
+            12,
+            21,
+            30,
+            38,
+            45,
+            52,
+            58
+          ]
+        },
+        {
+          "label": "Spend to date",
+          "value": "£3.1m",
+          "note": "budget £3.3m",
+          "tone": "good"
+        },
+        {
+          "label": "Open high risks",
+          "value": "3",
+          "note": "down from 5",
+          "tone": "warn",
+          "trend": [
+            4,
+            5,
+            5,
+            6,
+            5,
+            4,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "type": "gantt",
+      "title": "Remaining work to the peak freeze",
+      "today": "20/10/2026",
+      "workdays": true,
+      "items": [
+        {
+          "id": "wms-build",
+          "title": "Configure and test",
+          "group": "Warehouse system",
+          "start": "07/09/2026",
+          "end": "16/10/2026",
+          "progress": 100
+        },
+        {
+          "id": "wms-mig",
+          "title": "Migration rehearsals",
+          "group": "Warehouse system",
+          "start": "05/10/2026",
+          "days": 20,
+          "progress": 35,
+          "tone": "bad"
+        },
+        {
+          "id": "wms-live",
+          "title": "Go live",
+          "group": "Warehouse system",
+          "after": "wms-mig",
+          "days": 3
+        },
+        {
+          "title": "Peak freeze",
+          "group": "Warehouse system",
+          "milestone": true,
+          "start": "30/11/2026",
+          "tone": "warn"
+        },
+        {
+          "id": "app-fix",
+          "title": "Security fixes",
+          "group": "Driver app",
+          "start": "26/10/2026",
+          "days": 15,
+          "tone": "warn"
+        },
+        {
+          "id": "app-test",
+          "title": "Retest",
+          "group": "Driver app",
+          "after": "app-fix",
+          "days": 5
+        },
+        {
+          "title": "Release 2.0",
+          "group": "Driver app",
+          "milestone": true,
+          "after": "app-test",
+          "tone": "good"
+        },
+        {
+          "id": "rt-build",
+          "title": "Route optimiser build",
+          "group": "Routing",
+          "start": "14/09/2026",
+          "days": 45,
+          "progress": 55
+        },
+        {
+          "title": "Pilot depots",
+          "group": "Routing",
+          "after": "rt-build",
+          "days": 10
+        }
+      ],
+      "caption": "Durations in working days. Arrows show dependencies; the dashed line is today."
+    },
+    {
+      "type": "matrix",
+      "title": "Risk heat map",
+      "grid": 5,
+      "x": {
+        "label": "Likelihood",
+        "labels": [
+          "Rare",
+          "Unlikely",
+          "Possible",
+          "Likely",
+          "Almost certain"
+        ]
+      },
+      "y": {
+        "label": "Impact",
+        "labels": [
+          "Minimal",
+          "Minor",
+          "Moderate",
+          "Major",
+          "Severe"
+        ]
+      },
+      "items": [
+        {
+          "label": "Migration fails again",
+          "x": 3,
+          "y": 5,
+          "tone": "bad"
+        },
+        {
+          "label": "Security fix unfunded",
+          "x": 4,
+          "y": 4,
+          "tone": "bad"
+        },
+        {
+          "label": "Peak volumes early",
+          "x": 2,
+          "y": 4,
+          "tone": "warn"
+        },
+        {
+          "label": "Supplier staff change",
+          "x": 3,
+          "y": 2
+        },
+        {
+          "label": "Depot Wi-Fi gaps",
+          "x": 4,
+          "y": 2
+        },
+        {
+          "label": "Map data licence",
+          "x": 1,
+          "y": 3
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Status by project",
+      "columns": [
+        "Project",
+        "Sponsor",
+        "Status",
+        "Next milestone"
+      ],
+      "rows": [
+        [
+          "Warehouse system",
+          "Operations director",
+          "Red: migration late",
+          "Rehearsal 2, 30/10/2026"
+        ],
+        [
+          "Driver app 2.0",
+          "Customer director",
+          "Amber: funding",
+          "Change request, 23/10/2026"
+        ],
+        [
+          "Route optimiser",
+          "Operations director",
+          "Green",
+          "Pilot starts, 16/11/2026"
+        ],
+        [
+          "Finance system upgrade",
+          "Finance director",
+          "Green",
+          "Year-end close test, 15/01/2027"
+        ],
+        [
+          "Four other projects",
+          "Various",
+          "Green",
+          "See the portfolio register"
+        ]
+      ]
+    },
+    {
+      "type": "checklist",
+      "title": "Decisions for the portfolio board",
+      "span": "half",
+      "items": [
+        {
+          "text": "Approve £45k change request for driver app security fixes"
+        },
+        {
+          "text": "Agree go/no-go date for the warehouse system",
+          "note": "proposed 06/11/2026"
+        },
+        {
+          "text": "Release £60k contingency from the finance upgrade",
+          "note": "not needed this year"
+        },
+        {
+          "text": "Note the routing pilot dates",
+          "done": true
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "span": "half",
+      "tone": "warn",
+      "label": "If the warehouse system misses 06/11/2026",
+      "body": "Going live during peak season is not allowed. The fallback is to stay on the old system until 11/01/2027, which costs about £80k in extended support."
+    }
+  ]
+}

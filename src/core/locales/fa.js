@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'نمودار بی‌نام',
   'app.examples': 'نمودار نمونه',
+  'app.galleryDiagrams': 'نمودارها',
+  'app.galleryPages': 'صفحه‌های پاسخ (پرسش و پاسخ)',
+  'app.galleryCharts': 'نمودارهای داده و داشبوردها',
   'app.mode': 'حالت',
   'app.view': 'نما',
   'view.flow': 'جریان',

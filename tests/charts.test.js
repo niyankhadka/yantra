@@ -36,7 +36,7 @@ test('plain bar charts keep the HTML bar list; other kinds draw accessible SVG',
     assert.match(html, /<svg class="p-chart-svg" viewBox="0 0 \d+ \d+" role="img" aria-label="[^"]+Sales"/, kind);
     assert.match(html, /<ul class="p-legend" aria-hidden="true"><li data-hue="blue" data-i="0">.*North<\/li><li data-hue="orange" data-i="1">/, kind);
     assert.match(html, /data-s="1"/, `${kind}: series marks are tagged for legend toggles`);
-    assert.match(html, /<table class="p-sr"><caption>[^<]*Sales<\/caption>.*<th scope="row">Q2<\/th><td>5<\/td><td>−1<\/td>/, kind);
+    assert.match(html, /<div class="p-sr"><table><caption>[^<]*Sales<\/caption>.*<th scope="row">Q2<\/th><td>5<\/td><td>−1<\/td>/, kind);
     assert.doesNotMatch(html, /NaN|undefined|Infinity/, kind);
   }
   // A negative value switches plain bars to SVG with a zero line
@@ -241,4 +241,13 @@ test('pages inline the legend toggle script; series and slices are linked to leg
   // The inlined source must not depend on module scope: it runs on its own
   const src = /\(function enhanceCharts[\s\S]*?\)\(document\);/.exec(html)[0];
   assert.doesNotThrow(() => new Function('document', src)({ querySelectorAll: () => [] }));
+});
+
+test('bar and gantt labels are clipped only when their measured width does not fit', () => {
+  const bars = renderBlock({ type: 'chart', kind: 'bar', stacked: true, categories: ['Understood my problem', 'Short wait'], series: [{ name: 'A', values: [1, 2] }, { name: 'B', values: [2, 1] }] });
+  assert.match(bars, />Understood my problem</, 'a label that fits is drawn whole');
+  const plan = renderBlock({ type: 'gantt', items: [{ title: 'Migration rehearsals', group: 'Warehouse system', start: '2026-10-05', days: 5 }] });
+  assert.match(plan, />Migration rehearsals</);
+  const long = renderBlock({ type: 'chart', kind: 'bar', stacked: true, span: 'half', categories: ['A very long category label that cannot possibly fit beside the bars', 'B'], series: [{ name: 'A', values: [1, 2] }, { name: 'B', values: [2, 1] }] });
+  assert.match(long, /class="c-cat">A very[^<]*…</, 'a label too wide still ends in an ellipsis');
 });

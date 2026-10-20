@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'مخطط بلا عنوان',
   'app.examples': 'مخطط نموذجي',
+  'app.galleryDiagrams': 'المخططات',
+  'app.galleryPages': 'صفحات الإجابة (سؤال وجواب)',
+  'app.galleryCharts': 'الرسوم البيانية ولوحات المعلومات',
   'app.mode': 'الوضع',
   'app.view': 'العرض',
   'view.flow': 'التدفق',

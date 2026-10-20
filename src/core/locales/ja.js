@@ -2,6 +2,9 @@
 export default {
   'app.untitled': '無題の図',
   'app.examples': 'サンプル図',
+  'app.galleryDiagrams': 'ダイアグラム',
+  'app.galleryPages': '回答ページ（Q&A）',
+  'app.galleryCharts': 'チャートとダッシュボード',
   'app.mode': 'モード',
   'app.view': '表示',
   'view.flow': 'フロー',

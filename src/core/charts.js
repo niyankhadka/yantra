@@ -108,6 +108,15 @@ const clip = (s, max) => {
   const t = String(s ?? '');
   return t.length > max ? `${t.slice(0, Math.max(1, max - 1))}…` : t;
 };
+/** Shorten to fit `maxW` px at font size `fs` (measured, so labels that fit are never cut). */
+const clipTo = (s, maxW, fs) => {
+  const t = String(s ?? '');
+  if (textW(t, fs) <= maxW) return t;
+  const chars = [...t];
+  let n = chars.length - 1;
+  while (n > 1 && textW(`${chars.slice(0, n).join('').trimEnd()}…`, fs) > maxW) n--;
+  return `${chars.slice(0, n).join('').trimEnd()}…`;
+};
 const pad2 = (n) => String(n).padStart(2, '0');
 const hueOf = (i) => SERIES_HUES[i % SERIES_HUES.length];
 
@@ -211,11 +220,11 @@ const label = (kind, b) => `${S.kinds[kind]}${b.title ? `: ${b.title}` : ''}`;
 const txt = (x, y, s, { cls = '', anchor = 'start', size = 11, extra = '' } = {}) =>
   `<text x="${r1(x)}" y="${r1(y)}" font-size="${size}"${anchor !== 'start' ? ` text-anchor="${anchor}"` : ''}${cls ? ` class="${cls}"` : ''}${extra}>${h(s)}</text>`;
 
-/** Visually hidden data table: the accessible equivalent of a chart. */
+/** Visually hidden data table: the accessible equivalent of a chart (wrapped: a table ignores width:1px and would widen the page). */
 function srTable(caption, head, rows) {
-  return `<table class="p-sr"><caption>${h(caption)}</caption><thead><tr>${head.map((c) => `<th scope="col">${h(c)}</th>`).join('')}</tr></thead><tbody>${rows
+  return `<div class="p-sr"><table><caption>${h(caption)}</caption><thead><tr>${head.map((c) => `<th scope="col">${h(c)}</th>`).join('')}</tr></thead><tbody>${rows
     .map((r) => `<tr><th scope="row">${h(r[0])}</th>${r.slice(1).map((c) => `<td>${h(c)}</td>`).join('')}</tr>`)
-    .join('')}</tbody></table>`;
+    .join('')}</tbody></table></div>`;
 }
 
 // data-i links a legend item to its series (data-s) or slice (data-i) for enhanceCharts()
@@ -382,11 +391,10 @@ function bandChart(b, { cats, series }, kind, W) {
   const vx = (v) => x0 + ((v - t.min) / (t.max - t.min)) * (x1 - x0);
   for (const v of t.ticks) out.push(`<line class="${v === 0 ? 'c-zero' : 'c-grid'}" x1="${r1(vx(v))}" x2="${r1(vx(v))}" y1="${y0}" y2="${y1}"/>`, txt(vx(v), y1 + 16, tick(v), { anchor: 'middle' }));
   const bar = (y, hh, a, c, hue, title) => `<rect data-hue="${hue}" fill="currentColor" x="${r1(vx(Math.min(a, c)))}" y="${r1(y)}" width="${r1(Math.max(0.5, vx(Math.max(a, c)) - vx(Math.min(a, c))))}" height="${r1(hh)}" rx="2">${title}</rect>`;
-  const chars = Math.max(4, Math.floor(lw / (12 * 0.58)));
   for (let j = 0; j < n; j++) {
     const top = y0 + bandH * j;
     const base = top + (bandH - gh) / 2;
-    out.push(txt(x0 - 8, top + bandH / 2 + 4, clip(cats[j], chars), { anchor: 'end', size: 11.5, cls: 'c-cat' }));
+    out.push(txt(x0 - 8, top + bandH / 2 + 4, clipTo(cats[j], lw, 11.5), { anchor: 'end', size: 11.5, cls: 'c-cat' }));
     const acc = [0, 0];
     series.forEach((se, k) => {
       const v = se.values[j];
@@ -818,8 +826,7 @@ export function renderGantt(b, opts = {}) {
     }
     const t = row.task;
     const it = t.item;
-    const chars = Math.max(4, Math.floor((lw - 14 - (row.indent ? indent : 0)) / (12.5 * 0.56)));
-    out.push(txt(8 + (row.indent ? indent : 0), y + 4, clip(it.title, chars), { size: 12.5, cls: 'c-task' }));
+    out.push(txt(8 + (row.indent ? indent : 0), y + 4, clipTo(it.title, lw - 18 - (row.indent ? indent : 0), 12.5), { size: 12.5, cls: 'c-task' }));
     if (t.s === null) return;
     const tip = `<title>${h(tipFor(t))}</title>`;
     const hue = t.hue ? ` data-hue="${t.hue}"` : '';

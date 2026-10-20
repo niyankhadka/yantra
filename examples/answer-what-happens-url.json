@@ -1,0 +1,301 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "What happens when you type a URL into a browser?",
+    "title": "From URL to page",
+    "kicker": "Explainer",
+    "author": "Web fundamentals notes",
+    "date": "20/10/2026"
+  },
+  "answer": {
+    "headline": "The browser finds the server's address (DNS), opens a secure connection (TCP or QUIC, then TLS), asks for the page over HTTP, and then builds and paints the page from the HTML, CSS and JavaScript it receives.",
+    "text": "On a fast connection this takes a few hundred milliseconds, most of it spent waiting on round trips across the network. Caches at almost every step skip work the browser has done before.",
+    "points": [
+      "DNS turns example.com into an IP address; the answer is usually cached",
+      "TLS proves the server is who it claims to be and encrypts everything after",
+      "Rendering starts before the download ends: the browser builds the page as bytes arrive"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "diagram",
+      "title": "The conversation, in order",
+      "interactive": true,
+      "height": 640,
+      "caption": "Sequence view: time runs downwards. Step through to see each exchange.",
+      "diagram": {
+        "meta": {
+          "title": "Loading https://example.com",
+          "description": "Who the browser talks to, in order, from typing the address to the first paint.",
+          "view": "sequence"
+        },
+        "roles": {
+          "client": {
+            "label": "Your device",
+            "color": "amber"
+          },
+          "infra": {
+            "label": "Internet services",
+            "color": "violet"
+          },
+          "server": {
+            "label": "Website",
+            "color": "blue"
+          }
+        },
+        "nodes": [
+          {
+            "id": "browser",
+            "type": "client",
+            "data": {
+              "title": "Browser",
+              "icon": "monitor",
+              "description": "Parses the URL, checks its caches, then makes the requests."
+            }
+          },
+          {
+            "id": "dns",
+            "type": "infra",
+            "data": {
+              "title": "DNS resolver",
+              "subtitle": "Usually your ISP or a public resolver",
+              "icon": "globe",
+              "description": "Looks up the IP address for the host name, asking other DNS servers if it has no cached answer."
+            }
+          },
+          {
+            "id": "server",
+            "type": "server",
+            "data": {
+              "title": "Web server",
+              "subtitle": "Often a CDN edge",
+              "icon": "server",
+              "description": "Terminates TLS and returns the HTML, then the CSS, scripts and images it references."
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "q",
+            "source": "browser",
+            "target": "dns",
+            "label": "Where is example.com?"
+          },
+          {
+            "id": "a",
+            "source": "dns",
+            "target": "browser",
+            "label": "IP address"
+          },
+          {
+            "id": "hello",
+            "source": "browser",
+            "target": "server",
+            "label": "Connect + TLS hello"
+          },
+          {
+            "id": "cert",
+            "source": "server",
+            "target": "browser",
+            "label": "Certificate + keys"
+          },
+          {
+            "id": "get",
+            "source": "browser",
+            "target": "server",
+            "label": "GET /"
+          },
+          {
+            "id": "html",
+            "source": "server",
+            "target": "browser",
+            "label": "200 OK + HTML"
+          },
+          {
+            "id": "assets",
+            "source": "browser",
+            "target": "server",
+            "label": "CSS, JS, images"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "main",
+            "name": "First visit",
+            "steps": [
+              {
+                "id": "s1",
+                "title": "Look up the address",
+                "description": "If the browser and the operating system have no cached answer, the resolver finds the IP address.",
+                "highlightNodes": [
+                  "browser",
+                  "dns"
+                ],
+                "highlightEdges": [
+                  "q"
+                ]
+              },
+              {
+                "id": "s2",
+                "title": "Get the IP address",
+                "description": "The answer comes back with a time to live, so it can be reused.",
+                "highlightNodes": [
+                  "browser",
+                  "dns"
+                ],
+                "highlightEdges": [
+                  "a"
+                ]
+              },
+              {
+                "id": "s3",
+                "title": "Open a secure connection",
+                "description": "A TCP (or QUIC) connection, then the TLS handshake starts.",
+                "highlightNodes": [
+                  "browser",
+                  "server"
+                ],
+                "highlightEdges": [
+                  "hello"
+                ]
+              },
+              {
+                "id": "s4",
+                "title": "Check the certificate",
+                "description": "The browser checks the certificate matches the name and is signed by a trusted authority, and both sides agree keys.",
+                "highlightNodes": [
+                  "browser",
+                  "server"
+                ],
+                "highlightEdges": [
+                  "cert"
+                ]
+              },
+              {
+                "id": "s5",
+                "title": "Ask for the page",
+                "description": "An HTTP request with headers such as cookies and accepted languages.",
+                "highlightNodes": [
+                  "browser",
+                  "server"
+                ],
+                "highlightEdges": [
+                  "get"
+                ]
+              },
+              {
+                "id": "s6",
+                "title": "Receive the HTML",
+                "description": "The browser starts parsing as soon as the first bytes arrive.",
+                "highlightNodes": [
+                  "browser",
+                  "server"
+                ],
+                "highlightEdges": [
+                  "html"
+                ]
+              },
+              {
+                "id": "s7",
+                "title": "Fetch what the page needs",
+                "description": "Stylesheets, scripts and images, often over the same connection, then layout and paint.",
+                "highlightNodes": [
+                  "browser",
+                  "server"
+                ],
+                "highlightEdges": [
+                  "assets"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "steps",
+      "title": "Inside the browser, once the HTML arrives",
+      "items": [
+        {
+          "title": "Parse HTML into the DOM",
+          "text": "The tree of elements the page is made of."
+        },
+        {
+          "title": "Parse CSS into the CSSOM",
+          "text": "Stylesheets block rendering until they have loaded."
+        },
+        {
+          "title": "Run JavaScript",
+          "text": "Scripts without `defer` or `async` pause parsing while they run."
+        },
+        {
+          "title": "Layout",
+          "text": "Work out the size and position of every element."
+        },
+        {
+          "title": "Paint and composite",
+          "text": "Draw pixels in layers and combine them on screen."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Where the time goes on a typical first visit",
+      "columns": [
+        "Stage",
+        "Typical time",
+        "Skipped when"
+      ],
+      "rows": [
+        [
+          "DNS lookup",
+          "20-120 ms",
+          "The answer is cached"
+        ],
+        [
+          "Connection and TLS",
+          "50-200 ms",
+          "A connection is reused"
+        ],
+        [
+          "Server response",
+          "50-500 ms",
+          "A CDN has the page cached"
+        ],
+        [
+          "Download and render",
+          "100 ms upwards",
+          "Assets are in the browser cache"
+        ]
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "label": "Rough figures",
+      "body": "Timings depend heavily on distance to the server, the network and the page itself. Treat them as orders of magnitude, not targets."
+    },
+    {
+      "type": "sources",
+      "title": "Further reading",
+      "items": [
+        {
+          "title": "MDN: How browsers work",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/Performance/How_browsers_work"
+        },
+        {
+          "title": "RFC 9110: HTTP Semantics",
+          "url": "https://www.rfc-editor.org/rfc/rfc9110"
+        },
+        {
+          "title": "RFC 8446: TLS 1.3",
+          "url": "https://www.rfc-editor.org/rfc/rfc8446"
+        },
+        {
+          "title": "RFC 1035: Domain names, implementation and specification",
+          "url": "https://www.rfc-editor.org/rfc/rfc1035"
+        }
+      ]
+    }
+  ]
+}

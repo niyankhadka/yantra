@@ -10,7 +10,11 @@ Schema: `schemas/yantra-page.schema.json`. Examples: `examples/answer-checkout-s
 (architecture decision), `examples/answer-incident-review.json` (incident review: timeline,
 checklist, facts, FAQ), `examples/answer-how-to-choose-database.json` (decision with an
 interactive diagram), `examples/answer-quarterly-review.json` (charts and sparklines) and
-`examples/answer-launch-plan.json` (gantt plan, 2x2 matrix, risk heat map).
+`examples/answer-launch-plan.json` (gantt plan, 2x2 matrix, risk heat map). Chart use cases:
+`examples/chart-*.json` (sales, marketing, budget against actual, survey, portfolio, service
+levels, headcount). More explainers: `answer-card-payment-journey.json`,
+`answer-what-happens-url.json`, `answer-safe-feature-rollout.json`,
+`answer-build-or-buy-crm.json`, `answer-black-friday-slowdown.json`.
 
 Pages suit any purpose: explainers, decisions, comparisons, how-tos, incident reports,
 study notes, product specs and process docs. Set `meta.kicker` to say which.

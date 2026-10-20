@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'शीर्षक नभएको रेखाचित्र',
   'app.examples': 'उदाहरण रेखाचित्र',
+  'app.galleryDiagrams': 'रेखाचित्रहरू',
+  'app.galleryPages': 'उत्तर पृष्ठहरू (प्रश्नोत्तर)',
+  'app.galleryCharts': 'चार्ट र ड्यासबोर्डहरू',
   'app.mode': 'मोड',
   'app.view': 'दृश्य',
   'view.flow': 'प्रवाह',

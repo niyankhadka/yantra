@@ -21,6 +21,7 @@ import ticketLifecycle from '../../examples/ticket-lifecycle.json';
 import parallelCheckout from '../../examples/parallel-checkout-states.json';
 import { registerStrings } from '../core/i18n.js';
 import { TABLES } from '../core/locales/index.js';
+import { PAGE_EXAMPLES, CHART_EXAMPLES } from './gallery-pages.js';
 
 // Gallery examples come in many languages: load every interface table (built files embed only theirs)
 registerStrings(TABLES);
@@ -48,4 +49,14 @@ export const EXAMPLES = [
   { id: 'incident-triage-decision-tree', name: 'Incident triage (decision tree)', data: triageTree },
   { id: 'health-referral-nepali', name: 'Patient referral (Nepali)', data: healthReferralNepali },
   { id: 'order-fulfilment-arabic', name: 'Order fulfilment (Arabic, RTL)', data: orderFulfilmentArabic }
+];
+
+/**
+ * Example dropdown sections (labels are string keys in src/core/i18n.js). Answer
+ * pages and chart pages live in ./gallery-pages.js; main.js shows them in a frame.
+ */
+export const GALLERY = [
+  { id: 'diagrams', label: 'app.galleryDiagrams', items: EXAMPLES },
+  { id: 'pages', label: 'app.galleryPages', items: PAGE_EXAMPLES },
+  { id: 'charts', label: 'app.galleryCharts', items: CHART_EXAMPLES }
 ];

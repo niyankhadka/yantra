@@ -2,6 +2,9 @@
 export default {
   'app.untitled': 'Diagramme sans titre',
   'app.examples': 'Diagramme d’exemple',
+  'app.galleryDiagrams': 'Diagrammes',
+  'app.galleryPages': 'Pages réponse (questions-réponses)',
+  'app.galleryCharts': 'Graphiques et tableaux de bord',
   'app.mode': 'Mode',
   'app.view': 'Vue',
   'view.flow': 'Flux',

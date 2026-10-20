@@ -2,6 +2,9 @@
 export default {
   'app.untitled': '未命名圖表',
   'app.examples': '範例圖表',
+  'app.galleryDiagrams': '圖表',
+  'app.galleryPages': '解答頁面（問答）',
+  'app.galleryCharts': '統計圖與儀表板',
   'app.mode': '模式',
   'app.view': '檢視',
   'view.flow': '流程',

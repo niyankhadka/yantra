@@ -141,8 +141,12 @@ test('markdown export covers the new blocks', () => {
   assert.match(out, /- \*\*Owner:\*\* Ops/);
 });
 
-test('new page examples validate with zero errors and warnings', () => {
-  for (const f of ['answer-incident-review.json', 'answer-how-to-choose-database.json', 'answer-quarterly-review.json', 'answer-launch-plan.json']) {
+/** Answer and chart pages in examples/ (all listed in the viewer gallery). */
+const PAGE_FILES = fs.readdirSync(EX).filter((f) => /^(answer|chart)-.*\.json$/.test(f));
+
+test('answer and chart page examples validate with zero errors and warnings', () => {
+  assert.ok(PAGE_FILES.length >= 20, 'answer and chart pages found');
+  for (const f of PAGE_FILES) {
     const r = lint(loadPage(f));
     assert.deepEqual([...r.errors, ...r.warnings], [], f);
   }
@@ -168,4 +172,21 @@ test('light and dark copies of a page diagram never share an id (markers, gradie
     for (const r of refs) assert.ok(own.has(r) && r.endsWith(`-${theme}`), `${theme} copy uses ${r}`);
     for (const r of /aria-labelledby="([^"]+)"/.exec(svg)[1].split(' ')) assert.ok(own.has(r));
   }
+});
+
+test('the viewer gallery lists every answer and chart page, in labelled sections', () => {
+  const pages = fs.readFileSync(path.join(ROOT, 'src/app/gallery-pages.js'), 'utf-8');
+  for (const f of PAGE_FILES) {
+    assert.ok(pages.includes(`examples/${f}'`), `${f} is imported by the gallery`);
+    assert.ok(pages.includes(`id: '${f.replace(/\.json$/, '')}'`), `${f} has a gallery entry`);
+  }
+  const gallery = fs.readFileSync(path.join(ROOT, 'src/app/examples.js'), 'utf-8');
+  for (const key of ['app.galleryDiagrams', 'app.galleryPages', 'app.galleryCharts']) assert.ok(gallery.includes(`'${key}'`), key);
+});
+
+test('live embeds keep the opaque-origin sandbox unless the caller sets frameSandbox', () => {
+  const diagram = JSON.parse(fs.readFileSync(path.join(EX, 'oauth-login.json'), 'utf-8'));
+  const blocks = [{ type: 'diagram', diagram, interactive: true }];
+  assert.match(renderPage(page(blocks), { viewerHtml: () => '<p>v</p>' }), /sandbox="allow-scripts allow-popups"/);
+  assert.match(renderPage(page(blocks), { viewerHtml: () => '<p>v</p>', frameSandbox: 'allow-scripts allow-same-origin' }), /sandbox="allow-scripts allow-same-origin"/);
 });

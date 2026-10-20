@@ -8,7 +8,7 @@ import { themeCss } from '../core/theme.js';
 import { renderSvg } from '../core/svg.js';
 import { toMarkdown } from '../core/markdown.js';
 import { escapeHtml as h } from '../core/text.js';
-import { renderBlock, BLOCK_CSS } from '../core/page.js';
+import { renderBlock, renderPage, isPage, BLOCK_CSS } from '../core/page.js';
 import { enhanceCharts } from '../core/charts.js';
 import { safeUrl } from '../core/drill.js';
 import { LINK_ICON, DRILL_ICON } from '../core/icons.js';
@@ -25,7 +25,12 @@ import { InteractionManager } from './interact.js';
 import { Levels, DRILL_TEXT, setDrillLocale } from './levels.js';
 // The example gallery is loaded only when no payload is embedded, so built
 // files (always embedded) do not carry it: `vite build` puts it in its own chunk.
+// GALLERY holds the dropdown sections; EXAMPLES is every entry, diagrams first.
+let GALLERY = [];
 let EXAMPLES = [];
+
+/** Sandbox of the gallery's page frame and its live diagram embeds: same origin, so the viewer's module scripts load in them. */
+const GALLERY_SANDBOX = 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox';
 
 // Optional brand logos: src/assets/logo-light.svg (for light theme) and
 // src/assets/logo-dark.svg (for dark theme). Missing files fall back to the default mark.
@@ -91,7 +96,9 @@ class App {
     this.tabsScroller = hscroll($('inspector-tabs'));
     tooltips(document.querySelector('.y-app'));
 
-    const initial = this.embedded || this.exampleFromHash() || EXAMPLES[0].data;
+    // A gallery answer page (#example=<page id>) opens over the first diagram
+    const fromHash = this.embedded ? null : this.exampleFromHash();
+    const initial = this.embedded || (fromHash && !isPage(fromHash.data) ? fromHash.data : null) || EXAMPLES.find((x) => !isPage(x.data))?.data;
     // Drill-down: the engine shows one level; #level= (else meta.startLevel) picks which
     this.levels = new Levels(initial);
     this.levels.setPath(this.levelFromHash() ?? initial?.meta?.startLevel);
@@ -124,6 +131,7 @@ class App {
     this.loadPayloadUi();
     this.setInspector(/inspector=/.test(location.hash) && this.inspectorTabs().length > 0);
     this.hashReady = true; // deep links are applied; from now on the URL follows the UI
+    if (fromHash && isPage(fromHash.data)) this.showPage(fromHash);
     addEventListener('popstate', () => this.onHistory());
 
     const report = this.engine.validate();
@@ -137,6 +145,7 @@ class App {
    */
   syncHash() {
     if (!this.hashReady) return;
+    if (this.page) return this.syncPageHash();
     const e = this.engine;
     const params = hashParams(location.hash, false);
     const set = (key, value) => (value == null ? params.delete(key) : params.set(key, encodeURIComponent(value)));
@@ -221,6 +230,7 @@ class App {
 
   /** Language settings come from the overview: detail diagrams inherit its lang, dir and strings unless they set a lang. */
   localeMeta() {
+    if (this.page) return this.page.meta || {};
     const root = this.levels?.root?.meta || {};
     const here = this.engine?.model.meta || {};
     return here.lang ? here : root;
@@ -412,8 +422,89 @@ class App {
     const sel = $('example-select');
     sel.hidden = !!this.embedded;
     if (this.embedded) return;
-    const current = EXAMPLES.find((x) => x.data === this.levels.root);
-    fillSelect(sel, EXAMPLES.map((x) => [x.id, x.name]), current?.id);
+    const current = EXAMPLES.find((x) => x.data === (this.page || this.levels.root));
+    fillSelect(sel, GALLERY.map((g) => ({ label: this.L.t(g.label), items: g.items.map((x) => [x.id, x.name]) })), current?.id);
+  }
+
+  // --- Answer pages in the gallery -------------------------------------------
+  /**
+   * Show a gallery answer page (`"kind": "page"`) in a frame over the canvas.
+   * The diagram stays loaded underneath; canvas-only controls are hidden (app.css .is-page).
+   */
+  showPage(ex) {
+    this.engine.pause();
+    this.page = ex.data;
+    const meta = ex.data.meta || {};
+    document.querySelector('.y-app').classList.add('is-page');
+    this.setInspector(false);
+    this.setHelp(false);
+    // Keep a #theme= deep link; the diagram's walkthrough keys do not apply here
+    const theme = hashParams(location.hash, false).has('theme') ? `&theme=${document.documentElement.getAttribute('data-theme')}` : '';
+    try {
+      history.replaceState(null, '', `#example=${ex.id}${theme}`);
+    } catch {
+      // the URL simply does not mirror the choice here
+    }
+    this.applyLocale();
+    const title = meta.title || meta.question || this.L.t('page.answer');
+    $('doc-title').textContent = title;
+    $('doc-desc').textContent = meta.kicker || '';
+    $('doc-desc').title = meta.kicker || '';
+    document.title = `${title} · Yantra`;
+    $('crumbs').hidden = true;
+    this.renderExamples();
+    let frame = $('page-frame');
+    if (!frame) {
+      frame = document.createElement('iframe');
+      frame.id = 'page-frame';
+      frame.className = 'y-page-frame';
+      frame.setAttribute('sandbox', GALLERY_SANDBOX);
+      frame.addEventListener('load', () => this.syncPageTheme());
+      $('viewport').after(frame);
+    }
+    frame.title = title;
+    frame.srcdoc = this.pageHtml(ex.data);
+  }
+
+  /** Back to the canvas (a diagram was picked). */
+  hidePage() {
+    if (!this.page) return;
+    this.page = null;
+    document.querySelector('.y-app').classList.remove('is-page');
+    $('page-frame')?.remove();
+  }
+
+  /**
+   * The page as `yantra build` would render it, in the viewer's theme: its own theme
+   * button is hidden (the toolbar has one), web links open a new tab, and live
+   * diagram embeds are this viewer with the diagram as its payload.
+   */
+  pageHtml(page) {
+    const logos = LOGO_LIGHT ? { light: LOGO_LIGHT, dark: LOGO_DARK } : {};
+    const html = renderPage(page, { logos, viewerHtml: (diagram) => embedHtml(diagram), frameSandbox: GALLERY_SANDBOX });
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const head = `<script>document.documentElement.setAttribute('data-theme',${JSON.stringify(theme)});
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="http"]');if(a)a.target='_blank'},true);</script>
+<style>.p-theme{display:none!important}</style>`;
+    return html.replace('</head>', () => `${head}\n</head>`);
+  }
+
+  /** The page frame follows the toolbar's theme (its embeds follow the page). */
+  syncPageTheme() {
+    const root = $('page-frame')?.contentDocument?.documentElement;
+    if (root) root.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+  }
+
+  /** On a page only example= and theme= are kept in the URL. */
+  syncPageHash() {
+    const params = hashParams(location.hash, false);
+    if (!params.has('theme')) return;
+    params.set('theme', document.documentElement.getAttribute('data-theme'));
+    try {
+      history.replaceState(history.state, '', `#${[...params].map(([k, v]) => `${k}=${v}`).join('&')}`);
+    } catch {
+      // ignore
+    }
   }
 
   /** Scenario picker lives in the storyboard; shown only with 2+ scenarios. */
@@ -834,6 +925,7 @@ class App {
 
   /** Browser Back / Forward: follow the level in the URL, then its step and view. */
   onHistory() {
+    if (this.page) return;
     const want = this.levelFromHash() || [];
     const same = want.length === this.levels.depth && want.every((id, i) => id === this.levels.path[i]);
     if (same) return;
@@ -963,6 +1055,8 @@ class App {
     $('example-select').onchange = (ev) => {
       const ex = EXAMPLES.find((x) => x.id === ev.target.value);
       if (!ex) return;
+      if (isPage(ex.data)) return this.showPage(ex);
+      this.hidePage();
       this.levels.reset(ex.data);
       this.engine.load(ex.data);
       this.engine.setSpeed(Number(pref('speed', 4500)) || 4500);
@@ -1031,7 +1125,7 @@ class App {
     });
     window.addEventListener('resize', () => {
       clearTimeout(this.resizeTimer);
-      this.resizeTimer = setTimeout(() => this.interact.fit(), 150);
+      this.resizeTimer = setTimeout(() => this.page || this.interact.fit(), 150);
     });
   }
 
@@ -1039,6 +1133,8 @@ class App {
     window.addEventListener('keydown', (ev) => {
       if (ev.target.closest?.('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return;
       const k = ev.key;
+      // An answer page has no canvas: only the theme key applies
+      if (this.page && k.toLowerCase() !== 't') return;
       if (/^[1-9]$/.test(k) && Number(k) <= this.engine.getScenarios().length) return this.engine.setScenario(Number(k) - 1);
       if ((k === 'Enter' || k === ' ') && ev.target.classList?.contains('y-node')) {
         ev.preventDefault();
@@ -1149,6 +1245,7 @@ class App {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     this.applyLogo();
+    this.syncPageTheme();
     this.syncHash();
     try {
       localStorage.setItem('yantra:theme', next);
@@ -1242,9 +1339,10 @@ class App {
     return this.engine.getScene().nodes.some((n) => (n.node.type || 'node') === type);
   }
 
+  /** The gallery entry named by #example=<id>, if any. */
   exampleFromHash() {
     const id = hashParams(location.hash).get('example');
-    return id ? EXAMPLES.find((x) => x.id === id)?.data : null;
+    return id ? EXAMPLES.find((x) => x.id === id) || null : null;
   }
 
   toast(msg) {
@@ -1277,6 +1375,17 @@ function readEmbeddedPayload() {
   }
 }
 
+/**
+ * A live viewer for a diagram embedded in a gallery page: this document with the
+ * diagram as its payload. Inside the frame the URL mirror must not throw, and the
+ * page sends its theme by postMessage (as lib/build.js EMBED_PRELUDE does for built pages).
+ */
+function embedHtml(diagram) {
+  const prelude = `<script>(function(){var h=history,r=h.replaceState;h.replaceState=function(){try{return r.apply(h,arguments)}catch(e){}};
+addEventListener('message',function(e){var t=e.data&&e.data.yantraTheme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)})})();</script>`;
+  return withPayload(PRISTINE, diagram).replace(/<head[^>]*>/i, (m) => m + prelude);
+}
+
 /** Replace the embedded payload in a standalone document. */
 export function withPayload(html, payload) {
   const json = JSON.stringify(payload).replace(/</g, '\\u003c');
@@ -1289,15 +1398,27 @@ export function withPayload(html, payload) {
 
 /**
  * Replace a <select>'s options, keeping the <button><selectedcontent> used by
- * the customizable select (`appearance: base-select`).
+ * the customizable select (`appearance: base-select`). An item is
+ * `[value, label]`, or `{ label, items }` for a labelled <optgroup>.
  */
 function fillSelect(sel, items, value) {
-  sel.querySelectorAll('option').forEach((o) => o.remove());
-  for (const [v, label] of items) {
+  sel.querySelectorAll('option, optgroup').forEach((o) => o.remove());
+  const add = (parent, [v, label]) => {
     const o = document.createElement('option');
     o.value = v;
     o.textContent = label;
-    sel.appendChild(o);
+    parent.appendChild(o);
+  };
+  for (const item of items) {
+    if (Array.isArray(item)) {
+      add(sel, item);
+      continue;
+    }
+    if (!item.items.length) continue;
+    const group = document.createElement('optgroup');
+    group.label = item.label;
+    item.items.forEach((x) => add(group, x));
+    sel.appendChild(group);
   }
   if (value !== undefined) sel.value = value;
 }
@@ -1348,7 +1469,10 @@ function readEmbeddedStrings() {
 async function boot() {
   registerStrings(readEmbeddedStrings());
   const embedded = readEmbeddedPayload();
-  if (!embedded) EXAMPLES = (await import('./examples.js')).EXAMPLES;
+  if (!embedded) {
+    GALLERY = (await import('./examples.js')).GALLERY;
+    EXAMPLES = GALLERY.flatMap((g) => g.items);
+  }
   new App(embedded);
 }
 
