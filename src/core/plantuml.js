@@ -12,6 +12,8 @@
  */
 import { buildFlow, buildSequence, ignoredCollector, decodeEntities, tidy, slug } from './importkit.js';
 import { fromMermaid } from './mermaid.js';
+import { ganttPage } from './importcharts.js';
+import { fmtDay, parseDay } from './charts.js';
 
 const IGNORED_WHY = {
   skinparam: 'styling comes from roles',
@@ -28,7 +30,6 @@ const IGNORED_WHY = {
   create: 'participants are created on first use',
   newpage: 'pages are merged',
   'found/lost message': 'messages from or to outside the diagram are not drawn',
-  'bidirectional arrow': 'drawn one way',
   delay: 'not drawn',
   backward: 'repeat loops go straight back to their first action',
   detach: 'treated as an end of the branch',
@@ -81,27 +82,44 @@ const ACTIVITY_SIGNAL = /^(start|stop)$|^:|^(if|while|switch)\s*\(|^repeat\b|^fo
 const STATE_SIGNAL = /\[\*\]|^state\s/;
 // `interface X` alone is also a component-diagram element; with a body it is a class
 const CLASS_SIGNAL = /^(abstract\s+class|abstract|class|enum|annotation)\s+\S|^interface\s+.*\{$/;
-const UNSUPPORTED = /^(object|map|json|yaml)\s|\(\*\)|^@start(?!uml)/;
+const UNSUPPORTED = /^(json|yaml)\s|^@start(?!uml)/;
+const OLD_ACTIVITY_SIGNAL = /\(\*(top)?\)/;
+const OBJECT_SIGNAL = /^(object|map)\s+\S/;
+const ER_SYMBOL_L = String.raw`\|\||\|o|o\||\}o|\}\|`;
+const ER_SYMBOL_R = String.raw`\|\||o\||\|o|o\{|\|\{`;
+const ER_LINK = new RegExp(String.raw`^("[^"]+"|[\w.$]+)\s*(${ER_SYMBOL_L})?((?:-+|\.+)(?:\[[^\]]*\]|left|right|up|down|le|ri|do|l|r|u|d)?(?:-*|\.*))(${ER_SYMBOL_R})?\s*("[^"]+"|[\w.$]+)\s*(?::\s*(.*))?$`);
+const erLink = (t) => {
+  const m = ER_LINK.exec(t);
+  return m && (m[2] || m[4]) ? m : null;
+};
+const ER_SIGNAL = (t) => /^entity\s+.+\{\s*$/.test(t) || !!erLink(t);
 
 export function fromPlantUml(text, opts = {}) {
-  const blocks = plantUmlBlocks(text);
+  const pre = preprocessPlantUml(text, opts);
+  const src = pre.text;
+  const blocks = plantUmlBlocks(src);
   if (!blocks.length) {
-    const kind = /@start(\w+)/.exec(String(text))?.[1];
-    const tree = new RegExp(`^[ \\t]*@start${kind}\\b[^\\n]*\\n([\\s\\S]*?)^[ \\t]*@end${kind}\\b`, 'm').exec(String(text).replace(/\r\n?/g, '\n'));
-    if ((kind === 'mindmap' || kind === 'wbs') && tree) return fromOutline(tree[1], kind, opts);
-    throw new Error(`Unsupported PlantUML diagram "@start${kind}". Supported: @startuml (sequence, component / deployment / use case, activity, state, class), @startmindmap, @startwbs.`);
+    const kind = /@start(\w+)/.exec(src)?.[1];
+    const body = new RegExp(String.raw`^[ \t]*@start${kind}\b[^\n]*\n([\s\S]*?)^[ \t]*@end${kind}\b`, 'm').exec(src);
+    const done = (res) => ({ ...res, warnings: [...pre.warnings, ...res.warnings] });
+    if ((kind === 'mindmap' || kind === 'wbs') && body) return done(fromOutline(body[1], kind, opts));
+    if (kind === 'gantt' && body) return done(fromGantt(body[1], opts));
+    throw new Error(`Unsupported PlantUML diagram "@start${kind}". Supported: @startuml (sequence, component / deployment / use case, activity, state, class, object, entity-relationship), @startmindmap, @startwbs, @startgantt.`);
   }
   const lines = preprocess(blocks[0]);
   if (!lines.length) throw new Error('The PlantUML text is empty.');
-  const warnings = [];
+  const warnings = [...pre.warnings];
   if (blocks.length > 1) warnings.push(`The text has ${blocks.length} @startuml blocks; imported the first (use --all for every block).`);
   const bad = lines.find((l) => UNSUPPORTED.test(l.text));
-  if (bad) {
-    const kind = /\(\*\)/.test(bad.text) ? 'old-style activity' : bad.text.split(/\s/)[0];
-    throw new Error(`Unsupported PlantUML diagram (line ${bad.no}: "${kind}"). Supported: sequence, component / deployment / use case, activity, state.`);
-  }
+  if (bad) throw new Error(`Unsupported PlantUML diagram (line ${bad.no}: "${bad.text.split(/\s/)[0]}"). Supported: sequence, component / deployment / use case, activity, state, class, object, entity-relationship.`);
   const ctx = { warnings, title: opts.title };
-  const parse = lines.some((l) => CLASS_SIGNAL.test(l.text))
+  const parse = lines.some((l) => OLD_ACTIVITY_SIGNAL.test(l.text))
+    ? parseOldActivity
+    : lines.some((l) => ER_SIGNAL(l.text))
+    ? parseEntities
+    : lines.some((l) => OBJECT_SIGNAL.test(l.text)) && !lines.some((l) => CLASS_SIGNAL.test(l.text))
+    ? parseObjects
+    : lines.some((l) => CLASS_SIGNAL.test(l.text))
     ? parseClass
     : lines.some((l) => STATE_SIGNAL.test(l.text))
     ? parseState
@@ -265,11 +283,11 @@ function parseSequence(lines, ctx) {
       }
       const left = head1.includes('<');
       const right = !!head2;
-      if (left && right) ignored.add('bidirectional arrow');
       const [from, to] = left && !right ? [ref(b), ref(a)] : [ref(a), ref(b)];
       participant(from);
       participant(to);
       const msg = { from, to, text: umlText(text).replace(/\n/g, ' '), dashed: m[3].replace(/\[[^\]]*\]/g, '').length > 1, context: context(blocks), notes: [] };
+      if (left && right) msg.both = true; // A <-> B, A <--> B
       if (section) {
         msg.notes.push(`Section “${section}”.`);
         section = null;
@@ -571,7 +589,10 @@ function parseActivity(lines, ctx) {
       frontier = [{ from: d, label: paren(m[3]) || 'no' }];
     } else if ((m = /^backward\s*:/i.exec(line))) ignored.add('backward');
     else if ((m = /^(fork|split)$/i.exec(line))) {
-      frames.push({ type: m[1].toLowerCase(), origin: frontier, tails: [] });
+      // fork: a bar the branches leave from; split: branches straight from the last step
+      const bar = /^fork$/i.test(m[1]) ? add('Fork', 'fork', 'fork') : null;
+      if (bar) nodes[nodes.length - 1].shape = 'fork';
+      frames.push({ type: m[1].toLowerCase(), origin: bar ? [{ from: bar }] : frontier, tails: [] });
     } else if ((m = /^(fork|split)\s+again$/i.exec(line))) {
       const f = frame(m[1].toLowerCase());
       if (!f) continue;
@@ -582,6 +603,10 @@ function parseActivity(lines, ctx) {
       if (!f) continue;
       frames.pop();
       frontier = [...f.tails, ...frontier];
+      if (f.type === 'fork' && frontier.length) {
+        add('Join', 'fork', 'join'); // the branches meet at a join bar
+        nodes[nodes.length - 1].shape = 'fork';
+      }
     } else if ((m = /^\|(?:#?[\w#]+\|)?([^|]+)\|$/.exec(line))) {
       const title = umlText(m[1]);
       if (!lanes.has(title)) {
@@ -604,9 +629,10 @@ function parseActivity(lines, ctx) {
 
   // Activity arrows are rarely labelled; name the transition so every edge says something
   const decisions = new Set(nodes.filter((n) => n.type === 'decision').map((n) => n.raw));
+  const bars = new Set(nodes.filter((n) => n.shape === 'fork').map((n) => n.raw));
   let named = 0;
   for (const e of edges) {
-    if (e.label) continue;
+    if (e.label || bars.has(e.from) || bars.has(e.to)) continue; // edges at a fork or join bar need no label
     e.label = decisions.has(e.from) ? 'otherwise' : e.to === endNode ? 'done' : 'then';
     named++;
   }
@@ -652,7 +678,7 @@ function viaMermaid(lines, ctx, header, rewrite, kind) {
       skip(m[1].startsWith('!') ? '!preprocessor' : m[1].toLowerCase());
       continue;
     }
-    if (/^(floating\s+)?note\b/i.test(text) && kind === 'class') {
+    if (/^(floating\s+)?note\b/i.test(text) && kind !== 'state') {
       k = readNote(lines, k).next - 1;
       skip('note');
       continue;
@@ -742,4 +768,553 @@ function fromOutline(body, kind, opts) {
   payload.meta.description = payload.meta.description.replace('a Mermaid mind map', kind === 'wbs' ? 'a PlantUML work breakdown' : 'a PlantUML mind map');
   if (kind === 'wbs') payload.meta.layout = { ...payload.meta.layout, algorithm: 'tree', direction: 'TB' };
   return { payload, warnings: [...warnings, ...res.warnings] };
+}
+
+// --- preprocessor ------------------------------------------------------------------------
+
+const MAX_INCLUDE_DEPTH = 8;
+const PRE_IGNORED_WHY = {
+  '!theme': 'styling comes from roles',
+  '!pragma': 'not needed',
+  '!if': 'conditions are not evaluated; every branch is kept',
+  '!procedure': 'procedures and functions are not expanded',
+  '!include <stdlib>': 'the PlantUML standard library is not bundled',
+  '!includeurl': 'URLs are never fetched',
+  '!define with arguments': 'macros with arguments are not expanded',
+  other: 'not supported'
+};
+
+/**
+ * A safe subset of the PlantUML preprocessor, run before parsing:
+ * `!include file` / `!include_once` / `!include_many` / `!includesub file!PART` (the
+ * file's @startuml body, or the named !startsub block), `!define NAME value`,
+ * `!undef NAME`, `!$var = value` / `!$var ?= value` with `$var` substitution.
+ * Includes need `opts.include(target, fromPath) -> { path, text }` (the CLI and MCP
+ * server pass one that stays inside the input root); without it they are skipped
+ * with a warning. URLs and `<stdlib>` are never fetched; cycles and nesting deeper
+ * than 8 are stopped. Conditions, procedures, functions and themes are not run.
+ *   preprocessPlantUml(text, { include?, path? }) -> { text, warnings }
+ */
+export function preprocessPlantUml(text, opts = {}) {
+  const src = String(text ?? '').replace(/\r\n?/g, '\n');
+  const warnings = [];
+  if (!/^[ \t]*!/m.test(src)) return { text: src, warnings };
+  const defines = new Map();
+  const vars = new Map();
+  const ignored = new Map();
+  const skip = (kind) => ignored.set(kind, (ignored.get(kind) || 0) + 1);
+  const seen = new Set();
+  const out = [];
+  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const expand = (line) => {
+    let s = line;
+    for (const [name, value] of vars) s = s.replace(new RegExp(`${escape(name)}(?![\\w])`, 'g'), () => value);
+    for (const [name, value] of defines) s = s.replace(new RegExp(`\\b${escape(name)}\\b`, 'g'), () => value);
+    return s;
+  };
+  const value = (raw) => expand(raw.trim()).replace(/^"([\s\S]*)"$/, '$1').replace(/^'([\s\S]*)'$/, '$1');
+  const bodyOf = (inc, part) => {
+    if (part) {
+      const sub = new RegExp(`^[ \\t]*!startsub\\s+${escape(part)}\\s*$([\\s\\S]*?)^[ \\t]*!endsub\\b`, 'm').exec(inc);
+      if (sub) return sub[1];
+      const n = Number(part);
+      const blocks = [...inc.matchAll(/^[ \t]*@start\w+[^\n]*\n([\s\S]*?)^[ \t]*@end\w+/gm)].map((b) => b[1]);
+      if (Number.isInteger(n) && blocks[n]) return blocks[n];
+      warnings.push(`!include: no part "${part}" found; included the whole file.`);
+    }
+    const first = /^[ \t]*@start\w+[^\n]*\n([\s\S]*?)^[ \t]*@end\w+/m.exec(inc);
+    return (first ? first[1] : inc).replace(/^[ \t]*!(start|end)sub\b.*$/gm, '');
+  };
+  const run = (body, from, depth, chain) => {
+    let skipUntil = null;
+    for (const raw of body.split('\n')) {
+      const line = raw.trim();
+      if (skipUntil) {
+        if (skipUntil.test(line)) skipUntil = null;
+        continue;
+      }
+      let m;
+      if (!line.startsWith('!')) {
+        out.push(expand(raw));
+        continue;
+      }
+      if ((m = /^!(include(?:_once|_many|sub)?|includeurl|includedef)\s+(.+)$/i.exec(line))) {
+        const kind = m[1].toLowerCase();
+        let target = m[2].trim().replace(/^"([\s\S]*)"$/, '$1');
+        if (/^</.test(target)) {
+          skip('!include <stdlib>');
+          continue;
+        }
+        if (kind === 'includeurl' || /^[a-z][\w+.-]*:\/\//i.test(target)) {
+          skip('!includeurl');
+          continue;
+        }
+        let part = null;
+        const bang = target.lastIndexOf('!');
+        if (bang > 0) [target, part] = [target.slice(0, bang), target.slice(bang + 1)];
+        if (!opts.include) {
+          warnings.push(`!include ${target}: not read (no file context; import the file from disk to resolve includes).`);
+          continue;
+        }
+        if (depth >= MAX_INCLUDE_DEPTH) {
+          warnings.push(`!include ${target}: includes nested deeper than ${MAX_INCLUDE_DEPTH} levels are not read.`);
+          continue;
+        }
+        let res;
+        try {
+          res = opts.include(target, from);
+        } catch (err) {
+          warnings.push(`!include ${target}: ${err?.message || err}`);
+          continue;
+        }
+        if (chain.includes(res.path)) {
+          warnings.push(`!include ${target}: skipped, it would include itself (a cycle).`);
+          continue;
+        }
+        if (kind === 'include_once' && seen.has(res.path)) continue;
+        seen.add(res.path);
+        run(bodyOf(String(res.text ?? '').replace(/\r\n?/g, '\n'), part), res.path, depth + 1, [...chain, res.path]);
+      } else if ((m = /^!define\s+([A-Za-z_]\w*)(\([^)]*\))?\s*(.*)$/.exec(line))) {
+        if (m[2]) skip('!define with arguments');
+        else defines.set(m[1], expand(m[3]));
+      } else if ((m = /^!undef\s+(\w+)/.exec(line))) {
+        defines.delete(m[1]);
+      } else if ((m = /^!(?:(?:global|local)\s+)?(\$\w+)\s*(\?)?=\s*(.*)$/.exec(line))) {
+        if (!(m[2] && vars.has(m[1]))) vars.set(m[1], value(m[3]));
+      } else if (/^!(unquoted\s+)?(procedure|function)\b/.test(line)) {
+        skip('!procedure');
+        skipUntil = /^!end(procedure|function)\b/;
+      } else if ((m = /^!(theme|pragma)\b/.exec(line))) {
+        skip(`!${m[1]}`);
+      } else if (/^!(if|ifdef|ifndef|else|elseif|endif)\b/.test(line)) {
+        if (/^!(if|ifdef|ifndef)\b/.test(line)) skip('!if');
+      } else if (/^!(startsub|endsub)\b/.test(line)) {
+        // markers of an includable part
+      } else skip('other');
+    }
+  };
+  run(src, opts.path || null, 0, opts.path ? [opts.path] : []);
+  for (const [kind, n] of ignored) warnings.push(`Ignored ${n} \`${kind === 'other' ? '!' : kind}\` preprocessor line${n > 1 ? 's' : ''} (${PRE_IGNORED_WHY[kind]}).`);
+  return { text: out.join('\n'), warnings };
+}
+
+// --- activity diagrams, old syntax ((*) --> "Action") ---------------------------------
+
+const OLD_ARROW = /^(.*?)\s*(-+(?:\[[^\]]*\]|left|right|up|down|le|ri|do|l|r|u|d)?-*>|\.+>)\s*(?:\[([^\]]*)\])?\s*(.*)$/i;
+
+function parseOldActivity(lines, ctx) {
+  const { warnings } = ctx;
+  const ignored = ignoredCollector(warnings);
+  const nodes = new Map(); // key -> { raw, label, type, group }
+  const aliases = new Map();
+  const edges = [];
+  const groups = [];
+  const stack = [];
+  const frames = [];
+  const state = {};
+  let frontier = [];
+  let decisions = 0;
+
+  const add = (key, label, type) => {
+    if (!nodes.has(key)) {
+      const n = { raw: key, label, type, hint: slug(label) || undefined };
+      const g = stack[stack.length - 1];
+      if (g && type !== 'terminal') n.group = g.raw;
+      nodes.set(key, n);
+    }
+    return key;
+  };
+  const ref = (tok, asTarget) => {
+    const t = tok.trim().replace(/\s*<<[^>]*>>\s*$/, '');
+    let m;
+    if (/^\(\*(top)?\)$/.test(t)) return asTarget ? add('(end)', 'End', 'terminal') : add('(start)', 'Start', 'terminal');
+    if ((m = /^=+\s*(.+?)\s*=+$/.exec(t))) return add(`bar:${m[1]}`, humanBar(m[1]), 'node');
+    if ((m = /^"([\s\S]*?)"(?:\s+as\s+([\w.]+))?$/.exec(t))) {
+      const label = umlText(m[1]) || 'Action';
+      const key = m[2] || label;
+      if (m[2]) aliases.set(m[2], key);
+      return add(key, label, 'node');
+    }
+    const key = aliases.get(t) || t;
+    return add(key, nodes.get(key)?.label || umlText(t), 'node');
+  };
+  const connect = (froms, to, label) => {
+    for (const f of froms) edges.push({ from: f.from, to, label: label || f.label || '' });
+    frontier = to === '(end)' ? [] : [{ from: to }];
+  };
+
+  for (let k = 0; k < lines.length; k++) {
+    const { text: line, no } = lines[k];
+    if (state.skipUntil) {
+      if (state.skipUntil.test(line)) state.skipUntil = null;
+      continue;
+    }
+    let m;
+    if (/^(floating\s+)?note\b/i.test(line)) {
+      k = readNote(lines, k).next - 1;
+      ignored.add('note');
+      continue;
+    }
+    if (common(line, ctx, ignored, state)) continue;
+    if ((m = /^if\s+(?:"([^"]*)"|(.+?))(?:\s+as\s+[\w.]+)?\s+then$/i.exec(line))) {
+      const d = add(`if:${++decisions}`, umlText(m[1] ?? m[2]) || 'Decision', 'decision');
+      connect(frontier, d, '');
+      frames.push({ decision: d, tails: [] });
+      frontier = [{ from: d }];
+    } else if (/^else$/i.test(line)) {
+      const f = frames[frames.length - 1];
+      if (!f) warnings.push(`Line ${no}: "else" outside an if.`);
+      else {
+        f.tails.push(...frontier);
+        frontier = [{ from: f.decision }];
+      }
+    } else if (/^end\s*if$/i.test(line)) {
+      const f = frames.pop();
+      if (!f) warnings.push(`Line ${no}: "endif" without an if.`);
+      else frontier = [...f.tails, ...frontier];
+    } else if ((m = /^partition\s+(.+?)\s*\{?$/i.exec(line))) {
+      const g = { raw: `part:${groups.length}`, title: umlText(m[1].replace(/\s*#\S+$/, '').replace(/^"|"$/g, '')), parent: stack[stack.length - 1]?.raw };
+      g.hint = slug(g.title) || undefined;
+      groups.push(g);
+      stack.push(g);
+    } else if (line === '}' || /^end\s*partition$/i.test(line)) stack.pop();
+    else if ((m = OLD_ARROW.exec(line)) && m[4]) {
+      const [, src, arrow, label = '', dst] = m;
+      if (/[a-z]/i.test(arrow.replace(/\[[^\]]*\]/g, ''))) ignored.add('arrow direction hint');
+      const froms = src.trim() ? [{ from: ref(src, false) }] : frontier;
+      if (!froms.length) {
+        warnings.push(`Line ${no}: arrow with nothing before it; start with (*) --> "First step".`);
+        continue;
+      }
+      connect(froms, ref(dst, true), umlText(label));
+    } else warnings.push(`Line ${no}: could not parse "${line}".`);
+  }
+  ignored.flush(IGNORED_WHY);
+  if (frames.length) warnings.push(`${frames.length} if block${frames.length > 1 ? 's were' : ' was'} not closed with endif.`);
+  if (!nodes.size) throw new Error('No activities found; check the (*) --> "Action" syntax.');
+
+  // Unlabelled transitions are named, as in the new activity syntax
+  const isDecision = (raw) => nodes.get(raw)?.type === 'decision';
+  let named = 0;
+  for (const e of edges) {
+    if (e.label) continue;
+    e.label = isDecision(e.from) ? 'otherwise' : e.to === '(end)' ? 'done' : 'then';
+    named++;
+  }
+  if (named) warnings.push(`Labelled ${named} unlabelled transition${named > 1 ? 's' : ''} "then" / "otherwise" / "done"; use "-->[label]" in PlantUML for better ones.`);
+  const all = [...nodes.values()];
+  return buildFlow({
+    nodes: all,
+    edges,
+    groups,
+    direction: 'TB',
+    title: ctx.title || 'Imported activity diagram',
+    description: `Imported from a PlantUML activity diagram (old syntax): ${all.length} steps, ${edges.length} transitions.`,
+    warnings
+  });
+}
+
+const humanBar = (name) => (/^[A-Z]?\d+$/i.test(name) ? 'Synchronise' : umlText(name.replace(/_/g, ' ')));
+
+// --- object diagrams -----------------------------------------------------------------------
+
+function parseObjects(lines, ctx) {
+  const { warnings } = ctx;
+  const ignored = ignoredCollector(warnings);
+  const nodes = new Map();
+  const edges = [];
+  const groups = [];
+  const stack = [];
+  const state = {};
+  let open = null;
+  let direction = 'TB';
+
+  const touch = (code, type, label) => {
+    let n = nodes.get(code);
+    if (!n) {
+      n = { raw: code, label: label || code, type: type || 'object', hint: /^[\w-]+$/.test(code) ? code : slug(code) || undefined, data: { fields: [] } };
+      const g = stack[stack.length - 1];
+      if (g) n.group = g.raw;
+      nodes.set(code, n);
+    }
+    if (type) n.type = type;
+    if (label) n.label = label;
+    return n;
+  };
+  const field = (n, text) => {
+    const m = /^([^=:]+?)\s*(?:=|:)\s*(.+)$/.exec(text);
+    const f = m ? { name: umlText(m[1]), type: umlText(m[2]) } : { name: umlText(text) };
+    if (f.name) n.data.fields.push(f);
+  };
+  const endpoint = (tok) => {
+    const code = tok.replace(/^"([\s\S]*)"$/, '$1').replace(/^\[([\s\S]*)\]$/, '$1');
+    return nodes.get(code) || touch(code);
+  };
+
+  for (let k = 0; k < lines.length; k++) {
+    const { text: line, no } = lines[k];
+    if (state.skipUntil) {
+      if (state.skipUntil.test(line)) state.skipUntil = null;
+      continue;
+    }
+    let m;
+    if (open) {
+      if (line === '}') open = null;
+      else if (open.type === 'map' && (m = /^(.+?)\s*\*-+>\s*(.+)$/.exec(line))) {
+        const key = umlText(m[1]);
+        open.data.fields.push({ name: key });
+        edges.push({ from: open.raw, to: endpoint(m[2].trim()).raw, label: key });
+      } else if (open.type === 'map' && (m = /^(.+?)\s*=>\s*(.*)$/.exec(line))) open.data.fields.push({ name: umlText(m[1]), type: umlText(m[2]) });
+      else field(open, line);
+      continue;
+    }
+    if (/^(floating\s+)?note\b/i.test(line)) {
+      k = readNote(lines, k).next - 1;
+      ignored.add('note');
+      continue;
+    }
+    if (common(line, ctx, ignored, state)) continue;
+    if (/^left to right direction$/i.test(line)) direction = 'LR';
+    else if (/^top to bottom direction$/i.test(line)) direction = 'TB';
+    else if ((m = /^(object|map|diamond)\s+(.+?)\s*(\{)?\s*(\})?$/i.exec(line))) {
+      const kind = m[1].toLowerCase();
+      const spec = nameSpec(m[2]);
+      const n = touch(spec.code, kind === 'diamond' ? 'object' : kind, spec.label);
+      if (m[3] && !m[4]) open = n;
+    } else if ((m = /^(package|namespace|rectangle|frame|folder|node|cloud)\s+(.+?)\s*\{$/i.exec(line))) {
+      const title = umlText(m[2].replace(/\s*#\S+$/, '').replace(/^"|"$/g, ''));
+      const g = { raw: `group:${groups.length}`, title, parent: stack[stack.length - 1]?.raw, hint: slug(title) || undefined };
+      groups.push(g);
+      stack.push(g);
+    } else if (line === '}') stack.pop();
+    else if ((m = REL.exec(line))) {
+      const [, a, head1, body, head2, b, label = ''] = m;
+      if (/\[hidden\]/i.test(body)) continue;
+      if (/[a-z]/i.test(body.replace(/\[[^\]]*\]/g, ''))) ignored.add('arrow direction hint');
+      let from = endpoint(a);
+      let to = endpoint(b);
+      const e = { label: umlText(label).replace(/\n/g, ' ') };
+      const whole = { '*': 'composition', o: 'aggregation', '<|': 'inheritance', '|>': 'inheritance' };
+      if (whole[head1] || whole[head2]) {
+        e.relation = whole[head1] || whole[head2];
+        if (!whole[head1]) [from, to] = [to, from]; // the whole / parent is the source
+        if (e.relation === 'inheritance' && body.includes('.')) e.relation = 'realization';
+      } else {
+        const left = head1.startsWith('<');
+        const right = head2.endsWith('>');
+        if (left && !right) [from, to] = [to, from];
+        if (left && right) e.arrow = 'both';
+        else if (!left && !right) e.arrow = 'none';
+        if (body.includes('.')) e.style = 'dashed';
+      }
+      edges.push({ ...e, from: from.raw, to: to.raw });
+    } else if ((m = /^("[^"]+"|[\w.$]+)\s*:\s*(.+)$/.exec(line)) && nodes.has(m[1].replace(/^"|"$/g, ''))) {
+      field(nodes.get(m[1].replace(/^"|"$/g, '')), m[2]);
+    } else warnings.push(`Line ${no}: could not parse "${line}".`);
+  }
+  ignored.flush(IGNORED_WHY);
+  if (open) warnings.push(`Object "${open.raw}" has no closing "}".`);
+  const all = [...nodes.values()];
+  for (const n of all) if (!n.data.fields.length) delete n.data;
+  const unlabeled = edges.filter((e) => !e.label && !e.relation).length;
+  if (unlabeled) warnings.push(`${unlabeled} link${unlabeled > 1 ? 's have' : ' has'} no label; add ": label" in PlantUML or label them in the JSON.`);
+  return buildFlow({
+    nodes: all,
+    edges,
+    groups,
+    direction,
+    title: ctx.title || 'Imported object diagram',
+    description: `Imported from a PlantUML object diagram: ${all.length} objects, ${edges.length} links.`,
+    warnings
+  });
+}
+
+// --- entity-relationship diagrams (entity blocks, crow's foot links) ------------------------
+
+/**
+ * `entity Name { ... }` blocks and `A ||--o{ B : label` links, rewritten to a Mermaid
+ * erDiagram and converted by the Mermaid ER importer. Attributes above the `--`
+ * separator are the primary key; `<<PK>>`, `<<FK>>`, `<<UK>>` mark keys; other
+ * stereotypes (`<<generated>>`) become the attribute note.
+ */
+function parseEntities(lines, ctx) {
+  const out = [];
+  const codes = new Map(); // PlantUML code -> Mermaid-safe id
+  const types = new Map(); // placeholder -> real type ('' = none)
+  const code = (raw) => {
+    const c = raw.replace(/^"|"$/g, '');
+    if (!codes.has(c)) codes.set(c, c.replace(/[^\w$-]+/g, '_') || `E${codes.size}`);
+    return codes.get(c);
+  };
+  let skipped = 0;
+  for (let k = 0; k < lines.length; k++) {
+    const { text, no } = lines[k];
+    let m;
+    if ((m = /^entity\s+(.+?)\s*(\{)?\s*(\})?$/i.exec(text))) {
+      const spec = nameSpec(m[1]);
+      const id = code(spec.code);
+      const head = spec.label && spec.label !== spec.code ? `${id}["${spec.label.replace(/["\]]/g, '')}"]` : id;
+      if (!m[2] || m[3]) {
+        out.push({ text: head, no });
+        continue;
+      }
+      out.push({ text: `${head} {`, no });
+      const body = [];
+      for (k++; k < lines.length && lines[k].text !== '}'; k++) body.push(lines[k]);
+      const isSep = (t) => /^(--+|==+|\.\.+|__+)(.*?)(--+|==+|\.\.+|__+)?$/.test(t);
+      const sep = body.findIndex((l) => isSep(l.text));
+      body.forEach((l, i) => {
+        if (isSep(l.text)) return;
+        const f = /^(\*)?\s*([\w$]+)\s*(?::\s*(.*?))?\s*((?:<<[^>]*>>\s*)*)$/.exec(l.text.replace(/^[+\-#~]\s*/, '').replace(/^\{\w+\}\s*/, ''));
+        if (!f) {
+          ctx.warnings.push(`Line ${l.no}: could not parse attribute "${l.text}".`);
+          return;
+        }
+        const stereo = [...(f[4] || '').matchAll(/<<\s*([^>]*?)\s*>>/g)].map((x) => x[1]);
+        const keys = [];
+        if ((sep > 0 && i < sep) || stereo.some((s) => /^PK$/i.test(s))) keys.push('PK');
+        if (stereo.some((s) => /^FK$/i.test(s))) keys.push('FK');
+        if (stereo.some((s) => /^(UK|unique)$/i.test(s))) keys.push('UK');
+        const note = stereo.filter((s) => !/^(PK|FK|UK|unique)$/i.test(s)).join(', ');
+        const t = `T${types.size}`;
+        types.set(t, umlText(f[3] || ''));
+        out.push({ text: `${t} ${f[2]}${keys.length ? ` ${keys.join(', ')}` : ''}${note ? ` "${note.replace(/"/g, '')}"` : ''}`, no: l.no });
+      });
+      out.push({ text: '}', no: lines[k]?.no ?? no });
+    } else if ((m = ER_LINK.exec(text))) {
+      const [, a, l, body, r, b, label = ''] = m;
+      if (/hidden/i.test(body)) continue;
+      if (!l || !r) {
+        skipped++;
+        continue;
+      }
+      const left = { 'o|': '|o' }[l] || l;
+      const right = { '|o': 'o|' }[r] || r;
+      out.push({ text: `${code(a)} ${left}${body.startsWith('.') ? '..' : '--'}${right} ${code(b)} : "${umlText(label).replace(/"/g, '')}"`, no });
+    } else out.push({ text, no });
+  }
+  if (skipped) ctx.warnings.push(`Skipped ${skipped} link${skipped > 1 ? 's' : ''} without a crow's foot symbol at both ends (e.g. ||--o{).`);
+  const res = viaMermaid(out, ctx, 'erDiagram', (line) => line, 'er');
+  for (const n of res.payload.nodes)
+    for (const f of n.data.fields || []) {
+      if (!types.has(f.type)) continue;
+      const t = types.get(f.type);
+      if (t) f.type = t;
+      else delete f.type;
+    }
+  return res;
+}
+
+// --- gantt charts (@startgantt) ---------------------------------------------------------------
+
+const GANTT_DATE = /(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/;
+const ganttDate = (s) => {
+  const m = GANTT_DATE.exec(String(s));
+  return m ? parseDay(`${m[1]}-${Number(m[2])}-${Number(m[3])}`) : null;
+};
+
+/** @startgantt: tasks, durations, dependencies, milestones and separators -> a plan page. */
+function fromGantt(body, opts) {
+  const warnings = [];
+  const ignored = ignoredCollector(warnings);
+  const tasks = new Map();
+  const aliases = new Map();
+  let projectStart = null;
+  let today = null;
+  let title;
+  let section;
+  let prev = null;
+  const task = (name) => {
+    const key = aliases.get(name.trim()) || name.trim();
+    if (!tasks.has(key)) tasks.set(key, { key, title: umlText(key) || 'Task', group: section, after: [] });
+    return tasks.get(key);
+  };
+  const lines = String(body).replace(/\r\n?/g, '\n').split('\n');
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    const no = i + 1;
+    if (!line || line.startsWith("'")) return;
+    let m;
+    if ((m = /^title\s+(.+)$/i.exec(line))) title = umlText(m[1]);
+    else if ((m = /^--\s*(.*?)\s*--$/.exec(line))) section = umlText(m[1]) || undefined;
+    else if ((m = /^project\s+starts\s+(?:on\s+|the\s+)*(.+)$/i.exec(line))) {
+      projectStart = ganttDate(m[1]);
+      if (projectStart === null) warnings.push(`Line ${no}: project start "${m[1]}" is not a YYYY-MM-DD date.`);
+    } else if ((m = /^today\s+is\s+(.+)$/i.exec(line))) {
+      if (/colou?red/i.test(m[1])) ignored.add('colour');
+      else today = ganttDate(m[1]);
+    } else if (/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}[-/.]\d)/i.test(line) && /\b(are|is)\s+(closed|open)\b/i.test(line)) ignored.add('closed days');
+    else if ((m = /^(printscale|projectscale|ganttscale|language|hide|show|skinparam|scale|footer|header|caption|legend|<style>|style|zoom|separator)\b/i.exec(line))) ignored.add(m[1].toLowerCase());
+    else if ((m = /^(then\s+)?\[([^\]]+)\](?:\s+as\s+\[([^\]]+)\])?\s*(.*)$/i.exec(line))) {
+      const t = task(m[2]);
+      if (m[3]) aliases.set(m[3].trim(), t.key);
+      if (m[1] && prev && prev !== t) t.after.push(prev.key);
+      const rest = m[4].replace(/\s*\bon\s+\{[^}]*\}(\s*\{[^}]*\})*/gi, () => (ignored.add('resources'), ''));
+      for (const clause of rest.split(/\s+and\s+/i).map((c) => c.trim()).filter(Boolean)) {
+        let c;
+        if ((c = /^->\s*\[([^\]]+)\]/.exec(clause))) task(c[1]).after.push(t.key);
+        else if ((c = /^(?:lasts|requires)\s+(\d+)\s*(day|week)s?\b/i.exec(clause))) t.days = Number(c[1]) * (/^week/i.test(c[2]) ? 7 : 1);
+        else if ((c = /^(starts|happens)\s+(?:on\s+|at\s+)?(\d+)\s+days?\s+after\s+\[([^\]]+)\]'s\s+end/i.exec(clause))) {
+          t.after.push(task(c[3]).key);
+          if (/happens/i.test(c[1])) t.milestone = true;
+          ignored.add('lag');
+        } else if ((c = /^(starts|happens)\s+(?:on\s+|at\s+)?\[([^\]]+)\]'s\s+end/i.exec(clause))) {
+          t.after.push(task(c[2]).key);
+          if (/happens/i.test(c[1])) t.milestone = true;
+        } else if ((c = /^(starts|happens)\s+(?:on\s+|at\s+|the\s+)*(.+)$/i.exec(clause)) && ganttDate(c[2]) !== null) {
+          t.start = ganttDate(c[2]);
+          if (/happens/i.test(c[1])) t.milestone = true;
+        } else if ((c = /^ends\s+(?:on\s+|at\s+|the\s+)*(.+)$/i.exec(clause)) && ganttDate(c[1]) !== null) t.end = ganttDate(c[1]);
+        else if ((c = /^is\s+(\d+)\s*%\s*complete/i.exec(clause))) t.progress = Math.min(100, Number(c[1]));
+        else if (/^is\s+colou?red\b/i.test(clause)) ignored.add('colour');
+        else if (/^(starts|ends)\s+at\s+\[[^\]]+\]'s\s+(start|end)/i.test(clause)) ignored.add('start / end alignment');
+        else warnings.push(`Line ${no}: could not parse "${clause}".`);
+      }
+      prev = t;
+    } else warnings.push(`Line ${no}: could not parse "${line}".`);
+  });
+  ignored.flush({
+    colour: 'colours come from sections',
+    'closed days': 'durations count calendar days',
+    resources: 'resources are not drawn',
+    lag: 'the task starts right after the other one ends',
+    'start / end alignment': 'the task keeps its own dates',
+    printscale: 'the scale is automatic',
+    projectscale: 'the scale is automatic',
+    ganttscale: 'the scale is automatic'
+  });
+  const ids = new Map();
+  const used = new Set();
+  for (const t of tasks.values()) {
+    const base = slug(t.title) || 'task';
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+    used.add(id);
+    ids.set(t.key, id);
+  }
+  let guessed = 0;
+  const items = [...tasks.values()].map((t) => {
+    const it = { id: ids.get(t.key), title: t.title };
+    if (t.group) it.group = t.group;
+    if (t.start !== undefined) it.start = fmtDay(t.start);
+    const after = [...new Set(t.after)].map((k) => ids.get(k)).filter(Boolean);
+    if (after.length) it.after = after.length === 1 ? after[0] : after;
+    // PlantUML tasks with no start and no dependency begin with the project
+    if (it.start === undefined && !after.length) it.start = projectStart !== null ? fmtDay(projectStart) : 0;
+    if (t.milestone) it.milestone = true;
+    else if (t.days !== undefined) it.days = t.days;
+    else if (t.end !== undefined) it.end = fmtDay(t.end);
+    else {
+      it.days = 1;
+      guessed++;
+    }
+    if (t.progress !== undefined) it.progress = t.progress;
+    return it;
+  });
+  if (guessed) warnings.push(`${guessed} task${guessed > 1 ? 's have' : ' has'} no duration ("lasts N days"); drawn as one day.`);
+  if (items.some((it) => it.start === 0) && items.some((it) => typeof it.start === 'string')) {
+    warnings.push('Some tasks have dates and others none; add "Project starts YYYY-MM-DD" so undated tasks start with the project.');
+    for (const it of items) if (it.start === 0) delete it.start;
+  }
+  return ganttPage({ title: opts.title || title, items, today: today !== null ? fmtDay(today) : undefined, source: 'a PlantUML gantt chart', warnings });
 }

@@ -67,7 +67,7 @@ All notable changes to Yantra are documented here. The format follows
 - PlantUML import: sequence diagrams to the sequence view; component, deployment, use-case
   and activity diagrams to flow diagrams with groups; state and class diagrams; mind maps and
   work breakdowns with the mind-map and tree layouts.
-- `yantra import --from mermaid|drawio|plantuml` with detection by extension or content,
+- `yantra import --from mermaid|drawio|plantuml|visio` with detection by extension or content,
   the `yantra_import` MCP tool and `yantra.import_diagram()` in the Python SDK.
 - Languages and right to left: `meta.lang` (BCP 47) translates the viewer, answer pages,
   charts and the SVG / Markdown exports (built in: English, Spanish, French, German,
@@ -83,6 +83,24 @@ All notable changes to Yantra are documented here. The format follows
 - `yantra validate --lang xx` (`auto`: the payload's language), a `lang` input on the MCP
   validate tool and `validate(lang=...)` in the Python SDK translate the content/, story/,
   ref/ and i18n/ messages; codes are unchanged and the English text stays in `messageEn`.
+- Import, Mermaid: `gantt`, `pie`, `timeline` and `quadrantChart` become answer pages (gantt,
+  pie chart, timeline and 2x2 matrix blocks with a computed headline); `journey` becomes a flow
+  with scores, actors, sections and a step per section. Class diagrams: multiplicities as end
+  labels (`sourceLabel` / `targetLabel`), one-line `class A { ... }` blocks, lollipop
+  interfaces (`A ()-- B`) as realizations, self-relationships as loops. ER diagrams: one-line
+  entity blocks, self-relationships as loops, key-row attachment (`sourceField` /
+  `targetField`) when a foreign key is named after the other entity. State diagrams:
+  `<<fork>>` / `<<join>>` as fork bars and `--` concurrent regions as region groups.
+- Import, PlantUML: `<->` / `<-->` two-way messages, object diagrams (`object`, `map`) as
+  table cards, `entity` ER diagrams with crow's foot ends, `@startgantt` as a plan page, the
+  old activity syntax (`(*) --> "Action"`), activity `fork` / `end fork` as fork and join bars,
+  and a safe preprocessor subset: `!include` inside the input root (no URLs, cycle-safe, 8
+  levels deep), `!define` and `!$var` substitution.
+- Import, draw.io and Visio: fill colours become role colours, cloud and image icons become
+  node icons, thin black bars become fork bars, edges to table rows keep their field, PNG
+  exports with the embedded diagram are read; Visio `.vsdx` files (shapes, glued connectors,
+  groups, pages) are read without new dependencies. `--from visio`; `.vsdx` and `.png` in the
+  `yantra_import` MCP tool.
 - Release tooling: npm `files` whitelist with a prebuilt viewer (`prepack`), Python
   packaging metadata, a tag-triggered release workflow, contribution and security guides,
   issue and pull request templates.

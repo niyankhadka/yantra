@@ -1,0 +1,13 @@
+classDiagram
+    title Library lending
+    class Library { +String name; +lend(book: Book, member: Member) Loan }
+    class Book { +String isbn; +String title; +available() bool }
+    class Member { +String name; +int maxLoans }
+    class Loan { +Date due; +renew() }
+    class Category { +String name }
+    Searchable ()-- Book
+    Library "1" *-- "0..*" Book : holds
+    Member "1" --> "0..5" Loan : borrows
+    Loan "0..*" --> "1" Book : covers
+    Category "0..1" --> "0..*" Category : parent of
+    Book "0..*" --> "1..*" Category : filed under

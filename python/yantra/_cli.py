@@ -166,10 +166,11 @@ def export_payload(payload: Dict[str, Any], output: str, format: str = "svg", th
 
 def import_diagram(source: str, format: Optional[str] = None, page: Optional[Any] = None,
                    title: Optional[str] = None) -> Dict[str, Any]:
-    """Convert a Mermaid, draw.io or PlantUML file into a payload dict (``yantra import``).
+    """Convert a Mermaid, draw.io, PlantUML or Visio file into a payload dict (``yantra import``).
 
-    ``format`` is ``"mermaid"``, ``"drawio"`` or ``"plantuml"`` (default: detected from the file
-    name or content); ``page`` picks a draw.io page by 1-based number or name.
+    ``format`` is ``"mermaid"``, ``"drawio"``, ``"plantuml"`` or ``"visio"`` (default: detected
+    from the file name or content); ``page`` picks a draw.io or Visio page by 1-based number or
+    name. Gantt, pie, timeline and quadrant charts come back as answer pages (``"kind": "page"``).
     Import warnings and the validation report are printed by the CLI to stderr.
     """
     src = os.path.abspath(source)

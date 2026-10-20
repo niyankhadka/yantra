@@ -1,0 +1,21 @@
+---
+title: Parallel checkout
+---
+stateDiagram-v2
+    [*] --> Cart
+    Cart --> Split : place order
+    state Split <<fork>>
+    Split --> Processing
+    state Processing {
+        [*] --> Authorising
+        Authorising --> Captured : approved
+        Captured --> [*]
+        --
+        [*] --> Reserving
+        Reserving --> Packed : picked
+        Packed --> [*]
+    }
+    Processing --> Merge
+    state Merge <<join>>
+    Merge --> Shipped : both done
+    Shipped --> [*]

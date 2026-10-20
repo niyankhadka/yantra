@@ -9,8 +9,8 @@
  * Coordinates are ignored (layout is automatic); they only hint the direction.
  */
 import { inflateRaw } from './inflate.js';
-import { hueOf } from './mermaid.js';
-import { buildFlow, decodeEntities, htmlText, tidy, slug } from './importkit.js';
+import { hueOf, keepRoutableFields } from './mermaid.js';
+import { buildFlow, decodeEntities, htmlText, tidy, slug, SHAPE_ROLES, EXTRA_ROLES } from './importkit.js';
 
 // --- a small XML reader ----------------------------------------------------------
 
@@ -280,22 +280,41 @@ function convert(model, pageName, opts, warnings) {
 
   const nodes = [];
   const nodeIds = new Set();
+  let unknownImages = 0;
+  const rowField = new Map(); // card row (or cell) id -> field name
+  const bars = new Set(); // fork / join bars
   for (const c of order) {
     if (c.kind !== 'node' && c.kind !== 'card') continue;
     const label = labelOf(c);
-    const type = c.kind === 'card' ? 'card' : shapeType(c.st);
-    const n = { raw: c.id, label: label || humanizeShape(c.st), type, group: groupOf(c), hint: slug(label) || undefined };
+    const img = c.kind === 'node' ? imageOf(c.st) : null;
+    let type = c.kind === 'card' ? 'card' : shapeType(c.st);
+    if (img?.icon === 'database') type = 'store';
+    else if (img?.icon === 'user' || img?.icon === 'users') type = 'actor';
+    const n = { raw: c.id, label: label || img?.label || humanizeShape(c.st), type, group: groupOf(c), hint: slug(label) || undefined, hue: cellHue(c.st) };
+    if (c.kind === 'node' && isForkBar(c)) {
+      // UML fork / join: a thin filled bar; more edges out than in reads as a fork
+      const outs = order.filter((x) => isEdge(x) && x.source === c.id).length;
+      const ins = order.filter((x) => isEdge(x) && x.target === c.id).length;
+      Object.assign(n, { type: 'fork', shape: 'fork', label: label || (outs > ins ? 'Fork' : 'Join'), hue: null, hint: slug(label) || (outs > ins ? 'fork' : 'join') });
+      bars.add(c.id);
+    }
     const data = {};
     if (c.kind === 'card') {
       // One text per row: table rows join their cells ("PK" + "id" + "uuid")
       const rows = [];
+      const rowCells = [];
       const cellsOf = (id) => (vertexChildren.get(id) || []).flatMap((k) => [labelOf(k).replace(/\n/g, ' '), ...cellsOf(k.id)]).filter(Boolean);
+      const idsOf = (id) => [id, ...(vertexChildren.get(id) || []).flatMap((k) => idsOf(k.id))];
       for (const k of vertexChildren.get(c.id) || []) {
         const t = [labelOf(k).replace(/\n/g, ' '), ...cellsOf(k.id)].filter(Boolean).join(' ');
-        if (t) rows.push(t);
+        if (t) rows.push(t), rowCells.push(idsOf(k.id));
       }
       const members = rows.map(memberOf);
       if (rows.length && members.every(Boolean)) {
+        // Edges drawn to a row (or a cell of it) attach to that field's row
+        members.forEach((mb, i) => {
+          if (!mb.method) for (const id of rowCells[i]) rowField.set(id, mb.name);
+        });
         const fields = members.filter((x) => !x.method).map(({ method, ...f }) => f);
         const methods = members.filter((x) => x.method).map(({ method, ...f }) => f);
         if (fields.length) data.fields = fields;
@@ -308,6 +327,8 @@ function convert(model, pageName, opts, warnings) {
     }
     if (type === 'store') data.icon = 'database';
     if (type === 'actor') data.icon = 'user';
+    if (img?.icon) data.icon = img.icon;
+    else if (img) unknownImages++;
     if (c.tooltip) data.description = tidy(htmlText(c.tooltip)).replace(/\n/g, ' ');
     if (Object.keys(data).length) n.data = data;
     nodes.push(n);
@@ -315,6 +336,8 @@ function convert(model, pageName, opts, warnings) {
   }
   if (annotations) warnings.push(`Ignored ${annotations} free-standing text label${annotations > 1 ? 's' : ''} (not connected to anything).`);
   if (blanks) warnings.push(`Ignored ${blanks} unlabelled, unconnected shape${blanks > 1 ? 's' : ''}.`);
+  if (unknownImages) warnings.push(`Ignored ${unknownImages} image${unknownImages > 1 ? 's' : ''} with no matching built-in icon (the shape keeps its label; set data.icon in the JSON).`);
+  const roleOverrides = colourRoles(nodes);
 
   // Edge ends: card rows resolve to their card, containers to their first node
   const firstNodeIn = (id) => {
@@ -351,9 +374,10 @@ function convert(model, pageName, opts, warnings) {
     const label = [labelOf(c), ...(edgeExtra.get(c.id) || [])].filter(Boolean).join(' ');
     const dashed = c.st.dashed === '1';
     const notation = edgeNotation(c.st, dashed);
+    const [sf, tf] = [rowField.get(c.source), rowField.get(c.target)];
     if (notation) {
       // ER ends or a UML relation (whose triangle / diamond sits on the Yantra source)
-      const e = notation.swap ? { from: to, to: from, label } : { from, to, label };
+      const e = notation.swap ? { from: to, to: from, label, sourceField: tf, targetField: sf } : { from, to, label, sourceField: sf, targetField: tf };
       Object.assign(e, notation.fields);
       edges.push(e);
       continue;
@@ -361,7 +385,7 @@ function convert(model, pageName, opts, warnings) {
     // Arrow heads: draw.io ends in an arrow unless endArrow=none; startArrow defaults to none
     const head = c.st.endArrow !== 'none';
     const tail = !!c.st.startArrow && c.st.startArrow !== 'none';
-    const e = head || !tail ? { from, to, label } : { from: to, to: from, label };
+    const e = head || !tail ? { from, to, label, sourceField: sf, targetField: tf } : { from: to, to: from, label, sourceField: tf, targetField: sf };
     if (head && tail) e.arrow = 'both';
     else if (!head && !tail) e.arrow = 'none';
     if (dashed) e.style = 'dashed';
@@ -369,20 +393,169 @@ function convert(model, pageName, opts, warnings) {
   }
   if (toContainer) warnings.push(`${toContainer} edge end${toContainer > 1 ? 's' : ''} on a container ${toContainer > 1 ? 'were' : 'was'} attached to its first node.`);
   if (dangling) warnings.push(`Dropped ${dangling} edge${dangling > 1 ? 's' : ''} without a shape at both ends.`);
-  const unlabeled = edges.filter((e) => !e.label).length;
+  const unlabeled = edges.filter((e) => !e.label && !bars.has(e.from) && !bars.has(e.to)).length;
   if (unlabeled) warnings.push(`${unlabeled} edge${unlabeled > 1 ? 's have' : ' has'} no label; label them in draw.io or in the JSON.`);
 
   const direction = guessDirection(edges, cells);
   const title = opts.title || (/^Page-\d+$/.test(pageName) ? 'Imported draw.io diagram' : pageName);
-  return buildFlow({
+  const res = buildFlow({
     nodes,
     edges,
     groups,
     direction,
     title,
     description: `Imported from draw.io${/^Page-\d+$/.test(pageName) ? '' : ` page "${pageName}"`}: ${nodes.length} nodes, ${edges.length} edges.`,
-    warnings
+    warnings,
+    roleOverrides
   });
+  keepRoutableFields(res.payload, warnings);
+  return res;
+}
+
+/** A UML fork / join bar: an unlabelled, filled, thin shape (or a thick line shape). */
+function isForkBar(c) {
+  const { w, h } = c.geo;
+  if (!w || !h || Math.max(w / h, h / w) < 5 || Math.min(w, h) > 16) return false;
+  const st = c.st;
+  if (st._shape === 'line' || st.shape === 'line') return Number(st.strokeWidth || 1) >= 3;
+  const fill = String(st.fillColor || '').trim().toLowerCase();
+  if (fill === 'strokecolor') return true;
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/.exec(fill);
+  if (!m) return false;
+  const hex = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1];
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return Math.max(r, g, b) < 0x60; // black or near black
+}
+
+// --- colours and images --------------------------------------------------------------
+
+const HUE_NAMES = { blue: 'blue', teal: 'teal', green: 'green', amber: 'yellow', rose: 'red', violet: 'purple', orange: 'orange', slate: 'grey' };
+
+/** Role hue of a cell from its fill (else its line) colour; null for white, black, none or default. */
+export function cellHue(st) {
+  const pick = (c) => {
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(c || '').trim());
+    if (!m) return null;
+    const hex = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1];
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const l = (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+    if (l > 0.97 || l < 0.1) return null; // white / black: no colour intent
+    return hueOf(`#${hex}`);
+  };
+  return pick(st.fillColor) || (st.strokeColor && !/^#?(0{3}|0{6})$/i.test(st.strokeColor) ? pick(st.strokeColor) : null);
+}
+
+/**
+ * Roles from fill colours. A type drawn in one colour gets that colour; a type drawn
+ * in several keeps the commonest for itself and splits the others into
+ * `<type>-<hue>` roles ("Step (red)"), so the legend still tells them apart.
+ */
+function colourRoles(nodes) {
+  const byType = new Map();
+  for (const n of nodes) {
+    if (!byType.has(n.type)) byType.set(n.type, new Map());
+    const k = n.hue || '';
+    byType.get(n.type).set(k, [...(byType.get(n.type).get(k) || []), n]);
+  }
+  const overrides = {};
+  for (const [type, buckets] of byType) {
+    const base = Object.hasOwn(SHAPE_ROLES, type) ? SHAPE_ROLES[type] : Object.hasOwn(EXTRA_ROLES, type) ? EXTRA_ROLES[type] : { label: type };
+    const sorted = [...buckets].sort((a, b) => b[1].length - a[1].length || (a[0] ? 0 : -1));
+    const [mainHue] = sorted[0];
+    if (mainHue) overrides[type] = { color: mainHue };
+    for (const [hue, members] of sorted.slice(1)) {
+      if (!hue) continue; // uncoloured shapes of a split type keep the base role
+      const t = `${type}-${hue}`;
+      for (const n of members) n.type = t;
+      overrides[t] = { label: `${base.label} (${HUE_NAMES[hue]})`, color: hue, ...(base.icon ? { icon: base.icon } : {}) };
+    }
+  }
+  return overrides;
+}
+
+/** Built-in icon for an image shape, from its shape, resource icon or file name. */
+const IMAGE_ICONS = [
+  [/database|\bsql|\brds\b|dynamo|cosmos|aurora|\bdb\b|redis|cache|mongo|postgres|mysql|storage|\bs3\b|bucket|\bblob/, 'database'],
+  [/lambda|function|serverless/, 'zap'],
+  [/\busers\b|\bgroups?\b|people|team/, 'users'],
+  [/\buser\b|person|actor|customer|avatar/, 'user'],
+  [/\bkey\b|kms|secret|vault|certificate/, 'key'],
+  [/shield|security|firewall|\bwaf\b|guard|\block\b|\biam\b/, 'shield'],
+  [/mail|email|\bses\b|\bsmtp/, 'mail'],
+  [/globe|internet|\bdns\b|route.?53|\bcdn\b|cloudfront|front.?door|\bweb\b|www/, 'globe'],
+  [/queue|\bsqs\b|kafka|event.?bus|eventbridge|service.?bus|kinesis|stream|layer|stack/, 'layers'],
+  [/container|docker|\becs\b|\beks\b|\baks\b|\bpod\b|kubernetes|k8s|package|\becr\b/, 'package'],
+  [/monitoring|cloudwatch|metric|insights|activity|graph|analytics/, 'activity'],
+  [/\bcpu\b|chip|processor|\bgpu\b|sagemaker|machine.?learning|\bml\b/, 'cpu'],
+  [/server|\bec2\b|virtual.?machine|\bvm\b|instance|compute|\bhost\b|rack/, 'server'],
+  [/monitor|desktop|laptop|browser|screen|client|mobile|phone|tablet|device/, 'monitor'],
+  [/settings|gear|\bcog\b|config/, 'settings'],
+  [/truck|delivery|shipping|vehicle/, 'truck'],
+  [/warehouse|inventory/, 'warehouse'],
+  [/building|office|data.?cent(er|re)|factory|bank/, 'building'],
+  [/\bflag\b|milestone/, 'flag'],
+  [/heart|health/, 'heart'],
+  [/award|badge|certified/, 'award'],
+  [/target|crosshair|goal/, 'crosshair'],
+  [/cloud|\baws\b|azure|\bgcp\b/, 'cloud']
+];
+
+/** { icon?, label } for an image shape (shape=image, image=..., cloud icon sets), else null. */
+export function imageOf(st) {
+  const iconSet = /^mxgraph\.(aws\d*|azure\d*|gcp\d*|cisco\w*|kubernetes|office|veeam\w*|ibm\w*|alibaba\w*|citrix|networks?|signs|webicons|mscae|salesforce|sap|lean_mapping)\b/i;
+  const isImage = st._shape === 'image' || 'image' in st || iconSet.test(st._shape || '') || !!st.resIcon || !!st.prIcon;
+  if (!isImage) return null;
+  const file = /^data:/i.test(st.image || '') ? '' : String(st.image || '').split(/[/\\]/).pop().replace(/\.(svg|png|jpe?g|gif|webp)$/i, '');
+  const parts = [st.resIcon, st.prIcon, st._shape !== 'image' ? st._shape : '', file].filter(Boolean).map((p) => String(p).replace(/^mxgraph\.[\w]+\./, '').replace(/^img\/lib\//, ''));
+  const words = parts.join(' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_.\-/]+/g, ' ').toLowerCase();
+  const icon = words ? IMAGE_ICONS.find(([re]) => re.test(words))?.[1] : undefined;
+  const name = (parts[0] || '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_.\-/]+/g, ' ').trim();
+  return { icon, label: name ? name.replace(/^\w/, (ch) => ch.toUpperCase()) : '' };
+}
+
+// --- PNG with an embedded diagram -----------------------------------------------------
+
+export const isPng = (b) => b?.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
+
+/**
+ * The draw.io XML embedded in a PNG export ("Include a copy of my diagram"): a
+ * `tEXt`, `zTXt` or `iTXt` chunk with the keyword `mxfile` (or `mxGraphModel`).
+ */
+export function drawioFromPng(bytes) {
+  const b = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
+  if (!isPng(b)) throw new Error('Not a PNG file.');
+  const latin1 = (x) => Array.from(x, (c) => String.fromCharCode(c)).join('');
+  const zlib = (x) => inflateRaw(x.subarray(2)); // skip the 2-byte zlib header
+  for (let p = 8; p + 8 <= b.length; ) {
+    const len = ((b[p] << 24) | (b[p + 1] << 16) | (b[p + 2] << 8) | b[p + 3]) >>> 0;
+    const type = latin1(b.subarray(p + 4, p + 8));
+    const data = b.subarray(p + 8, p + 8 + len);
+    p += 12 + len;
+    if (type === 'IEND') break;
+    if (!/^(tEXt|zTXt|iTXt)$/.test(type)) continue;
+    const z = data.indexOf(0);
+    if (z < 0 || !/^(mxfile|mxGraphModel)$/.test(latin1(data.subarray(0, z)))) continue;
+    let text;
+    if (type === 'tEXt') text = latin1(data.subarray(z + 1));
+    else if (type === 'zTXt') text = new TextDecoder().decode(zlib(data.subarray(z + 2)));
+    else {
+      const compressed = data[z + 1] === 1;
+      let q = z + 3;
+      q = data.indexOf(0, q) + 1; // language tag
+      q = data.indexOf(0, q) + 1; // translated keyword
+      const body = data.subarray(q);
+      text = new TextDecoder().decode(compressed ? zlib(body) : body);
+    }
+    if (/^\s*%3C/i.test(text)) {
+      try {
+        text = decodeURIComponent(text);
+      } catch {
+        // keep as is
+      }
+    }
+    return text;
+  }
+  throw new Error('This PNG has no embedded draw.io diagram. In draw.io, export as PNG with "Include a copy of my diagram" ticked, or save as .drawio.');
 }
 
 /**

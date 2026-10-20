@@ -1,0 +1,17 @@
+---
+title: Mobile app launch
+---
+gantt
+    dateFormat YYYY-MM-DD
+    section Design
+    UX research          :done, research, 2026-09-28, 10d
+    Screen designs       :done, screens, after research, 8d
+    Design sign-off      :milestone, signoff, after screens, 0d
+    section Build
+    API endpoints        :active, api, 2026-10-05, 25d
+    App screens          :app, after signoff, 28d
+    Payments integration :crit, pay, after api, 14d
+    section Release
+    Security review      :crit, sec, after pay app, 5d
+    Beta with staff      :beta, after sec, 7d
+    Store launch         :milestone, launch, after beta, 0d

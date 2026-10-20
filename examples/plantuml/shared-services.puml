@@ -1,0 +1,9 @@
+@startuml
+!include shared/styles.iuml
+title $company services
+[Web shop] as web
+[Orders API] as api
+DB "Orders DB" as db
+web --> api : places orders
+api --> db : stores
+@enduml

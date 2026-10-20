@@ -225,9 +225,9 @@ test('stateDiagram: [*] start and end, labels, choice, composite states and note
   assert.equal(n('Idle').data.title, 'Waiting for input');
   assert.equal(n('Busy').data.subtitle, 'Runs the job');
   assert.equal(n('ok').shape, 'choice');
-  assert.equal(n('Done-start').shape, 'initial');
+  assert.ok(!n('Done-start') && !n('Done-end'), 'a composite entered and left from outside drops its inner start and end');
   assert.ok(!n('Done'), 'a composite becomes a group, not a node');
-  assert.deepEqual(payload.groups, [{ id: 'Done', title: 'Done', nodes: ['Done-start', 'Saving', 'Saved', 'Done-end'] }]);
+  assert.deepEqual(payload.groups, [{ id: 'Done', title: 'Done', nodes: ['Saving', 'Saved'] }]);
   const e = (s, t) => payload.edges.find((x) => x.source === s && x.target === t);
   assert.equal(e('Busy', 'Busy').label, 'tick');
   assert.ok(e('ok', 'Saving'), 'into the composite = into its first state');
@@ -242,7 +242,25 @@ test('stateDiagram: [*] start and end, labels, choice, composite states and note
 test('stateDiagram: direction, fork/join and unknown lines', () => {
   const { payload, warnings } = fromMermaid('stateDiagram\n  direction LR\n  state f <<fork>>\n  [*] --> f\n  f --> A : go\n  A --> [*]\n  ??? what');
   assert.equal(payload.meta.layout.direction, 'LR');
-  assert.equal(payload.nodes.find((x) => x.id === 'f').shape, 'state');
-  assert.ok(warnings.some((w) => /<<fork>>/.test(w)));
+  assert.equal(payload.nodes.find((x) => x.id === 'f').shape, 'fork');
+  assert.ok(!warnings.some((w) => /<<fork>>/.test(w)));
   assert.ok(warnings.some((w) => /could not parse/.test(w)));
+});
+
+test('stateDiagram: concurrent regions become region groups; fork and join become bars', () => {
+  const src = 'stateDiagram-v2\n  [*] --> Cart\n  state Split <<fork>>\n  Cart --> Split : order\n  Split --> Work\n  state Work {\n    [*] --> Pay\n    Pay --> Paid : ok\n    Paid --> [*]\n    --\n    [*] --> Pick\n    Pick --> Packed : done\n    Packed --> [*]\n  }\n  state Merge <<join>>\n  Work --> Merge\n  Merge --> Shipped : ship\n  Shipped --> [*]';
+  const { payload } = fromMermaid(src);
+  const n = (id) => payload.nodes.find((x) => x.id === id);
+  assert.deepEqual([n('Split').shape, n('Merge').shape, n('Split').type], ['fork', 'fork', 'fork']);
+  assert.deepEqual(payload.groups, [
+    { id: 'Work', title: 'Work', nodes: [] },
+    { id: 'Work-region-1', title: 'Work 1', kind: 'region', parent: 'Work', nodes: ['Pay', 'Paid'] },
+    { id: 'Work-region-2', title: 'Work 2', kind: 'region', parent: 'Work', nodes: ['Pick', 'Packed'] }
+  ]);
+  const e = (s, t) => payload.edges.find((x) => x.source === s && x.target === t);
+  assert.ok(e('Split', 'Pay') && e('Split', 'Pick'), 'a transition into the composite enters every region');
+  assert.ok(e('Paid', 'Merge') && e('Packed', 'Merge'), 'and leaves from every region');
+  const r = lint(payload);
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.warnings, []);
 });

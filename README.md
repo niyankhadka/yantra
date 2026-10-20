@@ -48,9 +48,11 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   and methods (visibility, «stereotype»), growing with their rows; crow's foot cardinality and
   UML heads (inheritance, realization, composition, aggregation, dependency) at edge ends,
   edges attached to field rows (foreign key → key), multiplicity labels at either end.
-- **Import**: `yantra import` turns Mermaid flowcharts, sequence, state, ER and class diagrams
-  and mind maps, draw.io / diagrams.net files and PlantUML sequence, component, use-case,
-  activity, state, class and mind-map / WBS diagrams into payloads. See
+- **Import**: `yantra import` turns Mermaid flowcharts, sequence, state, ER and class diagrams,
+  mind maps and journeys, draw.io / diagrams.net files (and PNG exports), Visio `.vsdx` files
+  and PlantUML sequence, component, use-case, activity, state, class, object, ER and
+  mind-map / WBS diagrams into payloads, and Mermaid gantt / pie / timeline / quadrant charts
+  and PlantUML Gantt charts into answer pages. See
   [`docs/mermaid.md`](docs/mermaid.md) and [`docs/import.md`](docs/import.md).
 - **Accessible and shareable**: full keyboard control, state mirrored in the URL hash,
   print stylesheet, light and dark themes with WCAG contrast tests on the design tokens.
@@ -79,11 +81,12 @@ from a clone as below.
 
 | Source | Command | Supported | Guide |
 |---|---|---|---|
-| Mermaid (`.mmd`, ```mermaid in `.md`) | `yantra import flow.mmd` | flowchart / graph, sequenceDiagram | [`docs/mermaid.md`](docs/mermaid.md) |
-| draw.io / diagrams.net (`.drawio`, `.xml`, `.drawio.svg`, compressed or not) | `yantra import model.drawio [--page n]` | shapes, containers / swimlanes → groups, edge labels | [`docs/import.md`](docs/import.md) |
-| PlantUML (`.puml`, ```plantuml in `.md`) | `yantra import login.puml` | sequence, component / deployment / use case, activity | [`docs/import.md`](docs/import.md) |
+| Mermaid (`.mmd`, ```mermaid in `.md`) | `yantra import flow.mmd` | flowchart, sequence, state, ER, class, mind map, journey; gantt, pie, timeline, quadrant → pages | [`docs/mermaid.md`](docs/mermaid.md) |
+| draw.io / diagrams.net (`.drawio`, `.xml`, `.drawio.svg`, `.drawio.png`, compressed or not) | `yantra import model.drawio [--page n]` | shapes, colours, icons, containers / swimlanes → groups, edge labels, ER and UML ends | [`docs/import.md`](docs/import.md) |
+| Visio (`.vsdx`) | `yantra import process.vsdx [--page n]` | shapes, glued connectors, groups | [`docs/import.md`](docs/import.md) |
+| PlantUML (`.puml`, ```plantuml in `.md`) | `yantra import login.puml` | sequence, component / deployment / use case, activity, state, class, object, ER, mind map, WBS, Gantt (page); `!include` inside the folder | [`docs/import.md`](docs/import.md) |
 
-The format is detected from the extension or the content; `--from mermaid|drawio|plantuml`
+The format is detected from the extension or the content; `--from mermaid|drawio|plantuml|visio`
 forces it. Every import is validated straight away.
 
 ## Quick start
@@ -108,7 +111,7 @@ node bin/yantra.js screenshot diagram.json     # -> diagram-light.png
 | Who calls whom, in what order? (protocols, APIs) | **Diagram** with `meta.view: "sequence"` | `examples/oauth-login.json` |
 | What tables or classes exist and how do they relate? | **Diagram** with `fields` / `methods` and edge `relation` / `sourceEnd` / `targetEnd` | `examples/ecommerce-schema.json`, `examples/payment-classes.json` |
 | What is the answer / which option / what happened? | **Answer page** (`"kind": "page"`) | `yantra new x.json --page`, `examples/answer-*.json` |
-| I already have a Mermaid, draw.io or PlantUML sketch | `yantra import sketch.mmd` (or `.drawio`, `.puml`) | `examples/mermaid/`, `examples/drawio/`, `examples/plantuml/` |
+| I already have a Mermaid, draw.io, PlantUML or Visio sketch | `yantra import sketch.mmd` (or `.drawio`, `.puml`, `.vsdx`) | `examples/mermaid/`, `examples/drawio/`, `examples/plantuml/`, `examples/visio/` |
 
 ## A diagram in 20 lines
 

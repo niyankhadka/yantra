@@ -1,0 +1,38 @@
+@startuml
+title Shop data model
+hide circle
+skinparam linetype ortho
+
+entity "Customer" as customer {
+  *id : uuid <<generated>>
+  --
+  *email : text <<UK>>
+  name : text
+}
+
+entity "Order" as order {
+  *id : uuid <<generated>>
+  --
+  *customer_id : uuid <<FK>>
+  placed_at : timestamp
+  status : text
+}
+
+entity "Order line" as line {
+  *order_id : uuid <<FK>>
+  *product_id : uuid <<FK>>
+  --
+  quantity : int
+}
+
+entity "Product" as product {
+  *id : uuid
+  --
+  *sku : text <<UK>>
+  price : numeric(10,2)
+}
+
+customer ||--o{ order : places
+order ||--|{ line : contains
+product ||--o{ line : "appears in"
+@enduml

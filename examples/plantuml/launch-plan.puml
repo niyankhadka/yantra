@@ -1,0 +1,23 @@
+@startgantt
+title Website relaunch
+Project starts 2026-10-05
+today is 2026-10-20
+saturday are closed
+sunday are closed
+
+-- Design --
+[Content audit] as [audit] lasts 5 days and is 100% completed
+[Wireframes] lasts 8 days and is 60% completed
+[Wireframes] starts at [audit]'s end
+[Design sign-off] happens at [Wireframes]'s end
+
+-- Build --
+[Templates] lasts 15 days
+[Templates] starts at [Wireframes]'s end
+then [Content migration] lasts 10 days
+[Templates] -> [Accessibility review]
+[Accessibility review] lasts 4 days
+
+-- Launch --
+[Go live] happens at [Content migration]'s end
+@endgantt

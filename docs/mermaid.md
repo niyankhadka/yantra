@@ -2,8 +2,10 @@
 
 Yantra can turn a Mermaid **flowchart** (`graph` / `flowchart`), **sequence diagram**
 (`sequenceDiagram`), **state diagram** (`stateDiagram` / `stateDiagram-v2`), **ER diagram**
-(`erDiagram`), **class diagram** (`classDiagram`) or **mind map** (`mindmap`) into a diagram
-payload with roles, groups and a walkthrough. The
+(`erDiagram`), **class diagram** (`classDiagram`), **mind map** (`mindmap`) or **user journey**
+(`journey`) into a diagram payload with roles, groups and a walkthrough, and a **gantt**,
+**pie**, **timeline** or **quadrantChart** into a one-page answer (`"kind": "page"`, see
+[Charts and plans](#charts-and-plans-answer-pages)). The
 parser is small and dependency-free (`src/core/mermaid.js`); it is not a full Mermaid
 implementation, so check the warnings it prints.
 
@@ -94,11 +96,12 @@ The scenario starts with an overview step and keeps every message as its own ste
 | `A --> [*]` | a final pseudo-state (`shape: "final"`, id `end`), one per scope |
 | `A --> B : event`, `A --> A : event` | transition with `label`; a self-loop is kept |
 | `state X <<choice>>` | `shape: "choice"`, type `choice` ("Choice") |
-| `state X <<fork>>` / `<<join>>` | a plain state (warning) |
+| `state X <<fork>>` / `<<join>>` | a fork / join bar (`shape: "fork"`, type `fork`, "Fork / join"); its transitions need no label |
 | `state C { ... }` | group `C` (nested composites get `parent`); its own `[*]` become `C-start` / `C-end` |
-| transition to / from a composite | attached to its entry state (target of its `[*]`) / exit state (source into its `[*]`), with a warning |
+| `--` inside `state C { ... }` (concurrent regions) | `C` keeps no nodes; each region is a child group `C-region-1`, `C-region-2` ... (`"kind": "region"`, `"parent": "C"`) with that region's states (and its own start / end) |
+| transition to / from a composite | attached to its entry state (target of its `[*]`) / exit state (source into its `[*]`), with a warning; with regions, to the entry (from the exit) of every region, so a fork fans out into each one. The composite's own start (end) dots are then dropped |
 | `note left of / right of X : text`, `note ... end note` | ignored, with one warning counting the notes |
-| `--` (concurrent regions), `classDef`, `class`, `:::`, `style`, `scale`, `hide`, `direction` inside a composite | ignored with one warning per kind |
+| `classDef`, `class`, `:::`, `style`, `scale`, `hide`, `direction` inside a composite | ignored with one warning per kind |
 
 The walkthrough is built as for flowcharts (overview, then states in topological order);
 self-loops are mentioned on their state's step. Transitions out of a start or into an end
@@ -109,6 +112,9 @@ need no label; the validator does not ask for one.
 | Mermaid | Yantra |
 |---|---|
 | `CUSTOMER {` ... `string id PK "comment"` ... `}` | entity card (type `entity`, icon `database`) with `fields`: `{ name, type, pk/fk/unique, note }` (`PK, FK` lists both) |
+| `CUSTOMER { string id PK; string name }` (one line, `;` optional) | the same card |
+| `EMPLOYEE \|o--o{ EMPLOYEE : manages` | a self-relationship, drawn as a loop on the card |
+| a foreign key named after the other entity (`customer_id`, `customerId`; plural names lose their `s`) | `sourceField` / `targetField`: the edge joins the key rows (`id` ↔ `customer_id`). A self-relationship takes the entity's one foreign key no other relationship explains (`manager_id`). When the rows cannot be routed cleanly the edge falls back to card sides (one warning) |
 | `CUSTOMER \|\|--o{ ORDER : places` | edge `places` with `sourceEnd: "one"`, `targetEnd: "zero-or-many"` |
 | `\|\|`, `\|o` / `o\|`, `}o` / `o{`, `}\|` / `\|{` | `one`, `zero-or-one`, `zero-or-many`, `one-or-many` |
 | `only one to zero or more`, `1+`, `many(0)`, ... | the same cardinalities from the word forms (`optionally to` is dashed) |
@@ -126,6 +132,7 @@ more than seven) describing both cardinalities.
 | Mermaid | Yantra |
 |---|---|
 | `class Duck {` ... `+String beak` ... `+swim()` ... `}`, `Duck : +int age` | class card: attributes in `fields`, operations in `methods` |
+| `class Duck { +String beak; +swim() }` (one line) | the same; members split on `;` |
 | `+ - # ~` | `visibility`; `$` → `static`, `*` → `abstract` (methods: after `()` or the return type) |
 | `+area(w: int) double`, `-name: String`, `String name` | `{ name, params, type }`; generics `List~T~` become `List<T>` |
 | `<<interface>>` (in the block or `<<interface>> Name`) | `data.stereotype`; type `interface`, `abstract`, `enumeration` or `class` (one role each) |
@@ -136,7 +143,9 @@ more than seven) describing both cardinalities.
 | `A --> B`, `B <-- A` | `association` (open arrow at the target) |
 | `A ..> B`, `B <.. A` | `dependency` (dashed) |
 | `A -- B`, `A .. B` | `association` / `dependency` with `targetEnd: "none"` |
-| `A "1" *-- "many" B : label` | label kept; multiplicities go into the step text (and the label when there is none) |
+| `A "1" *-- "many" B : label` | label kept; multiplicities become end labels: `sourceLabel: "1"`, `targetLabel: "many"` (also in the step text) |
+| `Shape ()-- Circle`, `Circle --() Shape` (lollipop) | `relation: "realization"` from the interface (`Shape`, given `<<interface>>` when it has no stereotype) |
+| `Node --> Node : children` | a self-relationship, drawn as a loop on the card |
 | `namespace Shop { ... }` | `groups[]` |
 | `note for Duck "text"`, `note "text"` | the class description, or the overview step |
 | `class A["Label"]`, `direction`, `title` | title, `meta.layout.direction` (default `TB`), `meta.title` |
@@ -147,16 +156,51 @@ Car", "Order depends on PaymentMethod".
 
 ## Limitations
 
-- Flowcharts, sequence, state, ER and class diagrams; other types (`gantt`, `pie`, ...) are rejected with an error.
+- Diagrams: flowcharts, sequence, state, ER, class, mind maps and journeys; pages: gantt, pie,
+  timeline and quadrantChart. Other types (`gitGraph`, `sankey-beta`, `xychart-beta`, `C4Context`,
+  `block-beta`, `requirementDiagram`, ...) are rejected with an error listing what is supported.
 - Flowcharts: circle and cross heads (`--o`, `--x`, `o--o`) are drawn as plain arrows.
-- State diagrams: notes, concurrent regions (`--`) and fork/join bars are not drawn; composite states are groups, so a transition to the composite itself lands on its entry state.
-- ER and class diagrams: relationships attach to card sides, not to individual attribute rows;
-  self-relationships (`A ||--o{ A`) are dropped with a warning; lollipop interfaces (`()--`) are not parsed.
+- State diagrams: notes are not drawn; composite states are groups, so a transition to the
+  composite itself lands on its entry state (in every region).
+- ER diagrams: key rows are matched by name only (`<entity>_id`); other relationships attach to
+  card sides. Class relationships always attach to card sides.
 - Mermaid styling (`style`, `linkStyle`, colours other than `classDef` fill) and interactions (`click`) are dropped.
 - Per-subgraph `direction` is ignored (layout is automatic).
 - Node ids with hyphens before `-`, `.`, `o` or `x` (e.g. `a--ob`) can be ambiguous; add spaces around links.
 - Groups are emitted in the payload; how they are drawn depends on the viewer version.
 - Larger graphs import but may exceed the 14-node / 20-edge budget; split them as described in `docs/authoring.md`.
+
+## Charts and plans (answer pages)
+
+These Mermaid types describe data rather than a structure, so they become a one-page answer
+(`"kind": "page"`, see [`pages.md`](pages.md)) whose headline is computed from the data (the
+span of the plan, the largest slice, the busiest quadrant). Rewrite it as the real answer
+before sharing; the page footer says so.
+
+| Mermaid | Yantra page |
+|---|---|
+| `gantt` | a `gantt` block; `title` → `meta.title`; `section` → item `group` |
+| `Task : id, 2026-10-05, 10d` | `{ title, id, start: "05/10/2026", days: 10 }` (dates follow `dateFormat`: `YYYY`, `YY`, `MM`, `DD` tokens; times are dropped) |
+| `: after a b, 2w`, `: 3d` (no start) | `after: ["a", "b"]`, `days: 14`; no start: after the task above |
+| `: 2026-10-06, 2026-10-09` | end dates are exclusive in Mermaid: `days: 3` (`inclusiveEndDates` keeps the last day) |
+| `done`, `crit`, `milestone`, `active` tags | `progress: 100`, `tone: "bad"`, `milestone: true`; `active` has no mark |
+| `h` / `m` durations, `M` / `y` | rounded up to whole days; months count 30 days, years 365 (warning) |
+| `excludes`, `weekend`, `todayMarker`, `axisFormat`, `tickInterval`, `click` | ignored with one warning per kind (durations count calendar days) |
+| `pie [showData]`, `title`, `"Label" : 42` | a `chart` block, `kind: "pie"`, slices largest first; above 8 slices the smallest merge into "Other" (warning) |
+| `timeline`, `title`, `period : event : event`, `: event` (continued) | a `timeline` block per `section` (one when there are none); a period with several events joins them in the title, or lists the rest in `text` when long |
+| `quadrantChart`, `x-axis Low --> High`, `y-axis ...` | a `matrix` block (2x2) with `x` / `y` `{ low, high, min: 0, max: 1 }` |
+| `quadrant-1` ... `quadrant-4` | `quadrants` in matrix order: 2 (top left), 1 (top right), 3, 4 |
+| `Point A: [0.3, 0.6]` (`radius`, `color`, `:::class` dropped with a warning) | `items: [{ label, x, y }]` |
+
+`journey` stays a diagram: one card per task with its score as the badge (`4/5`) and the
+actors as the subtitle, types `good` (4-5, green), `neutral` (3, amber) and `pain` (1-2, red),
+`section`s as groups, tasks linked in order (`then`, `next stage`) left to right, and a
+walkthrough with one step per section whose overview names the pain points.
+
+Samples: `launch-gantt.mmd`, `traffic-sources.mmd`, `product-timeline.mmd`,
+`feature-priorities.mmd`, `checkout-journey.mmd`; also `library-classes.mmd` (one-line
+classes, multiplicities, a lollipop and a self-relationship), `staff-schema.mmd` (one-line
+entities, key rows, a self-relationship) and `parallel-checkout.mmd` (fork, join and regions).
 
 ## Mind maps
 

@@ -1,0 +1,4 @@
+' Shared definitions for the team diagrams
+!$company = "Acme"
+!define DB database
+skinparam shadowing false

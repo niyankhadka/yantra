@@ -15,8 +15,8 @@ Every output is a single offline HTML file. Pick one:
 | a hierarchy: org chart, decision tree, breakdown, taxonomy, mind map | **diagram** with `meta.layout.algorithm: "tree"` or `"mindmap"` | `docs/authoring.md` (Trees, org charts and mind maps) |
 | a database schema (ERD) or class diagram | **diagram** with node `fields` / `methods`, edge `sourceEnd` / `targetEnd` or `relation` | `docs/authoring.md` (Data models) |
 | an answer, explanation, comparison or decision on one page | **answer page** (`"kind": "page"`) | `docs/pages.md`, `schemas/yantra-page.schema.json` |
-| their Mermaid flowchart / sequence / state / ER / class diagram or mind map as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
-| their draw.io (`.drawio`) or PlantUML (`.puml`) diagram as Yantra | `node bin/yantra.js import file.drawio` (`--page n`) then review | `docs/import.md` |
+| their Mermaid flowchart / sequence / state / ER / class diagram, mind map or journey as Yantra (a gantt, pie, timeline or quadrantChart becomes an answer page) | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
+| their draw.io (`.drawio`, `.drawio.png`), Visio (`.vsdx`) or PlantUML (`.puml`, `@startgantt` → page) diagram as Yantra | `node bin/yantra.js import file.drawio` (`--page n`) then review | `docs/import.md` |
 
 For "explain how X works", make the diagram first, then the page around it
 (`{ "type": "diagram", "src": "flow.json" }`). References: `examples/*.json`
@@ -100,7 +100,7 @@ For "explain how X works", make the diagram first, then the page around it
    plus any warnings you chose to keep. `export -f md` gives a Markdown copy to paste.
 
 With the MCP server connected the same actions are tools: `yantra_get_schema` (pass
-`kind: "page"` for pages), `yantra_get_example`, `yantra_import` (Mermaid, draw.io, PlantUML),
+`kind: "page"` for pages), `yantra_get_example`, `yantra_import` (Mermaid, draw.io, PlantUML, Visio),
 `yantra_import_mermaid`, `yantra_validate`,
 `yantra_build`, `yantra_export`, `yantra_screenshot`.
 

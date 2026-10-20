@@ -5,7 +5,7 @@
  *   yantra build <diagram.json> [-o out.html] [--collapsed id,id | --expand-all]
  *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels] [--collapsed id,id | --expand-all]
  *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id] [--collapsed id,id | --expand-all]
- *   yantra import <file.mmd|file.md|file.drawio|file.puml> [-o out.json] [--from mermaid|drawio|plantuml] [--page n] [--title "..."] [--all]
+ *   yantra import <file.mmd|file.md|file.drawio|file.puml|file.vsdx|file.drawio.png> [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n] [--title "..."] [--all]
  *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp   yantra dev
  * Works with diagrams and with one-page answers ({ "kind": "page" }).
  */
@@ -23,6 +23,7 @@ import { importText, FORMATS } from '../src/core/import.js';
 import { collectDiagrams, getLevel } from '../src/core/drill.js';
 import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
+import { fileIncluder } from '../lib/includes.js';
 
 const HELP = `Yantra - interactive, step-by-step diagrams
 
@@ -34,7 +35,7 @@ Usage
   yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
   yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--width] [--height]
   yantra new <file.json> [--page]              Write a starter diagram (or answer page)
-  yantra import <file>                         Convert Mermaid (flowchart, sequence, state, ER, class; .mmd/.md), draw.io (.drawio/.xml) or PlantUML (.puml)  [-o out.json] [--from mermaid|drawio|plantuml] [--page n|name] [--title "..."] [--all]
+  yantra import <file>                         Convert Mermaid (.mmd/.md; diagrams, or gantt / pie / timeline / quadrant pages), draw.io (.drawio/.xml/.png), PlantUML (.puml) or Visio (.vsdx)  [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n|name] [--title "..."] [--all]
   yantra examples [name] [-o file]             List built-in examples, or copy one
   yantra mcp                                   Start the MCP server (stdio)
   yantra dev                                   Start the live editor at http://localhost:3000
@@ -271,13 +272,15 @@ try {
     }
 
     case 'import': {
-      if (!input) fail('Missing input file: yantra import <file.mmd|file.md|file.drawio|file.puml> [-o out.json] [--from mermaid|drawio|plantuml] [--page n] [--title "..."] [--all]');
+      if (!input) fail('Missing input file: yantra import <file.mmd|file.md|file.drawio|file.puml|file.vsdx|file.drawio.png> [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n] [--title "..."] [--all]');
       if (args.from !== undefined && !FORMATS.includes(args.from)) fail(`Unknown --from "${args.from}" (use ${FORMATS.join(', ')}).`);
       const src = path.resolve(input);
       if (!fs.existsSync(src)) fail(`File not found: ${src}`);
-      const { format, results } = importText(fs.readFileSync(src, 'utf-8'), {
+      const { format, results } = importText(fs.readFileSync(src), {
         format: args.from,
         filename: path.basename(src),
+        include: fileIncluder(path.dirname(src)), // PlantUML !include: files next to the input only
+        path: src,
         title: typeof args.title === 'string' ? args.title : undefined,
         page: typeof args.page === 'string' ? args.page : undefined,
         all: !!args.all
@@ -288,7 +291,7 @@ try {
         const out = results.length > 1 ? base.replace(/(\.json)?$/i, `-${i + 1}.json`) : base;
         for (const w of warnings) console.error(`  import  ${w}`);
         fs.writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`);
-        console.error(`✓ Wrote ${out} (${format}: ${payload.nodes.length} nodes, ${payload.edges.length} edges)`);
+        console.error(`✓ Wrote ${out} (${format}: ${isPage(payload) ? `answer page, ${payload.blocks.length} block${payload.blocks.length === 1 ? '' : 's'}` : `${payload.nodes.length} nodes, ${payload.edges.length} edges`})`);
         const report = lint(payload);
         printReport(report, path.basename(out));
         if (!report.valid) failed = true;

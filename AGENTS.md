@@ -10,7 +10,7 @@ Follow `.claude/skills/yantra/SKILL.md` (same file in `.agents/skills/yantra/`).
 
 ```bash
 node bin/yantra.js new diagram.json          # starter payload (--page for an answer page)
-node bin/yantra.js import sketch.mmd         # or start from Mermaid (flowchart / sequence / state / ER / class), draw.io (.drawio) or PlantUML (.puml)
+node bin/yantra.js import sketch.mmd         # or start from Mermaid, draw.io (.drawio, .png), Visio (.vsdx) or PlantUML (.puml)
 node bin/yantra.js validate diagram.json     # schema, references, story, geometry
 node bin/yantra.js build diagram.json        # -> diagram.html
 node bin/yantra.js screenshot diagram.json   # -> diagram-light.png, then look at it
@@ -27,7 +27,7 @@ Python SDK: `pip install -e python/` (see `python/README.md`).
 
 - `src/core/` - pure ES modules shared by browser, CLI and MCP: model, layout, routing,
   scene, sequence view (`sequence.js`), lint, SVG and Markdown export, answer pages
-  (`page.js`), importers (`mermaid.js`, `drawio.js` + `inflate.js`, `plantuml.js`, shared
+  (`page.js`), importers (`mermaid.js`, `drawio.js` + `inflate.js`, `visio.js`, `plantuml.js`, chart pages in `importcharts.js`, shared
   assembly in `importkit.js`, dispatch in `import.js`), theme tokens. No DOM access here.
 - `src/app/` + `src/styles/` - the browser viewer. Card metrics in `src/styles/diagram.css`
   must match `CARD` in `src/core/layout.js`.

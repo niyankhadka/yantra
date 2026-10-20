@@ -8,7 +8,7 @@
 import { humanize, GROUP_MAX_DEPTH } from './model.js';
 import { SHAPE_ROLES, shorten, assignRoles, flowSteps, ignoredCollector } from './mermaid.js';
 
-export { ignoredCollector, shorten };
+export { ignoredCollector, shorten, SHAPE_ROLES };
 
 export const MAX_TITLE = 42;
 export const MAX_LABEL = 28;
@@ -21,7 +21,9 @@ export const EXTRA_ROLES = {
   action: { label: 'Action', color: 'blue' },
   card: { label: 'Entity', color: 'violet' },
   table: { label: 'Table', color: 'violet' },
-  class: { label: 'Class', color: 'violet' }
+  class: { label: 'Class', color: 'violet' },
+  object: { label: 'Object', color: 'teal' },
+  map: { label: 'Map', color: 'amber' }
 };
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
@@ -113,12 +115,12 @@ function rolesFor(types, colors) {
 /**
  * Flow payload from a neutral graph.
  *   nodes:  [{ raw, label, type, data? (extra data fields), group? (raw group key), hint? (id hint) }]
- *   edges:  [{ from, to, label?, style?, arrow?, relation?, sourceEnd?, targetEnd? }]  (raw node keys; from === to is a self-loop)
+ *   edges:  [{ from, to, label?, style?, arrow?, relation?, sourceEnd?, targetEnd?, sourceField?, targetField?, sourceLabel?, targetLabel? }]  (raw node keys; from === to is a self-loop)
  *   groups: [{ raw, title, parent? (raw), color? }]
  * Groups nested deeper than the viewer allows are merged into their ancestor;
  * empty groups are dropped. Returns { payload, warnings } (warnings appended to ctx.warnings).
  */
-export function buildFlow({ nodes, edges, groups = [], direction = 'TB', title, description, warnings }) {
+export function buildFlow({ nodes, edges, groups = [], direction = 'TB', title, description, warnings, roleOverrides = {} }) {
   const nodeId = idFactory();
   const byRaw = new Map();
   const outNodes = [];
@@ -132,6 +134,8 @@ export function buildFlow({ nodes, edges, groups = [], direction = 'TB', title, 
   }
   const colors = new Map(Object.entries(EXTRA_ROLES).map(([k, v]) => [k, { color: v.color }]));
   const roles = rolesFor(outNodes.map((n) => n.type), colors);
+  // Explicit colours and labels (draw.io fills) win over the automatic palette
+  for (const [t, o] of Object.entries(roleOverrides)) if (roles[t]) Object.assign(roles[t], o);
 
   const eid = edgeIdFactory();
   const outEdges = [];
@@ -145,7 +149,7 @@ export function buildFlow({ nodes, edges, groups = [], direction = 'TB', title, 
     if (label) edge.label = label;
     if (e.style) edge.style = e.style;
     if (e.arrow && e.arrow !== 'forward') edge.arrow = e.arrow;
-    for (const k of ['relation', 'sourceEnd', 'targetEnd']) if (e[k]) edge[k] = e[k];
+    for (const k of ['relation', 'sourceEnd', 'targetEnd', 'sourceField', 'targetField', 'sourceLabel', 'targetLabel']) if (e[k]) edge[k] = e[k];
     outEdges.push(edge);
   }
   if (longLabels.length) warnings.push(`Shortened ${longLabels.length} edge label${longLabels.length > 1 ? 's' : ''} to ${MAX_LABEL} characters.`);
@@ -244,13 +248,14 @@ export function buildSequence({ participants, messages, boxes = [], preNotes = [
         const label = edgeLabel(msg.text, (l) => longLabels.push(l));
         if (label) edge.label = label;
         if (msg.dashed) edge.style = 'dashed';
+        if (msg.both) edge.arrow = 'both';
         pairs.set(key, edge);
         outEdges.push(edge);
       }
     }
     const from = tidy(parts.get(msg.from).label).replace(/\n/g, ' ');
     const to = tidy(parts.get(msg.to).label).replace(/\n/g, ' ');
-    let description = s === t ? `${from} handles this itself.` : `${from} → ${to}${msg.dashed ? ' (reply)' : ''}.`;
+    let description = s === t ? `${from} handles this itself.` : `${from} ${msg.both ? '↔' : '→'} ${to}${msg.dashed ? ' (reply)' : ''}.`;
     if (msg.context.length) description += ` Inside ${msg.context.join(', within ')}.`;
     if (msg.notes.length) description += ` ${msg.notes.join(' ')}`;
     const step = { id: `msg-${i + 1}`, title: msg.text ? shorten(msg.text, 80) : `${from} to ${to}`, description, highlightNodes: [...new Set([s, t])] };

@@ -1,0 +1,12 @@
+---
+title: Staff and projects
+---
+erDiagram
+    DEPARTMENT { int id PK; string name }
+    EMPLOYEE { int id PK; int department_id FK; int manager_id FK "null for the CEO"; string email UK }
+    PROJECT { int id PK; string code UK; string title }
+    ASSIGNMENT { int employee_id PK, FK; int project_id PK, FK; string role }
+    DEPARTMENT ||--o{ EMPLOYEE : employs
+    EMPLOYEE |o--o{ EMPLOYEE : manages
+    EMPLOYEE ||--o{ ASSIGNMENT : "works on"
+    PROJECT ||--|{ ASSIGNMENT : staffs

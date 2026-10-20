@@ -146,7 +146,7 @@ test('sequence diagrams: participants, deduped edges, one step per message, note
 test('sequence boxes become groups; unsupported diagrams throw', () => {
   const { payload } = fromMermaid('sequenceDiagram\n  box Aqua Frontend\n    participant W\n  end\n  W->>S: call');
   assert.deepEqual(payload.groups, [{ id: 'box-1', title: 'Frontend', nodes: ['W'] }]);
-  assert.throws(() => fromMermaid('gantt\n  title T'), /Unsupported Mermaid diagram type "gantt"/);
+  assert.throws(() => fromMermaid('gitGraph\n  commit'), /Unsupported Mermaid diagram type "gitGraph"/);
 });
 
 test('ER diagrams: entities, attributes with keys, cardinalities and labels', () => {
@@ -190,7 +190,7 @@ test('ER diagrams: word cardinalities, direction and parse warnings', () => {
   assert.deepEqual([edge(payload, 'A', 'B').sourceEnd, edge(payload, 'A', 'B').targetEnd], ['one', 'zero-or-many']);
   const bc = edge(payload, 'B', 'C');
   assert.deepEqual([bc.sourceEnd, bc.targetEnd, bc.style], ['one-or-many', 'one', 'dashed']);
-  assert.ok(warnings.some((w) => /self-relationship/.test(w)));
+  assert.deepEqual([edge(payload, 'A', 'A').sourceEnd, edge(payload, 'A', 'A').label], ['one', 'self'], 'self-relationships are kept as loops');
   assert.ok(warnings.some((w) => /could not parse "\?\?\?"/.test(w)));
 });
 
@@ -234,7 +234,8 @@ test('class diagrams: classes, annotations, relationship kinds and orientation',
   assert.deepEqual(rel('Swimmer', 'Duck'), ['realization']);
   assert.deepEqual(rel('Duck', 'Food'), ['association', 'eats']);
   assert.deepEqual(rel('Fish', 'Food'), ['dependency', 'needs'], '<.. points at the left class');
-  assert.deepEqual(rel('Zoo', 'Animal'), ['association', 'none', '1 to *'], 'a plain link has no head; multiplicities become the label');
+  assert.deepEqual(rel('Zoo', 'Animal'), ['association', 'none'], 'a plain link has no head');
+  assert.deepEqual([edge(payload, 'Zoo', 'Animal').sourceLabel, edge(payload, 'Zoo', 'Animal').targetLabel], ['1', '*'], 'multiplicities sit at the ends');
   assert.equal(node(payload, 'Swimmer').type, 'interface');
   assert.equal(node(payload, 'Swimmer').data.stereotype, 'interface');
   assert.deepEqual(node(payload, 'Swimmer').data.methods, [{ visibility: '+', name: 'swim' }]);
@@ -244,7 +245,6 @@ test('class diagrams: classes, annotations, relationship kinds and orientation',
   assert.equal(node(payload, 'Box').data.title, 'Box<T>');
   assert.equal(node(payload, 'Duck').data.description, 'Can fly a little');
   assert.deepEqual(payload.roles.interface, { label: 'Interface', color: 'teal' });
-  assert.ok(warnings.some((w) => /Multiplicities/.test(w)));
   assert.ok(warnings.some((w) => /Ignored 1 `cssClass` line/.test(w)));
   const steps = payload.scenarios[0].steps;
   assert.ok(steps.length <= 8, 'walkthrough stays short');
@@ -271,7 +271,7 @@ test('every sample imports and lints with zero errors', () => {
     const { payload } = fromMermaid(fs.readFileSync(path.join(SAMPLES, f), 'utf-8'));
     const r = lint(payload);
     assert.deepEqual(r.errors, [], f);
-    assert.ok(r.warnings.length <= 1, `${f}: ${r.warnings.map((w) => w.code).join(', ')}`);
+    assert.deepEqual(r.warnings.map((w) => w.code), [], f);
   }
 });
 
@@ -320,4 +320,71 @@ test('MCP yantra_import_mermaid returns a validated payload or writes a file', a
   assert.equal(r3.outputPath, outputPath);
   assert.equal(JSON.parse(fs.readFileSync(outputPath, 'utf-8')).nodes.length, 2);
   removeDir(outDir);
+});
+
+test('class diagrams: one-line blocks, lollipop interfaces and self-relationships', () => {
+  const { payload, warnings } = fromMermaid(
+    'classDiagram\n  class Shape { <<abstract>>; +String name; +area() double }\n  Drawable ()-- Shape\n  Shape --() Printable\n  Node "1" --> "0..*" Node : children'
+  );
+  assert.deepEqual(node(payload, 'Shape').data.fields, [{ visibility: '+', name: 'name', type: 'String' }]);
+  assert.deepEqual(node(payload, 'Shape').data.methods, [{ visibility: '+', name: 'area', type: 'double' }]);
+  assert.equal(node(payload, 'Shape').type, 'abstract');
+  for (const i of ['Drawable', 'Printable']) {
+    assert.equal(node(payload, i).type, 'interface', i);
+    assert.equal(edge(payload, i, 'Shape').relation, 'realization', 'the interface is the source');
+  }
+  const loop = edge(payload, 'Node', 'Node');
+  assert.deepEqual([loop.sourceLabel, loop.targetLabel, loop.label], ['1', '0..*', 'children']);
+  assert.ok(!warnings.some((w) => /self-relationship/.test(w)));
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('ER diagrams: attributes on one line', () => {
+  const { payload, warnings } = fromMermaid('erDiagram\n  CUSTOMER { string id PK "the key" string name }\n  ORDER { int id PK; int customer_id PK, FK }\n  CUSTOMER ||--o{ ORDER : places');
+  assert.deepEqual(node(payload, 'CUSTOMER').data.fields, [{ name: 'id', type: 'string', pk: true, note: 'the key' }, { name: 'name', type: 'string' }]);
+  assert.deepEqual(node(payload, 'ORDER').data.fields[1], { name: 'customer_id', type: 'int', pk: true, fk: true });
+  assert.deepEqual(warnings, []);
+});
+
+test('gantt, pie, timeline and quadrantChart become answer pages', () => {
+  const gantt = fromMermaid('gantt\n  title Launch\n  dateFormat DD.MM.YYYY\n  section Build\n  API :done, api, 05.10.2026, 10d\n  App :crit, app, after api, 2w\n  Ship :milestone, after app, 0d\n  Docs : 06.10.2026, 09.10.2026').payload;
+  assert.equal(gantt.kind, 'page');
+  const items = gantt.blocks[0].items;
+  assert.deepEqual(items[0], { title: 'API', id: 'api', start: '05/10/2026', days: 10, progress: 100, group: 'Build' });
+  assert.deepEqual(items[1], { title: 'App', id: 'app', after: 'api', days: 14, tone: 'bad', group: 'Build' });
+  assert.equal(items[2].milestone, true);
+  assert.equal(items[3].days, 3, 'Mermaid end dates are exclusive');
+  assert.match(gantt.answer.headline, /05\/10\/2026 to 29\/10\/2026 .*finishing with Ship/);
+  assert.deepEqual(lint(gantt).errors, []);
+
+  const pie = fromMermaid('pie title Pets\n  "Dogs" : 386\n  "Cats" : 85\n  "Rats" : 15').payload;
+  assert.deepEqual(pie.blocks[0].data.map((d) => d.label), ['Dogs', 'Cats', 'Rats']);
+  assert.match(pie.answer.headline, /^Dogs is the largest share at 79\.4%/);
+  const many = fromMermaid(`pie\n${Array.from({ length: 10 }, (_, i) => `  "S${i}" : ${10 - i}`).join('\n')}`);
+  assert.equal(many.payload.blocks[0].data.length, 8);
+  assert.equal(many.payload.blocks[0].data[7].label, 'Other');
+  assert.ok(many.warnings.some((w) => /merged into "Other"/.test(w)));
+
+  const tl = fromMermaid('timeline\n  title History\n  section Early\n    2002 : LinkedIn\n    2004 : Facebook : Google\n         : Flickr\n  section Later\n    2006 : Twitter').payload;
+  assert.deepEqual(tl.blocks.map((b) => b.title), ['Early', 'Later']);
+  assert.deepEqual(tl.blocks[0].items[1], { date: '2004', title: 'Facebook, Google, Flickr' });
+
+  const q = fromMermaid('quadrantChart\n  x-axis Low reach --> High reach\n  y-axis Low --> High\n  quadrant-1 Expand\n  quadrant-2 Promote\n  A: [0.3, 0.6]\n  B: [0.8, 0.9]\n  C: [0.9, 0.7] radius: 10').payload;
+  const m = q.blocks[0];
+  assert.deepEqual(m.x, { label: '', low: 'Low reach', high: 'High reach', min: 0, max: 1 });
+  assert.deepEqual(m.quadrants.map((x) => x.title), ['Promote', 'Expand', 'Bottom left', 'Bottom right']);
+  assert.match(q.answer.headline, /^2 of 3 items fall in “Expand”/);
+  for (const p of [pie, tl, q]) assert.deepEqual(lint(p).errors, []);
+});
+
+test('journey becomes a flow with one step per section', () => {
+  const { payload } = fromMermaid('journey\n  title Day\n  section Morning\n    Make tea: 5: Me\n    Commute: 1: Me, Cat\n  section Work\n    Meetings: 3: Me');
+  assert.deepEqual(payload.nodes.map((n) => [n.type, n.data.badge]), [['good', '5/5'], ['pain', '1/5'], ['neutral', '3/5']]);
+  assert.equal(payload.nodes[1].data.subtitle, 'Me, Cat');
+  assert.deepEqual(payload.groups.map((g) => g.title), ['Morning', 'Work']);
+  assert.deepEqual(payload.scenarios[0].steps.map((s) => s.title), ['Overview', 'Morning', 'Work']);
+  assert.match(payload.scenarios[0].steps[0].description, /Pain points: Commute/);
+  const r = lint(payload);
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.warnings, []);
 });

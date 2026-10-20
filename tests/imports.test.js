@@ -10,9 +10,14 @@ import { startMcp, removeDir } from './support.js';
 import { fileURLToPath } from 'node:url';
 import { inflateRaw } from '../src/core/inflate.js';
 import { fromDrawio, drawioPages, parseStyle, shapeType } from '../src/core/drawio.js';
+import { fromMermaid } from '../src/core/mermaid.js';
 import { fromPlantUml, plantUmlBlocks, umlText } from '../src/core/plantuml.js';
 import { detectFormat, importText } from '../src/core/import.js';
 import { lint } from '../src/core/lint.js';
+import { fileIncluder } from '../lib/includes.js';
+import { fromVisio, unzip } from '../src/core/visio.js';
+import { drawioFromPng, cellHue, imageOf } from '../src/core/drawio.js';
+import { preprocessPlantUml } from '../src/core/plantuml.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = path.join(ROOT, 'bin', 'yantra.js');
@@ -304,11 +309,16 @@ stop
   assert.equal(edge(payload, t('Scan item'), t('More items?')).label, 'repeat');
   assert.equal(edge(payload, t('More items?'), t('Try delivery')).label, 'no');
   assert.equal(edge(payload, t('Delivered?'), t('Try delivery')).label, 'no');
-  assert.ok(edge(payload, t('Delivered?'), t('Email')) && edge(payload, t('Delivered?'), t('SMS')), 'fork branches start together');
-  assert.equal(edge(payload, t('Email'), t('Close order')).label, 'archived');
+  const fork = byTitle(payload, 'Fork');
+  assert.equal(fork.shape, 'fork');
+  assert.ok(edge(payload, t('Delivered?'), fork.id) && edge(payload, fork.id, t('Email')) && edge(payload, fork.id, t('SMS')), 'fork branches leave a fork bar');
+  const join = byTitle(payload, 'Join');
+  assert.ok(edge(payload, t('Email'), join.id) && edge(payload, t('SMS'), join.id), 'branches meet at a join bar');
+  assert.equal(edge(payload, join.id, t('Close order')).label, 'archived');
   assert.equal(byTitle(payload, 'Close order').data.subtitle, 'with a note');
   assert.deepEqual(payload.groups.map((g) => [g.title, g.nodes.length]), [['Customer', 2], ['Shop', payload.nodes.length - 3]]);
-  assert.ok(payload.edges.every((x) => x.label), 'every transition is labelled');
+  const bars = new Set(payload.nodes.filter((n) => n.shape === 'fork').map((n) => n.id));
+  assert.ok(payload.edges.every((x) => x.label || bars.has(x.source) || bars.has(x.target)), 'every transition (except at a bar) is labelled');
   assert.ok(warnings.some((w) => /Labelled \d+ unlabelled transition/.test(w)));
   assert.deepEqual(lint(payload).errors, []);
 });
@@ -385,9 +395,8 @@ test('PlantUML mind maps and work breakdowns use the mind-map and tree layouts',
 test('PlantUML: blocks, creole text, unsupported diagrams', () => {
   assert.deepEqual(plantUmlBlocks('@startuml a\nA -> B\n@enduml\nx\n@startuml\nB -> C\n@enduml'), ['A -> B\n', 'B -> C\n']);
   assert.equal(umlText('"**Bold** //it// <b>x</b>\\nnext"'), 'Bold it x\nnext');
-  assert.throws(() => fromPlantUml('@startuml\nobject user\n@enduml'), /Unsupported PlantUML diagram/);
-  assert.throws(() => fromPlantUml('@startgantt\n[Task] lasts 3 days\n@endgantt'), /@startgantt/);
-  assert.throws(() => fromPlantUml('@startuml\n(*) --> "Go"\n@enduml'), /old-style activity/);
+  assert.throws(() => fromPlantUml('@startjson\n{}\n@endjson'), /Unsupported PlantUML diagram "@startjson"/);
+  assert.throws(() => fromPlantUml('@startuml\njson X {\n}\n@enduml'), /Unsupported PlantUML diagram/);
   const { warnings } = fromPlantUml('@startuml\nA -> B : x\n@enduml\n@startuml\nB -> C : y\n@enduml');
   assert.ok(warnings.some((w) => /2 @startuml blocks/.test(w)));
 });
@@ -406,15 +415,21 @@ test('detectFormat and importText pick the importer from the name or the text', 
   const md = importText('# x\n```puml\nA -> B : hi\n```\n```puml\nB -> C : yo\n```\n', { filename: 'notes.md', all: true });
   assert.equal(md.format, 'plantuml');
   assert.equal(md.results.length, 2);
-  assert.throws(() => importText('x', { format: 'visio' }), /Unknown import format/);
+  assert.throws(() => importText('x', { format: 'excalidraw' }), /Unknown import format/);
+  assert.throws(() => importText('x', { format: 'visio' }), /needs the \.vsdx file/);
+  assert.equal(detectFormat('', 'a.vsdx'), 'visio');
+  assert.equal(detectFormat(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10, 0])), 'drawio');
+  assert.equal(detectFormat('@startgantt\n[A] lasts 2 days\n@endgantt'), 'plantuml');
 });
 
-test('every draw.io and PlantUML sample imports and validates with no errors or warnings', () => {
-  for (const dir of ['drawio', 'plantuml']) {
-    const files = fs.readdirSync(path.join(ROOT, 'examples', dir));
-    assert.ok(files.length >= 2, dir);
+test('every draw.io, PlantUML and Visio sample imports and validates with no errors or warnings', () => {
+  for (const dir of ['drawio', 'plantuml', 'visio']) {
+    const base = path.join(ROOT, 'examples', dir);
+    const files = fs.readdirSync(base).filter((f) => fs.statSync(path.join(base, f)).isFile());
+    assert.ok(files.length >= (dir === 'visio' ? 1 : 2), dir);
     for (const f of files) {
-      const { results } = importText(fs.readFileSync(path.join(ROOT, 'examples', dir, f), 'utf-8'), { filename: f });
+      const file = path.join(base, f);
+      const { results } = importText(fs.readFileSync(file), { filename: f, include: fileIncluder(base), path: file });
       const r = lint(results[0].payload);
       assert.deepEqual(r.errors, [], f);
       assert.deepEqual(r.warnings.map((w) => w.code), [], f);
@@ -476,4 +491,261 @@ test('MCP yantra_import converts text or a file inside the input root', async ()
   assert.equal(replies.get(4).result.isError, true, 'extension not allowed');
   assert.match(replies.get(5).result.content[0].text, /must be inside/);
   removeDir(outDir);
+});
+
+// --- PlantUML: two-way messages, objects, ER, gantt, old activity, preprocessor ------------
+
+test('PlantUML sequence: <-> and <--> are two-way messages', () => {
+  const { payload, warnings } = fromPlantUml('@startuml\nA <-> B : sync\nB <--> C : mirror\n@enduml');
+  assert.equal(edge(payload, 'A', 'B').arrow, 'both');
+  assert.deepEqual([edge(payload, 'B', 'C').arrow, edge(payload, 'B', 'C').style], ['both', 'dashed']);
+  assert.match(payload.scenarios[0].steps[1].description, /A ↔ B/);
+  assert.ok(!warnings.some((w) => /bidirectional/.test(w)));
+});
+
+test('PlantUML object diagrams become table cards', () => {
+  const { payload, warnings } = fromPlantUml(
+    '@startuml\nobject "alice : User" as alice {\n  name = "Alice"\n  age = 30\n}\nobject cart\ncart : items = 2\nmap Prices {\n  tea => 3.50\n  owner *-> alice\n}\nalice --> cart : owns\nalice *-- cart\n@enduml'
+  );
+  const alice = node(payload, 'alice');
+  assert.equal(alice.type, 'object');
+  assert.equal(alice.data.title, 'alice : User');
+  assert.deepEqual(alice.data.fields, [{ name: 'name', type: 'Alice' }, { name: 'age', type: '30' }]);
+  assert.deepEqual(node(payload, 'cart').data.fields, [{ name: 'items', type: '2' }]);
+  assert.deepEqual(node(payload, 'Prices').data.fields, [{ name: 'tea', type: '3.50' }, { name: 'owner' }]);
+  assert.equal(edge(payload, 'Prices', 'alice').label, 'owner');
+  assert.equal(payload.edges.find((e) => e.relation === 'composition').source, 'alice');
+  assert.deepEqual(warnings, []);
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('PlantUML entity diagrams become ER table cards with crow\'s foot ends', () => {
+  const { payload, warnings } = fromPlantUml(
+    '@startuml\nentity "Customer" as c {\n  *id : int <<generated>>\n  --\n  *email : text <<UK>>\n  nickname\n}\nentity Order {\n  *id : int\n  --\n  customer_id : int <<FK>>\n}\nc ||--o{ Order : places\nOrder }|..|| c : billed to\nc -- Order\n@enduml'
+  );
+  const c = node(payload, 'c');
+  assert.equal(c.data.title, 'Customer');
+  assert.deepEqual(c.data.fields, [{ name: 'id', type: 'int', pk: true, note: 'generated' }, { name: 'email', type: 'text', unique: true }, { name: 'nickname' }]);
+  assert.deepEqual(node(payload, 'Order').data.fields[1], { name: 'customer_id', type: 'int', fk: true });
+  const places = edge(payload, 'c', 'Order');
+  assert.deepEqual([places.sourceEnd, places.targetEnd, places.label], ['one', 'zero-or-many', 'places']);
+  const billed = edge(payload, 'Order', 'c');
+  assert.deepEqual([billed.sourceEnd, billed.targetEnd, billed.style], ['one-or-many', 'one', 'dashed']);
+  assert.ok(warnings.some((w) => /Skipped 1 link without a crow's foot/.test(w)));
+  assert.match(payload.meta.description, /PlantUML ER diagram/);
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('PlantUML @startgantt becomes a plan page', () => {
+  const { payload, warnings } = fromPlantUml(
+    '@startgantt\ntitle Relaunch\nProject starts 2026-10-05\n-- Build --\n[Design] as [D] lasts 5 days and is 100% completed\n[Code] lasts 2 weeks\n[Code] starts at [D]\'s end\nthen [Test] lasts 3 days\n[Launch] happens at [Test]\'s end\n[Docs] starts 2026-10-12 and ends 2026-10-16\n[Code] -> [Review]\n[Review] lasts 2 days\nsaturday are closed\n@endgantt'
+  );
+  assert.equal(payload.kind, 'page');
+  const items = payload.blocks[0].items;
+  const by = (id) => items.find((it) => it.id === id);
+  assert.deepEqual(by('design'), { id: 'design', title: 'Design', group: 'Build', start: '05/10/2026', days: 5, progress: 100 });
+  assert.deepEqual([by('code').after, by('code').days], ['design', 14]);
+  assert.equal(by('test').after, 'code');
+  assert.deepEqual([by('launch').after, by('launch').milestone], ['test', true]);
+  assert.deepEqual([by('docs').start, by('docs').end], ['12/10/2026', '16/10/2026']);
+  assert.equal(by('review').after, 'code');
+  assert.equal(payload.meta.title, 'Relaunch');
+  assert.match(payload.answer.headline, /^The plan runs from 05\/10\/2026 to /);
+  assert.ok(warnings.some((w) => /closed days/.test(w)));
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('PlantUML old activity syntax becomes a flow', () => {
+  const { payload } = fromPlantUml(
+    '@startuml\n(*) --> "Open ticket"\n"Open ticket" --> "Triage" as T\nif "Urgent?" then\n  -->[yes] "Page on-call" as P\nelse\n  -->[no] "Queue" as Q\nendif\nP --> (*)\nQ -->[later] (*)\n@enduml'
+  );
+  const t = (title) => byTitle(payload, title);
+  assert.equal(t('Start').type, 'terminal');
+  assert.equal(t('Urgent?').type, 'decision');
+  assert.equal(edge(payload, t('Urgent?').id, t('Page on-call').id).label, 'yes');
+  assert.equal(edge(payload, t('Urgent?').id, t('Queue').id).label, 'no');
+  assert.equal(edge(payload, t('Queue').id, t('End').id).label, 'later');
+  assert.equal(payload.nodes.filter((n) => n.data.title === 'End').length, 1);
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('PlantUML preprocessor: !define, !$var and safe !include', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-inc-'));
+  const root = path.join(dir, 'root');
+  fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'lib', 'parts.iuml'), '@startuml\n!$svc = "Billing"\nA -> B : from include\n!include ../loop.puml\n@enduml\n');
+  fs.writeFileSync(path.join(root, 'loop.puml'), '!include lib/parts.iuml\nB -> C : once\n');
+  fs.writeFileSync(path.join(dir, 'secret.puml'), 'X -> Y : leaked\n');
+  const main = path.join(root, 'main.puml');
+  const text = '@startuml\n!define CALLS ->\n!include lib/parts.iuml\n!include ../secret.puml\n!include https://example.com/x.puml\n!include <C4/C4_Container>\n!theme plain\nU CALLS A : $svc\n@enduml';
+  fs.writeFileSync(main, text);
+  const { payload, warnings } = fromPlantUml(text, { include: fileIncluder(root), path: main });
+  const msgs = payload.scenarios[0].steps.slice(1).map((s) => s.title);
+  assert.deepEqual(msgs, ['from include', 'once', 'Billing']);
+  assert.ok(warnings.some((w) => /cycle/.test(w)), 'include cycles stop');
+  assert.ok(warnings.some((w) => /secret\.puml: outside/.test(w)), 'files outside the root are refused');
+  assert.ok(warnings.some((w) => /`!includeurl` preprocessor line \(URLs are never fetched\)/.test(w)));
+  assert.ok(warnings.some((w) => /<stdlib>/.test(w)));
+  assert.ok(warnings.some((w) => /`!theme`/.test(w)));
+  assert.ok(!msgs.includes('leaked'));
+  // Without a resolver (text from MCP or the browser) includes are skipped, not read
+  const bare = preprocessPlantUml('!include lib/parts.iuml\nA -> B', {});
+  assert.match(bare.warnings[0], /no file context/);
+  // Deep nesting stops at 8 levels
+  for (let i = 0; i < 12; i++) fs.writeFileSync(path.join(root, `d${i}.iuml`), `!include d${i + 1}.iuml\nN${i} -> N${i + 1} : hop\n`);
+  const deep = preprocessPlantUml('!include d0.iuml', { include: fileIncluder(root), path: main });
+  assert.ok(deep.warnings.some((w) => /deeper than 8/.test(w)));
+});
+
+// --- draw.io colours, images, PNG; Visio -----------------------------------------------------
+
+test('draw.io: fill colours become role colours; image shapes become icons', () => {
+  const { payload, warnings } = fromDrawio(
+    mxfile(
+      v('a', 'API', 'rounded=1;fillColor=#dae8fc;', '1', 'x="0" y="0" width="100" height="60"') +
+        v('b', 'Worker', 'rounded=1;fillColor=#dae8fc;', '1', 'x="200" y="0" width="100" height="60"') +
+        v('c', 'Fraud', 'rounded=1;fillColor=#f8cecc;', '1', 'x="400" y="0" width="100" height="60"') +
+        v('d', 'Plain', 'rounded=1;fillColor=#ffffff;', '1', 'x="600" y="0" width="100" height="60"') +
+        v('f', 'Fn', 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;', '1', 'x="800" y="0" width="60" height="60"') +
+        v('g', '', 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;', '1', 'x="1000" y="0" width="60" height="60"') +
+        v('h', 'Logo', 'shape=image;image=data:image/png,iVBORw0KGgo;', '1', 'x="1200" y="0" width="60" height="60"') +
+        e('e1', 'a', 'b', 'jobs') + e('e2', 'b', 'c', 'score') + e('e3', 'c', 'd', 'flag') + e('e4', 'd', 'f', 'run') + e('e5', 'f', 'g', 'save') + e('e6', 'g', 'h', 'show')
+    )
+  );
+  // Uncoloured steps are the commonest, so they keep the base role; each fill gets its own
+  assert.equal(node(payload, 'api').type, 'node-blue');
+  assert.deepEqual(payload.roles['node-blue'], { label: 'Step (blue)', color: 'blue' });
+  assert.notEqual(payload.roles.node.color, 'blue', 'no two roles share a colour by accident');
+  assert.equal(node(payload, 'fraud').type, 'node-rose');
+  assert.deepEqual(payload.roles['node-rose'], { label: 'Step (red)', color: 'rose' });
+  assert.equal(node(payload, 'plain').type, 'node', 'white is no colour');
+  assert.equal(node(payload, 'fn').data.icon, 'zap');
+  const db = payload.nodes.find((n) => n.data.icon === 'database');
+  assert.deepEqual([db.type, db.data.title], ['store', 'Dynamodb']);
+  assert.equal(node(payload, 'logo').data.icon, undefined);
+  assert.ok(warnings.some((w) => /Ignored 1 image with no matching built-in icon/.test(w)));
+  assert.equal(cellHue({ fillColor: '#fff2cc' }), 'amber');
+  assert.equal(cellHue({ fillColor: 'none', strokeColor: '#82b366' }), 'green');
+  assert.equal(cellHue({ fillColor: '#000000' }), null);
+  assert.equal(imageOf({ _shape: 'rounded' }), null);
+  assert.equal(imageOf({ _shape: 'image', image: 'img/lib/azure2/databases/SQL_Database.svg' }).icon, 'database');
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('draw.io PNG export: the embedded diagram is read from the tEXt or zTXt chunk', () => {
+  const png = fs.readFileSync(path.join(ROOT, 'examples', 'drawio', 'support-triage.drawio.png'));
+  assert.match(drawioFromPng(png), /<mxfile/);
+  const { format, results } = importText(png, { filename: 'support-triage.drawio.png' });
+  assert.equal(format, 'drawio');
+  assert.equal(results[0].payload.meta.title, 'Support triage');
+  // zTXt (zlib) with the mxGraphModel keyword
+  const crcChunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(zlib.crc32(Buffer.concat([Buffer.from(type), data])) >>> 0);
+    return Buffer.concat([len, Buffer.from(type), data, crc]);
+  };
+  const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]);
+  const xml = mxfile(v('a', 'A', '') + v('b', 'B', '') + e('x', 'a', 'b', 'go'));
+  const z = Buffer.concat([sig, crcChunk('zTXt', Buffer.concat([Buffer.from('mxGraphModel\0\0'), zlib.deflateSync(Buffer.from(xml))])), crcChunk('IEND', Buffer.alloc(0))]);
+  assert.equal(importText(z).results[0].payload.nodes.length, 2);
+  const plain = Buffer.concat([sig, crcChunk('IEND', Buffer.alloc(0))]);
+  assert.throws(() => importText(plain), /no embedded draw.io diagram/);
+});
+
+test('Visio .vsdx: shapes, glued connectors, master types and pages', () => {
+  const bytes = fs.readFileSync(path.join(ROOT, 'examples', 'visio', 'order-approval.vsdx'));
+  assert.ok(unzip(bytes).has('visio/pages/page1.xml'));
+  const { payload, warnings, pages } = fromVisio(bytes);
+  assert.deepEqual(pages, ['Order approval']);
+  assert.equal(payload.meta.title, 'Order approval');
+  assert.deepEqual(Object.fromEntries(payload.nodes.map((n) => [n.data.title, n.type])), {
+    'Order received': 'terminal',
+    'Check stock': 'node',
+    'In stock?': 'decision',
+    'Reserve items': 'node',
+    'Back-order': 'node',
+    'Orders DB': 'store'
+  });
+  assert.equal(edge(payload, 'in-stock', 'back-order').style, 'dashed');
+  assert.equal(payload.meta.layout.direction, 'LR');
+  assert.deepEqual(warnings, []);
+  assert.throws(() => fromVisio(bytes, { page: 3 }), /No page "3"/);
+  assert.throws(() => importText(Buffer.from('PK\x03\x04 not really a zip')), /not a zip archive|end of central directory/);
+});
+
+test('CLI and MCP import binary files and resolve includes inside the root', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-bin-'));
+  const vsdx = path.join(ROOT, 'examples', 'visio', 'order-approval.vsdx');
+  const res = spawnSync(process.execPath, [CLI, 'import', vsdx, '-o', path.join(dir, 'v.json')], { encoding: 'utf-8' });
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(res.stderr, /visio: 6 nodes/);
+  const inc = spawnSync(process.execPath, [CLI, 'import', path.join(ROOT, 'examples', 'plantuml', 'shared-services.puml'), '-o', path.join(dir, 'i.json')], { encoding: 'utf-8' });
+  assert.equal(inc.status, 0, inc.stderr);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'i.json'), 'utf-8')).meta.title, 'Acme services');
+  const gantt = spawnSync(process.execPath, [CLI, 'import', path.join(ROOT, 'examples', 'mermaid', 'launch-gantt.mmd'), '-o', path.join(dir, 'g.json')], { encoding: 'utf-8' });
+  assert.equal(gantt.status, 0, gantt.stderr);
+  assert.match(gantt.stderr, /answer page, 1 block/);
+
+  const s = startMcp({ env: { YANTRA_INPUT_ROOT: path.join(ROOT, 'examples'), YANTRA_OUTPUT_ROOT: dir } });
+  s.call(1, 'yantra_import', { filePath: 'visio/order-approval.vsdx' });
+  s.call(2, 'yantra_import', { filePath: 'drawio/support-triage.drawio.png' });
+  s.call(3, 'yantra_import', { filePath: 'plantuml/shared-services.puml' });
+  let replies;
+  try {
+    replies = await s.waitFor(3);
+  } finally {
+    await s.close();
+    removeDir(dir);
+  }
+  const r = (id) => JSON.parse(replies.get(id).result.content[0].text);
+  assert.equal(r(1).format, 'visio');
+  assert.equal(r(1).validation.valid, true);
+  assert.equal(r(2).payload.meta.title, 'Support triage');
+  assert.equal(r(3).payload.meta.title, 'Acme services');
+});
+
+test('draw.io: fork bars, and edges drawn to table rows attach to those fields', () => {
+  const bar = v('bar', '', 'html=1;fillColor=#000000;strokeColor=none;', '1', 'x="200" y="100" width="120" height="6"');
+  const flow = fromDrawio(
+    mxfile(
+      v('a', 'Start work', '', '1', 'x="200" y="0" width="120" height="40"') + bar +
+        v('b', 'Left', '', '1', 'x="100" y="200" width="100" height="40"') + v('c', 'Right', '', '1', 'x="300" y="200" width="100" height="40"') +
+        e('e1', 'a', 'bar', 'begin') + e('e2', 'bar', 'b') + e('e3', 'bar', 'c')
+    )
+  ).payload;
+  const f = flow.nodes.find((n) => n.shape === 'fork');
+  assert.deepEqual([f.type, f.data.title], ['fork', 'Fork']);
+  assert.deepEqual(lint(flow).errors, []);
+
+  const table = (id, name, rows, x) =>
+    v(id, name, 'shape=table;startSize=30;container=1;childLayout=tableLayout;', '1', `x="${x}" y="0" width="160" height="90"`) +
+    rows.map(([rid, text], i) => v(rid, text, 'shape=tableRow;', id, `y="${30 + i * 30}" width="160" height="30"`)).join('');
+  const er = fromDrawio(
+    mxfile(
+      table('cust', 'customers', [['c1', 'PK id uuid'], ['c2', 'email text']], 0) +
+        table('ord', 'orders', [['o1', 'PK id uuid'], ['o2', 'FK customer_id uuid']], 400) +
+        e('r1', 'c1', 'o2', 'places', 'endArrow=ERzeroToMany;startArrow=ERmandOne;')
+    )
+  ).payload;
+  const places = er.edges[0];
+  assert.deepEqual([places.sourceField, places.targetField, places.sourceEnd, places.targetEnd], ['id', 'customer_id', 'one', 'zero-or-many']);
+  assert.deepEqual(lint(er).errors, []);
+});
+
+test('ER imports attach relationships to key rows named after the entity', () => {
+  const schema = 'erDiagram\n  CUSTOMERS { int id PK }\n  ORDER { int id PK; int customer_id FK }\n';
+  const [down] = fromMermaid(`${schema}  CUSTOMERS ||--o{ ORDER : places`).payload.edges;
+  const [up] = fromMermaid(`${schema}  ORDER }o--|| CUSTOMERS : "billed to"`).payload.edges;
+  assert.deepEqual([down.sourceField, down.targetField], ['id', 'customer_id'], 'CUSTOMERS -> customer_id (plural stripped)');
+  assert.deepEqual([up.sourceField, up.targetField], ['customer_id', 'id'], 'child -> parent');
+  const plain = fromMermaid('erDiagram\n  A { int id PK }\n  B { int ref FK }\n  A ||--o{ B : has').payload;
+  assert.equal(plain.edges[0].sourceField, undefined, 'no guess when the names do not match');
+});
+
+test('PlantUML class multiplicities become end labels', () => {
+  const { payload } = fromPlantUml('@startuml\nclass Order\nclass Line\nOrder "1" *-- "1..*" Line : lines\n@enduml');
+  const e = payload.edges[0];
+  assert.deepEqual([e.relation, e.sourceLabel, e.targetLabel], ['composition', '1', '1..*']);
 });

@@ -1,0 +1,12 @@
+@startuml
+title Expense approval (old activity syntax)
+(*) -->[new claim] "Submit expense claim"
+"Submit expense claim" -->[receipts attached] "Check receipts" as check
+if "Over £500?" then
+  -->[yes] "Manager approval" as manager
+  manager -->[approved] "Pay claim" as pay
+else
+  -->[no] pay
+endif
+pay -->[paid] (*)
+@enduml
