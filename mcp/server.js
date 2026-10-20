@@ -27,7 +27,7 @@ const source = {
 const TOOLS = [
   {
     name: 'yantra_get_schema',
-    description: 'Return the JSON Schemas and authoring rules. kind "diagram" (default) for interactive diagrams, "page" for one-page answers to a question (answer first, then blocks such as points, steps, compare, metrics, chart, embedded diagrams).',
+    description: 'Return the JSON Schemas and authoring rules. kind "diagram" (default) for interactive diagrams, "page" for one-page answers to a question (answer first, then blocks such as points, steps, compare, metrics, charts (bar, column, line, area, pie, donut), gantt plans, 2x2 / heat-map matrices, embedded diagrams).',
     inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['diagram', 'page'] } } }
   },
   {

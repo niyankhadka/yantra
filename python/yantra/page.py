@@ -88,9 +88,22 @@ class Page:
         """Embed a ``Diagram``, a payload dict or a diagram .json path (relative to the page file)."""
         return self.add(B.diagram(source, step, mode, caption, title, span))
 
-    def chart(self, data: Union[Iterable[Any], Mapping[str, float]], unit: Optional[str] = None,
-              title: Optional[str] = None, span: Optional[str] = None) -> "Page":
-        return self.add(B.chart(data, unit, title, span))
+    def chart(self, data: Union[Iterable[Any], Mapping[str, float], None] = None, unit: Optional[str] = None,
+              title: Optional[str] = None, span: Optional[str] = None, **kw: Any) -> "Page":
+        """Bars by default; ``kind=`` column, line, area, pie or donut; ``categories=`` + ``series=`` for
+        several series (``stacked=True`` to stack). See :func:`yantra.blocks.chart`."""
+        return self.add(B.chart(data, unit, title, span, **kw))
+
+    def gantt(self, items: Iterable[Any], start: Optional[str] = None, today: Optional[Union[str, int]] = None,
+              title: Optional[str] = None, span: Optional[str] = None, caption: Optional[str] = None) -> "Page":
+        """A project plan; see :func:`yantra.blocks.gantt`."""
+        return self.add(B.gantt(items, start, today, title, span, caption=caption))
+
+    def matrix(self, items: Iterable[Any], x: Any = None, y: Any = None, quadrants: Optional[Sequence[Any]] = None,
+               grid: Optional[int] = None, title: Optional[str] = None, span: Optional[str] = None,
+               heat: Optional[bool] = None, caption: Optional[str] = None) -> "Page":
+        """A 2x2 or a heat map; see :func:`yantra.blocks.matrix`."""
+        return self.add(B.matrix(items, x, y, quadrants, grid, title, span, heat=heat, caption=caption))
 
     def code(self, source: str, language: Optional[str] = None, title: Optional[str] = None,
              span: Optional[str] = None) -> "Page":

@@ -8,8 +8,9 @@ import { renderSvg } from './svg.js';
 import { themeCss, HUES } from './theme.js';
 import { escapeHtml as h, mdInline as mi, mdBlock } from './text.js';
 import { REPO_URL, GITHUB_MARK } from './icons.js';
+import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartMarkdown, CHART_CSS, CHART_STRINGS } from './charts.js';
 
-export const BLOCK_TYPES = ['text', 'points', 'steps', 'metrics', 'table', 'compare', 'callout', 'diagram', 'chart', 'code', 'sources', 'timeline', 'faq', 'checklist', 'quote', 'image', 'kv'];
+export const BLOCK_TYPES = ['text', 'points', 'steps', 'metrics', 'table', 'compare', 'callout', 'diagram', 'chart', 'code', 'sources', 'timeline', 'faq', 'checklist', 'quote', 'image', 'kv', 'gantt', 'matrix'];
 const TONES = { info: 'blue', good: 'green', warn: 'amber', bad: 'rose', neutral: 'slate' };
 const own = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
 const tone = (t) => (own(TONES, t) ? TONES[t] : own(HUES, t) ? t : 'blue');
@@ -112,7 +113,7 @@ const BLOCKS = {
 
   metrics: (b) =>
     `<div class="p-metrics">${list(b.items)
-      .map((it) => `<div class="p-metric" data-hue="${tone(it.tone)}"><span>${inline(it.label || '')}</span><strong>${h(it.value ?? '')}</strong>${it.note ? `<em>${inline(it.note)}</em>` : ''}</div>`)
+      .map((it) => `<div class="p-metric" data-hue="${tone(it.tone)}"><span>${inline(it.label || '')}</span><strong>${h(it.value ?? '')}</strong>${it.note ? `<em>${inline(it.note)}</em>` : ''}${Array.isArray(it.trend) ? sparkline(it.trend, tone(it.tone)) : ''}</div>`)
       .join('')}</div>`,
 
   table: (b) =>
@@ -178,7 +179,9 @@ const BLOCKS = {
 
   kv: (b) => `<dl class="p-kv">${list(b.items).map((it) => `<div><dt>${inline(it.k ?? '')}</dt><dd>${inline(it.v ?? '')}</dd></div>`).join('')}</dl>`,
 
-  chart: (b) => {
+  // Single-series bars without negatives keep the HTML bar list; every other chart is inline SVG (charts.js)
+  chart: (b, ctx) => {
+    if (!isSimpleBars(b)) return renderChart(b, { half: ctx.half, caption: b.caption ? inline(b.caption) : '' });
     const data = list(b.data).filter((d) => typeof d.value === 'number');
     const max = Math.max(1e-9, ...data.map((d) => Math.abs(d.value)));
     const unit = b.unit ? h(b.unit) : '';
@@ -188,6 +191,10 @@ const BLOCKS = {
       )
       .join('')}</div>`;
   },
+
+  gantt: (b, ctx) => renderGantt(b, { half: ctx.half, caption: b.caption ? inline(b.caption) : '' }),
+
+  matrix: (b, ctx) => renderMatrix(b, { half: ctx.half, caption: b.caption ? inline(b.caption) : '' }),
 
   code: (b) => `<pre class="p-code"${b.language ? ` data-lang="${h(b.language)}"` : ''}><code>${h(b.code || '')}</code></pre>`,
 
@@ -208,7 +215,7 @@ const BLOCKS = {
 export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null } = {}) {
   const render = BLOCKS[b?.type];
   if (!render) return '';
-  const body = render(b, { uid, viewerHtml });
+  const body = render(b, { uid, viewerHtml, half: b.span === 'half' });
   return `<section class="p-block p-block--${b.type}${b.span === 'half' ? ' is-half' : ''}"${anchor ? ` id="${h(anchor)}"` : ''}>${b.title ? `<h3>${inline(b.title)}</h3>` : ''}${body}</section>`;
 }
 
@@ -318,7 +325,7 @@ export function pageToMarkdown(page) {
         out.push('');
         break;
       case 'metrics':
-        list(b.items).forEach((it) => out.push(`- **${mi(it?.label)}:** ${mi(it?.value)}${it?.note ? ` (${mi(it.note)})` : ''}`));
+        list(b.items).forEach((it) => out.push(`- **${mi(it?.label)}:** ${mi(it?.value)}${it?.note ? ` (${mi(it.note)})` : ''}${Array.isArray(it?.trend) ? `; ${CHART_STRINGS.trend} ${it.trend.map((v) => mi(v)).join(' → ')}` : ''}`));
         out.push('');
         break;
       case 'table':
@@ -340,7 +347,15 @@ export function pageToMarkdown(page) {
         out.push(`> ${b.label ? `**${mi(b.label)}** ` : ''}${mdBlock(b.body).replace(/\n/g, '\n> ')}`, '');
         break;
       case 'chart':
-        list(b.data).forEach((d) => out.push(`- ${mi(d?.label)}: ${mi(d?.value)}${mi(b.unit || '')}`));
+        if (isSimpleBars(b)) list(b.data).forEach((d) => out.push(`- ${mi(d?.label)}: ${mi(d?.value)}${mi(b.unit || '')}`));
+        else out.push(...chartMarkdown(b));
+        if (b.caption) out.push('', `*${mi(b.caption)}*`);
+        out.push('');
+        break;
+      case 'gantt':
+      case 'matrix':
+        out.push(...chartMarkdown(b));
+        if (b.caption) out.push('', `*${mi(b.caption)}*`);
         out.push('');
         break;
       case 'code':
@@ -500,7 +515,7 @@ export const BLOCK_CSS = `
 .p-live:not(:has(figcaption)) .p-frame{border-radius:11px}
 .p-live figcaption{margin:0;padding:8px 12px;border-top:1px solid var(--y-border)}
 .p-print-only{display:none}
-`;
+${CHART_CSS}`;
 
 const PAGE_CSS = `
 *,*::before,*::after{box-sizing:border-box}

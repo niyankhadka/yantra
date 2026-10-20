@@ -16,10 +16,13 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 __all__ = [
     "Block", "BLOCK_TYPES", "TONES",
     "text", "points", "steps", "metrics", "table", "compare", "callout", "diagram", "chart", "code", "sources",
+    "gantt", "matrix", "CHART_KINDS",
 ]
 
 Block = Dict[str, Any]
-BLOCK_TYPES = ("text", "points", "steps", "metrics", "table", "compare", "callout", "diagram", "chart", "code", "sources")
+BLOCK_TYPES = ("text", "points", "steps", "metrics", "table", "compare", "callout", "diagram", "chart", "code", "sources",
+               "gantt", "matrix")
+CHART_KINDS = ("bar", "column", "line", "area", "pie", "donut")
 TONES = ("info", "good", "warn", "bad", "neutral")
 Item = Union[str, Sequence[Any], Mapping[str, Any]]
 
@@ -85,7 +88,8 @@ def steps(items: Iterable[Item], title: Optional[str] = None, span: Optional[str
 
 def metrics(items: Union[Iterable[Item], Mapping[str, Any]], title: Optional[str] = None,
             span: Optional[str] = None, nodes: Optional[Iterable[Any]] = None) -> Block:
-    """Numbers that matter: items ``{label, value, note?, tone?}``, ``(label, value, note)`` or a ``{label: value}`` mapping."""
+    """Numbers that matter: items ``{label, value, note?, tone?, trend?}``, ``(label, value, note)`` or a
+    ``{label: value}`` mapping. ``trend`` (a list of numbers) draws a sparkline under the value."""
     if isinstance(items, Mapping):
         rows = [{"label": str(k), "value": str(v)} for k, v in items.items()]
     else:
@@ -141,18 +145,94 @@ def diagram(source: Any, step: Optional[int] = None, mode: Optional[str] = None,
     return _block("diagram", title, span, nodes, **ref, step=step, mode=mode, caption=caption)
 
 
-def chart(data: Union[Iterable[Item], Mapping[str, float]], unit: Optional[str] = None,
+def _is_num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def chart(data: Union[Iterable[Item], Mapping[str, float], None] = None, unit: Optional[str] = None,
           title: Optional[str] = None, span: Optional[str] = None,
-          nodes: Optional[Iterable[Any]] = None) -> Block:
-    """Horizontal bars: ``[{label, value, tone?}]``, ``(label, value, tone)`` or ``{label: value}``."""
-    if isinstance(data, Mapping):
-        rows = [{"label": str(k), "value": v} for k, v in data.items()]
+          nodes: Optional[Iterable[Any]] = None, *, kind: Optional[str] = None,
+          categories: Optional[Sequence[Any]] = None,
+          series: Optional[Union[Mapping[str, Sequence[Any]], Iterable[Mapping[str, Any]]]] = None,
+          stacked: Optional[bool] = None, prefix: Optional[str] = None,
+          caption: Optional[str] = None) -> Block:
+    """A chart. ``data`` (``[{label, value, tone?}]``, ``(label, value, tone)`` or ``{label: value}``)
+    for one series; or ``categories`` plus ``series`` (``{name: values}`` or ``[{name, values, tone?}]``,
+    ``None`` for a gap) for several. ``kind``: bar (default, horizontal), column, line, area, pie, donut."""
+    if kind is not None and kind not in CHART_KINDS:
+        raise ValueError(f"chart kind must be one of {CHART_KINDS}, not {kind!r}")
+    fields: Dict[str, Any] = {}
+    if series is not None:
+        if data is not None:
+            raise ValueError("give a chart either data or categories + series, not both")
+        if kind in ("pie", "donut"):
+            raise ValueError(f"{kind} charts take data, not series")
+        if categories is None:
+            raise ValueError("chart series need categories (one per value)")
+        cats = list(categories)
+        rows = ([{"name": str(k), "values": list(v)} for k, v in series.items()] if isinstance(series, Mapping)
+                else [dict(s) for s in series])
+        for s in rows:
+            if "name" not in s or not isinstance(s.get("values"), (list, tuple)):
+                raise ValueError(f"chart series needs name and values: {s!r}")
+            s["values"] = list(s["values"])
+            if len(s["values"]) != len(cats):
+                raise ValueError(f"series {s['name']!r} has {len(s['values'])} values for {len(cats)} categories")
+            if not all(v is None or _is_num(v) for v in s["values"]):
+                raise ValueError(f"series {s['name']!r} values must be numbers or None")
+        fields.update(categories=cats, series=rows)
     else:
-        rows = _items(data, ("label", "value", "tone"))
+        if data is None:
+            raise ValueError("chart needs data, or categories + series")
+        if isinstance(data, Mapping):
+            rows = [{"label": str(k), "value": v} for k, v in data.items()]
+        else:
+            rows = _items(data, ("label", "value", "tone"))
+        for r in rows:
+            if not _is_num(r.get("value")):
+                raise ValueError(f"chart value must be a number: {r!r}")
+        if kind in ("pie", "donut") and any(r["value"] < 0 for r in rows):
+            raise ValueError(f"{kind} chart values must be 0 or more")
+        fields["data"] = rows
+    return _block("chart", title, span, nodes, kind=kind, stacked=stacked, prefix=prefix, unit=unit,
+                  caption=caption, **fields)
+
+
+def gantt(items: Iterable[Item], start: Optional[str] = None, today: Optional[Union[str, int]] = None,
+          title: Optional[str] = None, span: Optional[str] = None, nodes: Optional[Iterable[Any]] = None,
+          caption: Optional[str] = None) -> Block:
+    """A project plan: items ``{title, id?, group?, start?, end? | days?, after?, milestone?, progress?, tone?}``
+    or ``(title, start, days)``. Dates are ``YYYY-MM-DD`` or ``DD/MM/YYYY``; numbers count days from ``start``."""
+    rows = _items(items, ("title", "start", "days"))
     for r in rows:
-        if not isinstance(r.get("value"), (int, float)) or isinstance(r.get("value"), bool):
-            raise ValueError(f"chart value must be a number: {r!r}")
-    return _block("chart", title, span, nodes, unit=unit, data=rows)
+        if not r.get("title"):
+            raise ValueError(f"gantt task needs a title: {r!r}")
+        if not r.get("milestone") and "days" not in r and "end" not in r:
+            raise ValueError(f"gantt task {r['title']!r} needs days or end (or milestone=True)")
+        if isinstance(r.get("after"), tuple):
+            r["after"] = list(r["after"])
+    return _block("gantt", title, span, nodes, start=start, today=today, caption=caption, items=rows)
+
+
+def matrix(items: Iterable[Item], x: Optional[Union[str, Mapping[str, Any]]] = None,
+           y: Optional[Union[str, Mapping[str, Any]]] = None, quadrants: Optional[Sequence[Any]] = None,
+           grid: Optional[int] = None, title: Optional[str] = None, span: Optional[str] = None,
+           nodes: Optional[Iterable[Any]] = None, heat: Optional[bool] = None,
+           caption: Optional[str] = None) -> Block:
+    """A 2x2 (``grid`` 2: items placed by ``x``/``y`` score, default 0-10; ``quadrants`` = 4 titles from the
+    top left) or a 3x3-5x5 heat map (``x``/``y`` are cell numbers). Items ``{label, x, y, tone?}`` or ``(label, x, y)``."""
+    if grid is not None and grid not in (2, 3, 4, 5):
+        raise ValueError("matrix grid must be 2, 3, 4 or 5")
+    rows = _items(items, ("label", "x", "y", "tone"))
+    for r in rows:
+        if "label" not in r or not _is_num(r.get("x")) or not _is_num(r.get("y")):
+            raise ValueError(f"matrix item needs label, x and y (numbers): {r!r}")
+    if quadrants is not None and ((grid or 2) != 2 or len(quadrants) != 4):
+        raise ValueError("quadrants needs exactly 4 titles and grid 2")
+    return _block("matrix", title, span, nodes, grid=grid, x=dict(x) if isinstance(x, Mapping) else x,
+                  y=dict(y) if isinstance(y, Mapping) else y,
+                  quadrants=list(quadrants) if quadrants is not None else None, heat=heat, caption=caption,
+                  items=rows)
 
 
 def code(source: str, language: Optional[str] = None, title: Optional[str] = None, span: Optional[str] = None,

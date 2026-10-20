@@ -113,7 +113,9 @@
               "checklist",
               "quote",
               "image",
-              "kv"
+              "kv",
+              "gantt",
+              "matrix"
             ]
           },
           "title": {
@@ -148,7 +150,7 @@
           },
           "items": {
             "type": "array",
-            "description": "points/steps: {title, text?, tone?}; metrics: {label, value, note?, tone?}; sources: {title, url?, note?}; timeline: {date, title, text?, tone?}; faq: {q, a}; checklist: {text, done?, note?}; kv: {k, v}.",
+            "description": "points/steps: {title, text?, tone?}; metrics: {label, value, note?, tone?, trend?: [numbers] (sparkline)}; sources: {title, url?, note?}; timeline: {date, title, text?, tone?}; faq: {q, a}; checklist: {text, done?, note?}; kv: {k, v}; gantt: {title, id?, group?, start? (date or day number), end? (last day) | days?, after? (id or [ids]), milestone?, progress? (0-100), tone?}; matrix: {label, x, y, tone?}.",
             "items": {
               "type": "object"
             }
@@ -193,11 +195,11 @@
           },
           "caption": {
             "type": "string",
-            "description": "diagram, image: caption under the figure."
+            "description": "diagram, image, chart, gantt, matrix: caption under the figure."
           },
           "data": {
             "type": "array",
-            "description": "chart: [{label, value (number), tone?}] drawn as horizontal bars.",
+            "description": "chart: [{label, value (number), tone?}]. Without kind (or kind bar) drawn as horizontal bars; also the slices of pie and donut charts.",
             "items": {
               "type": "object"
             }
@@ -250,6 +252,160 @@
             "minimum": 240,
             "default": 560,
             "description": "diagram (interactive): viewer height in pixels."
+          },
+          "kind": {
+            "enum": [
+              "bar",
+              "column",
+              "line",
+              "area",
+              "pie",
+              "donut"
+            ],
+            "default": "bar",
+            "description": "chart: bar (horizontal, default), column, line, area, pie or donut."
+          },
+          "stacked": {
+            "type": "boolean",
+            "description": "chart (bar, column, area with series): stack the series instead of grouping or overlapping them."
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "description": "chart: x-axis labels (or dates, YYYY-MM-DD or DD/MM/YYYY, spaced by time on line and area charts), one per series value."
+          },
+          "series": {
+            "type": "array",
+            "description": "chart: [{name, values: [number or null], tone?}], one value per category; at most 6 series.",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "values"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "tone": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "prefix": {
+            "type": "string",
+            "description": "chart: put before values, e.g. £."
+          },
+          "start": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "gantt: the plan's first day (YYYY-MM-DD or DD/MM/YYYY); numeric task starts count days from it."
+          },
+          "today": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "gantt: draw a 'today' line on this date (or day number)."
+          },
+          "grid": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 5,
+            "default": 2,
+            "description": "matrix: 2 for a 2x2 quadrant (items placed by score), 3-5 for a heat map (items listed in cells)."
+          },
+          "x": {
+            "type": [
+              "object",
+              "string"
+            ],
+            "description": "matrix: horizontal axis, a label or {label, low?, high?, labels? (one per column, heat maps), min?, max?}. Default range 0-10 (2x2) or 1-grid.",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "low": {
+                "type": "string"
+              },
+              "high": {
+                "type": "string"
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            }
+          },
+          "y": {
+            "type": [
+              "object",
+              "string"
+            ],
+            "description": "matrix: vertical axis (counted upwards), as for x.",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "low": {
+                "type": "string"
+              },
+              "high": {
+                "type": "string"
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            }
+          },
+          "quadrants": {
+            "type": "array",
+            "description": "matrix (grid 2): 4 titles or {title, tone?}: top left, top right, bottom left, bottom right.",
+            "items": {
+              "type": [
+                "string",
+                "object"
+              ]
+            }
+          },
+          "heat": {
+            "type": "boolean",
+            "default": true,
+            "description": "matrix (grid 3-5): colour cells low to high by row x column; false keeps them plain."
           }
         }
       }

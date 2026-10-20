@@ -142,7 +142,7 @@ test('markdown export covers the new blocks', () => {
 });
 
 test('new page examples validate with zero errors and warnings', () => {
-  for (const f of ['answer-incident-review.json', 'answer-how-to-choose-database.json']) {
+  for (const f of ['answer-incident-review.json', 'answer-how-to-choose-database.json', 'answer-quarterly-review.json', 'answer-launch-plan.json']) {
     const r = lint(loadPage(f));
     assert.deepEqual([...r.errors, ...r.warnings], [], f);
   }

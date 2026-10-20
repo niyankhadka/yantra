@@ -43,7 +43,12 @@ For "explain how X works", make the diagram first, then the page around it
    3-5 `answer.points`.
 2. Add 3-8 blocks chosen by content: `points`, `steps`, `metrics`, `chart`, `compare`,
    `table`, `timeline`, `faq`, `checklist`, `quote`, `image`, `kv`, `callout`, `text`,
-   `code`, `sources`, `diagram`. See the table in `docs/pages.md`.
+   `code`, `sources`, `diagram`, `gantt`, `matrix`. See the table in `docs/pages.md`.
+   Numbers: `chart` with `kind` bar (default), column, line, area (trends; dates allowed),
+   pie or donut (parts of a whole, ≤ 8 slices); several series via `categories` + `series`
+   (≤ 6, `stacked: true` to stack); `trend: [..]` on a metric adds a sparkline. Plans:
+   `gantt` (tasks with `start`/`days`/`after`, `milestone`, `group`, `today`). Priorities
+   and risks: `matrix` (2x2 with `quadrants`, or `grid: 5` heat map).
 3. Diagrams are static figures; `interactive: true` embeds the live viewer - at most 2 per page.
 4. Do not state uncertain facts as certain: flag them in a `callout`, cite `sources`.
 

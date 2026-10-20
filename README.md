@@ -21,7 +21,11 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 - **Answer pages** (`"kind": "page"`): the answer first, then blocks - points, steps, metrics,
   chart, compare, table, timeline, faq, checklist, quote, image, kv, callout, code, sources and
   diagrams (static, or `interactive: true` for the live viewer, max 2 per page). A contents
-  row appears for longer pages. See [`docs/pages.md`](docs/pages.md).
+  row appears for longer pages.
+- **Charts and plans**: bar, column, line, area, pie and donut charts (grouped or stacked
+  series, nice axes, legends, hidden data tables for screen readers), metric sparklines,
+  `gantt` plans (dates or relative days, groups, milestones, dependencies, today line) and
+  `matrix` blocks (2x2 quadrants, 3x3-5x5 risk heat maps); inline SVG, both themes, no libraries. See [`docs/pages.md`](docs/pages.md).
 - **Mermaid import**: `yantra import` turns flowcharts and sequence diagrams into payloads.
   See [`docs/mermaid.md`](docs/mermaid.md).
 - **Accessible and shareable**: full keyboard control, state mirrored in the URL hash,
@@ -91,14 +95,16 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 
 ## Examples
 
-11 diagrams and 5 answer pages in [`examples/`](examples) (`yantra examples` lists them):
+11 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
 
 - Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
   (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
   `healthcare-clinical`.
 - Pages: `answer-checkout-saga`, `answer-how-to-choose-database` (interactive diagram),
-  `answer-incident-review`, `answer-project-kickoff`, `answer-explain-photosynthesis`.
+  `answer-incident-review`, `answer-project-kickoff`, `answer-explain-photosynthesis`,
+  `answer-quarterly-review` (line, area, column, bar and donut charts, sparklines),
+  `answer-launch-plan` (gantt, 2x2 matrix, risk heat map).
 
 ## Viewer
 
@@ -161,11 +167,12 @@ src/core/              Shared engine: model, layout, routing, scene, lint, SVG/M
   sequence.js          Sequence (lifeline) view
   mermaid.js           Mermaid flowchart / sequence importer
   page.js              Answer pages
+  charts.js            Page charts, gantt plans, matrices (inline SVG)
 src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              11 diagrams, 5 answer pages, Mermaid samples (all validate cleanly)
+examples/              11 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
 docs/                  Authoring (diagrams, pages, Mermaid) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite

@@ -8,8 +8,9 @@ both matter.
 
 Schema: `schemas/yantra-page.schema.json`. Examples: `examples/answer-checkout-saga.json`
 (architecture decision), `examples/answer-incident-review.json` (incident review: timeline,
-checklist, facts, FAQ) and `examples/answer-how-to-choose-database.json` (decision with an
-interactive diagram).
+checklist, facts, FAQ), `examples/answer-how-to-choose-database.json` (decision with an
+interactive diagram), `examples/answer-quarterly-review.json` (charts and sparklines) and
+`examples/answer-launch-plan.json` (gantt plan, 2x2 matrix, risk heat map).
 
 Pages suit any purpose: explainers, decisions, comparisons, how-tos, incident reports,
 study notes, product specs and process docs. Set `meta.kicker` to say which.
@@ -47,8 +48,11 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
 |---|---|---|
 | A few parallel ideas, reasons, risks | `points` | `items: [{ title, text?, tone? }]` |
 | A sequence or procedure | `steps` | `items: [{ title, text? }]` |
-| Numbers that matter | `metrics` | `items: [{ label, value, note?, tone? }]` |
-| A ranking or breakdown | `chart` | `data: [{ label, value, tone? }]`, `unit?` (horizontal bars) |
+| Numbers that matter | `metrics` | `items: [{ label, value, note?, tone?, trend? }]` (`trend: [numbers]` adds a sparkline) |
+| A ranking or breakdown | `chart` | `data: [{ label, value, tone? }]`, `unit?`, `prefix?` (horizontal bars; see [Charts](#charts)) |
+| Change over time, a comparison across groups, parts of a whole | `chart` | `kind: column \| line \| area \| pie \| donut`, `categories` + `series` for several series |
+| A project plan or schedule | `gantt` | `items: [{ title, start?, end? \| days?, after?, group?, milestone?, progress? }]`, `today?` |
+| Priorities (impact / effort) or a risk heat map | `matrix` | `items: [{ label, x, y }]`, `x`, `y`, `quadrants?` or `grid: 3-5` |
 | Options to choose between | `compare` | `options: [{ name, summary?, pros?, cons?, verdict?, recommended? }]` |
 | Structured facts across items | `table` | `columns: [...]`, `rows: [[...]]` (one cell per column) |
 | How parts connect | `diagram` | `src: "file.json"` or `diagram: {…}`, `step?`, `mode?`, `caption?` |
@@ -80,6 +84,56 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
   block title (`#follow-up-actions`), with `-2`, `-3` for repeats, so links stay stable.
 - `meta.updated` adds "Updated …" to the byline next to `meta.date`.
 
+## Charts
+
+Charts are drawn as inline SVG that scales with the page, follows the light and dark theme,
+prints in colour and carries a visually hidden data table for screen readers.
+
+```json
+{ "type": "chart", "kind": "line", "title": "Monthly churn", "unit": "%",
+  "categories": ["30/04/2026", "31/05/2026", "30/06/2026"],
+  "series": [ { "name": "Starter", "values": [2.8, 3.1, 3.2], "tone": "bad" },
+              { "name": "Team", "values": [1.9, 1.8, null] } ] }
+```
+
+| `kind` | Use for | Data |
+|---|---|---|
+| `bar` (default) | Rankings, long labels | `data`, or `categories` + `series` (grouped; `stacked: true`) |
+| `column` | Few categories, values that can be negative | as `bar` |
+| `line` | Trends; several series compared | `categories` + `series` (or `data`); `null` leaves a gap |
+| `area` | Totals over time; `stacked: true` shows how parts add up | as `line` |
+| `pie`, `donut` | Parts of one whole (2-8 slices); a donut shows the total in its centre | `data` only, values ≥ 0 |
+
+- Values are numbers; `prefix` goes before them (`£`), `unit` after (`%`, ` ms`, `k`).
+- Series take colours in a colour-blind-safe order (blue, orange, teal, violet, rose,
+  amber…); line series also get distinct marker shapes. `tone` on a series or data item
+  overrides its colour. More than 6 series, 24 bars, 60 line points or 8 slices is a warning.
+- Categories that are all dates (`YYYY-MM-DD` or `DD/MM/YYYY`, increasing) are spaced by time
+  on line and area charts, and shown as written.
+- A plain `data` bar chart with no negative values keeps the original HTML bar list.
+- `span: "half"` draws a narrower chart; `caption` adds a note under any chart, gantt or matrix.
+
+**Gantt.** Each item is a task with a `title`; dates are `YYYY-MM-DD` or `DD/MM/YYYY`, and
+numbers are days from the block's `start` date (or day 0 when the plan has no dates). Give
+`start` plus `days` or `end` (the last day, inclusive). Without `start`, a task begins when
+everything in its `after` (an `id`, a title, or a list) has ended, else when the task above
+it ends. `milestone: true` draws a diamond; `group` adds a heading row with a span bracket;
+`progress` (0-100) fills part of the bar; `today` draws a dashed line. Arrows show `after`.
+
+```json
+{ "type": "gantt", "title": "Plan", "today": "20/10/2026", "items": [
+  { "id": "api", "title": "API", "group": "Build", "start": "05/10/2026", "days": 25, "progress": 60 },
+  { "id": "pay", "title": "Payments", "group": "Build", "after": "api", "days": 14 },
+  { "title": "Launch", "milestone": true, "after": "pay", "tone": "good" } ] }
+```
+
+**Matrix.** `grid: 2` (default) is a 2x2: items are placed by `x` and `y` scores on
+`axis.min`..`axis.max` (default 0-10), `quadrants` names the four corners (top left, top
+right, bottom left, bottom right; `{ title, tone }` tints one). `grid: 3`-`5` is a heat map:
+`x` and `y` are cell numbers (1 = left / bottom), cells are coloured low to high (`heat:
+false` turns that off) and `x.labels` / `y.labels` name the columns and rows. An axis is a
+label string or `{ label, low?, high?, labels?, min?, max? }`.
+
 ## Rules
 
 - Answer the question that was asked. If you are unsure of a fact, say so in a `callout`
@@ -98,6 +152,14 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
 | `page/diagram-unresolved` | `src` must be a relative `.json` path inside the page's own folder (no `..`, no absolute paths); fix the path or inline the diagram. |
 | `page/image-src` | Use an `https:` URL or a `data:image/…` URI. |
 | `page/image-alt` | Describe the image in `alt`. |
+| `page/chart-kind` | `kind` is one of bar, column, line, area, pie, donut; pie and donut take `data`, not `series`. |
+| `page/chart-mismatch` | Give one value per category in every series; `quadrants` has 4 entries; `x.labels` / `y.labels` one per row or column. |
+| `page/chart-negative` | Pie and donut values must be 0 or more (and not all 0); use a column chart for negatives. |
+| `page/chart-too-many-series`, `page/chart-too-many-points` (warnings) | Cut to the limits above: merge small items into "Other", or use a table. |
+| `page/chart-out-of-range` (warning) | A matrix item lies outside its axis range (it is drawn at the edge), or a gantt `progress` is outside 0-100. |
+| `page/gantt-date` | Use `YYYY-MM-DD` or `DD/MM/YYYY` (or a number of days), and give every task `days` or `end`. |
+| `page/gantt-dependency` | `after` must name a task's `id` or title, ids must be unique, and dependencies cannot loop. |
+| `page/gantt-order` | A task ends before it starts (error), or starts before a task in its `after` ends (warning). |
 | `page/heavy-embed` (warning) | More than 2 `interactive` diagrams; make the rest static. |
 | `page/bad-height`, `page/bad-toc` (warnings) | `height` is a number ≥ 240; `meta.toc` is `true` or `false`. |
 | `page/headline-too-long`, `page/too-many-blocks` | Cut. |

@@ -16,6 +16,7 @@ import { ICONS } from './icons.js';
 const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => (typeof v === 'string' ? v : '');
 import { BLOCK_TYPES, isSafeImageSrc } from './page.js';
+import { CHART_NEEDS, CHART_SHAPES, checkChartBlock } from './charts.js';
 
 export const BUILTIN_TABS = ['summary', 'step', 'node'];
 
@@ -381,7 +382,9 @@ const BLOCK_NEEDS = {
   compare: (b) => Array.isArray(b.options) && b.options.length >= 2 && b.options.every((o) => o?.name),
   callout: (b) => typeof b.body === 'string' && b.body.trim(),
   diagram: (b) => b.diagram && typeof b.diagram === 'object',
-  chart: (b) => Array.isArray(b.data) && b.data.length && b.data.every((d) => d?.label && typeof d.value === 'number'),
+  chart: CHART_NEEDS.chart,
+  gantt: CHART_NEEDS.gantt,
+  matrix: CHART_NEEDS.matrix,
   code: (b) => typeof b.code === 'string',
   sources: (b) => Array.isArray(b.items) && b.items.length && b.items.every((i) => i?.title || i?.url),
   timeline: (b) => Array.isArray(b.items) && b.items.length && b.items.every((i) => i?.date && i?.title),
@@ -401,7 +404,9 @@ const BLOCK_SHAPE = {
   compare: 'options: [{ name, pros?, cons?, verdict? }] (2 or more)',
   callout: 'body (string)',
   diagram: 'diagram (a Yantra diagram payload) or src (path to one)',
-  chart: 'data: [{ label, value (number) }]',
+  chart: CHART_SHAPES.chart,
+  gantt: CHART_SHAPES.gantt,
+  matrix: CHART_SHAPES.matrix,
   code: 'code (string)',
   sources: 'items: [{ title, url? }]',
   timeline: 'items: [{ date, title, text?, tone? }]',
@@ -456,6 +461,8 @@ function checkBlocks(blocks, add, path) {
         add(f.level, f.code, `${where}: ${f.message}`, { ...f, block: i });
       }
     }
+    if (['chart', 'gantt', 'matrix', 'metrics'].includes(b.type))
+      for (const f of checkChartBlock(b)) add(f.level, f.code, `${where}: ${f.message}`, { block: i });
     if (b.type === 'image') {
       if (!isSafeImageSrc(b.src)) add('error', 'page/image-src', `${where} src must be an https: URL or a data:image/ URI.`, { block: i });
       if (typeof b.alt !== 'string' || !b.alt.trim()) add('error', 'page/image-alt', `${where} needs alt text describing the image for screen readers.`, { block: i });

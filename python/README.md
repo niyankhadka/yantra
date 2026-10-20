@@ -51,8 +51,17 @@ p.build_html("saga.html")
 ```
 
 Blocks: `text`, `points`, `steps`, `metrics`, `table`, `compare`, `callout`, `diagram`,
-`chart`, `code`, `sources` (all take `title=` and `span=`). The same constructors live in
-`yantra.blocks` for diagram panels.
+`chart`, `code`, `sources`, `gantt`, `matrix` (all take `title=` and `span=`). The same
+constructors live in `yantra.blocks` for diagram panels.
+
+```python
+p.chart(kind="line", categories=["Jul", "Aug", "Sep"], series={"Starter": [3.4, 3.6, 4.1]}, unit="%")
+p.chart({"Subscriptions": 1057, "Services": 480}, kind="donut", prefix="£", unit="k")
+p.gantt([{"id": "api", "title": "API", "start": "05/10/2026", "days": 25},
+         {"title": "Launch", "milestone": True, "after": "api"}], today="20/10/2026")
+p.matrix([("Alerts", 2, 8), ("Chat", 8, 3)], x="Effort", y="Value",
+         quadrants=["Quick wins", "Big bets", "Fill-ins", "Avoid"])
+```
 
 Examples: `python python/example.py [out-dir]`, `python python/example_page.py [out-dir]`
 (default: the OS temp dir). Tests: `python -m unittest discover -s python/tests -v`.

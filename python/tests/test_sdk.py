@@ -129,6 +129,24 @@ def full_page(diagram: Any = None) -> Page:
     return p
 
 
+def chart_page() -> Page:
+    """A page using every chart kind, a gantt plan and both matrix forms."""
+    page = Page("How did Q3 go?", kicker="Review").answer("Revenue grew 14%.")
+    page.metrics([{"label": "Revenue", "value": "£1.8m", "trend": [1.2, 1.4, 1.8], "tone": "good"}])
+    page.chart(kind="line", categories=["30/04/2026", "31/05/2026", "30/06/2026"],
+               series={"Starter": [2.8, 3.1, None], "Team": [1.9, 1.8, 1.7]}, unit="%", title="Churn")
+    page.chart(kind="column", categories=["Q2", "Q3"], series=[{"name": "Net", "values": [12, -38]}], stacked=False)
+    page.chart({"Subscriptions": 1057, "Services": 480}, kind="donut", prefix="£", unit="k", span="half")
+    page.chart([("Price", 22), ("Integrations", 15)], title="Why they left", span="half")
+    page.gantt([{"id": "a", "title": "Build", "start": "02/11/2026", "days": 10, "group": "Build"},
+                {"title": "Launch", "milestone": True, "after": "a"}], today="05/11/2026", title="Plan")
+    page.matrix([("Alerts", 2, 8), ("Chat", 8, 3)], x={"label": "Effort", "low": "Low", "high": "High"},
+                y="Value", quadrants=["Quick wins", "Big bets", "Fill-ins", "Avoid"], title="Priorities")
+    page.matrix([("Outage", 3, 3, "bad")], grid=3, x={"label": "Likelihood", "labels": ["Low", "Mid", "High"]},
+                y="Impact", title="Risks")
+    return page
+
+
 class PayloadShapeTests(unittest.TestCase):
     def test_diagram_matches_schema(self) -> None:
         payload = full_diagram().to_dict()
@@ -206,6 +224,37 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertEqual(payload["blocks"][0]["diagram"]["meta"]["title"], "Checkout")
         self.assertEqual(payload["blocks"][2]["items"][1], {"title": "B", "text": "why", "tone": "good"})
 
+    def test_chart_blocks_match_schema(self) -> None:
+        payload = chart_page().to_dict()
+        self.assertEqual(check(payload, SCHEMAS["yantra-page.schema.json"], "yantra-page.schema.json"), [])
+        b = payload["blocks"]
+        self.assertEqual([x["type"] for x in b], ["metrics", "chart", "chart", "chart", "chart", "gantt", "matrix", "matrix"])
+        self.assertEqual(b[1]["series"][0], {"name": "Starter", "values": [2.8, 3.1, None]})
+        self.assertEqual(b[3]["data"][0], {"label": "Subscriptions", "value": 1057})
+        self.assertNotIn("kind", b[4])
+        self.assertEqual(b[6]["items"][0], {"label": "Alerts", "x": 2, "y": 8})
+        self.assertEqual(b[0]["items"][0]["trend"], [1.2, 1.4, 1.8])
+
+    def test_chart_blocks_reject_bad_data(self) -> None:
+        with self.assertRaises(ValueError):
+            blocks.chart([("a", 1)], kind="radar")
+        with self.assertRaises(ValueError):
+            blocks.chart(kind="line", categories=["a", "b"], series={"s": [1]})
+        with self.assertRaises(ValueError):
+            blocks.chart(kind="pie", categories=["a"], series={"s": [1]})
+        with self.assertRaises(ValueError):
+            blocks.chart({"a": -1}, kind="donut")
+        with self.assertRaises(ValueError):
+            blocks.chart()
+        with self.assertRaises(ValueError):
+            blocks.gantt([{"title": "No length", "start": "02/11/2026"}])
+        with self.assertRaises(ValueError):
+            blocks.matrix([("a", 1, 2)], grid=7)
+        with self.assertRaises(ValueError):
+            blocks.matrix([("a", 1, 2)], quadrants=["only", "two"])
+        with self.assertRaises(ValueError):
+            blocks.matrix([{"label": "a", "x": "high", "y": 2}])
+
     def test_diagram_block_sources(self) -> None:
         self.assertEqual(blocks.diagram("diagrams/a.json")["src"], "diagrams/a.json")
         self.assertIn("diagram", blocks.diagram({"meta": {"title": "x"}, "nodes": [], "edges": []}))
@@ -253,6 +302,15 @@ class CliTests(unittest.TestCase):
         page = full_page(diagram="cloud-architecture.json")
         page.base_dir = str(ROOT / "examples")
         self.assertClean(page.validate())
+
+    def test_chart_page_validates_cleanly_and_builds(self) -> None:
+        page = chart_page()
+        report = page.validate()
+        self.assertClean(report)
+        self.assertEqual(report["warnings"], [])
+        html = Path(page.build_html(os.path.join(self.tmp, "charts.html"))).read_text(encoding="utf-8")
+        for marker in ("p-chart--line", "p-chart--donut", "p-chart--gantt", "p-chart--matrix", "p-spark"):
+            self.assertIn(marker, html)
 
     def test_examples_run(self) -> None:
         for script, outputs in (("example.py", ["sales_pipeline.html"]),
