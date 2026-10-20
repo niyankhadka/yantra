@@ -7,10 +7,18 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-20
+
 ### Changed
 
 - npm releases use trusted publishing and are staged for approval on npmjs.com; the
   release workflow no longer needs an npm token.
+- The README installs from npm and PyPI and shows their version badges.
+- CI and release workflows use `actions/checkout`, `setup-node` and `setup-python` v7.
+
+### Fixed
+
+- Tests run on Node.js 18, and failing tests are reported as CI annotations.
 
 ## [1.0.0] - 2026-10-20
 
@@ -262,5 +270,6 @@ First public release.
 - CLI (`validate`, `build`, `export`, `screenshot`, `import`, `new`, `examples`, `mcp`,
   `dev`), an MCP server with sandboxed file access, an agent skill and a Python SDK.
 
-[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/niyankhadka/yantra/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/niyankhadka/yantra/releases/tag/v1.0.0

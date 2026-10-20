@@ -8,7 +8,7 @@ No third-party Python dependencies; Python >= 3.9.
 > (`to_dict()`, `save_json()`) works without it.
 
 ```bash
-pip install niyankhadka-yantra     # once published; import name "yantra"
+pip install niyankhadka-yantra     # import name "yantra"
 pip install -e python/             # from a checkout of the repository
 ```
 

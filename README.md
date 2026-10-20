@@ -15,10 +15,8 @@
   <a href="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml"><img src="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue.svg" alt="Licence: MIT"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D18-339933.svg" alt="Node.js 18 or later">
-  <!-- Once published:
   <a href="https://www.npmjs.com/package/@niyankhadka/yantra"><img src="https://img.shields.io/npm/v/@niyankhadka/yantra.svg" alt="npm"></a>
   <a href="https://pypi.org/project/niyankhadka-yantra/"><img src="https://img.shields.io/pypi/v/niyankhadka-yantra.svg" alt="PyPI"></a>
-  -->
 </p>
 
 Describe the parts of a system or process, how they connect and the story you want to tell,
@@ -120,30 +118,26 @@ to generate diagrams from scripts and coding agents.
 
 ## Quick start
 
-Yantra needs **Node.js 18 or later**. Until the packages are published, run it from a clone:
+Yantra needs **Node.js 18 or later**.
+
+```bash
+npm i -g @niyankhadka/yantra      # the `yantra` command; ships a prebuilt viewer
+yantra new diagram.json           # starter diagram (--page for an answer page)
+yantra validate diagram.json      # schema, references, story, geometry
+yantra build diagram.json         # -> diagram.html (works offline)
+yantra screenshot diagram.json    # -> diagram-light.png (uses local Chrome or Edge)
+```
+
+Without installing: `npx @niyankhadka/yantra build diagram.json`. The Python SDK is
+`pip install niyankhadka-yantra` (import `yantra`).
+
+To work on Yantra or browse every example in the viewer, run it from a clone:
 
 ```bash
 git clone https://github.com/niyankhadka/yantra.git
 cd yantra
 npm install
-npm link                     # optional: puts `yantra` on your PATH
-```
-
-Then:
-
-```bash
-node bin/yantra.js new diagram.json            # starter diagram (--page for an answer page)
-node bin/yantra.js validate diagram.json       # schema, references, story, geometry
-node bin/yantra.js build diagram.json          # -> diagram.html (works offline)
-node bin/yantra.js screenshot diagram.json     # -> diagram-light.png (uses local Chrome or Edge)
-npm run dev                                    # viewer with every example at http://localhost:3000
-```
-
-Once published, the packages install with:
-
-```bash
-npm i -g @niyankhadka/yantra      # the `yantra` command; ships a prebuilt viewer
-pip install niyankhadka-yantra    # Python SDK (import yantra)
+npm run dev                       # viewer with every example at http://localhost:3000
 ```
 
 ## Pick your output
@@ -335,7 +329,7 @@ The SDK (Python 3.9 or later, no third-party dependencies) writes payloads in Py
 the CLI to validate and build, so Node.js is still needed for those steps.
 
 ```bash
-pip install -e python/          # from a clone today; `pip install niyankhadka-yantra` once published
+pip install niyankhadka-yantra    # or `pip install -e python/` from a clone
 ```
 
 ```python
