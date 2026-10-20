@@ -1,0 +1,9 @@
+%% CI pipeline: chained edges, fan-out, classes and shapes.
+graph TD
+  push((Push)) -->|webhook| ci[CI runner]:::infra
+  ci -->|parallel jobs| lint[Lint] & test[Unit tests]
+  lint & test -->|results| gate{All green?}
+  gate == yes ==> build[/Build image/] -->|push image| reg[(Registry)]
+  gate -- no --> notify{{Notify author}}
+  classDef infra fill:#ccfbf1,stroke:#0f766e
+  linkStyle 0 stroke:#999

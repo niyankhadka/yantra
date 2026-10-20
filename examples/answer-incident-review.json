@@ -1,0 +1,84 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Why did checkout fail for 47 minutes on 14/10/2026, and what are we changing?",
+    "title": "Incident review: checkout outage, 14/10/2026",
+    "kicker": "Incident review",
+    "author": "Platform on-call",
+    "date": "16/10/2026",
+    "updated": "20/10/2026",
+    "footer": "Blameless review. Internal; do not forward outside the company."
+  },
+  "answer": {
+    "headline": "An expired TLS certificate on the payment gateway's internal endpoint made every card payment fail; renewal had silently stopped because the job's service account lost access during a permissions clean-up.",
+    "text": "Orders were accepted but payments were rejected, so customers saw a generic error at the last step. No card was charged twice and no data was lost.",
+    "points": [
+      "Root cause: certificate renewal job lost its permissions on 12/09/2026",
+      "Detection took 11 minutes because the error-rate alert waits for 10 minutes of failures",
+      "Five follow-up actions; two are already done"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "metrics",
+      "title": "Impact",
+      "items": [
+        { "label": "Duration", "value": "47 min", "note": "14:02 to 14:49 BST", "tone": "bad" },
+        { "label": "Failed checkouts", "value": "3,180", "note": "about 2.1% of the day's orders", "tone": "bad" },
+        { "label": "Time to detect", "value": "11 min", "note": "target: under 5 min", "tone": "warn" },
+        { "label": "Duplicate charges", "value": "0", "note": "idempotency keys held", "tone": "good" }
+      ]
+    },
+    {
+      "type": "timeline",
+      "title": "What happened",
+      "items": [
+        { "date": "12/09/2026", "title": "Service account permissions tidied up", "text": "A clean-up removed the renewal job's write access to the certificate store. The job began failing quietly.", "tone": "warn" },
+        { "date": "14/10 14:02", "title": "Certificate expires", "text": "Calls from the order service to the payment gateway fail the TLS handshake.", "tone": "bad" },
+        { "date": "14/10 14:13", "title": "Alert fires", "text": "The checkout error-rate alert pages the on-call engineer.", "tone": "warn" },
+        { "date": "14/10 14:31", "title": "Cause found", "text": "Gateway logs show `certificate has expired` on every request." },
+        { "date": "14/10 14:49", "title": "Service restored", "text": "A certificate was issued by hand and the gateway reloaded. Error rate back to normal.", "tone": "good" }
+      ]
+    },
+    {
+      "type": "kv",
+      "title": "Incident facts",
+      "span": "half",
+      "items": [
+        { "k": "Severity", "v": "SEV-2 (customer-facing, partial)" },
+        { "k": "Services", "v": "Payment gateway, order service" },
+        { "k": "Detected by", "v": "Error-rate alert" },
+        { "k": "Incident lead", "v": "On-call engineer, Platform" },
+        { "k": "Status", "v": "Resolved; actions in progress" }
+      ]
+    },
+    {
+      "type": "callout",
+      "title": "Why the renewal failure went unnoticed",
+      "span": "half",
+      "tone": "warn",
+      "label": "Silent failure",
+      "body": "The renewal job logged its errors but nothing alerted on them, and the certificate had 30 days of validity left when it first failed. **A job that fails safely for a month still needs an alert.**"
+    },
+    {
+      "type": "checklist",
+      "title": "Follow-up actions",
+      "items": [
+        { "text": "Restore the renewal job's permissions and renew all gateway certificates", "done": true, "note": "Done 14/10/2026" },
+        { "text": "Alert when any certificate has fewer than 14 days left", "done": true, "note": "Done 16/10/2026" },
+        { "text": "Alert on renewal job failures, not only on expiry", "note": "Owner: Platform, due 31/10/2026" },
+        { "text": "Show a clear retry message when payment is unavailable", "note": "Owner: Checkout, due 07/11/2026" },
+        { "text": "Review service accounts before removing permissions", "note": "Owner: Security, due 14/11/2026" }
+      ]
+    },
+    {
+      "type": "faq",
+      "title": "Questions we were asked",
+      "items": [
+        { "q": "Were any customers charged without an order?", "a": "No. Payments failed before authorisation, so no money moved. Finance confirmed this against the provider's settlement report." },
+        { "q": "Why did it take 18 minutes to find the cause after the alert?", "a": "The first responder looked at the recent deploy, which was unrelated. The gateway's TLS errors were only in its own logs, not on the checkout dashboard." },
+        { "q": "Could this happen to other services?", "a": "Yes, any service using the same renewal job. The expiry alert now covers all 23 certificates in the store." }
+      ]
+    }
+  ]
+}

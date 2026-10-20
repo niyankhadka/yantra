@@ -1,0 +1,28 @@
+@startuml
+' A payments model: an interface, an abstract base, an enum and a composite order.
+title Payments model
+skinparam classAttributeIconSize 0
+package "Billing" {
+  interface PaymentMethod <<interface>> {
+    +authorize(amount : Money) : Auth
+  }
+  abstract class BasePayment {
+    #id : UUID
+    {static} count : int
+  }
+  class CardPayment {
+    -token : String
+    +authorize(amount : Money) : Auth
+  }
+}
+enum Status {
+  PENDING
+  PAID
+}
+class Order
+PaymentMethod <|.. CardPayment : implements
+BasePayment <|-up- CardPayment
+Order "1" *-- "many" BasePayment : holds
+Order --> Status : has
+note right of Order : the aggregate root
+@enduml

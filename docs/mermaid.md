@@ -1,0 +1,223 @@
+# Importing Mermaid
+
+Yantra can turn a Mermaid **flowchart** (`graph` / `flowchart`), **sequence diagram**
+(`sequenceDiagram`), **state diagram** (`stateDiagram` / `stateDiagram-v2`), **ER diagram**
+(`erDiagram`), **class diagram** (`classDiagram`), **mind map** (`mindmap`) or **user journey**
+(`journey`) into a diagram payload with roles, groups and a walkthrough, and a **gantt**,
+**pie**, **timeline** or **quadrantChart** into a one-page answer (`"kind": "page"`, see
+[Charts and plans](#charts-and-plans-answer-pages)). The
+parser is small and dependency-free (`src/core/mermaid.js`); it is not a full Mermaid
+implementation, so check the warnings it prints.
+
+```bash
+yantra import flow.mmd                      # -> flow.json, then lint report
+yantra import notes.md -o diagram.json      # first ```mermaid block in a Markdown file
+yantra import notes.md --all                # every block -> notes-1.json, notes-2.json, ...
+yantra import flow.mmd --title "Checkout"   # override the title
+```
+
+The command prints import warnings, writes the JSON, runs the validator and exits 1 only
+if validation reports errors. From MCP, call `yantra_import_mermaid` with
+`{ mermaid, title?, outputPath? }`; it returns `{ payload | outputPath, warnings, validation }`.
+From JavaScript: `fromMermaid(text, { title }) -> { payload, warnings }`.
+
+Samples: `examples/mermaid/*.mmd`. draw.io and PlantUML imports use the same command and
+are described in [`import.md`](import.md); the MCP tool `yantra_import` handles all three.
+
+## Flowcharts
+
+| Mermaid | Yantra |
+|---|---|
+| `graph TD` / `TB` / `BT` | `meta.layout.direction: "TB"` (BT warns: not reversed) |
+| `graph LR` / `RL` | `"LR"` (RL warns: not reversed) |
+| `A[text]`, `A(text)`, `A[[text]]`, `A{{text}}` | node, type `node` (role "Step") |
+| `A([text])`, `A((text))`, `A(((text)))` | type `terminal` ("Start / end") |
+| `A[(text)]` | type `store`, icon `database` |
+| `A{text}` | type `decision` |
+| `A>text]` | type `event` |
+| `A[/text/]`, `A[\text\]`, `A[/text\]`, `A[\text/]` | type `io` ("Input / output") |
+| `A["quoted"]`, `<br>`, `**md**`, `fa:fa-x`, `#quot;` | cleaned; first line becomes the title, later lines the subtitle |
+| `A --> B`, `A --o B`, `A --x B` | edge, arrow at the target (circle/cross heads warn: drawn as arrows) |
+| `A --- B`, `A -.- B`, `A === B`, `A -- text --- B` | edge with `arrow: "none"` (undirected) |
+| `A <--> B`, `A o--o B`, `A x--x B` | edge with `arrow: "both"` |
+| `A --> A` | self-loop, drawn as a loop on the card |
+| `A -.-> B`, `A -. text .-> B` | edge with `style: "dashed"` |
+| `A ==> B`, `A == text ==> B` | edge with `style: "solid"` |
+| `A -->\|text\| B`, `A -- text --> B` | edge `label` |
+| `A --> B --> C` | one edge per link |
+| `A & B --> C & D` | every source to every target |
+| `subgraph id [Title]`, `subgraph Title`, `subgraph "Title"` ... `end` | `groups[]` (`{ id, title, nodes, parent? }`), nested via `parent` |
+| edge to a subgraph id | attached to the subgraph's first node (warning) |
+| `classDef name fill:#hex`, `class A,B name`, `A:::name` | node `type: name`; role colour from the fill (nearest hue), else an unused hue |
+| `%% comment`, `%%{init}%%`, `---` front matter | dropped; front-matter `title:` becomes `meta.title` |
+| `style`, `linkStyle`, `click`, `direction`, `~~~` | ignored with one warning per kind |
+
+**Ids.** Mermaid ids are kept when they are plain (`[A-Za-z0-9_-]`); other characters become
+`-` and collisions get `-2`, `-3`. Edge ids are `source-target` (`-2` for repeats).
+
+**Roles.** One role per type with a label (`Step`, `Decision`, `Data store`, `Start / end`,
+`Input / output`, `Event`, or the class name humanised). Class roles take colours first;
+shape roles keep their usual hue (blue, amber, violet, teal, green, orange) unless taken.
+
+**Walkthrough.** An overview step, then one step per node in topological order (declaration
+order breaks ties and cycles). With more than seven nodes, nodes are bucketed by rank so the
+walkthrough stays at eight steps or fewer. Each step lights its nodes, their incoming edges
+and the sources of those edges; decisions list their branches.
+
+**Text budgets.** Titles over 42 characters are shortened (full text in `description`), edge
+labels over 28 characters are shortened. Unlabelled edges are reported once; label them in
+Mermaid (`-->|what flows|`) to keep the validator quiet.
+
+## Sequence diagrams
+
+| Mermaid | Yantra |
+|---|---|
+| `participant A as Label` | node, type `service` ("Participant"); `store` with a database icon when the name says db/database/store/cache/queue |
+| `actor U as User` | node, type `actor`, icon `user` |
+| participants first used in a message | created on first use |
+| `A->>B: text` (`->`, `-->`, `-->>`, `-x`, `--x`, `-)`, `--)`) | one edge per ordered pair, labelled with the first message; `--` arrows are dashed |
+| every message | a step: title = message text, lights both participants and the edge |
+| `A->>A: text` (self) | a step lighting `A`; no edge is drawn |
+| `Note over/left of/right of X: text` | appended to the previous step's description (before any message: the overview) |
+| `alt/else`, `opt`, `loop`, `par/and`, `critical/option`, `break` ... `end` | noted in each enclosed step, e.g. `Inside loop "every second".` |
+| `box Title` ... `end` | `groups[]` |
+| `title X`, `autonumber`, `activate`, `deactivate`, `rect` | title used; the rest ignored |
+
+The scenario starts with an overview step and keeps every message as its own step.
+
+## State diagrams
+
+| Mermaid | Yantra |
+|---|---|
+| `stateDiagram`, `stateDiagram-v2` | `meta.layout.direction: "TB"`; `direction LR` at the top level gives `"LR"` |
+| `A`, `state A`, `state "Long name" as A` | node, type `state` ("State"), `shape: "state"` |
+| `A : text` | subtitle (descriptions over 60 characters go to `description`) |
+| `[*] --> A` | an initial pseudo-state (`shape: "initial"`, id `start`), type `terminal` |
+| `A --> [*]` | a final pseudo-state (`shape: "final"`, id `end`), one per scope |
+| `A --> B : event`, `A --> A : event` | transition with `label`; a self-loop is kept |
+| `state X <<choice>>` | `shape: "choice"`, type `choice` ("Choice") |
+| `state X <<fork>>` / `<<join>>` | a fork / join bar (`shape: "fork"`, type `fork`, "Fork / join"); its transitions need no label |
+| `state C { ... }` | group `C` (nested composites get `parent`); its own `[*]` become `C-start` / `C-end` |
+| `--` inside `state C { ... }` (concurrent regions) | `C` keeps no nodes; each region is a child group `C-region-1`, `C-region-2` ... (`"kind": "region"`, `"parent": "C"`) with that region's states (and its own start / end). A region is titled by a note on one of its states (`note right of S : Payment`), or by the one composite it holds; otherwise "C 1", "C 2" ... |
+| transition to / from a composite | attached to its entry state (target of its `[*]`) / exit state (source into its `[*]`), with a warning; with regions, to the entry (from the exit) of every region, so a fork fans out into each one. The composite's own start (end) dots are then dropped |
+| `note left of / right of X : text`, `note ... end note` | ignored, with one warning counting the notes |
+| `classDef`, `class`, `:::`, `style`, `scale`, `hide`, `direction` inside a composite | ignored with one warning per kind |
+
+The walkthrough is built as for flowcharts (overview, then states in topological order);
+self-loops are mentioned on their state's step. Transitions out of a start or into an end
+need no label; the validator does not ask for one.
+
+## ER diagrams
+
+| Mermaid | Yantra |
+|---|---|
+| `CUSTOMER {` ... `string id PK "comment"` ... `}` | entity card (type `entity`, icon `database`) with `fields`: `{ name, type, pk/fk/unique, note }` (`PK, FK` lists both) |
+| `CUSTOMER { string id PK; string name }` (one line, `;` optional) | the same card |
+| `EMPLOYEE \|o--o{ EMPLOYEE : manages` | a self-relationship, drawn as a loop on the card |
+| a foreign key named after the other entity (`customer_id`, `customerId`; plural names lose their `s`) | `sourceField` / `targetField`: the edge joins the key rows (`id` ↔ `customer_id`). A self-relationship takes the entity's one foreign key no other relationship explains (`manager_id`). Parallel relationships and self-relationships on a busy key row get their own tracks; only geometry that still cannot be routed falls back to card sides (one warning) |
+| `CUSTOMER \|\|--o{ ORDER : places` | edge `places` with `sourceEnd: "one"`, `targetEnd: "zero-or-many"` |
+| `\|\|`, `\|o` / `o\|`, `}o` / `o{`, `}\|` / `\|{` | `one`, `zero-or-one`, `zero-or-many`, `one-or-many` |
+| `only one to zero or more`, `1+`, `many(0)`, ... | the same cardinalities from the word forms (`optionally to` is dashed) |
+| `A }\|..\|{ B` (non-identifying) | edge with `style: "dashed"` |
+| `p[Person]`, `"quoted name"` | id `p`, title `Person` |
+| `direction LR` / `TB` | `meta.layout.direction` (default `LR`: tall cards read best side by side) |
+| `style`, `classDef`, `class` | ignored with one warning per kind |
+
+Entities with more than 12 attributes import whole but show 12 rows (warning). The
+walkthrough has an overview, then one step per relationship (per source entity when there are
+more than seven) describing both cardinalities.
+
+## Class diagrams
+
+| Mermaid | Yantra |
+|---|---|
+| `class Duck {` ... `+String beak` ... `+swim()` ... `}`, `Duck : +int age` | class card: attributes in `fields`, operations in `methods` |
+| `class Duck { +String beak; +swim() }` (one line) | the same; members split on `;` |
+| `+ - # ~` | `visibility`; `$` → `static`, `*` → `abstract` (methods: after `()` or the return type) |
+| `+area(w: int) double`, `-name: String`, `String name` | `{ name, params, type }`; generics `List~T~` become `List<T>` |
+| `<<interface>>` (in the block or `<<interface>> Name`) | `data.stereotype`; type `interface`, `abstract`, `enumeration` or `class` (one role each) |
+| `A <\|-- B`, `B --\|> A` | `relation: "inheritance"`, source = the parent (`A`) |
+| `A <\|.. B`, `B ..\|> A` | `realization`, source = the interface |
+| `A *-- B`, `B --* A` | `composition`, source = the whole |
+| `A o-- B`, `B --o A` | `aggregation`, source = the whole |
+| `A --> B`, `B <-- A` | `association` (open arrow at the target) |
+| `A ..> B`, `B <.. A` | `dependency` (dashed) |
+| `A -- B`, `A .. B` | `association` / `dependency` with `targetEnd: "none"` |
+| `A "1" *-- "many" B : label` | label kept; multiplicities become end labels: `sourceLabel: "1"`, `targetLabel: "many"` (also in the step text) |
+| `Shape ()-- Circle`, `Circle --() Shape` (lollipop) | `relation: "realization"` from the interface (`Shape`, given `<<interface>>` when it has no stereotype) |
+| `Node --> Node : children` | a self-relationship, drawn as a loop on the card |
+| `namespace Shop { ... }` | `groups[]` |
+| `note for Duck "text"`, `note "text"` | the class description, or the overview step |
+| `class A["Label"]`, `direction`, `title` | title, `meta.layout.direction` (default `TB`), `meta.title` |
+| `style`, `cssClass`, `classDef`, `:::`, `click`, `link`, `callback` | ignored with one warning per kind |
+
+The walkthrough reads the way UML is spoken: "Duck inherits from Animal", "Wheel is part of
+Car", "Order depends on PaymentMethod".
+
+## Limitations
+
+- Diagrams: flowcharts, sequence, state, ER, class, mind maps and journeys; pages: gantt, pie,
+  timeline and quadrantChart. Other types (`gitGraph`, `sankey-beta`, `xychart-beta`, `C4Context`,
+  `block-beta`, `requirementDiagram`, ...) are rejected with an error listing what is supported.
+- Flowcharts: circle and cross heads (`--o`, `--x`, `o--o`) are drawn as plain arrows.
+- State diagrams: notes are not drawn; composite states are groups, so a transition to the
+  composite itself lands on its entry state (in every region).
+- ER diagrams: key rows are matched by name only (`<entity>_id`); other relationships attach to
+  card sides. Class relationships always attach to card sides.
+- Mermaid styling (`style`, `linkStyle`, colours other than `classDef` fill) and interactions (`click`) are dropped.
+- Per-subgraph `direction` is ignored (layout is automatic).
+- Node ids with hyphens before `-`, `.`, `o` or `x` (e.g. `a--ob`) can be ambiguous; add spaces around links.
+- Groups are emitted in the payload; how they are drawn depends on the viewer version.
+- Larger graphs import but may exceed the 14-node / 20-edge budget; split them as described in `docs/authoring.md`.
+
+## Charts and plans (answer pages)
+
+These Mermaid types describe data rather than a structure, so they become a one-page answer
+(`"kind": "page"`, see [`pages.md`](pages.md)) whose headline is computed from the data (the
+span of the plan, the largest slice, the busiest quadrant). Rewrite it as the real answer
+before sharing; the page footer says so.
+
+| Mermaid | Yantra page |
+|---|---|
+| `gantt` | a `gantt` block; `title` → `meta.title`; `section` → item `group` |
+| `Task : id, 2026-10-05, 10d` | `{ title, id, start: "05/10/2026", days: 10 }` (dates follow `dateFormat`: `YYYY`, `YY`, `MM`, `DD` tokens; times are dropped) |
+| `: after a b, 2w`, `: 3d` (no start) | `after: ["a", "b"]`, `days: 14`; no start: after the task above |
+| `: 2026-10-06, 2026-10-09` | end dates are exclusive in Mermaid: `days: 3` (`inclusiveEndDates` keeps the last day) |
+| `done`, `crit`, `milestone`, `active` tags | `progress: 100`, `tone: "bad"`, `milestone: true`; `active` has no mark |
+| `h` / `m` durations, `M` / `y` | rounded up to whole days; months count 30 days, years 365 (warning) |
+| `excludes weekends` (or `saturday sunday`), `excludes 2026-12-25` | `workdays: true` and `holidays`: durations and dependencies count working days. Other weekdays, and dates without excluded weekends, still count (warning) |
+| `: after a, until b` | `end`: the day before task `b` starts (resolved on dated plans; otherwise one day, with a warning) |
+| `weekend friday`, `includes`, `todayMarker`, `axisFormat`, `tickInterval`, `click` | ignored with one warning per kind |
+| `pie [showData]`, `title`, `"Label" : 42` | a `chart` block, `kind: "pie"`, slices largest first; above 8 slices the smallest merge into "Other" (warning) |
+| `timeline`, `title`, `period : event : event`, `: event` (continued) | a `timeline` block per `section` (one when there are none); a period with several events joins them in the title, or lists the rest in `text` when long |
+| `quadrantChart`, `x-axis Low --> High`, `y-axis ...` | a `matrix` block (2x2) with `x` / `y` `{ low, high, min: 0, max: 1 }` |
+| `quadrant-1` ... `quadrant-4` | `quadrants` in matrix order: 2 (top left), 1 (top right), 3, 4 |
+| `Point A: [0.3, 0.6]` (`radius`, `color`, `:::class` dropped with a warning) | `items: [{ label, x, y }]` |
+
+`journey` stays a diagram: one card per task with its score as the badge (`4/5`) and the
+actors as the subtitle, types `good` (4-5, green), `neutral` (3, amber) and `pain` (1-2, red),
+`section`s as groups, tasks linked in order (`then`, `next stage`) left to right, and a
+walkthrough with one step per section whose overview names the pain points.
+
+Samples: `launch-gantt.mmd`, `traffic-sources.mmd`, `product-timeline.mmd`,
+`feature-priorities.mmd`, `checkout-journey.mmd`; also `library-classes.mmd` (one-line
+classes, multiplicities, a lollipop and a self-relationship), `staff-schema.mmd` (one-line
+entities, key rows, a self-relationship) and `parallel-checkout.mmd` (fork, join and regions).
+
+## Mind maps
+
+| Mermaid | Yantra |
+|---|---|
+| `mindmap` + indented lines | `meta.layout.algorithm: "mindmap"`; indentation gives the hierarchy, one edge per parent -> child |
+| first line (`root((text))`) | the central card, type `root` ("Central topic") |
+| next level / deeper lines | types `branch` ("Branch") and `topic` ("Topic"); colours follow the branch |
+| `id[text]`, `id(text)`, `id((text))`, `id))text((`, `id)text(`, `id{{text}}`, plain `text` | node; an explicit `id` is kept, otherwise the id comes from the text (`-2`, `-3` for repeats) |
+| `<br>`, `**md**`, `"quoted"` | cleaned as in flowcharts; titles over 42 characters are shortened |
+| a second line at the root's indentation | attached to the root, with a warning (a mind map has one root) |
+| `::icon(...)`, `:::class` | ignored with one warning per kind |
+
+**Walkthrough.** An overview, then one step per first-level branch (its whole subtree and the
+edge from the root), at most seven. **Big maps.** Above 40 topics every branch opens folded
+(`meta.layout.collapsed`), with a warning; readers unfold branches with `+N`.
+
+Sample: `examples/mermaid/project-mindmap.mmd`.

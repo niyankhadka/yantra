@@ -1,0 +1,463 @@
+{
+  "meta": {
+    "title": "Enterprise Strategic B2B Revenue & Deal Velocity Pipeline",
+    "description": "Cross-functional enterprise commercial funnel: Inbound MQL qualification, solution architecture, procurement audit, legal negotiation, and customer onboarding.",
+    "summary": {
+      "headline": "Six stages take an inbound lead to a signed, onboarded enterprise customer.",
+      "points": [
+        "Marketing hands qualified leads to SDRs within minutes",
+        "A technical POC and executive approval gate the commercial proposal",
+        "Legal and procurement run in parallel with the final sign-off"
+      ],
+      "facts": {
+        "Typical cycle": "90-120 days",
+        "Average contract": "£350,000 per year"
+      }
+    },
+    "version": "3.0.0",
+    "theme": {
+      "accent": "#6366f1",
+      "accentHighlight": "#38bdf8",
+      "fontSans": "Inter, -apple-system, sans-serif"
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "person": {
+      "label": "Stakeholder",
+      "color": "amber"
+    },
+    "process": {
+      "label": "Sales stage",
+      "color": "blue"
+    },
+    "milestone": {
+      "label": "Milestone",
+      "color": "green"
+    }
+  },
+  "nodes": [
+    {
+      "id": "node-lead",
+      "type": "person",
+      "data": {
+        "title": "Prospective Enterprise Buyer",
+        "subtitle": "Fortune 500 VP of Technology",
+        "badge": "Buyer Champion",
+        "icon": "users",
+        "metadata": {
+          "Segment": "Tier-1 Enterprise",
+          "ACV Potential": "$350,000 / yr",
+          "Intent Score": "94/100 (High)"
+        },
+        "description": "Executive sponsor seeking to consolidate fragmented workflows into an automated enterprise platform.",
+        "chart": {
+          "kind": "column",
+          "label": "Inbound leads per month",
+          "labels": [
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct"
+          ],
+          "values": [
+            142,
+            156,
+            131,
+            118,
+            167,
+            184
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-sdr",
+      "type": "process",
+      "data": {
+        "title": "Discovery & Qualification",
+        "subtitle": "BANT & MEDDPICC Evaluation",
+        "badge": "Qualification",
+        "icon": "activity",
+        "metadata": {
+          "Team": "Enterprise SDR & Account Exec",
+          "SLA Window": "4 Hours",
+          "Conversion Rate": "68%"
+        },
+        "description": "Rigorous qualification aligning customer pain points, budgetary authority, and technical feasibility.",
+        "chart": {
+          "kind": "bullet",
+          "label": "Qualified this quarter",
+          "value": 58,
+          "target": 70,
+          "max": 80
+        }
+      }
+    },
+    {
+      "id": "node-solution",
+      "type": "process",
+      "data": {
+        "title": "Technical POC & Architecture Review",
+        "subtitle": "Custom pilot deployment & security audit",
+        "badge": "Engineering",
+        "icon": "cpu",
+        "metadata": {
+          "Duration": "14 Days",
+          "Deliverable": "POC Verification Matrix",
+          "Success Metric": "100% KPI Pass"
+        },
+        "description": "Hands-on proof-of-concept demonstrating scalability, SOC2 compliance, and API interoperability.",
+        "chart": {
+          "kind": "bar",
+          "label": "Stage conversion",
+          "unit": "%",
+          "data": [
+            {
+              "label": "To POC",
+              "value": 42
+            },
+            {
+              "label": "POC passed",
+              "value": 71
+            },
+            {
+              "label": "To exec",
+              "value": 64
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-decision",
+      "type": "milestone",
+      "data": {
+        "title": "Executive Steering Approval",
+        "subtitle": "C-Suite & Stakeholder Committee",
+        "badge": "Key Milestone",
+        "icon": "award",
+        "metadata": {
+          "Committee": "CEO, CTO, VP Finance",
+          "Sign-off Threshold": "Unanimous Quorum",
+          "Priority": "P0 Strategic Initiative"
+        },
+        "description": "Formal business case defense and executive capital expenditure authorization.",
+        "chart": {
+          "kind": "donut",
+          "label": "Decisions this year",
+          "data": [
+            {
+              "label": "Approved",
+              "value": 23,
+              "tone": "good"
+            },
+            {
+              "label": "Deferred",
+              "value": 9,
+              "tone": "warn"
+            },
+            {
+              "label": "Declined",
+              "value": 6,
+              "tone": "bad"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-legal",
+      "type": "process",
+      "data": {
+        "title": "Procurement & MSA Redlining",
+        "subtitle": "Contract negotiation & SLA commitments",
+        "badge": "Legal & Finance",
+        "icon": "file-text",
+        "metadata": {
+          "Contract Form": "Enterprise MSA / DPA",
+          "Payment Terms": "Net 30 / Multi-Year",
+          "Liability Cap": "Standard 2x Annual"
+        },
+        "description": "Corporate counsel redlining of Master Services Agreement, data privacy addendum, and uptime warranties.",
+        "chart": {
+          "kind": "line",
+          "label": "Days in redlining",
+          "unit": " d",
+          "labels": [
+            "Q1 2025",
+            "Q2 2025",
+            "Q3 2025",
+            "Q4 2025",
+            "Q1 2026",
+            "Q2 2026",
+            "Q3 2026"
+          ],
+          "values": [
+            41,
+            38,
+            44,
+            36,
+            31,
+            29,
+            26
+          ],
+          "target": 30
+        }
+      }
+    },
+    {
+      "id": "node-onboard",
+      "type": "milestone",
+      "data": {
+        "title": "Closed Won & Customer Success",
+        "subtitle": "Handoff to implementation squad",
+        "badge": "Won & Onboard",
+        "icon": "check-circle",
+        "metadata": {
+          "Revenue Booked": "$1,050,000 (3-Yr TCV)",
+          "Time-to-Value": "30 Days",
+          "Assigned CSM": "Global Strategic Pod 1"
+        },
+        "description": "Deal execution recorded, revenue recognized, and white-glove onboarding kickoff initiated.",
+        "chart": {
+          "kind": "ring",
+          "label": "Annual target won",
+          "prefix": "£",
+          "unit": "m",
+          "value": 3.1,
+          "max": 4.2
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-lead-sdr",
+      "source": "node-lead",
+      "target": "node-sdr",
+      "label": "Inbound Demo Request"
+    },
+    {
+      "id": "edge-sdr-solution",
+      "source": "node-sdr",
+      "target": "node-solution",
+      "label": "Scoped Technical Pilot"
+    },
+    {
+      "id": "edge-solution-decision",
+      "source": "node-solution",
+      "target": "node-decision",
+      "label": "POC Results Dossier"
+    },
+    {
+      "id": "edge-sdr-decision",
+      "source": "node-sdr",
+      "target": "node-decision",
+      "label": "Commercial Proposal",
+      "style": "dashed"
+    },
+    {
+      "id": "edge-decision-legal",
+      "source": "node-decision",
+      "target": "node-legal",
+      "label": "Vendor Selection Notice"
+    },
+    {
+      "id": "edge-legal-onboard",
+      "source": "node-legal",
+      "target": "node-onboard",
+      "label": "Fully Executed Contract"
+    },
+    {
+      "id": "edge-onboard-lead",
+      "source": "node-onboard",
+      "target": "node-lead",
+      "label": "Quarterly Expansion Reviews",
+      "style": "dashed"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "funnel-happy-path",
+      "name": "Standard Enterprise Sales Cycle",
+      "badge": "Flow 1",
+      "description": "End-to-end deal progression from initial buyer inquiry, MEDDPICC qualification, proof-of-concept, executive committee sign-off, to signed contract.",
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Revenue Pipeline Overview",
+          "description": "Enterprise commercial pipeline integrating sales development, solution consulting, executive decision committees, legal procurement, and customer onboarding.",
+          "highlightNodes": [
+            "node-lead",
+            "node-sdr",
+            "node-solution",
+            "node-decision",
+            "node-legal",
+            "node-onboard"
+          ],
+          "highlightEdges": [
+            "edge-lead-sdr",
+            "edge-sdr-solution",
+            "edge-solution-decision",
+            "edge-sdr-decision",
+            "edge-decision-legal",
+            "edge-legal-onboard",
+            "edge-onboard-lead"
+          ],
+          "payload": {
+            "method": "PIPELINE_STATUS",
+            "endpoint": "/crm/v1/funnel/health",
+            "status": "HEALTHY",
+            "latency": "Real-time",
+            "protocol": "Enterprise CRM Sync",
+            "body": {
+              "active_pipeline_value": "$14,850,000",
+              "average_sales_cycle_days": 42,
+              "win_rate_percentage": "38.5%",
+              "active_opportunities": 28
+            }
+          }
+        },
+        {
+          "id": "step-2",
+          "title": "Inbound Discovery & MEDDPICC Qualification",
+          "description": "Lead submits consultation request. Account Executive runs structured discovery assessing metrics, economic buyer authority, and decision criteria.",
+          "highlightNodes": [
+            "node-lead",
+            "node-sdr"
+          ],
+          "highlightEdges": [
+            "edge-lead-sdr"
+          ],
+          "payload": {
+            "method": "OPPORTUNITY_CREATED",
+            "endpoint": "/crm/v1/opportunities/opp_4881",
+            "status": "Stage 2: Discovery Qualified",
+            "latency": "4 Hours",
+            "protocol": "Automated Routing",
+            "body": {
+              "account_name": "Acme Global Financial",
+              "economic_buyer": "Marcus Vance (VP Tech)",
+              "identified_pain": "Legacy manual workflow bottlenecks",
+              "target_go_live": "Q1 Next Fiscal"
+            }
+          }
+        },
+        {
+          "id": "step-3",
+          "title": "Technical POC & Architecture Verification",
+          "description": "Solution Engineering team provisions a dedicated staging pilot. Customer data is benchmarked against required throughput and security standards.",
+          "highlightNodes": [
+            "node-sdr",
+            "node-solution"
+          ],
+          "highlightEdges": [
+            "edge-sdr-solution"
+          ],
+          "payload": {
+            "method": "PILOT_DELIVERABLE",
+            "endpoint": "/eng/poc/results/matrix",
+            "status": "100% Passed Criteria",
+            "latency": "14 Days",
+            "protocol": "Technical Evaluation",
+            "body": {
+              "security_audit": "SOC2 Type II + HIPAA Verified",
+              "load_test_rps": "50,000 req/sec sustained",
+              "integration_points": [
+                "Salesforce",
+                "Slack",
+                "Snowflake"
+              ],
+              "stakeholder_signoff": "ACCEPTED"
+            }
+          }
+        },
+        {
+          "id": "step-4",
+          "title": "Executive Steering Committee Sign-Off",
+          "description": "Executive sponsor presents business ROI case and POC evaluation to the C-suite committee. Full budgetary allocation is approved.",
+          "highlightNodes": [
+            "node-sdr",
+            "node-solution",
+            "node-decision"
+          ],
+          "highlightEdges": [
+            "edge-solution-decision",
+            "edge-sdr-decision"
+          ],
+          "payload": {
+            "method": "BOARD_RESOLUTION",
+            "endpoint": "/governance/resolutions/res_2026_88",
+            "status": "Approved Unanimously",
+            "latency": "Same-day",
+            "protocol": "Governance Ledger",
+            "body": {
+              "project_code": "TITAN-MODERNIZATION",
+              "allocated_capex": "$1,050,000",
+              "projected_cost_reduction": "42% YoY",
+              "executive_sponsor": "CFO & CIO Signed"
+            }
+          }
+        },
+        {
+          "id": "step-5",
+          "title": "Procurement Audit & Legal Redlines",
+          "description": "Mutual legal teams complete redlining on Master Services Agreement, liability terms, and uptime service level agreements.",
+          "highlightNodes": [
+            "node-decision",
+            "node-legal"
+          ],
+          "highlightEdges": [
+            "edge-decision-legal"
+          ],
+          "payload": {
+            "method": "CONTRACT_EXECUTION",
+            "endpoint": "/legal/docusign/envelope_9921b",
+            "status": "Pending Final Signatures",
+            "latency": "5 Business Days",
+            "protocol": "Cryptographic Signatures",
+            "body": {
+              "agreement_type": "3-Year Enterprise Master Services Agreement",
+              "annual_recurring_revenue": "$350,000",
+              "payment_schedule": "Annual Upfront Net 30",
+              "dpa_gdpr_status": "COMPLIANT"
+            }
+          }
+        },
+        {
+          "id": "step-6",
+          "title": "Closed Won & Customer Success Onboarding",
+          "description": "Countersignatures completed via DocuSign. CRM marks opportunity Closed-Won, triggering automated onboarding kickoff and CSM alignment.",
+          "highlightNodes": [
+            "node-legal",
+            "node-onboard",
+            "node-lead"
+          ],
+          "highlightEdges": [
+            "edge-legal-onboard",
+            "edge-onboard-lead"
+          ],
+          "payload": {
+            "method": "REVENUE_RECOGNITION",
+            "endpoint": "/finance/erp/booking/rev_2026",
+            "status": "Closed Won",
+            "latency": "Instant",
+            "protocol": "ERP Ledger Commit",
+            "body": {
+              "deal_id": "DEAL-ENT-2026-9901",
+              "tcv_booked": "$1,050,000.00",
+              "csm_lead": "Sarah Jenkins (Director of Success)",
+              "kickoff_meeting": "Scheduled (Day 3)",
+              "nps_review_cycle": "Day 90, Day 180"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

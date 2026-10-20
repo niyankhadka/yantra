@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "title": "Checkout with parallel work",
+    "description": "After checkout, payment and stock run at the same time; the order ships once both are done.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "A fork bar splits the order into two concurrent regions, and the join bar waits for both before it ships.",
+      "points": [
+        "Payment and stock are regions of one Processing state: both are active at once.",
+        "Authorisation may retry without leaving its state.",
+        "The join fires only when capture and packing have both finished."
+      ],
+      "facts": { "States": "6 plus fork, join, start and end", "Regions": "Payment, Stock" }
+    }
+  },
+  "roles": {
+    "pseudo": { "label": "Start / end", "color": "slate" },
+    "state": { "label": "Order state", "color": "blue" },
+    "payment": { "label": "Payment", "color": "violet" },
+    "stock": { "label": "Stock", "color": "teal" }
+  },
+  "nodes": [
+    { "id": "start", "type": "pseudo", "shape": "initial", "data": { "title": "Start" } },
+    { "id": "cart", "type": "state", "shape": "state", "data": { "title": "Cart", "subtitle": "Items chosen", "icon": "layers" } },
+    { "id": "split", "type": "pseudo", "shape": "fork", "data": { "title": "Fork", "description": "Starts payment and stock at the same time." } },
+    { "id": "authorise", "type": "payment", "shape": "state", "data": { "title": "Authorising", "subtitle": "Card checked", "icon": "credit-card" } },
+    { "id": "capture", "type": "payment", "shape": "state", "data": { "title": "Captured", "subtitle": "Money taken", "icon": "check-circle" } },
+    { "id": "reserve", "type": "stock", "shape": "state", "data": { "title": "Reserving", "subtitle": "Stock held", "icon": "warehouse" } },
+    { "id": "pack", "type": "stock", "shape": "state", "data": { "title": "Packed", "subtitle": "Ready to ship", "icon": "package" } },
+    { "id": "merge", "type": "pseudo", "shape": "fork", "data": { "title": "Join", "description": "Waits until both regions have finished." } },
+    { "id": "shipped", "type": "state", "shape": "state", "data": { "title": "Shipped", "subtitle": "With the courier", "icon": "truck" } },
+    { "id": "end", "type": "pseudo", "shape": "final", "data": { "title": "Done" } }
+  ],
+  "edges": [
+    { "id": "start-cart", "source": "start", "target": "cart" },
+    { "id": "cart-split", "source": "cart", "target": "split", "label": "checkout" },
+    { "id": "split-authorise", "source": "split", "target": "authorise" },
+    { "id": "split-reserve", "source": "split", "target": "reserve" },
+    { "id": "authorise-retry", "source": "authorise", "target": "authorise", "label": "retry" },
+    { "id": "authorise-capture", "source": "authorise", "target": "capture", "label": "approved" },
+    { "id": "reserve-pack", "source": "reserve", "target": "pack", "label": "picked" },
+    { "id": "capture-merge", "source": "capture", "target": "merge" },
+    { "id": "pack-merge", "source": "pack", "target": "merge" },
+    { "id": "merge-shipped", "source": "merge", "target": "shipped", "label": "dispatch" },
+    { "id": "shipped-end", "source": "shipped", "target": "end" }
+  ],
+  "groups": [
+    { "id": "processing", "title": "Processing", "nodes": [], "color": "slate", "style": "solid" },
+    { "id": "payment", "title": "Payment", "kind": "region", "parent": "processing", "nodes": ["authorise", "capture"], "color": "violet" },
+    { "id": "stock", "title": "Stock", "kind": "region", "parent": "processing", "nodes": ["reserve", "pack"], "color": "teal" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Parallel checkout",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "One order, two things happening at once inside Processing, then one shipment." },
+        {
+          "id": "fork",
+          "title": "Fork",
+          "description": "Checking out passes the fork bar: both regions of Processing start together.",
+          "highlightNodes": ["cart", "split", "authorise", "reserve"],
+          "highlightEdges": ["cart-split", "split-authorise", "split-reserve"]
+        },
+        {
+          "id": "payment",
+          "title": "Payment region",
+          "description": "The card is authorised (retrying if the bank asks) and then captured.",
+          "highlightNodes": ["authorise", "capture"],
+          "highlightEdges": ["authorise-retry", "authorise-capture"]
+        },
+        {
+          "id": "stock",
+          "title": "Stock region",
+          "description": "Meanwhile the items are reserved and packed.",
+          "highlightNodes": ["reserve", "pack"],
+          "highlightEdges": ["reserve-pack"]
+        },
+        {
+          "id": "join",
+          "title": "Join and ship",
+          "description": "The join bar waits for both regions; then the order ships and is done.",
+          "highlightNodes": ["capture", "pack", "merge", "shipped", "end"],
+          "highlightEdges": ["capture-merge", "pack-merge", "merge-shipped", "shipped-end"]
+        }
+      ]
+    }
+  ]
+}

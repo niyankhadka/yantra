@@ -1,0 +1,245 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "What do customers think of our support, and what should we fix first?",
+    "title": "Customer support survey, September 2026",
+    "kicker": "Survey results",
+    "author": "Customer insight team, Quayside Broadband (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional company and data, for illustration only. 1,284 responses, 01/09/2026 to 30/09/2026."
+  },
+  "answer": {
+    "headline": "Customers like our people but not our process: agents score well, while waiting times and having to repeat themselves drive almost all detractors. Fix call-back and case history first.",
+    "text": "Net Promoter Score rose from +24 to +32 since March. Comments from detractors mention waiting or repeating information four times as often as anything else.",
+    "points": [
+      "87% agree agents are friendly; only 41% agree problems are solved at the first contact",
+      "62% of detractors mention waiting time, 48% mention repeating their details",
+      "A call-back option and a shared case history are both high impact and moderate effort"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "metrics",
+      "title": "Scores",
+      "items": [
+        {
+          "label": "Net Promoter Score",
+          "value": "+32",
+          "note": "up from +24 in March",
+          "tone": "good",
+          "trend": [
+            18,
+            21,
+            24,
+            26,
+            29,
+            32
+          ]
+        },
+        {
+          "label": "Promoters (9-10)",
+          "value": "51%",
+          "tone": "good"
+        },
+        {
+          "label": "Passives (7-8)",
+          "value": "30%",
+          "tone": "neutral"
+        },
+        {
+          "label": "Detractors (0-6)",
+          "value": "19%",
+          "note": "down from 25%",
+          "tone": "bad"
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "bar",
+      "stacked": true,
+      "title": "How far customers agree with each statement",
+      "unit": "%",
+      "categories": [
+        "Friendly agent",
+        "Understood my problem",
+        "Kept informed",
+        "No need to repeat myself",
+        "Solved first time",
+        "Short wait"
+      ],
+      "series": [
+        {
+          "name": "Agree",
+          "values": [
+            87,
+            74,
+            56,
+            44,
+            41,
+            33
+          ],
+          "tone": "good"
+        },
+        {
+          "name": "Neutral",
+          "values": [
+            9,
+            15,
+            22,
+            18,
+            21,
+            19
+          ],
+          "tone": "neutral"
+        },
+        {
+          "name": "Disagree",
+          "values": [
+            4,
+            11,
+            22,
+            38,
+            38,
+            48
+          ],
+          "tone": "bad"
+        }
+      ],
+      "caption": "Share of respondents; rows add up to 100%."
+    },
+    {
+      "type": "matrix",
+      "title": "Themes to act on",
+      "span": "half",
+      "x": {
+        "label": "Effort",
+        "low": "Low",
+        "high": "High"
+      },
+      "y": {
+        "label": "Impact on detractors",
+        "low": "Low",
+        "high": "High"
+      },
+      "quadrants": [
+        {
+          "title": "Do first",
+          "tone": "good"
+        },
+        {
+          "title": "Plan"
+        },
+        {
+          "title": "Quick tidy-ups"
+        },
+        {
+          "title": "Leave",
+          "tone": "bad"
+        }
+      ],
+      "items": [
+        {
+          "label": "Call-back option",
+          "x": 3.5,
+          "y": 8.5,
+          "tone": "good"
+        },
+        {
+          "label": "Shared case history",
+          "x": 4.5,
+          "y": 7.8,
+          "tone": "good"
+        },
+        {
+          "label": "Weekend opening",
+          "x": 8,
+          "y": 6.5
+        },
+        {
+          "label": "Status texts",
+          "x": 2.5,
+          "y": 5.8
+        },
+        {
+          "label": "New phone menu",
+          "x": 6.5,
+          "y": 3
+        },
+        {
+          "label": "Chatbot",
+          "x": 8.5,
+          "y": 2.5
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "donut",
+      "title": "What detractors mention",
+      "span": "half",
+      "data": [
+        {
+          "label": "Waiting time",
+          "value": 151
+        },
+        {
+          "label": "Repeating details",
+          "value": 117
+        },
+        {
+          "label": "Not solved",
+          "value": 64
+        },
+        {
+          "label": "Price",
+          "value": 28
+        },
+        {
+          "label": "Other",
+          "value": 22
+        }
+      ],
+      "caption": "Mentions in 244 detractor comments; one comment can mention several themes."
+    },
+    {
+      "type": "quote",
+      "text": "The person I spoke to was lovely, but it was my third call and I had to explain everything again from the start.",
+      "by": "Customer, score 4",
+      "source": "Free-text comment, 12/09/2026"
+    },
+    {
+      "type": "quote",
+      "text": "Forty minutes on hold. If you had just called me back I would have given you a ten.",
+      "by": "Customer, score 6",
+      "source": "Free-text comment, 21/09/2026"
+    },
+    {
+      "type": "checklist",
+      "title": "Next steps",
+      "items": [
+        {
+          "text": "Pilot a call-back option on the faults line",
+          "note": "from 02/11/2026"
+        },
+        {
+          "text": "Show the last three contacts on the agent screen",
+          "note": "design agreed"
+        },
+        {
+          "text": "Send a status text when a case changes",
+          "done": true
+        },
+        {
+          "text": "Repeat the survey in March 2027 and compare"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "label": "How NPS is worked out",
+      "body": "Customers answer 'How likely are you to recommend us?' from 0 to 10. NPS is the percentage of promoters (9-10) minus the percentage of detractors (0-6): 51 − 19 = +32."
+    }
+  ]
+}

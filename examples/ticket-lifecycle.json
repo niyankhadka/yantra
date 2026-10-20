@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "title": "Support ticket lifecycle",
+    "description": "The states a support ticket moves through and the event behind every move.",
+    "summary": {
+      "headline": "A ticket only changes state on an event; reopening, hand-backs and customer replies send it round again.",
+      "points": [
+        "Triage rejects spam and duplicates before an agent picks the ticket up.",
+        "Internal notes loop on Open without changing the state.",
+        "Asking the customer and their reply is one two-way move.",
+        "A reopened ticket goes back from Resolved to Open."
+      ],
+      "facts": { "States": "7 plus start and end", "Owner": "Support operations" }
+    }
+  },
+  "roles": {
+    "pseudo": { "label": "Start / end", "color": "slate" },
+    "state": { "label": "Ticket state", "color": "blue" },
+    "decision": { "label": "Decision", "color": "amber" },
+    "waiting": { "label": "Waiting", "color": "violet" }
+  },
+  "nodes": [
+    { "id": "start", "type": "pseudo", "shape": "initial", "data": { "title": "Start", "description": "A customer writes in by email, chat or the help centre." } },
+    { "id": "new", "type": "state", "shape": "state", "data": { "title": "New", "subtitle": "Not yet looked at", "icon": "mail", "description": "Created automatically from the incoming message." } },
+    { "id": "triage", "type": "decision", "shape": "choice", "data": { "title": "Valid request?", "description": "Triage checks for spam, duplicates and the right queue." } },
+    { "id": "open", "type": "state", "shape": "state", "data": { "title": "Open", "subtitle": "An agent is working on it", "icon": "user", "metadata": { "SLA": "First reply within 4 h" } } },
+    { "id": "waiting", "type": "waiting", "shape": "state", "data": { "title": "Waiting on customer", "subtitle": "Paused until they reply", "icon": "users", "description": "The SLA clock stops while the ticket waits." } },
+    { "id": "escalated", "type": "waiting", "shape": "state", "data": { "title": "Escalated", "subtitle": "With engineering", "icon": "settings" } },
+    { "id": "resolved", "type": "state", "shape": "state", "data": { "title": "Resolved", "subtitle": "Fix sent to the customer", "icon": "check-circle" } },
+    { "id": "rejected", "type": "state", "shape": "state", "data": { "title": "Rejected", "subtitle": "Spam or duplicate", "icon": "flag" } },
+    { "id": "end", "type": "pseudo", "shape": "final", "data": { "title": "Closed", "description": "Archived; a new message opens a new ticket." } }
+  ],
+  "edges": [
+    { "id": "start-new", "source": "start", "target": "new" },
+    { "id": "new-triage", "source": "new", "target": "triage", "label": "triage" },
+    { "id": "triage-open", "source": "triage", "target": "open", "label": "valid" },
+    { "id": "triage-rejected", "source": "triage", "target": "rejected", "label": "spam / duplicate" },
+    { "id": "open-note", "source": "open", "target": "open", "label": "add note" },
+    { "id": "open-waiting", "source": "open", "target": "waiting", "label": "ask / reply", "arrow": "both" },
+    { "id": "open-escalated", "source": "open", "target": "escalated", "label": "escalate" },
+    { "id": "escalated-open", "source": "escalated", "target": "open", "label": "hand back" },
+    { "id": "open-resolved", "source": "open", "target": "resolved", "label": "send fix" },
+    { "id": "resolved-open", "source": "resolved", "target": "open", "label": "reopen" },
+    { "id": "resolved-end", "source": "resolved", "target": "end", "label": "after 7 days" },
+    { "id": "rejected-end", "source": "rejected", "target": "end" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Ticket lifecycle",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Seven states between a start and an end. Every arrow is an event; the loop and the back-arrows are the ticket going round again." },
+        {
+          "id": "intake",
+          "title": "Intake and triage",
+          "description": "A message creates a New ticket. Triage decides: valid tickets open, spam and duplicates are rejected.",
+          "highlightNodes": ["start", "new", "triage", "open", "rejected"],
+          "highlightEdges": ["start-new", "new-triage", "triage-open", "triage-rejected"]
+        },
+        {
+          "id": "work",
+          "title": "Working the ticket",
+          "description": "Internal notes keep the ticket Open (the loop). Asking the customer pauses it in Waiting; their reply brings it back (one two-way arrow).",
+          "highlightNodes": ["open", "waiting"],
+          "highlightEdges": ["open-note", "open-waiting"]
+        },
+        {
+          "id": "escalate",
+          "title": "Escalation",
+          "description": "Hard problems go to engineering and come back to the same agent with an answer.",
+          "highlightNodes": ["open", "escalated"],
+          "highlightEdges": ["open-escalated", "escalated-open"]
+        },
+        {
+          "id": "resolve",
+          "title": "Resolve or reopen",
+          "description": "Sending the fix resolves the ticket. If the customer says it is not fixed, it reopens.",
+          "highlightNodes": ["open", "resolved"],
+          "highlightEdges": ["open-resolved", "resolved-open"]
+        },
+        {
+          "id": "close",
+          "title": "Close",
+          "description": "Resolved tickets close after seven quiet days; rejected ones close at once.",
+          "highlightNodes": ["resolved", "rejected", "end"],
+          "highlightEdges": ["resolved-end", "rejected-end"]
+        }
+      ]
+    }
+  ]
+}

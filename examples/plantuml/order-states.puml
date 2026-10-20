@@ -1,0 +1,19 @@
+@startuml
+' Order lifecycle as a state machine: choice, self-loop and final states.
+title Order states
+[*] --> Draft
+state "Awaiting payment" as Waiting #LightBlue
+Draft -> Waiting : submit
+Waiting --> Paid : pay
+Waiting -down-> Cancelled : timeout
+Paid --> Paid : add note
+state check <<choice>>
+Paid --> check : ship
+check --> Shipped : in stock
+check --> Backorder : missing
+Backorder --> Shipped : restocked
+Shipped --> [*]
+Cancelled --> [*]
+state Paid : money received
+skinparam backgroundColor white
+@enduml

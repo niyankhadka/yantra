@@ -1,0 +1,16 @@
+@startmindmap
+' Topics for a new team's first quarter, as a mind map.
+title First quarter
+* Team goals
+** Hiring
+*** Two engineers
+*** One designer
+** Delivery
+*** Ship onboarding
+*** Cut build time
+-- Learning
+--- Weekly demos
+--- Reading group
+-- Health
+--- On-call rota
+@endmindmap

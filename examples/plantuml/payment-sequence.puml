@@ -1,0 +1,21 @@
+@startuml
+' Card payment at checkout: the shop asks the gateway, which asks the bank.
+title Card payment
+actor Shopper
+participant "Web shop" as Shop
+participant "Payment gateway" as Gateway
+database "Orders DB" as DB
+
+Shopper -> Shop : Pay now
+Shop -> Gateway : Authorise card
+Gateway -> Gateway : Fraud check
+alt approved
+  Gateway --> Shop : Approved
+  Shop -> DB : Save order
+  note right of DB : The order is stored before the receipt is sent.
+  Shop --> Shopper : Receipt
+else declined
+  Gateway --> Shop : Declined
+  Shop --> Shopper : Try another card
+end
+@enduml

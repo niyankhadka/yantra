@@ -1,0 +1,994 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/niyankhadka/yantra/schemas/yantra-payload.schema.json",
+  "title": "Yantra diagram payload",
+  "description": "A diagram is nodes + edges + a walkthrough. Layout is automatic: do not write coordinates unless meta.layout.mode is \"manual\".",
+  "type": "object",
+  "required": [
+    "meta",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Diagram title (shown in the toolbar and exports)."
+        },
+        "description": {
+          "type": "string",
+          "description": "One-sentence summary."
+        },
+        "version": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "defaultMode": {
+          "type": "string",
+          "description": "Id of the mode shown first."
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "enum": [
+                "LR",
+                "TB"
+              ],
+              "default": "LR",
+              "description": "Main flow left-to-right or top-to-bottom."
+            },
+            "mode": {
+              "enum": [
+                "auto",
+                "manual"
+              ],
+              "default": "auto",
+              "description": "manual uses each node's x/y instead of the automatic layout."
+            },
+            "algorithm": {
+              "enum": [
+                "layered",
+                "tree",
+                "mindmap"
+              ],
+              "default": "layered",
+              "description": "layered (default): flows and architectures. tree: a tidy hierarchy (org charts, decision trees, work breakdowns, taxonomies) with parents centred over their children and comb connectors, in `direction` TB or LR. mindmap: the root in the centre, branches balanced left and right with curved connectors, one colour per branch. In tree and mindmap, edges define the hierarchy (first parent wins), hierarchy edges need no label and groups are not drawn (any card with children folds its subtree instead)."
+            },
+            "collapsed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true,
+              "description": "Ids folded when the viewer opens: nodes whose subtree is hidden (tree, mindmap) or groups shown as one summary card (layered; it counts the cards and the boxes folded inside). Folding an outer group hides inner ones; list inner ids too so unfolding the outer box shows them folded. Readers unfold them with the +N button or fold to a depth (keys 0-6, CLI --depth n); a step that highlights a hidden node, or focuses a group, unfolds it."
+            },
+            "compact": {
+              "enum": [
+                true,
+                false,
+                "auto"
+              ],
+              "default": "auto",
+              "description": "Tree layout, direction TB: a parent whose children are all unlabelled leaves lists them in one column below itself, on a side bus, instead of a row (wide org charts). true: every such parent; false: never; auto (default): only when the spread tree is much wider than tall."
+            }
+          },
+          "additionalProperties": false
+        },
+        "view": {
+          "enum": [
+            "flow",
+            "sequence"
+          ],
+          "default": "flow",
+          "description": "Initial view. sequence draws the active scenario as a sequence diagram: participants are the nodes its steps message, each highlightEdges id becomes an arrow in step order. The viewer offers a Flow / Sequence toggle (key V) whenever a step has highlightEdges and both views are offered (see views)."
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "flow",
+              "sequence"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Views the reader may switch between. [\"flow\"] hides the Flow / Sequence toggle (e.g. an ERD or class diagram whose steps highlight relationships); [\"sequence\"] shows only the sequence view. Default: both, except that a diagram made only of table / class cards (fields or methods) offers no sequence view."
+        },
+        "sequence": {
+          "type": "object",
+          "description": "Sequence view options.",
+          "properties": {
+            "allParticipants": {
+              "type": "boolean",
+              "default": false,
+              "description": "Show every node as a participant, not only those that send or receive a message."
+            }
+          },
+          "additionalProperties": false
+        },
+        "summary": {
+          "type": "object",
+          "description": "Summary card shown first in the inspector and in the Markdown export.",
+          "properties": {
+            "headline": {
+              "type": "string",
+              "description": "The one-sentence takeaway."
+            },
+            "points": {
+              "type": "array",
+              "maxItems": 6,
+              "items": {
+                "type": "string"
+              },
+              "description": "3-5 key points."
+            },
+            "facts": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Key/value facts, e.g. Owner, SLA."
+            }
+          },
+          "additionalProperties": false
+        },
+        "lang": {
+          "type": "string",
+          "default": "en",
+          "description": "BCP 47 language of the content, e.g. en, es, pt-BR, ne, zh, ja, ar. Sets <html lang> / xml:lang, number formats and the interface strings (built in: en, es, fr, de, pt, hi, ne, zh, ja, ar; other languages use English labels). ar, he, fa, ur and other RTL languages turn on right-to-left."
+        },
+        "dir": {
+          "enum": [
+            "ltr",
+            "rtl"
+          ],
+          "description": "Text direction; default from lang. rtl mirrors the chrome (toolbar, walkthrough, inspector, legend, badge) and the text inside cards; the diagram layout keeps its direction."
+        },
+        "strings": {
+          "type": "object",
+          "description": "Overrides for interface strings by key (see docs/authoring.md), e.g. {\"story.next\": \"Continue\"}. Placeholders are written {name}. Unknown keys are reported by the validator (i18n/unknown-string).",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "watermark": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "false hides the \"Made with Yantra\" badge; a string replaces its text."
+        },
+        "inspector": {
+          "type": "object",
+          "description": "Which inspector tabs appear. By default a tab appears only when it has content: summary (meta.summary), step (a step has a payload), node/Details (a node has description, tech, metadata, ...), plus every panel.",
+          "properties": {
+            "tabs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Explicit tab ids in display order: summary, step, node, or panel ids."
+            },
+            "labels": {
+              "type": "object",
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "step": {
+                  "type": "string"
+                },
+                "node": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "description": "Rename built-in tabs, e.g. { \"node\": \"Component\" }."
+            },
+            "onNodeClick": {
+              "type": "string",
+              "default": "node",
+              "description": "What clicking a card opens: \"node\" (its Details tab, default), \"stay\" (highlight only; the panel keeps its tab), or a panel id (that panel, showing blocks whose `nodes` include the card)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "startLevel": {
+          "type": "string",
+          "description": "Id of a detail diagram (in diagrams) the viewer opens at; the breadcrumb still leads back to the overview."
+        }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "description": "Optional legend: maps node.type to a label, colour and default icon. Group types into 3-5 roles.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "color": {
+            "enum": [
+              "blue",
+              "teal",
+              "green",
+              "amber",
+              "rose",
+              "violet",
+              "orange",
+              "slate"
+            ]
+          },
+          "icon": {
+            "$ref": "#/definitions/icon"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "modes": {
+      "type": "array",
+      "description": "Alternative views of the same system (e.g. production vs local). Only add modes that change something.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "badge": {
+            "type": "string",
+            "description": "Short label for the mode switch."
+          },
+          "description": {
+            "type": "string"
+          },
+          "hideNodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hideEdges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "data"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Role key; nodes sharing a type share a colour. See roles."
+          },
+          "shape": {
+            "enum": [
+              "card",
+              "state",
+              "initial",
+              "final",
+              "choice",
+              "fork",
+              "chart"
+            ],
+            "default": "card",
+            "description": "card: the usual card. state: a rounder card for a state in a state machine. initial (filled dot), final (ringed dot) and choice (diamond) are small, textless pseudo-states; data.title still names them in tooltips, the inspector and exports. fork: a thick bar for a fork or join (vertical in LR, horizontal in TB) that edges attach along; it grows with its edges, width sets its length. chart: a wider card (360px, width 240-480) that draws data.chart as a full chart (column, bar, line, area, pie, donut) under its title."
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional: force the column (LR) or row (TB)."
+          },
+          "width": {
+            "type": "number",
+            "minimum": 40,
+            "maximum": 480,
+            "description": "Card width, 160-320; default 220. Chart cards: 240-480, default 360. For a fork bar: its length (40-480)."
+          },
+          "x": {
+            "type": "number",
+            "description": "Manual layout only. Multiple of 10."
+          },
+          "y": {
+            "type": "number",
+            "description": "Manual layout only. Multiple of 10."
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "title"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Card title, ideally under 42 characters."
+              },
+              "subtitle": {
+                "type": "string",
+                "description": "One short line shown on the card."
+              },
+              "badge": {
+                "type": "string",
+                "description": "Small caps label above the title; defaults to the role label."
+              },
+              "icon": {
+                "$ref": "#/definitions/icon"
+              },
+              "tech": {
+                "type": "string",
+                "description": "Technology line (monospace) on the card."
+              },
+              "description": {
+                "type": "string",
+                "description": "Longer text, shown in the inspector only."
+              },
+              "runtime": {
+                "type": "string"
+              },
+              "ports": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "sourceFile": {
+                "type": "string",
+                "description": "Code reference, e.g. src/api/server.ts:42"
+              },
+              "drill": {
+                "type": "string",
+                "description": "Id of a detail diagram in diagrams: the card shows a drill mark and opens that diagram (breadcrumb, Back and Esc return)."
+              },
+              "assistant": {
+                "type": "boolean",
+                "description": "Tree layout: an assistant or staff card. It sits beside its manager (the card its hierarchy edge comes from) on a short side connector instead of a level below; first one right (TB) or below (LR), then alternating sides. Leaves only."
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^(https?://|mailto:)",
+                "description": "External link (http, https or mailto) opened in a new tab from the inspector."
+              },
+              "metadata": {
+                "type": "object",
+                "description": "Key/value facts shown in the inspector.",
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/field"
+                },
+                "description": "Entity / class card: table columns (ER diagrams) or class attributes, drawn as rows under the title. The card grows with the rows; more than 12 rows (fields + methods) show as \"+ N more\"."
+              },
+              "methods": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/method"
+                },
+                "description": "Class card: operations, drawn as a second section of rows below the fields."
+              },
+              "stereotype": {
+                "type": "string",
+                "description": "UML stereotype shown as «stereotype» in place of the kicker, e.g. \"interface\", \"abstract\", \"enumeration\"."
+              },
+              "chart": {
+                "$ref": "#/definitions/cardChart"
+              },
+              "modes": {
+                "type": "object",
+                "description": "Per-mode overrides of these data fields, keyed by mode id.",
+                "additionalProperties": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "What flows along the edge, ideally under 28 characters."
+          },
+          "type": {
+            "type": "string",
+            "description": "sync | async | event | stream | data (async/event/stream draw dashed)."
+          },
+          "style": {
+            "enum": [
+              "solid",
+              "dashed",
+              "dotted"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^(https?://|mailto:)",
+            "description": "External link (http, https or mailto) opened in a new tab from the inspector."
+          },
+          "arrow": {
+            "enum": [
+              "forward",
+              "both",
+              "none"
+            ],
+            "default": "forward",
+            "description": "Arrow heads: forward (at the target), both (a two-way link) or none (an undirected link). Layout still ranks by source -> target. source == target draws a self-loop on the card's side."
+          },
+          "relation": {
+            "enum": [
+              "inheritance",
+              "realization",
+              "composition",
+              "aggregation",
+              "association",
+              "dependency"
+            ],
+            "description": "UML relationship. Triangles (inheritance, realization) and diamonds (composition, aggregation) sit on the SOURCE, so point edges from parent / interface / whole to child / implementation / part; association and dependency draw an open arrow at the target. realization and dependency are dashed. sourceEnd / targetEnd override either end."
+          },
+          "sourceEnd": {
+            "$ref": "#/definitions/end",
+            "description": "Marker at the source end: ER cardinality (one, zero-or-one, many, one-or-many, zero-or-many) or a UML head. Once an edge has any end or relation, ends without one are plain (no default arrowhead)."
+          },
+          "targetEnd": {
+            "$ref": "#/definitions/end",
+            "description": "Marker at the target end, e.g. \"zero-or-many\" for the many side of a one-to-many relationship."
+          },
+          "sourceField": {
+            "type": "string",
+            "description": "Name of a field (data.fields[].name) on the source card: the edge attaches at that row, on the left or right side facing the other card. Use for foreign key -> primary key links."
+          },
+          "targetField": {
+            "type": "string",
+            "description": "Name of a field on the target card the edge attaches to, like sourceField."
+          },
+          "sourceLabel": {
+            "type": "string",
+            "maxLength": 16,
+            "description": "Short text beside the source end, clear of its marker: a multiplicity (\"1\", \"0..1\") or a role name."
+          },
+          "targetLabel": {
+            "type": "string",
+            "maxLength": 16,
+            "description": "Short text beside the target end, e.g. \"0..*\" or \"1..*\"."
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "Containers drawn as labelled boxes around nodes: trust boundaries, cloud accounts/regions/VPCs, teams, swimlanes, subsystems, and deep hierarchies (city > district > service > system > site). List each node only in its innermost group; a group's members are its nodes plus everything in its child groups. A flat diagram reads best with 2-5 groups; nested ones stay within 24 groups and 6 levels (lint budget), and can open folded (meta.layout.collapsed, or fold to depth in the viewer).",
+      "maxItems": 48,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "nodes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique; must not equal any node id."
+          },
+          "title": {
+            "type": "string",
+            "description": "Shown top-left of the box in small caps, e.g. \"AWS VPC (eu-west-2)\"."
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true,
+            "description": "Node ids directly in this group (not those of child groups). A node belongs to at most one group."
+          },
+          "parent": {
+            "type": "string",
+            "description": "Id of the enclosing group. Nest up to 6 deep (lint warns beyond, and refuses beyond 8); no cycles. Deeper boxes get slightly less padding and calmer tints."
+          },
+          "kind": {
+            "enum": [
+              "region"
+            ],
+            "description": "region: a concurrent region of its parent group (a composite state). Regions of one parent stack across the flow and are divided by dashed lines instead of boxes; only their title shows. Needs parent; use two or more, and put every node of the parent in one of them."
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "teal",
+              "green",
+              "amber",
+              "rose",
+              "violet",
+              "orange",
+              "slate"
+            ],
+            "description": "Box tint and title colour. Default slate."
+          },
+          "description": {
+            "type": "string",
+            "description": "Longer text for the inspector and the Markdown export."
+          },
+          "style": {
+            "type": "string",
+            "enum": [
+              "solid",
+              "dashed"
+            ],
+            "default": "dashed",
+            "description": "Border style. Solid suits hard boundaries (an account), dashed softer ones (a team, a subsystem)."
+          }
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "Named walkthroughs. Each has ordered steps.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "steps"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/step"
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Shorthand for a single scenario.",
+      "items": {
+        "$ref": "#/definitions/step"
+      }
+    },
+    "panels": {
+      "type": "array",
+      "description": "Custom inspector tabs. Each panel is a titled list of the same blocks answer pages use (points, steps, metrics, table, compare, callout, chart, code, sources, text). Add one only when the user asked for that kind of information. A block may list `nodes: [ids]` to show only while one of those cards is selected.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "blocks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "Tab label: one or two words."
+          },
+          "blocks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "yantra-page.schema.json#/properties/blocks/items"
+            }
+          }
+        }
+      }
+    },
+    "diagrams": {
+      "type": "object",
+      "description": "Detail diagrams for drill-down, keyed by id: a card with data.drill opens one. Each value is a full diagram payload (meta, nodes, edges, scenarios...) or { \"$ref\": \"./detail.json\" }, a relative path the CLI and MCP server load (it must stay inside the input folder). Ids are shared by every level; at most 8 levels below the overview, no cycles. A level may itself use nested groups.",
+      "additionalProperties": {
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#"
+          },
+          {
+            "required": [
+              "$ref"
+            ],
+            "properties": {
+              "$ref": {
+                "type": "string",
+                "pattern": "\\.json$",
+                "description": "Relative path to a diagram .json file."
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "step": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "highlightNodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Empty or omitted = overview (nothing dimmed)."
+        },
+        "highlightEdges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Edges that animate; include both endpoints in highlightNodes."
+        },
+        "payload": {
+          "type": "object",
+          "description": "Shown in the inspector. method/endpoint/status/latency/protocol render as chips; everything else as JSON.",
+          "additionalProperties": true
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^(https?://|mailto:)",
+          "description": "External link (http, https or mailto) opened in a new tab from the inspector."
+        },
+        "focusGroup": {
+          "type": "string",
+          "description": "Group id: the camera zooms to that group's box and the viewer unfolds it and every box around it (layered layout). The next step without focusGroup lets go. Readers do the same by double-clicking a group title or pressing G."
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column or attribute name."
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type, shown right-aligned in monospace, e.g. uuid, varchar(255), List<Order>."
+        },
+        "pk": {
+          "type": "boolean",
+          "description": "Primary key (PK, name in bold)."
+        },
+        "fk": {
+          "type": "boolean",
+          "description": "Foreign key (FK)."
+        },
+        "unique": {
+          "type": "boolean",
+          "description": "Unique constraint (UK)."
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "May be null: the type is shown with a trailing ?."
+        },
+        "ref": {
+          "type": "string",
+          "description": "What a foreign key points at: \"nodeId\" or \"nodeId.field\" (validated)."
+        },
+        "visibility": {
+          "enum": [
+            "+",
+            "-",
+            "#",
+            "~"
+          ],
+          "description": "UML visibility: public, private, protected, package."
+        },
+        "static": {
+          "type": "boolean",
+          "description": "Class-level member (underlined)."
+        },
+        "note": {
+          "type": "string",
+          "description": "Shown in the inspector and the Markdown export."
+        }
+      }
+    },
+    "method": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Operation name; shown as name(params)."
+        },
+        "params": {
+          "type": "string",
+          "description": "Parameter list without parentheses, e.g. \"amount: Money\"."
+        },
+        "type": {
+          "type": "string",
+          "description": "Return type."
+        },
+        "visibility": {
+          "enum": [
+            "+",
+            "-",
+            "#",
+            "~"
+          ]
+        },
+        "static": {
+          "type": "boolean",
+          "description": "Underlined."
+        },
+        "abstract": {
+          "type": "boolean",
+          "description": "Italic."
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "end": {
+      "enum": [
+        "none",
+        "arrow",
+        "open-arrow",
+        "triangle",
+        "diamond",
+        "open-diamond",
+        "one",
+        "zero-or-one",
+        "many",
+        "one-or-many",
+        "zero-or-many"
+      ]
+    },
+    "icon": {
+      "enum": [
+        "cpu",
+        "server",
+        "database",
+        "layers",
+        "shield",
+        "key",
+        "globe",
+        "zap",
+        "credit-card",
+        "user",
+        "users",
+        "building",
+        "truck",
+        "warehouse",
+        "package",
+        "book-open",
+        "graduation-cap",
+        "award",
+        "activity",
+        "heart",
+        "file-text",
+        "crosshair",
+        "check-circle",
+        "flag",
+        "mail",
+        "cloud",
+        "monitor",
+        "settings"
+      ]
+    },
+    "cardChart": {
+      "type": "object",
+      "description": "A chart drawn inside the card, under the subtitle (see docs/authoring.md, Charts in diagrams). On an ordinary card it is a mini chart: kind line or area (sparkline), column, bar (labelled bars, up to 5), donut (shares, up to 5), ring (progress: value of max) or bullet (value against target). On a chart card (shape \"chart\") it is a page chart block: kind column, bar, line, area, pie or donut with data or categories + series. The inspector shows it full size with its data table; the Markdown export lists the numbers.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "line",
+            "area",
+            "column",
+            "bar",
+            "donut",
+            "ring",
+            "bullet",
+            "pie"
+          ],
+          "description": "Mini charts: line (default with values), area, column, bar, donut, ring (default with only value), bullet. Chart cards: column, bar (default), line, area, pie, donut."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "description": "Mini chart: the numbers in order (null leaves a gap). The last one is shown as the current value."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Mini chart: a label per value (tooltips, inspector, Markdown)."
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "label": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "value": {
+                "type": "number"
+              },
+              "tone": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Labelled values: bars, donut slices, or a chart card's single series."
+        },
+        "value": {
+          "type": "number",
+          "description": "Ring and bullet: the current value."
+        },
+        "max": {
+          "type": "number",
+          "description": "Ring: the full circle (default 100). Bullet: the end of the bar (default: a round number above value and target)."
+        },
+        "target": {
+          "type": "number",
+          "description": "A target: a dashed line on line, area and column charts, a tick on rings and bullets."
+        },
+        "label": {
+          "type": "string",
+          "description": "Mini chart: a short caption drawn on the card, e.g. \"p95 latency\"."
+        },
+        "title": {
+          "type": "string",
+          "description": "Chart card: the chart's own name, for screen readers (the card title is drawn)."
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Chart card: x-axis labels, one per value of every series."
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "values"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "tone": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "stacked": {
+          "type": "boolean",
+          "description": "Chart card: stack the series (column, bar, area)."
+        },
+        "unit": {
+          "type": "string",
+          "description": "After each number: \"%\", \" ms\", \"k\"."
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Before each number: \"£\"."
+        },
+        "tone": {
+          "type": "string",
+          "description": "Colour of a mini chart (good, warn, bad, info, neutral or a hue); default the card's colour."
+        }
+      }
+    }
+  }
+}

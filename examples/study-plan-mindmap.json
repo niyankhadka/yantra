@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "title": "Final exam revision plan",
+    "description": "A six-week revision plan for a first-year statistics exam, as a mind map: what to cover, with which resources, when, and how to stay well.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "mindmap"
+    },
+    "summary": {
+      "headline": "Cover three topics in four weeks, then two weeks of past papers and a mock.",
+      "points": [
+        "Weak topics first: hypothesis testing gets the most time.",
+        "Past papers drive the last two weeks.",
+        "Sleep and breaks are part of the plan, not extras."
+      ],
+      "facts": {
+        "Exam": "15/12/2026",
+        "Hours per week": "12"
+      }
+    }
+  },
+  "roles": {
+    "goal": { "label": "Goal", "color": "violet", "icon": "flag" },
+    "branch": { "label": "Theme", "color": "blue" },
+    "item": { "label": "Task", "color": "slate" }
+  },
+  "nodes": [
+    { "id": "goal", "type": "goal", "width": 240, "data": { "title": "Pass the statistics final", "subtitle": "Six weeks, 12 hours a week", "badge": "Goal" } },
+    { "id": "topics", "type": "branch", "data": { "title": "Topics", "subtitle": "What to cover", "icon": "book-open" } },
+    { "id": "probability", "type": "item", "width": 200, "data": { "title": "Probability", "subtitle": "Rules, Bayes, distributions", "badge": "Weeks 1-2" } },
+    { "id": "inference", "type": "item", "width": 200, "data": { "title": "Hypothesis testing", "subtitle": "Weakest topic: most time", "badge": "Weeks 2-3" } },
+    { "id": "regression", "type": "item", "width": 200, "data": { "title": "Regression", "subtitle": "Linear models, residuals", "badge": "Week 4" } },
+    { "id": "resources", "type": "branch", "data": { "title": "Resources", "subtitle": "Where to learn from", "icon": "layers" } },
+    { "id": "notes", "type": "item", "width": 200, "data": { "title": "Lecture notes", "subtitle": "Summarise each chapter", "badge": "Daily" } },
+    { "id": "papers", "type": "item", "width": 200, "data": { "title": "Past papers", "subtitle": "Five years, timed", "badge": "Weeks 5-6" } },
+    { "id": "group", "type": "item", "width": 200, "data": { "title": "Study group", "subtitle": "Explain answers aloud", "badge": "Thursdays" } },
+    { "id": "schedule", "type": "branch", "data": { "title": "Schedule", "subtitle": "When it happens", "icon": "activity" } },
+    { "id": "weekly", "type": "item", "width": 200, "data": { "title": "Weekly review", "subtitle": "Sunday: what stuck, what did not", "badge": "Sundays" } },
+    { "id": "mock", "type": "item", "width": 200, "data": { "title": "Mock exam", "subtitle": "Full paper, exam conditions", "badge": "Week 5" } },
+    { "id": "wellbeing", "type": "branch", "data": { "title": "Wellbeing", "subtitle": "Stay able to learn", "icon": "heart" } },
+    { "id": "sleep", "type": "item", "width": 200, "data": { "title": "Sleep 8 hours", "subtitle": "No revision after 22:00", "badge": "Every night" } },
+    { "id": "breaks", "type": "item", "width": 200, "data": { "title": "Short breaks", "subtitle": "50 minutes on, 10 off", "badge": "Every session" } },
+    { "id": "exercise", "type": "item", "width": 200, "data": { "title": "Exercise", "subtitle": "Three runs a week", "badge": "Mon, Wed, Fri" } }
+  ],
+  "edges": [
+    { "id": "goal-topics", "source": "goal", "target": "topics" },
+    { "id": "topics-probability", "source": "topics", "target": "probability" },
+    { "id": "topics-inference", "source": "topics", "target": "inference" },
+    { "id": "topics-regression", "source": "topics", "target": "regression" },
+    { "id": "goal-resources", "source": "goal", "target": "resources" },
+    { "id": "resources-notes", "source": "resources", "target": "notes" },
+    { "id": "resources-papers", "source": "resources", "target": "papers" },
+    { "id": "resources-group", "source": "resources", "target": "group" },
+    { "id": "goal-schedule", "source": "goal", "target": "schedule" },
+    { "id": "schedule-weekly", "source": "schedule", "target": "weekly" },
+    { "id": "schedule-mock", "source": "schedule", "target": "mock" },
+    { "id": "goal-wellbeing", "source": "goal", "target": "wellbeing" },
+    { "id": "wellbeing-sleep", "source": "wellbeing", "target": "sleep" },
+    { "id": "wellbeing-breaks", "source": "wellbeing", "target": "breaks" },
+    { "id": "wellbeing-exercise", "source": "wellbeing", "target": "exercise" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "The plan, branch by branch",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "One goal in the centre and four branches around it. Each branch keeps its own colour." },
+        { "id": "topics", "title": "Topics", "description": "Three topics in four weeks; hypothesis testing gets two weeks because it is the weakest.", "highlightNodes": ["goal", "topics", "probability", "inference", "regression"], "highlightEdges": ["goal-topics", "topics-probability", "topics-inference", "topics-regression"] },
+        { "id": "resources", "title": "Resources", "description": "Notes every day, the study group on Thursdays, past papers for the last two weeks.", "highlightNodes": ["goal", "resources", "notes", "papers", "group"], "highlightEdges": ["goal-resources", "resources-notes", "resources-papers", "resources-group"] },
+        { "id": "schedule", "title": "Schedule", "description": "A Sunday review keeps the plan honest; the mock exam in week 5 shows what is left.", "highlightNodes": ["goal", "schedule", "weekly", "mock"], "highlightEdges": ["goal-schedule", "schedule-weekly", "schedule-mock"] },
+        { "id": "wellbeing", "title": "Wellbeing", "description": "Sleep, breaks and exercise protect the hours spent revising.", "highlightNodes": ["goal", "wellbeing", "sleep", "breaks", "exercise"], "highlightEdges": ["goal-wellbeing", "wellbeing-sleep", "wellbeing-breaks", "wellbeing-exercise"] }
+      ]
+    }
+  ]
+}

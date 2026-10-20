@@ -1,0 +1,172 @@
+{
+  "meta": {
+    "title": "Smart city operations",
+    "description": "Harbourside City streams live readings from roadside, grid and water sensors, nested six levels deep, to one operations centre that sends plans back down.",
+    "summary": {
+      "headline": "Every sensor reports through its own controller and system, so the operations centre sees one live feed and can act on any district from one console.",
+      "points": [
+        "Six levels in one frame: city, district, service, system, site and sensors",
+        "Controllers act locally first; the city data hub only aggregates and alerts",
+        "Operators push signal plans and pump setpoints back down the same chain",
+        "The south pumping station opens folded: unfold it, or press 1 to 6 to choose a depth"
+      ],
+      "facts": {
+        "Readings per minute": "about 48,000",
+        "Hub latency (p95)": "1.2 s",
+        "Districts shown": "2 of 7"
+      }
+    },
+    "layout": {
+      "direction": "LR",
+      "collapsed": ["s-pumping"]
+    }
+  },
+  "roles": {
+    "sensor": { "label": "Sensor", "color": "teal", "icon": "activity" },
+    "controller": { "label": "Controller", "color": "orange", "icon": "cpu" },
+    "system": { "label": "Service system", "color": "blue", "icon": "server" },
+    "platform": { "label": "City platform", "color": "violet", "icon": "layers" },
+    "ops": { "label": "Operations", "color": "rose", "icon": "monitor" }
+  },
+  "groups": [
+    {
+      "id": "city",
+      "title": "Harbourside City",
+      "color": "slate",
+      "style": "solid",
+      "description": "The city boundary: every district, service and device the council operates."
+    },
+    {
+      "id": "north",
+      "title": "North district",
+      "parent": "city",
+      "color": "blue",
+      "description": "Dense retail and residential streets around the ring road."
+    },
+    {
+      "id": "n-transport",
+      "title": "Transport",
+      "parent": "north",
+      "color": "blue",
+      "description": "Highways, signals and bus priority for the north district."
+    },
+    {
+      "id": "n-traffic",
+      "title": "Traffic management",
+      "parent": "n-transport",
+      "nodes": ["traffic-server"],
+      "color": "blue",
+      "description": "Urban traffic control for 140 signalised junctions."
+    },
+    {
+      "id": "n-junction",
+      "title": "Junction 14 cabinet",
+      "parent": "n-traffic",
+      "nodes": ["signal-controller"],
+      "color": "orange",
+      "description": "Roadside cabinet at Quay Street and Ring Road East."
+    },
+    {
+      "id": "n-sensors",
+      "title": "Roadside sensors",
+      "parent": "n-junction",
+      "nodes": ["loop-detector", "junction-camera"],
+      "color": "teal",
+      "description": "Detectors wired straight into the junction cabinet."
+    },
+    {
+      "id": "n-energy",
+      "title": "Energy",
+      "parent": "north",
+      "color": "amber",
+      "description": "Distribution grid assets the council monitors with the network operator."
+    },
+    {
+      "id": "n-substation",
+      "title": "Substation N3",
+      "parent": "n-energy",
+      "nodes": ["feeder-sensor", "grid-gateway"],
+      "color": "amber",
+      "description": "11 kV primary substation feeding the north district."
+    },
+    {
+      "id": "south",
+      "title": "South district",
+      "parent": "city",
+      "color": "green",
+      "description": "Docks, light industry and the river crossing."
+    },
+    {
+      "id": "s-water",
+      "title": "Water",
+      "parent": "south",
+      "nodes": ["water-scada"],
+      "color": "green",
+      "description": "Clean water supply and pressure management."
+    },
+    {
+      "id": "s-pumping",
+      "title": "Riverside pumping station",
+      "parent": "s-water",
+      "color": "green",
+      "description": "Booster station that keeps pressure up on the hill zones."
+    },
+    {
+      "id": "s-pump-rack",
+      "title": "Pump control rack",
+      "parent": "s-pumping",
+      "nodes": ["pressure-sensor", "pump-controller"],
+      "color": "orange",
+      "description": "PLC rack with its own pressure transducers."
+    },
+    {
+      "id": "ops",
+      "title": "Operations centre",
+      "nodes": ["data-hub", "ops-console"],
+      "color": "rose",
+      "style": "solid",
+      "description": "Staffed around the clock; one console for every service."
+    }
+  ],
+  "nodes": [
+    { "id": "loop-detector", "type": "sensor", "data": { "title": "Loop detectors", "subtitle": "Vehicle counts per lane", "description": "Inductive loops cut into each approach lane; they report presence and counts every second.", "chart": { "kind": "column", "label": "Vehicles per 5 min", "labels": ["07:30", "07:35", "07:40", "07:45", "07:50", "07:55", "08:00", "08:05", "08:10", "08:15", "08:20", "08:25"], "values": [64, 71, 83, 92, 104, 118, 126, 121, 109, 97, 88, 80] } } },
+    { "id": "junction-camera", "type": "sensor", "data": { "title": "Junction camera", "subtitle": "Queue length, cyclists", "description": "Edge-processed video: only queue length and cyclist counts leave the camera, never images.", "chart": { "kind": "line", "label": "Queue length", "unit": " m", "labels": ["07:30", "07:40", "07:50", "08:00", "08:10", "08:20", "08:30"], "values": [35, 48, 70, 96, 84, 61, 44], "target": 80 } } },
+    { "id": "signal-controller", "type": "controller", "data": { "title": "Signal controller", "subtitle": "Adapts phase timings", "tech": "MOVA, NTCIP", "description": "Runs adaptive timings locally, so the junction keeps working if the link to the centre drops." } },
+    { "id": "traffic-server", "type": "system", "data": { "title": "Urban traffic control", "subtitle": "Coordinates corridors", "tech": "SCOOT", "description": "Balances green waves along the ring road and applies plans the operators choose." } },
+    { "id": "feeder-sensor", "type": "sensor", "data": { "title": "Feeder load sensor", "subtitle": "Current and voltage", "description": "Monitors load on each outgoing 11 kV feeder.", "chart": { "kind": "bullet", "label": "Feeder load", "unit": " A", "value": 312, "target": 350, "max": 400 } } },
+    { "id": "grid-gateway", "type": "controller", "data": { "title": "Substation gateway", "subtitle": "Aggregates telemetry", "tech": "IEC 61850", "description": "Collects readings from the substation and forwards a summary each minute." } },
+    { "id": "pressure-sensor", "type": "sensor", "data": { "title": "Pressure transducer", "subtitle": "Outlet main pressure", "description": "Reads outlet pressure ten times a second.", "chart": { "kind": "area", "label": "Outlet pressure", "unit": " bar", "labels": ["07:30", "07:40", "07:50", "08:00", "08:10", "08:20", "08:30", "08:40"], "values": [3.1, 3, 2.8, 2.6, 2.7, 2.9, 3, 3.1], "target": 2.5 } } },
+    { "id": "pump-controller", "type": "controller", "data": { "title": "Pump controller", "subtitle": "Holds the setpoint", "tech": "PLC", "description": "Starts and stops the duty pumps to hold the pressure setpoint." } },
+    { "id": "water-scada", "type": "system", "data": { "title": "Water SCADA", "subtitle": "Alarms and trends", "description": "Supervises every pumping station and reservoir in the south district.", "chart": { "kind": "ring", "label": "Alarms acknowledged", "value": 47, "max": 52 } } },
+    { "id": "data-hub", "type": "platform", "data": { "title": "City data hub", "subtitle": "One live event stream", "tech": "Event streaming", "description": "Normalises events from every service into one stream and raises cross-service alerts." } },
+    { "id": "ops-console", "type": "ops", "data": { "title": "Operator console", "subtitle": "Monitor and act", "description": "Operators watch every district and push plans and setpoints back down." } }
+  ],
+  "edges": [
+    { "id": "e-loop", "source": "loop-detector", "target": "signal-controller", "label": "Counts" },
+    { "id": "e-camera", "source": "junction-camera", "target": "signal-controller", "label": "Queues" },
+    { "id": "e-phase", "source": "signal-controller", "target": "traffic-server", "label": "Phase status" },
+    { "id": "e-traffic", "source": "traffic-server", "target": "data-hub", "label": "Traffic events", "type": "event" },
+    { "id": "e-feeder", "source": "feeder-sensor", "target": "grid-gateway", "label": "Load" },
+    { "id": "e-grid", "source": "grid-gateway", "target": "data-hub", "label": "Grid telemetry", "type": "event" },
+    { "id": "e-pressure", "source": "pressure-sensor", "target": "pump-controller", "label": "Pressure" },
+    { "id": "e-pump", "source": "pump-controller", "target": "water-scada", "label": "Pump status" },
+    { "id": "e-water", "source": "water-scada", "target": "data-hub", "label": "Water alarms", "type": "event" },
+    { "id": "e-feed", "source": "data-hub", "target": "ops-console", "label": "Live feed", "type": "stream" },
+    { "id": "e-plan", "source": "ops-console", "target": "traffic-server", "label": "Signal plan" },
+    { "id": "e-setpoint", "source": "ops-console", "target": "water-scada", "label": "Setpoint" }
+  ],
+  "scenarios": [
+    {
+      "id": "live",
+      "name": "Live operations",
+      "steps": [
+        { "title": "The city in one frame", "description": "Six levels of boundaries: the city, its districts, each service, its systems, the sites and finally the sensors. The pumping station starts folded." },
+        { "title": "A queue builds at Junction 14", "description": "Loops and the camera report to the signal controller in the same cabinet, which lengthens the green phase on its own.", "focusGroup": "n-junction", "highlightNodes": ["loop-detector", "junction-camera", "signal-controller"], "highlightEdges": ["e-loop", "e-camera"] },
+        { "title": "Traffic control sees the corridor", "description": "The controller reports its phase to urban traffic control, which publishes a congestion event to the city data hub.", "focusGroup": "n-transport", "highlightNodes": ["signal-controller", "traffic-server", "data-hub"], "highlightEdges": ["e-phase", "e-traffic"] },
+        { "title": "Pressure drops at the river", "description": "Focusing the pumping station unfolds it: the transducer reports to the pump controller, and SCADA raises an alarm on the hub.", "focusGroup": "s-pumping", "highlightNodes": ["pressure-sensor", "pump-controller", "water-scada", "data-hub"], "highlightEdges": ["e-pressure", "e-pump", "e-water"] },
+        { "title": "Grid load in the north", "description": "The substation gateway summarises feeder load each minute for the hub.", "focusGroup": "n-substation", "highlightNodes": ["feeder-sensor", "grid-gateway", "data-hub"], "highlightEdges": ["e-feeder", "e-grid"] },
+        { "title": "Operators act", "description": "The console shows one live feed. Operators choose a new signal plan for the ring road and raise the pump setpoint.", "highlightNodes": ["data-hub", "ops-console", "traffic-server", "water-scada"], "highlightEdges": ["e-feed", "e-plan", "e-setpoint"] }
+      ]
+    }
+  ]
+}

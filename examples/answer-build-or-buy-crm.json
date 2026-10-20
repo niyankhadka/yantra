@@ -1,0 +1,198 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Should we build or buy our CRM?",
+    "title": "CRM: build, buy or adapt open source",
+    "kicker": "Decision",
+    "author": "Product and engineering leads, Brackenfield Events (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional company and figures, for illustration only. Costs are three-year estimates in GBP."
+  },
+  "answer": {
+    "headline": "Buy: a hosted CRM costs about £186k over three years against £540k to build, is live in three months instead of twelve, and our needs are standard. Build only the event-booking integration.",
+    "text": "We need contacts, deals, email tracking and reporting for 45 sales and account staff. Nothing in that list is unique to us; the one thing that is, the link to our event-booking system, is a small integration either way.",
+    "points": [
+      "Three-year cost: buy £186k, adapt open source £310k, build £540k",
+      "Time to first users: buy 3 months, open source 6, build 12",
+      "The risk with buying is lock-in; we limit it by keeping our own nightly data export"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "compare",
+      "title": "The three options",
+      "options": [
+        {
+          "name": "Buy a hosted CRM",
+          "summary": "Subscribe to a mainstream CRM and configure it.",
+          "pros": [
+            "Lowest cost and fastest",
+            "Upgrades, security and uptime are the vendor's job",
+            "Staff may already know it"
+          ],
+          "cons": [
+            "Per-user prices rise each year",
+            "Less control over the roadmap"
+          ],
+          "recommended": true,
+          "verdict": "Recommended"
+        },
+        {
+          "name": "Adapt an open-source CRM",
+          "summary": "Host and extend an open-source CRM ourselves.",
+          "pros": [
+            "No licence fees",
+            "Full control of data and code"
+          ],
+          "cons": [
+            "We run hosting, upgrades and security",
+            "Needs a developer most of the time"
+          ],
+          "verdict": "Second choice"
+        },
+        {
+          "name": "Build our own",
+          "summary": "Write a CRM around our event model.",
+          "pros": [
+            "Fits our process exactly"
+          ],
+          "cons": [
+            "Twelve months before anyone uses it",
+            "We own every bug and feature request for ever"
+          ],
+          "verdict": "Not justified"
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "column",
+      "stacked": true,
+      "title": "Three-year cost by option",
+      "prefix": "£",
+      "unit": "k",
+      "categories": [
+        "Buy",
+        "Open source",
+        "Build"
+      ],
+      "series": [
+        {
+          "name": "Set-up and build",
+          "values": [
+            40,
+            120,
+            380
+          ]
+        },
+        {
+          "name": "Licences and hosting",
+          "values": [
+            126,
+            30,
+            30
+          ]
+        },
+        {
+          "name": "Running and support",
+          "values": [
+            20,
+            160,
+            130
+          ]
+        }
+      ],
+      "caption": "Licences: 45 users at about £78 a month. Build and support at internal day rates."
+    },
+    {
+      "type": "table",
+      "title": "How the options score against our needs",
+      "columns": [
+        "Need",
+        "Buy",
+        "Open source",
+        "Build"
+      ],
+      "rows": [
+        [
+          "Contacts, deals and pipeline",
+          "Yes, built in",
+          "Yes, built in",
+          "Must build"
+        ],
+        [
+          "Email and calendar sync",
+          "Yes, built in",
+          "Plug-in",
+          "Must build"
+        ],
+        [
+          "Event-booking integration",
+          "Build (4 weeks)",
+          "Build (4 weeks)",
+          "Build (included)"
+        ],
+        [
+          "Reporting",
+          "Yes, built in",
+          "Basic",
+          "Must build"
+        ],
+        [
+          "Mobile app",
+          "Yes",
+          "Partial",
+          "Must build"
+        ]
+      ]
+    },
+    {
+      "type": "points",
+      "title": "When building would be the right answer",
+      "items": [
+        {
+          "title": "The CRM is the product",
+          "text": "If customers paid us for the way we manage relationships, owning it would be worth the cost.",
+          "tone": "neutral"
+        },
+        {
+          "title": "Unusual data or rules",
+          "text": "If no product could hold our data model without heavy workarounds.",
+          "tone": "neutral"
+        },
+        {
+          "title": "Scale that breaks per-user pricing",
+          "text": "Thousands of users can make licences dearer than a team of developers.",
+          "tone": "neutral"
+        }
+      ]
+    },
+    {
+      "type": "checklist",
+      "title": "Before we sign",
+      "span": "half",
+      "items": [
+        {
+          "text": "Two-week trial with five sales staff"
+        },
+        {
+          "text": "Confirm a full data export in a standard format",
+          "note": "our exit plan"
+        },
+        {
+          "text": "Check data is stored in the UK or EU"
+        },
+        {
+          "text": "Agree a price cap for renewal years two and three"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "span": "half",
+      "tone": "warn",
+      "label": "Assumptions to check",
+      "body": "Build cost assumes two developers for twelve months and one afterwards. If the trial shows we need heavy customisation, the gap between buy and open source narrows and the decision should be revisited."
+    }
+  ]
+}

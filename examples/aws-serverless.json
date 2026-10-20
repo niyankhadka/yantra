@@ -1,0 +1,229 @@
+{
+  "meta": {
+    "title": "Serverless Orders on AWS",
+    "description": "A static web app on CloudFront, a Cognito-protected API, and an SQS-buffered fulfilment worker inside a private VPC.",
+    "summary": {
+      "headline": "Orders are accepted in milliseconds and fulfilled asynchronously: the API only writes the order and queues the work.",
+      "points": [
+        "CloudFront serves the app from S3 and forwards /api calls to API Gateway",
+        "Cognito issues the JWT; API Gateway verifies it before any Lambda runs",
+        "SQS absorbs spikes, so fulfilment never slows down checkout",
+        "Only the fulfilment Lambda reaches into the VPC, where the inventory database lives"
+      ],
+      "facts": {
+        "Region": "eu-west-2 (London)",
+        "Checkout p99": "180 ms",
+        "Idle cost": "near zero"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "client": { "label": "Client", "color": "slate" },
+    "edge": { "label": "Edge", "color": "blue" },
+    "security": { "label": "Identity", "color": "rose" },
+    "compute": { "label": "Compute", "color": "orange" },
+    "messaging": { "label": "Messaging", "color": "teal" },
+    "data": { "label": "Data", "color": "violet" }
+  },
+  "groups": [
+    {
+      "id": "aws",
+      "title": "AWS account (eu-west-2)",
+      "nodes": ["cdn", "site", "cognito", "orders-table"],
+      "color": "orange",
+      "style": "solid",
+      "description": "Production account. Everything here is billed per request and scales to zero."
+    },
+    {
+      "id": "backend",
+      "title": "Serverless backend",
+      "parent": "aws",
+      "nodes": ["api", "orders-fn", "queue"],
+      "color": "blue",
+      "description": "Managed services only: no servers to patch, concurrency limits set per function."
+    },
+    {
+      "id": "vpc",
+      "title": "Private VPC",
+      "parent": "aws",
+      "nodes": ["worker-fn", "inventory-db"],
+      "color": "green",
+      "description": "Private subnets across two availability zones. No internet gateway; VPC endpoints reach SQS and DynamoDB."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "client",
+      "type": "client",
+      "data": {
+        "title": "Web & mobile app",
+        "subtitle": "React SPA, iOS, Android",
+        "icon": "user",
+        "description": "Customers browse the catalogue and place orders."
+      }
+    },
+    {
+      "id": "cdn",
+      "type": "edge",
+      "data": {
+        "title": "CloudFront",
+        "subtitle": "CDN and TLS termination",
+        "icon": "globe",
+        "tech": "AWS WAF, Shield Standard",
+        "description": "Caches the static site at the edge and forwards /api/* to API Gateway."
+      }
+    },
+    {
+      "id": "site",
+      "type": "data",
+      "data": {
+        "title": "S3 site bucket",
+        "subtitle": "Static assets",
+        "icon": "database",
+        "tech": "Origin access control",
+        "description": "Versioned bucket holding the built single-page app. Only CloudFront can read it."
+      }
+    },
+    {
+      "id": "cognito",
+      "type": "security",
+      "data": {
+        "title": "Cognito user pool",
+        "subtitle": "Sign-in and JWTs",
+        "icon": "key",
+        "description": "Hosted sign-in, MFA and token issuance. API Gateway trusts its JWT issuer."
+      }
+    },
+    {
+      "id": "api",
+      "type": "edge",
+      "data": {
+        "title": "API Gateway",
+        "subtitle": "HTTP API, JWT authoriser",
+        "icon": "shield",
+        "tech": "Throttle 2k req/s",
+        "description": "Validates the Cognito token, throttles per client and invokes the orders function."
+      }
+    },
+    {
+      "id": "orders-fn",
+      "type": "compute",
+      "data": {
+        "title": "Orders Lambda",
+        "subtitle": "Accepts and records orders",
+        "icon": "cpu",
+        "tech": "Node.js 20, arm64",
+        "description": "Validates the basket, writes the order with a conditional put and queues fulfilment."
+      }
+    },
+    {
+      "id": "queue",
+      "type": "messaging",
+      "data": {
+        "title": "SQS fulfilment queue",
+        "subtitle": "Buffer with dead-letter queue",
+        "icon": "layers",
+        "tech": "Visibility timeout 60 s",
+        "description": "Decouples checkout from fulfilment. Failed messages move to a DLQ after 5 attempts."
+      }
+    },
+    {
+      "id": "worker-fn",
+      "type": "compute",
+      "data": {
+        "title": "Fulfilment Lambda",
+        "subtitle": "VPC-attached worker",
+        "icon": "cpu",
+        "tech": "Python 3.12, batch 10",
+        "description": "Reserves stock, then marks the order as confirmed or back-ordered."
+      }
+    },
+    {
+      "id": "inventory-db",
+      "type": "data",
+      "data": {
+        "title": "Aurora PostgreSQL",
+        "subtitle": "Inventory, private subnets",
+        "icon": "database",
+        "tech": "Serverless v2, RDS Proxy",
+        "description": "Stock levels and reservations. Reachable only from inside the VPC."
+      }
+    },
+    {
+      "id": "orders-table",
+      "type": "data",
+      "data": {
+        "title": "DynamoDB orders",
+        "subtitle": "On-demand table",
+        "icon": "database",
+        "tech": "PITR enabled",
+        "description": "Single-table design keyed by customer and order id."
+      }
+    }
+  ],
+  "edges": [
+    { "id": "client-cognito", "source": "client", "target": "cognito", "label": "sign in" },
+    { "id": "client-cdn", "source": "client", "target": "cdn", "label": "HTTPS" },
+    { "id": "cdn-site", "source": "cdn", "target": "site", "label": "static assets" },
+    { "id": "cdn-api", "source": "cdn", "target": "api", "label": "/api/*" },
+    { "id": "api-orders", "source": "api", "target": "orders-fn", "label": "invoke" },
+    { "id": "orders-table-write", "source": "orders-fn", "target": "orders-table", "label": "put order" },
+    { "id": "orders-queue", "source": "orders-fn", "target": "queue", "label": "enqueue" },
+    { "id": "queue-worker", "source": "queue", "target": "worker-fn", "label": "batch trigger" },
+    { "id": "worker-db", "source": "worker-fn", "target": "inventory-db", "label": "reserve stock" },
+    { "id": "worker-table", "source": "worker-fn", "target": "orders-table", "label": "set status", "style": "dashed" }
+  ],
+  "scenarios": [
+    {
+      "id": "checkout",
+      "name": "Place an order",
+      "description": "From sign-in to a confirmed, stock-reserved order.",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "One account, two trust zones",
+          "description": "Everything runs in one AWS account. Managed services form the serverless backend; only the fulfilment worker and the inventory database sit in the private VPC."
+        },
+        {
+          "id": "sign-in",
+          "title": "The customer signs in",
+          "description": "The app uses Cognito's hosted sign-in and receives a short-lived JWT.",
+          "highlightNodes": ["client", "cognito"],
+          "highlightEdges": ["client-cognito"]
+        },
+        {
+          "id": "edge",
+          "title": "CloudFront serves the app and the API",
+          "description": "Static files come from the S3 bucket; requests under /api/* are forwarded to API Gateway.",
+          "highlightNodes": ["client", "cdn", "site", "api"],
+          "highlightEdges": ["client-cdn", "cdn-site", "cdn-api"]
+        },
+        {
+          "id": "accept",
+          "title": "The order is accepted",
+          "description": "API Gateway verifies the JWT and invokes the Orders Lambda, which writes the order to DynamoDB and returns 202.",
+          "highlightNodes": ["api", "orders-fn", "orders-table"],
+          "highlightEdges": ["api-orders", "orders-table-write"],
+          "payload": { "method": "POST", "endpoint": "/api/orders", "status": "202 Accepted", "latency": "180 ms p99" }
+        },
+        {
+          "id": "queue",
+          "title": "Fulfilment is queued",
+          "description": "The same function drops a message on SQS. A spike in orders only lengthens the queue; checkout stays fast.",
+          "highlightNodes": ["orders-fn", "queue", "worker-fn"],
+          "highlightEdges": ["orders-queue", "queue-worker"]
+        },
+        {
+          "id": "fulfil",
+          "title": "Stock is reserved inside the VPC",
+          "description": "The fulfilment Lambda reserves stock in Aurora through RDS Proxy, then sets the order status in DynamoDB.",
+          "highlightNodes": ["worker-fn", "inventory-db", "orders-table"],
+          "highlightEdges": ["worker-db", "worker-table"]
+        }
+      ]
+    }
+  ]
+}

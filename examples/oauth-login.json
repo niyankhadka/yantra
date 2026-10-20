@@ -1,0 +1,255 @@
+{
+  "meta": {
+    "title": "Sign-in with OAuth 2.0 + PKCE",
+    "description": "Authorization code flow with PKCE and OpenID Connect: who calls whom, in order, from the first click to the first API call.",
+    "view": "sequence",
+    "summary": {
+      "headline": "The browser only ever carries a one-time code; tokens are exchanged on the back channel and bound to the app by the PKCE verifier.",
+      "points": [
+        "The app sends a hashed challenge up front and proves it with the verifier at /token",
+        "The state parameter ties the callback to the session that started the login",
+        "Tokens never pass through the browser; the app keeps them server-side",
+        "The resource API checks the access token's signature, audience and expiry on every call"
+      ],
+      "facts": {
+        "Grant": "authorization_code + PKCE (S256)",
+        "Front-channel hops": "4",
+        "Access token lifetime": "10 minutes"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "client": {
+      "label": "Client",
+      "color": "slate"
+    },
+    "app": {
+      "label": "Application",
+      "color": "blue"
+    },
+    "identity": {
+      "label": "Identity",
+      "color": "rose"
+    },
+    "api": {
+      "label": "Resource",
+      "color": "violet"
+    }
+  },
+  "nodes": [
+    {
+      "id": "app",
+      "type": "app",
+      "data": {
+        "title": "App backend",
+        "subtitle": "Confidential OAuth client",
+        "tech": "Node.js · openid-client",
+        "icon": "server",
+        "description": "Starts the login, creates the PKCE verifier and state, exchanges the code and keeps tokens in the server-side session."
+      }
+    },
+    {
+      "id": "browser",
+      "type": "client",
+      "data": {
+        "title": "Browser",
+        "subtitle": "User agent, front channel",
+        "icon": "user",
+        "description": "Follows redirects and holds only the session cookie. It never sees the access or refresh token."
+      }
+    },
+    {
+      "id": "auth",
+      "type": "identity",
+      "data": {
+        "title": "Authorization server",
+        "subtitle": "OpenID Provider",
+        "tech": "/authorize · /token · /jwks",
+        "icon": "shield",
+        "description": "Authenticates the user, records consent, issues the one-time code and later the ID and access tokens."
+      }
+    },
+    {
+      "id": "api",
+      "type": "api",
+      "data": {
+        "title": "Resource API",
+        "subtitle": "Profile and account data",
+        "tech": "GET /me",
+        "icon": "database",
+        "description": "Accepts only access tokens with its own audience, checked against the provider's published keys."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "redirect",
+      "source": "app",
+      "target": "browser",
+      "label": "302 to /authorize"
+    },
+    {
+      "id": "authorize",
+      "source": "browser",
+      "target": "auth",
+      "label": "/authorize + challenge"
+    },
+    {
+      "id": "code",
+      "source": "auth",
+      "target": "browser",
+      "label": "302 /callback?code"
+    },
+    {
+      "id": "callback",
+      "source": "browser",
+      "target": "app",
+      "label": "GET /callback?code"
+    },
+    {
+      "id": "token",
+      "source": "app",
+      "target": "auth",
+      "label": "POST /token + verifier"
+    },
+    {
+      "id": "tokens",
+      "source": "auth",
+      "target": "app",
+      "label": "ID + access token"
+    },
+    {
+      "id": "call",
+      "source": "app",
+      "target": "api",
+      "label": "GET /me (Bearer)"
+    },
+    {
+      "id": "profile",
+      "source": "api",
+      "target": "app",
+      "label": "profile JSON"
+    },
+    {
+      "id": "session",
+      "source": "app",
+      "target": "browser",
+      "label": "session cookie"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "login",
+      "name": "First sign-in",
+      "steps": [
+        {
+          "id": "start",
+          "title": "The user clicks Sign in",
+          "description": "The browser asks the app to start a login (GET /login). Nothing has been sent to the identity provider yet.",
+          "highlightNodes": [
+            "browser",
+            "app"
+          ]
+        },
+        {
+          "id": "challenge",
+          "title": "The app redirects with a PKCE challenge",
+          "description": "The app creates a random code_verifier and state, stores both in the session, and redirects to /authorize with code_challenge = SHA-256(verifier).",
+          "highlightNodes": [
+            "app",
+            "browser"
+          ],
+          "highlightEdges": [
+            "redirect"
+          ]
+        },
+        {
+          "id": "authorize",
+          "title": "The user signs in at the provider",
+          "description": "The browser follows the redirect. The provider authenticates the user (password, passkey or SSO) and asks for consent to the requested scopes.",
+          "highlightNodes": [
+            "browser",
+            "auth"
+          ],
+          "highlightEdges": [
+            "authorize"
+          ]
+        },
+        {
+          "id": "code",
+          "title": "A one-time code comes back",
+          "description": "The provider redirects to the app's registered callback with a short-lived authorization code and the original state. The browser delivers both to the app.",
+          "highlightNodes": [
+            "auth",
+            "browser",
+            "app"
+          ],
+          "highlightEdges": [
+            "code",
+            "callback"
+          ]
+        },
+        {
+          "id": "exchange",
+          "title": "Back-channel code exchange",
+          "description": "The app checks state, then posts the code, its client credentials and the code_verifier to /token. The provider recomputes the challenge and rejects any mismatch.",
+          "highlightNodes": [
+            "app",
+            "auth"
+          ],
+          "highlightEdges": [
+            "token"
+          ]
+        },
+        {
+          "id": "tokens",
+          "title": "Tokens are issued",
+          "description": "The provider returns an ID token (who the user is) and an access token (what the app may call), plus a refresh token if offline_access was granted.",
+          "highlightNodes": [
+            "auth",
+            "app"
+          ],
+          "highlightEdges": [
+            "tokens"
+          ]
+        },
+        {
+          "id": "validate",
+          "title": "The app validates the ID token",
+          "description": "Signature against the provider's JWKS, issuer, audience, expiry and nonce. Only then is the user considered signed in.",
+          "highlightNodes": [
+            "app"
+          ]
+        },
+        {
+          "id": "session",
+          "title": "The browser gets a session cookie",
+          "description": "The app stores the tokens server-side and sets an HttpOnly, SameSite session cookie. The browser never holds a token.",
+          "highlightNodes": [
+            "app",
+            "browser"
+          ],
+          "highlightEdges": [
+            "session"
+          ]
+        },
+        {
+          "id": "api",
+          "title": "The app calls the API",
+          "description": "The app sends the access token as a Bearer header. The API verifies signature, audience, scope and expiry, then returns the profile.",
+          "highlightNodes": [
+            "app",
+            "api"
+          ],
+          "highlightEdges": [
+            "call",
+            "profile"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,343 @@
+{
+  "meta": {
+    "title": "Global Autonomous Supply Chain & Fulfillment Mesh",
+    "description": "Multi-tier end-to-end supply chain orchestration: raw materials, freight transit, robotic warehousing, automated QA inspection, and customer delivery.",
+    "version": "2.0.0",
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "partner": {
+      "label": "Partner",
+      "color": "slate"
+    },
+    "operation": {
+      "label": "Operation",
+      "color": "teal"
+    },
+    "facility": {
+      "label": "Facility",
+      "color": "blue"
+    },
+    "customer": {
+      "label": "Customer",
+      "color": "amber"
+    }
+  },
+  "nodes": [
+    {
+      "id": "node-supplier",
+      "type": "partner",
+      "data": {
+        "title": "Tier-1 Raw Material Supplier",
+        "subtitle": "Certified fabrication & procurement",
+        "badge": "Procurement",
+        "icon": "building",
+        "tech": "SAP Ariba, EDI 850 / 856 Protocols",
+        "runtime": "Smart Contract Sourcing Hub",
+        "ports": "EDIFACT, AS2 / HTTPS",
+        "sourceFile": "supply/procurement/vendor_contract.sol:42",
+        "description": "Primary material source issuing serialized lot manifests, batch certifications, and EDI dispatch alerts."
+      }
+    },
+    {
+      "id": "node-logistics",
+      "type": "operation",
+      "data": {
+        "title": "Intermodal Freight & Telematics",
+        "subtitle": "Autonomous fleet & ocean vessels",
+        "badge": "Transit",
+        "icon": "truck",
+        "tech": "IoT Telematics, LoRaWAN, AIS Fleet Tracker",
+        "runtime": "Satellite Edge Telemetry",
+        "ports": "MQTT / TLS (Port 8883)",
+        "sourceFile": "logistics/telematics/stream_ingest.py:118",
+        "description": "Coordinates dynamic route optimization, cold-chain temperature monitoring, and port customs clearance."
+      }
+    },
+    {
+      "id": "node-warehouse",
+      "type": "facility",
+      "data": {
+        "title": "Robotic Fulfillment Mega-Hub",
+        "subtitle": "Automated storage & retrieval (ASRS)",
+        "badge": "Fulfillment",
+        "icon": "warehouse",
+        "tech": "Manhattan WMS, Kiva AGV Swarm, ROS 2",
+        "runtime": "Warehouse Edge K3s Cluster",
+        "ports": "OPC UA, gRPC (Port 50051)",
+        "sourceFile": "warehouse/controllers/asrs_picker.rs:85",
+        "description": "High-density robotic sorting center executing dynamic slotting, pallet cross-docking, and item picking."
+      }
+    },
+    {
+      "id": "node-qa",
+      "type": "operation",
+      "data": {
+        "title": "Quality Assurance & Compliance Lab",
+        "subtitle": "Computer vision & spectral scanning",
+        "badge": "Inspection",
+        "icon": "shield",
+        "tech": "TensorRT Defect Detection, OpenCV, PLC",
+        "runtime": "Industrial Edge GPU Blade",
+        "ports": "Industrial Ethernet, REST (Port 8443)",
+        "sourceFile": "qa/vision/defect_classifier.cpp:210",
+        "description": "Automated inline quality gate identifying surface anomalies, barcode integrity, and regulatory certifications."
+      }
+    },
+    {
+      "id": "node-retail",
+      "type": "facility",
+      "data": {
+        "title": "Regional Distribution & Micro-Hub",
+        "subtitle": "Urban micro-fulfillment & retail network",
+        "badge": "Distribution",
+        "icon": "package",
+        "tech": "Dynamic Routing Engine, Shopify POS, GraphQL",
+        "runtime": "AWS Local Zones (Urban Edge)",
+        "ports": "HTTPS / GraphQL (Port 443)",
+        "sourceFile": "dispatch/routing/optimizer.go:142",
+        "description": "Urban last-mile dispatch depot managing fleet staging, click-and-collect inventory, and store restock."
+      }
+    },
+    {
+      "id": "node-customer",
+      "type": "customer",
+      "data": {
+        "title": "Enterprise B2B & Retail Customer",
+        "subtitle": "Omnichannel receipt & proof of delivery",
+        "badge": "End Consumer",
+        "icon": "users",
+        "tech": "Mobile Consumer App, Webhook Ingestion",
+        "runtime": "iOS / Android / Web Client",
+        "ports": "Push APNs / FCM, WebSocket",
+        "sourceFile": "client/mobile/proof_of_delivery.ts:60",
+        "description": "Receiving entity capturing geofenced arrival, cryptographic proof-of-delivery (PoD), and real-time inventory receipt."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-supp-logistics",
+      "source": "node-supplier",
+      "target": "node-logistics",
+      "label": "Bill of Lading"
+    },
+    {
+      "id": "edge-supp-warehouse",
+      "source": "node-supplier",
+      "target": "node-warehouse",
+      "label": "Direct Rail Freight"
+    },
+    {
+      "id": "edge-logistics-qa",
+      "source": "node-logistics",
+      "target": "node-qa",
+      "label": "Batch Samples",
+      "style": "dashed"
+    },
+    {
+      "id": "edge-qa-warehouse",
+      "source": "node-qa",
+      "target": "node-warehouse",
+      "label": "Inspection Clearance"
+    },
+    {
+      "id": "edge-warehouse-retail",
+      "source": "node-warehouse",
+      "target": "node-retail",
+      "label": "Truckload Dispatch"
+    },
+    {
+      "id": "edge-retail-customer",
+      "source": "node-retail",
+      "target": "node-customer",
+      "label": "Last-Mile Delivery"
+    },
+    {
+      "id": "edge-customer-supp",
+      "source": "node-customer",
+      "target": "node-supplier",
+      "label": "Demand Forecast Feedback",
+      "style": "dashed"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "inbound-fulfillment",
+      "name": "Autonomous Inbound Replenishment",
+      "badge": "Flow 1",
+      "description": "Complete procurement pipeline from raw vendor manufacturing, multi-modal transport, computer-vision QA, to robotic warehouse intake.",
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Global Supply Mesh Overview",
+          "description": "End-to-end supply chain topology operating across Tier-1 suppliers, IoT cold-chain transit, robotic ASRS storage, and last-mile dispatch.",
+          "highlightNodes": [
+            "node-supplier",
+            "node-logistics",
+            "node-warehouse",
+            "node-qa",
+            "node-retail",
+            "node-customer"
+          ],
+          "highlightEdges": [
+            "edge-supp-logistics",
+            "edge-supp-warehouse",
+            "edge-logistics-qa",
+            "edge-qa-warehouse",
+            "edge-warehouse-retail",
+            "edge-retail-customer",
+            "edge-customer-supp"
+          ],
+          "payload": {
+            "method": "INFO",
+            "endpoint": "/scm/v2/network/health",
+            "status": "OPERATIONAL",
+            "latency": "5ms",
+            "protocol": "HTTPS",
+            "body": {
+              "active_hubs": 6,
+              "global_inventory_turnover": 14.2,
+              "fleet_connected_vehicles": 1450,
+              "warehouse_capacity_utilization": "86.4%"
+            }
+          }
+        },
+        {
+          "id": "step-2",
+          "title": "Purchase Order Release & Freight Dispatch",
+          "description": "Supplier fulfills electronic purchase order, seals shipping containers with tamper-evident RFID tags, and transfers custody to intermodal logistics.",
+          "highlightNodes": [
+            "node-supplier",
+            "node-logistics"
+          ],
+          "highlightEdges": [
+            "edge-supp-logistics"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/scm/v2/edi/asn-dispatch",
+            "status": "201 Created",
+            "latency": "12ms",
+            "protocol": "AS2 / EDIFACT",
+            "body": {
+              "asn_number": "ASN-2026-99014",
+              "supplier_id": "VEND-KYOTO-PRECISION",
+              "lot_code": "LOT-TITANIUM-A4",
+              "containers": 24,
+              "rfid_seal_hashes": [
+                "0x9f44a",
+                "0x33b81"
+              ]
+            }
+          }
+        },
+        {
+          "id": "step-3",
+          "title": "Automated Quality Gate & Optical Verification",
+          "description": "Batch samples are diverted to the QA compliance lab. Spectral optical cameras and deep learning classifiers inspect material tolerances before clearance.",
+          "highlightNodes": [
+            "node-logistics",
+            "node-qa"
+          ],
+          "highlightEdges": [
+            "edge-logistics-qa"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/qa/v1/inspect/optical",
+            "status": "200 Passed",
+            "latency": "4ms",
+            "protocol": "gRPC",
+            "body": {
+              "sample_id": "QA-SMP-7721",
+              "defect_probability": 0.0002,
+              "dimensional_tolerance_mm": "+0.002",
+              "iso_certification": "ISO-9001:2026-COMPLIANT"
+            }
+          }
+        },
+        {
+          "id": "step-4",
+          "title": "ASRS Robotic Ingestion & Slot Allocation",
+          "description": "Cleared pallets enter the robotic fulfillment mega-hub. Autonomous mobile robots (AGVs) sort, barcode-index, and store materials in high-bay racking.",
+          "highlightNodes": [
+            "node-qa",
+            "node-warehouse"
+          ],
+          "highlightEdges": [
+            "edge-qa-warehouse"
+          ],
+          "payload": {
+            "method": "PUT",
+            "endpoint": "/wms/v3/inventory/slot",
+            "status": "200 OK",
+            "latency": "18ms",
+            "protocol": "OPC UA",
+            "body": {
+              "bin_id": "RACK-VERTICAL-Z88-B14",
+              "sku": "MAT-TITANIUM-A4",
+              "stored_quantity": 4800,
+              "picker_robot_id": "KIVA-SWARM-UNIT-42"
+            }
+          }
+        },
+        {
+          "id": "step-5",
+          "title": "Urban Dispatch & Same-Day Retail Staging",
+          "description": "High-velocity stock is picked into dispatch containers and routed via electric transit trucks to urban micro-hubs for consumer distribution.",
+          "highlightNodes": [
+            "node-warehouse",
+            "node-retail"
+          ],
+          "highlightEdges": [
+            "edge-warehouse-retail"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/dispatch/v1/crossdock/staging",
+            "status": "202 Accepted",
+            "latency": "9ms",
+            "protocol": "REST / JSON",
+            "body": {
+              "dispatch_manifest": "TRK-NYC-STAGE-4",
+              "units_shipped": 850,
+              "eta_minutes": 45,
+              "route_type": "ZERO_EMISSION_TRANSIT"
+            }
+          }
+        },
+        {
+          "id": "step-6",
+          "title": "Geofenced Proof-of-Delivery & Receipt Settlement",
+          "description": "Last-mile courier delivers to customer. Geofenced signature triggers instant ERP ledger settlement and automated supplier replenishment forecast.",
+          "highlightNodes": [
+            "node-retail",
+            "node-customer",
+            "node-supplier"
+          ],
+          "highlightEdges": [
+            "edge-retail-customer",
+            "edge-customer-supp"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/scm/v2/delivery/confirm",
+            "status": "200 Completed",
+            "latency": "11ms",
+            "protocol": "HTTPS",
+            "body": {
+              "order_ref": "PO-GLOBAL-88190",
+              "recipient_signature": "SIG_SHA256_VERIFIED",
+              "delivery_geofence": "40.7128,-74.0060",
+              "payment_released_usd": 142500,
+              "supplier_restock_signal": "EMITTED"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,311 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Will we hit the £12m sales target for 2026?",
+    "title": "Sales performance dashboard: Q3 2026",
+    "kicker": "Sales dashboard",
+    "author": "Revenue operations, Fernhill Instruments (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional company and data, for illustration only."
+  },
+  "answer": {
+    "headline": "Probably, but only just: £8.9m booked to 30/09/2026 plus £3.3m of weighted pipeline points to about £12.2m, if the North region recovers and the two largest deals close by 18/12/2026.",
+    "text": "Revenue has run ahead of plan since May, driven by the South and London regions. North is 22% behind plan and holds the riskiest late-stage deals.",
+    "points": [
+      "Year to date: £8.9m against a plan of £8.6m (+3.5%)",
+      "Win rate up from 24% to 29% since the new qualification checklist in May",
+      "Two deals worth £1.1m between them decide the year; both are in negotiation"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "metrics",
+      "title": "Headline numbers",
+      "items": [
+        {
+          "label": "Revenue year to date",
+          "value": "£8.9m",
+          "note": "plan £8.6m",
+          "tone": "good",
+          "trend": [
+            0.82,
+            1.71,
+            2.68,
+            3.62,
+            4.6,
+            5.66,
+            6.73,
+            7.79,
+            8.9
+          ]
+        },
+        {
+          "label": "Win rate",
+          "value": "29%",
+          "note": "up from 24% in Q1",
+          "tone": "good",
+          "trend": [
+            24,
+            23,
+            25,
+            24,
+            26,
+            27,
+            28,
+            28,
+            29
+          ]
+        },
+        {
+          "label": "Average deal",
+          "value": "£41k",
+          "note": "flat on Q2",
+          "trend": [
+            39,
+            40,
+            42,
+            41,
+            40,
+            41,
+            42,
+            41,
+            41
+          ]
+        },
+        {
+          "label": "Sales cycle",
+          "value": "68 days",
+          "note": "up 9 days on Q2",
+          "tone": "warn",
+          "trend": [
+            58,
+            57,
+            59,
+            60,
+            59,
+            61,
+            64,
+            66,
+            68
+          ]
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "line",
+      "title": "Monthly revenue against plan",
+      "prefix": "£",
+      "unit": "k",
+      "categories": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep"
+      ],
+      "series": [
+        {
+          "name": "Actual",
+          "values": [
+            820,
+            890,
+            970,
+            940,
+            980,
+            1060,
+            1070,
+            1060,
+            1110
+          ]
+        },
+        {
+          "name": "Plan",
+          "values": [
+            900,
+            920,
+            950,
+            950,
+            960,
+            970,
+            980,
+            980,
+            990
+          ],
+          "tone": "neutral"
+        }
+      ],
+      "caption": "Revenue has been above plan every month since May."
+    },
+    {
+      "type": "chart",
+      "kind": "column",
+      "title": "Revenue by region, Q2 and Q3",
+      "span": "half",
+      "prefix": "£",
+      "unit": "k",
+      "categories": [
+        "London",
+        "South",
+        "Midlands",
+        "North",
+        "Scotland"
+      ],
+      "series": [
+        {
+          "name": "Q2",
+          "values": [
+            880,
+            760,
+            520,
+            560,
+            260
+          ]
+        },
+        {
+          "name": "Q3",
+          "values": [
+            960,
+            890,
+            560,
+            530,
+            300
+          ]
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "column",
+      "stacked": true,
+      "title": "Open pipeline by stage and region",
+      "span": "half",
+      "prefix": "£",
+      "unit": "k",
+      "categories": [
+        "Qualified",
+        "Proposal",
+        "Negotiation",
+        "Commit"
+      ],
+      "series": [
+        {
+          "name": "London",
+          "values": [
+            900,
+            760,
+            480,
+            380
+          ]
+        },
+        {
+          "name": "South",
+          "values": [
+            780,
+            640,
+            400,
+            420
+          ]
+        },
+        {
+          "name": "North",
+          "values": [
+            560,
+            470,
+            1100,
+            140
+          ]
+        },
+        {
+          "name": "Other",
+          "values": [
+            610,
+            410,
+            240,
+            200
+          ]
+        }
+      ],
+      "caption": "North's pipeline is concentrated in two large negotiations."
+    },
+    {
+      "type": "table",
+      "title": "Top open deals",
+      "columns": [
+        "Customer",
+        "Region",
+        "Stage",
+        "Value",
+        "Expected close"
+      ],
+      "rows": [
+        [
+          "Calder Water Services",
+          "North",
+          "Negotiation",
+          "£620k",
+          "11/12/2026"
+        ],
+        [
+          "Harbourside Labs",
+          "North",
+          "Negotiation",
+          "£480k",
+          "18/12/2026"
+        ],
+        [
+          "Kestrel Rail",
+          "London",
+          "Commit",
+          "£210k",
+          "06/11/2026"
+        ],
+        [
+          "Oakmere Hospitals Trust",
+          "South",
+          "Commit",
+          "£180k",
+          "20/11/2026"
+        ],
+        [
+          "Tidewell Foods",
+          "Midlands",
+          "Proposal",
+          "£150k",
+          "15/12/2026"
+        ]
+      ]
+    },
+    {
+      "type": "points",
+      "title": "What we are doing about it",
+      "items": [
+        {
+          "title": "Executive sponsor on the two big deals",
+          "text": "The sales director joins every Calder and Harbourside call until signature.",
+          "tone": "warn"
+        },
+        {
+          "title": "Rebuild North's early pipeline",
+          "text": "Move one London account manager to North for Q4 to add qualified deals for 2027.",
+          "tone": "info"
+        },
+        {
+          "title": "Protect the win rate",
+          "text": "Keep the qualification checklist; it is the main reason the win rate rose.",
+          "tone": "good"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "label": "How pipeline is weighted",
+      "body": "Weighted pipeline multiplies each deal by its stage probability: Qualified 10%, Proposal 30%, Negotiation 60%, Commit 90%. Figures are from the CRM on 30/09/2026."
+    }
+  ]
+}

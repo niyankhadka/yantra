@@ -1,0 +1,770 @@
+{
+  "meta": {
+    "title": "Hospital trust monitoring",
+    "description": "Elmbridge Valley Health Trust in one frame, from the trust down to the devices at one bed, with the monitoring hub one level below.",
+    "summary": {
+      "headline": "A bedside alarm travels from the device in Bed 4 to the bay, the ward, the monitoring hub and the on-call cardiologist, and every boundary on the way is a box you can fold.",
+      "points": [
+        "Six levels in one frame: trust, hospital, department, ward, bay and bed",
+        "The emergency department and the community hospital open folded",
+        "Steps zoom to the box they talk about and unfold it",
+        "The monitoring hub and its score engine are detail levels (drill-down)"
+      ],
+      "facts": {
+        "Hospitals": "2",
+        "Monitored beds": "212",
+        "Alarm to nurse": "under 10 seconds"
+      }
+    },
+    "layout": {
+      "direction": "LR",
+      "collapsed": [
+        "h-ed",
+        "h-community"
+      ]
+    }
+  },
+  "roles": {
+    "device": {
+      "label": "Bedside device",
+      "color": "teal",
+      "icon": "activity"
+    },
+    "ward": {
+      "label": "Ward system",
+      "color": "blue",
+      "icon": "monitor"
+    },
+    "platform": {
+      "label": "Trust platform",
+      "color": "violet",
+      "icon": "server"
+    },
+    "people": {
+      "label": "Clinician",
+      "color": "rose",
+      "icon": "user"
+    }
+  },
+  "groups": [
+    {
+      "id": "h-trust",
+      "title": "Elmbridge Valley Health Trust",
+      "nodes": [],
+      "color": "slate",
+      "style": "solid",
+      "description": "Two hospitals, 1,400 beds, one patient record."
+    },
+    {
+      "id": "h-general",
+      "title": "St Aldric's General Hospital",
+      "nodes": [],
+      "parent": "h-trust",
+      "color": "blue"
+    },
+    {
+      "id": "h-cardio",
+      "title": "Cardiology",
+      "nodes": [],
+      "parent": "h-general",
+      "color": "rose"
+    },
+    {
+      "id": "h-ward7",
+      "title": "Ward 7 coronary care",
+      "nodes": [
+        "h-station"
+      ],
+      "parent": "h-cardio",
+      "color": "rose",
+      "description": "Sixteen monitored beds in four bays."
+    },
+    {
+      "id": "h-bayb",
+      "title": "Bay B",
+      "nodes": [
+        "h-bay-screen"
+      ],
+      "parent": "h-ward7",
+      "color": "teal"
+    },
+    {
+      "id": "h-bed4",
+      "title": "Bed 4",
+      "nodes": [
+        "h-monitor",
+        "h-pump"
+      ],
+      "parent": "h-bayb",
+      "color": "teal",
+      "description": "Patient admitted overnight with chest pain."
+    },
+    {
+      "id": "h-ed",
+      "title": "Emergency department",
+      "nodes": [
+        "h-triage",
+        "h-resus"
+      ],
+      "parent": "h-general",
+      "color": "amber"
+    },
+    {
+      "id": "h-community",
+      "title": "Elmbridge Community Hospital",
+      "nodes": [
+        "h-rehab"
+      ],
+      "parent": "h-trust",
+      "color": "green"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "h-monitor",
+      "type": "device",
+      "data": {
+        "title": "Bedside monitor",
+        "subtitle": "ECG, SpO2, blood pressure"
+      }
+    },
+    {
+      "id": "h-pump",
+      "type": "device",
+      "data": {
+        "title": "Infusion pump",
+        "subtitle": "Heparin drip"
+      }
+    },
+    {
+      "id": "h-bay-screen",
+      "type": "ward",
+      "data": {
+        "title": "Bay display",
+        "subtitle": "Four beds on one screen"
+      }
+    },
+    {
+      "id": "h-station",
+      "type": "ward",
+      "data": {
+        "title": "Nurses' station",
+        "subtitle": "Ward 7 alarms"
+      }
+    },
+    {
+      "id": "h-triage",
+      "type": "ward",
+      "data": {
+        "title": "Triage",
+        "subtitle": "Arrivals scored"
+      }
+    },
+    {
+      "id": "h-resus",
+      "type": "ward",
+      "data": {
+        "title": "Resuscitation bay",
+        "subtitle": "Four trolleys"
+      }
+    },
+    {
+      "id": "h-rehab",
+      "type": "ward",
+      "data": {
+        "title": "Cardiac rehab ward",
+        "subtitle": "Step-down care"
+      }
+    },
+    {
+      "id": "h-hub",
+      "type": "platform",
+      "data": {
+        "title": "Central monitoring hub",
+        "subtitle": "Telemetry for every bed",
+        "drill": "monitoring"
+      }
+    },
+    {
+      "id": "h-epr",
+      "type": "platform",
+      "data": {
+        "title": "Electronic patient record",
+        "subtitle": "One record per patient"
+      }
+    },
+    {
+      "id": "h-oncall",
+      "type": "people",
+      "data": {
+        "title": "On-call cardiologist",
+        "subtitle": "Paged out of hours"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "h-e1",
+      "source": "h-monitor",
+      "target": "h-bay-screen",
+      "label": "Vital signs"
+    },
+    {
+      "id": "h-e2",
+      "source": "h-pump",
+      "target": "h-bay-screen",
+      "label": "Pump alerts"
+    },
+    {
+      "id": "h-e3",
+      "source": "h-bay-screen",
+      "target": "h-station",
+      "label": "Alarms"
+    },
+    {
+      "id": "h-e4",
+      "source": "h-monitor",
+      "target": "h-hub",
+      "label": "Telemetry",
+      "type": "stream"
+    },
+    {
+      "id": "h-e5",
+      "source": "h-hub",
+      "target": "h-oncall",
+      "label": "Escalation"
+    },
+    {
+      "id": "h-e6",
+      "source": "h-hub",
+      "target": "h-epr",
+      "label": "Observations"
+    },
+    {
+      "id": "h-e7",
+      "source": "h-triage",
+      "target": "h-resus",
+      "label": "Critical arrivals"
+    },
+    {
+      "id": "h-e8",
+      "source": "h-resus",
+      "target": "h-station",
+      "label": "Transfers"
+    },
+    {
+      "id": "h-e9",
+      "source": "h-rehab",
+      "target": "h-epr",
+      "label": "Discharge notes"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "alarm",
+      "name": "A night-time alarm",
+      "steps": [
+        {
+          "title": "The trust in one frame",
+          "description": "Trust, hospital, department, ward, bay and bed. The emergency department and the community hospital start folded."
+        },
+        {
+          "title": "The monitor in Bed 4 alarms",
+          "description": "Heart rhythm changes at 02:10; the monitor and the infusion pump report to the bay display.",
+          "highlightNodes": [
+            "h-monitor",
+            "h-pump",
+            "h-bay-screen"
+          ],
+          "highlightEdges": [
+            "h-e1",
+            "h-e2"
+          ],
+          "focusGroup": "h-bed4"
+        },
+        {
+          "title": "The ward hears it",
+          "description": "The bay display raises the alarm at the nurses' station on Ward 7.",
+          "highlightNodes": [
+            "h-bay-screen",
+            "h-station"
+          ],
+          "highlightEdges": [
+            "h-e3"
+          ],
+          "focusGroup": "h-ward7"
+        },
+        {
+          "title": "The hub escalates",
+          "description": "The monitoring hub sees the same telemetry, pages the on-call cardiologist and files the observations.",
+          "highlightNodes": [
+            "h-monitor",
+            "h-hub",
+            "h-oncall",
+            "h-epr"
+          ],
+          "highlightEdges": [
+            "h-e4",
+            "h-e5",
+            "h-e6"
+          ]
+        },
+        {
+          "title": "Where the patient came from",
+          "description": "Focusing the emergency department unfolds it: triage, resuscitation, then the transfer to Ward 7.",
+          "highlightNodes": [
+            "h-triage",
+            "h-resus",
+            "h-station"
+          ],
+          "highlightEdges": [
+            "h-e7",
+            "h-e8"
+          ],
+          "focusGroup": "h-ed"
+        },
+        {
+          "title": "Open the monitoring hub",
+          "description": "Double-click the hub (or press D) for its telemetry and score engine.",
+          "highlightNodes": [
+            "h-hub"
+          ]
+        }
+      ]
+    }
+  ],
+  "diagrams": {
+    "monitoring": {
+      "meta": {
+        "title": "Central monitoring hub",
+        "description": "Telemetry from every monitored bed, scored and shown to the monitoring nurses.",
+        "layout": {
+          "direction": "LR"
+        }
+      },
+      "roles": {
+        "device": {
+          "label": "Device feed",
+          "color": "teal",
+          "icon": "activity"
+        },
+        "server": {
+          "label": "Hub service",
+          "color": "blue",
+          "icon": "server"
+        },
+        "people": {
+          "label": "Clinical team",
+          "color": "rose",
+          "icon": "users"
+        }
+      },
+      "groups": [
+        {
+          "id": "m-hub",
+          "title": "Monitoring hub",
+          "nodes": [],
+          "color": "slate",
+          "style": "solid",
+          "description": "Two server rooms; either can run the whole hub."
+        },
+        {
+          "id": "m-telemetry",
+          "title": "Telemetry",
+          "nodes": [
+            "m-gateway",
+            "m-store"
+          ],
+          "parent": "m-hub",
+          "color": "blue"
+        },
+        {
+          "id": "m-analytics",
+          "title": "Analytics",
+          "nodes": [
+            "m-ews"
+          ],
+          "parent": "m-hub",
+          "color": "violet"
+        },
+        {
+          "id": "m-desk",
+          "title": "Monitoring desk",
+          "nodes": [
+            "m-wall",
+            "m-nurse"
+          ],
+          "parent": "m-hub",
+          "color": "rose"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "m-beds",
+          "type": "device",
+          "data": {
+            "title": "Bedside monitors",
+            "subtitle": "212 beds across the trust"
+          }
+        },
+        {
+          "id": "m-gateway",
+          "type": "server",
+          "data": {
+            "title": "Device gateway",
+            "subtitle": "HL7 feeds in"
+          }
+        },
+        {
+          "id": "m-store",
+          "type": "server",
+          "data": {
+            "title": "Vital signs store",
+            "subtitle": "72 hours online"
+          }
+        },
+        {
+          "id": "m-ews",
+          "type": "server",
+          "data": {
+            "title": "Early warning score engine",
+            "subtitle": "Scores every observation",
+            "drill": "ews"
+          }
+        },
+        {
+          "id": "m-wall",
+          "type": "server",
+          "data": {
+            "title": "Central display wall",
+            "subtitle": "Every bed at a glance"
+          }
+        },
+        {
+          "id": "m-nurse",
+          "type": "people",
+          "data": {
+            "title": "Monitoring nurses",
+            "subtitle": "Around the clock"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "m-e1",
+          "source": "m-beds",
+          "target": "m-gateway",
+          "label": "Telemetry",
+          "type": "stream"
+        },
+        {
+          "id": "m-e2",
+          "source": "m-gateway",
+          "target": "m-store",
+          "label": "Readings"
+        },
+        {
+          "id": "m-e3",
+          "source": "m-store",
+          "target": "m-ews",
+          "label": "Observations"
+        },
+        {
+          "id": "m-e4",
+          "source": "m-ews",
+          "target": "m-wall",
+          "label": "Scores"
+        },
+        {
+          "id": "m-e5",
+          "source": "m-wall",
+          "target": "m-nurse",
+          "label": "Alerts"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "hub",
+          "name": "Telemetry",
+          "steps": [
+            {
+              "title": "The hub",
+              "description": "Telemetry, analytics and the monitoring desk."
+            },
+            {
+              "title": "Readings arrive",
+              "description": "Monitors stream to the gateway, which stores readings for 72 hours.",
+              "highlightNodes": [
+                "m-beds",
+                "m-gateway",
+                "m-store"
+              ],
+              "highlightEdges": [
+                "m-e1",
+                "m-e2"
+              ],
+              "focusGroup": "m-telemetry"
+            },
+            {
+              "title": "Scored and shown",
+              "description": "The score engine rates each observation; the wall shows the result.",
+              "highlightNodes": [
+                "m-store",
+                "m-ews",
+                "m-wall"
+              ],
+              "highlightEdges": [
+                "m-e3",
+                "m-e4"
+              ]
+            },
+            {
+              "title": "Nurses act",
+              "description": "Monitoring nurses see alerts first and phone the ward.",
+              "highlightNodes": [
+                "m-wall",
+                "m-nurse"
+              ],
+              "highlightEdges": [
+                "m-e5"
+              ],
+              "focusGroup": "m-desk"
+            }
+          ]
+        }
+      ],
+      "diagrams": {
+        "ews": {
+          "meta": {
+            "title": "Early warning score engine",
+            "description": "How Ward 7's observations become a score, and when the score calls for a doctor.",
+            "layout": {
+              "direction": "LR"
+            }
+          },
+          "roles": {
+            "input": {
+              "label": "Observation",
+              "color": "teal",
+              "icon": "activity"
+            },
+            "rule": {
+              "label": "Rule",
+              "color": "violet",
+              "icon": "settings"
+            },
+            "action": {
+              "label": "Escalation",
+              "color": "rose",
+              "icon": "flag"
+            }
+          },
+          "groups": [
+            {
+              "id": "w-engine",
+              "title": "Score engine",
+              "nodes": [],
+              "color": "violet",
+              "style": "solid"
+            },
+            {
+              "id": "w-score",
+              "title": "Scoring",
+              "nodes": [
+                "w-total"
+              ],
+              "parent": "w-engine",
+              "color": "violet"
+            },
+            {
+              "id": "w-params",
+              "title": "Parameter scores",
+              "nodes": [
+                "w-resp",
+                "w-heart",
+                "w-bp"
+              ],
+              "parent": "w-score",
+              "color": "teal",
+              "description": "Each vital sign scores 0 to 3 against national bands."
+            },
+            {
+              "id": "w-escalate",
+              "title": "Escalation rules",
+              "nodes": [
+                "w-rule"
+              ],
+              "parent": "w-engine",
+              "color": "rose"
+            }
+          ],
+          "nodes": [
+            {
+              "id": "w-obs",
+              "type": "input",
+              "data": {
+                "title": "New observations",
+                "subtitle": "Every 15 minutes"
+              }
+            },
+            {
+              "id": "w-resp",
+              "type": "rule",
+              "data": {
+                "title": "Breathing rate",
+                "subtitle": "0 to 3 points"
+              }
+            },
+            {
+              "id": "w-heart",
+              "type": "rule",
+              "data": {
+                "title": "Heart rate",
+                "subtitle": "0 to 3 points"
+              }
+            },
+            {
+              "id": "w-bp",
+              "type": "rule",
+              "data": {
+                "title": "Blood pressure",
+                "subtitle": "0 to 3 points"
+              }
+            },
+            {
+              "id": "w-total",
+              "type": "rule",
+              "data": {
+                "title": "Total score",
+                "subtitle": "Sum and trend"
+              }
+            },
+            {
+              "id": "w-rule",
+              "type": "rule",
+              "data": {
+                "title": "Escalation threshold",
+                "subtitle": "5 or more, or any 3"
+              }
+            },
+            {
+              "id": "w-call",
+              "type": "action",
+              "data": {
+                "title": "Call the on-call doctor",
+                "subtitle": "Within 30 minutes"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "w-e1",
+              "source": "w-obs",
+              "target": "w-resp",
+              "label": "Breaths"
+            },
+            {
+              "id": "w-e2",
+              "source": "w-obs",
+              "target": "w-heart",
+              "label": "Pulse"
+            },
+            {
+              "id": "w-e3",
+              "source": "w-obs",
+              "target": "w-bp",
+              "label": "Pressure"
+            },
+            {
+              "id": "w-e4",
+              "source": "w-resp",
+              "target": "w-total",
+              "label": "Points"
+            },
+            {
+              "id": "w-e5",
+              "source": "w-heart",
+              "target": "w-total",
+              "label": "Points"
+            },
+            {
+              "id": "w-e6",
+              "source": "w-bp",
+              "target": "w-total",
+              "label": "Points"
+            },
+            {
+              "id": "w-e7",
+              "source": "w-total",
+              "target": "w-rule",
+              "label": "Score"
+            },
+            {
+              "id": "w-e8",
+              "source": "w-rule",
+              "target": "w-call",
+              "label": "Over threshold"
+            }
+          ],
+          "scenarios": [
+            {
+              "id": "ews",
+              "name": "Scoring",
+              "steps": [
+                {
+                  "title": "The engine",
+                  "description": "Observations in, a score out, and a call when the score is high."
+                },
+                {
+                  "title": "Each vital sign scores",
+                  "description": "Breathing, pulse and blood pressure each score up to three points.",
+                  "highlightNodes": [
+                    "w-obs",
+                    "w-resp",
+                    "w-heart",
+                    "w-bp"
+                  ],
+                  "highlightEdges": [
+                    "w-e1",
+                    "w-e2",
+                    "w-e3"
+                  ],
+                  "focusGroup": "w-params"
+                },
+                {
+                  "title": "A total and a trend",
+                  "description": "Points add up to one score that is compared with the last one.",
+                  "highlightNodes": [
+                    "w-resp",
+                    "w-heart",
+                    "w-bp",
+                    "w-total"
+                  ],
+                  "highlightEdges": [
+                    "w-e4",
+                    "w-e5",
+                    "w-e6"
+                  ],
+                  "focusGroup": "w-score"
+                },
+                {
+                  "title": "Escalate",
+                  "description": "A total of five, or three in any one sign, pages the on-call doctor.",
+                  "highlightNodes": [
+                    "w-total",
+                    "w-rule",
+                    "w-call"
+                  ],
+                  "highlightEdges": [
+                    "w-e7",
+                    "w-e8"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

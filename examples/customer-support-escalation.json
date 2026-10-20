@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "title": "Customer support escalation",
+    "description": "How a support request moves from self-service to engineering, and how priority customers skip the queue. Response targets are illustrative, not a real SLA.",
+    "summary": {
+      "headline": "Most requests are solved by the chatbot or a tier-1 agent; only reproducible product faults reach engineering, and every answer is written back to the knowledge base.",
+      "points": [
+        "The chatbot answers from the knowledge base and hands over with full context",
+        "Tier 1 resolves account and how-to questions; tier 2 handles technical diagnosis",
+        "Engineering receives only confirmed, reproducible defects",
+        "Priority customers go straight to a named tier-2 specialist"
+      ],
+      "facts": {
+        "First response (standard)": "Within 1 business day (illustrative)",
+        "First response (priority)": "Within 1 hour (illustrative)",
+        "Escalation rule": "Escalate when unresolved or out of scope"
+      }
+    },
+    "defaultMode": "standard",
+    "layout": { "direction": "LR" }
+  },
+  "roles": {
+    "customer": { "label": "Customer", "color": "amber" },
+    "automation": { "label": "Self-service", "color": "blue" },
+    "people": { "label": "Support team", "color": "teal" },
+    "product": { "label": "Product team", "color": "rose" },
+    "knowledge": { "label": "Knowledge", "color": "violet" }
+  },
+  "modes": [
+    { "id": "standard", "name": "Standard", "badge": "STD", "description": "All requests start with the chatbot.", "hideEdges": ["e-cust-t2"] },
+    { "id": "priority", "name": "Priority customer", "badge": "PRIORITY", "description": "Priority contracts bypass the chatbot and tier 1 and reach a named specialist.", "hideNodes": ["bot", "tier1"] }
+  ],
+  "nodes": [
+    { "id": "customer", "type": "customer", "data": { "title": "Customer", "subtitle": "Raises a request", "icon": "user", "description": "Contacts support by chat, email or web form.", "modes": { "priority": { "subtitle": "Priority contract" } } } },
+    { "id": "bot", "type": "automation", "data": { "title": "Chatbot", "subtitle": "Answers common questions", "icon": "zap", "badge": "Tier 0", "description": "Searches the knowledge base, asks clarifying questions and hands over to a person with the conversation attached." } },
+    { "id": "tier1", "type": "people", "data": { "title": "Tier-1 agent", "subtitle": "Accounts and how-to", "icon": "users", "badge": "Tier 1", "description": "Resolves billing, access and usage questions. Escalates anything needing logs or configuration access.", "metadata": { "Response target": "1 business day (illustrative)" } } },
+    { "id": "tier2", "type": "people", "data": { "title": "Tier-2 specialist", "subtitle": "Technical diagnosis", "icon": "settings", "badge": "Tier 2", "description": "Reproduces the problem, checks logs and configuration, and decides whether it is a product defect.", "modes": { "priority": { "subtitle": "Named specialist, first contact" } } } },
+    { "id": "eng", "type": "product", "data": { "title": "Engineering", "subtitle": "Fixes product defects", "icon": "cpu", "badge": "Tier 3", "description": "Receives a bug report with reproduction steps, fixes it and tells tier 2 when the fix ships." } },
+    { "id": "kb", "type": "knowledge", "data": { "title": "Knowledge base", "subtitle": "Articles and known issues", "icon": "book-open", "badge": "Content", "description": "Every resolved case is checked for a missing or outdated article; known issues are published with workarounds." } }
+  ],
+  "edges": [
+    { "id": "e-cust-bot", "source": "customer", "target": "bot", "label": "Opens chat" },
+    { "id": "e-bot-t1", "source": "bot", "target": "tier1", "label": "Hand-over" },
+    { "id": "e-t1-t2", "source": "tier1", "target": "tier2", "label": "Escalate" },
+    { "id": "e-cust-t2", "source": "customer", "target": "tier2", "label": "Direct line" },
+    { "id": "e-t2-eng", "source": "tier2", "target": "eng", "label": "Bug report" },
+    { "id": "e-eng-t2", "source": "eng", "target": "tier2", "label": "Fix shipped", "style": "dashed" },
+    { "id": "e-t2-kb", "source": "tier2", "target": "kb", "label": "New article", "type": "async" },
+    { "id": "e-kb-bot", "source": "kb", "target": "bot", "label": "Answers", "style": "dashed" }
+  ],
+  "scenarios": [
+    {
+      "id": "escalation",
+      "name": "Escalating a product fault",
+      "steps": [
+        { "id": "s1", "title": "Overview", "description": "Requests move left to right only when the current tier cannot solve them. Switch to Priority customer to see the shortcut." },
+        { "id": "s2", "title": "Self-service first", "description": "The chatbot answers from the knowledge base. If it cannot, it hands over with the conversation attached so the customer does not repeat themselves.", "highlightNodes": ["customer", "bot", "kb"], "highlightEdges": ["e-cust-bot", "e-kb-bot"] },
+        { "id": "s3", "title": "Tier 1 triage", "description": "A tier-1 agent handles account and how-to questions. Anything needing logs or configuration goes to tier 2.", "highlightNodes": ["bot", "tier1", "tier2"], "highlightEdges": ["e-bot-t1", "e-t1-t2"] },
+        { "id": "s4", "title": "Specialist diagnosis", "description": "Tier 2 reproduces the problem. A confirmed defect is sent to engineering with clear reproduction steps.", "highlightNodes": ["tier2", "eng"], "highlightEdges": ["e-t2-eng"] },
+        { "id": "s5", "title": "Fix and close", "description": "Engineering ships a fix and tells tier 2, who confirms with the customer and closes the case.", "highlightNodes": ["eng", "tier2"], "highlightEdges": ["e-eng-t2"] },
+        { "id": "s6", "title": "Feed the knowledge base", "description": "The answer becomes an article, so the chatbot can solve the same question next time.", "highlightNodes": ["tier2", "kb", "bot"], "highlightEdges": ["e-t2-kb", "e-kb-bot"] }
+      ]
+    }
+  ]
+}

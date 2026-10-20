@@ -1,0 +1,319 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "How do we roll out a new feature safely?",
+    "title": "Rolling out a feature safely",
+    "kicker": "How-to",
+    "author": "Engineering practices guide",
+    "date": "20/10/2026"
+  },
+  "answer": {
+    "headline": "Ship the code switched off behind a feature flag, turn it on for staff, then for a small share of users while watching agreed guardrail metrics, and widen in stages, with one switch that turns it off in seconds.",
+    "text": "Separating deploy from release means a bad feature becomes a flag change rather than an emergency rollback. The stages and guardrails are agreed before the rollout starts, so nobody has to judge under pressure.",
+    "points": [
+      "Deploy is not release: the code goes live switched off",
+      "Each stage has a minimum time and a guardrail that stops the rollout automatically",
+      "Remove the flag once the feature is fully on, so flags do not pile up"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "diagram",
+      "title": "Rollout stages",
+      "step": 0,
+      "caption": "Any stage can go back to off if a guardrail is breached.",
+      "diagram": {
+        "meta": {
+          "title": "Feature rollout",
+          "description": "A feature moves from off to everyone in stages; a breach at any stage switches it off.",
+          "layout": {
+            "direction": "TB"
+          }
+        },
+        "roles": {
+          "stage": {
+            "label": "Stage",
+            "color": "blue"
+          },
+          "done": {
+            "label": "Done",
+            "color": "green"
+          },
+          "stop": {
+            "label": "Stop",
+            "color": "rose"
+          }
+        },
+        "nodes": [
+          {
+            "id": "off",
+            "type": "stage",
+            "data": {
+              "title": "Deployed, off",
+              "subtitle": "Code live, flag off",
+              "icon": "package"
+            }
+          },
+          {
+            "id": "staff",
+            "type": "stage",
+            "data": {
+              "title": "Staff only",
+              "subtitle": "1-2 days",
+              "icon": "users"
+            }
+          },
+          {
+            "id": "canary",
+            "type": "stage",
+            "data": {
+              "title": "1% of users",
+              "subtitle": "At least 24 hours",
+              "icon": "activity"
+            }
+          },
+          {
+            "id": "wide",
+            "type": "stage",
+            "data": {
+              "title": "25% then 50%",
+              "subtitle": "A day at each",
+              "icon": "activity"
+            }
+          },
+          {
+            "id": "all",
+            "type": "done",
+            "data": {
+              "title": "Everyone",
+              "subtitle": "Then remove the flag",
+              "icon": "check-circle"
+            }
+          },
+          {
+            "id": "kill",
+            "type": "stop",
+            "data": {
+              "title": "Switch off",
+              "subtitle": "Guardrail breached",
+              "icon": "zap"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "e1",
+            "source": "off",
+            "target": "staff",
+            "label": "Enable"
+          },
+          {
+            "id": "e2",
+            "source": "staff",
+            "target": "canary",
+            "label": "No issues"
+          },
+          {
+            "id": "e3",
+            "source": "canary",
+            "target": "wide",
+            "label": "Guardrails OK"
+          },
+          {
+            "id": "e4",
+            "source": "wide",
+            "target": "all",
+            "label": "Guardrails OK"
+          },
+          {
+            "id": "e5",
+            "source": "canary",
+            "target": "kill",
+            "label": "Breach",
+            "style": "dashed"
+          },
+          {
+            "id": "e6",
+            "source": "wide",
+            "target": "kill",
+            "label": "Breach",
+            "style": "dashed"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "main",
+            "name": "Rollout",
+            "steps": [
+              {
+                "id": "s1",
+                "title": "Overview",
+                "description": "Five stages from off to everyone, and one way back."
+              },
+              {
+                "id": "s2",
+                "title": "Try it ourselves",
+                "description": "Staff use the feature for real before any customer sees it.",
+                "highlightNodes": [
+                  "off",
+                  "staff"
+                ],
+                "highlightEdges": [
+                  "e1"
+                ]
+              },
+              {
+                "id": "s3",
+                "title": "Canary",
+                "description": "1% of users; compare their metrics with everyone else's.",
+                "highlightNodes": [
+                  "staff",
+                  "canary"
+                ],
+                "highlightEdges": [
+                  "e2"
+                ]
+              },
+              {
+                "id": "s4",
+                "title": "Widen",
+                "description": "25%, then 50%, then everyone, a day at each step.",
+                "highlightNodes": [
+                  "canary",
+                  "wide",
+                  "all"
+                ],
+                "highlightEdges": [
+                  "e3",
+                  "e4"
+                ]
+              },
+              {
+                "id": "s5",
+                "title": "Stop",
+                "description": "A breached guardrail turns the flag off; investigate before trying again.",
+                "highlightNodes": [
+                  "canary",
+                  "wide",
+                  "kill"
+                ],
+                "highlightEdges": [
+                  "e5",
+                  "e6"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "steps",
+      "title": "The checklist, in order",
+      "items": [
+        {
+          "title": "Wrap the feature in a flag",
+          "text": "Default off in every environment. Test both the on and off paths."
+        },
+        {
+          "title": "Agree guardrails and owners",
+          "text": "Which metrics, what threshold, who decides. Write them in the release ticket."
+        },
+        {
+          "title": "Deploy switched off",
+          "text": "Nothing changes for users; the deploy can go out with other work."
+        },
+        {
+          "title": "Enable for staff",
+          "text": "Fix what staff find before any customer sees it."
+        },
+        {
+          "title": "Canary at 1%",
+          "text": "Compare the 1% with the rest for at least a full day, including a peak period."
+        },
+        {
+          "title": "Widen in steps",
+          "text": "25%, 50%, 100%. Do not widen on a Friday or before a holiday."
+        },
+        {
+          "title": "Clean up",
+          "text": "Remove the flag and the old code path within two sprints."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Example guardrails",
+      "columns": [
+        "Metric",
+        "Stop the rollout if",
+        "Measured over"
+      ],
+      "rows": [
+        [
+          "Error rate",
+          "More than 0.5 percentage points above control",
+          "15 minutes"
+        ],
+        [
+          "Page or API latency (95th percentile)",
+          "More than 20% slower than control",
+          "15 minutes"
+        ],
+        [
+          "Checkout conversion",
+          "More than 2% below control",
+          "24 hours"
+        ],
+        [
+          "Support contacts mentioning the feature",
+          "More than 10 in a day",
+          "1 day"
+        ]
+      ]
+    },
+    {
+      "type": "points",
+      "title": "Common mistakes",
+      "span": "half",
+      "items": [
+        {
+          "title": "No control group",
+          "text": "Without comparing against users who do not have the feature, normal daily swings look like problems, or hide them.",
+          "tone": "warn"
+        },
+        {
+          "title": "Flag that cannot turn off",
+          "text": "Database changes made only for the new path can make 'off' unsafe. Keep migrations backwards compatible.",
+          "tone": "bad"
+        },
+        {
+          "title": "Flags left forever",
+          "text": "Old flags multiply the code paths nobody tests.",
+          "tone": "warn"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "span": "half",
+      "tone": "good",
+      "label": "Rule of thumb",
+      "body": "If you cannot say in one sentence what would make you switch the feature off, you are not ready to switch it on."
+    },
+    {
+      "type": "sources",
+      "title": "Further reading",
+      "items": [
+        {
+          "title": "Google SRE Workbook: Canarying releases",
+          "url": "https://sre.google/workbook/canarying-releases/"
+        },
+        {
+          "title": "Feature Toggles (aka Feature Flags), Pete Hodgson on martinfowler.com",
+          "url": "https://martinfowler.com/articles/feature-toggles.html"
+        }
+      ]
+    }
+  ]
+}

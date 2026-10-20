@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "yantra": {
+      "command": "node",
+      "args": ["mcp/server.js"],
+      "description": "Yantra Universal Interactive Diagramming & Storytelling Engine MCP Server"
+    }
+  }
+}

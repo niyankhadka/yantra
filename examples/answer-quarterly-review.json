@@ -1,0 +1,112 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "How did the business do in Q3, and where should we focus in Q4?",
+    "title": "Quarterly business review: Q3 2026",
+    "kicker": "Quarterly review",
+    "author": "Finance and operations",
+    "date": "20/10/2026",
+    "footer": "Example quarterly review. All figures are illustrative."
+  },
+  "answer": {
+    "headline": "Q3 revenue grew 14% to £1.82m, led by subscriptions; Q4 focus is reducing churn in the Starter plan, which is now our only shrinking segment.",
+    "text": "Subscriptions passed services as our largest revenue line for the first time. Costs grew more slowly than revenue, so margin improved, but Starter churn rose for the second quarter running.",
+    "points": [
+      "Revenue £1.82m, up 14% on Q2 and 31% on Q3 2025",
+      "Gross margin 64%, up 3 points as hosting costs fell",
+      "Starter churn 4.1% a month, up from 3.2%: the main risk for Q4"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "metrics",
+      "title": "Headline numbers",
+      "items": [
+        { "label": "Revenue", "value": "£1.82m", "note": "up 14% on Q2", "tone": "good", "trend": [1.21, 1.29, 1.38, 1.44, 1.52, 1.6, 1.82] },
+        { "label": "Gross margin", "value": "64%", "note": "up 3 points", "tone": "good", "trend": [58, 59, 59, 60, 61, 61, 64] },
+        { "label": "Active customers", "value": "2,340", "note": "net +180", "trend": [1720, 1810, 1905, 1990, 2080, 2160, 2340] },
+        { "label": "Starter churn", "value": "4.1%", "note": "monthly, up from 3.2%", "tone": "bad", "trend": [2.9, 3.0, 2.8, 3.1, 3.2, 3.6, 4.1] }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "area",
+      "stacked": true,
+      "title": "Monthly revenue by line",
+      "prefix": "£",
+      "unit": "k",
+      "categories": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"],
+      "series": [
+        { "name": "Subscriptions", "values": [262, 270, 281, 290, 302, 318, 334, 351, 372] },
+        { "name": "Services", "values": [148, 140, 152, 150, 146, 158, 160, 150, 170] },
+        { "name": "Marketplace", "values": [18, 21, 24, 26, 29, 33, 36, 38, 41] }
+      ],
+      "caption": "Subscriptions grew every month; services stayed flat."
+    },
+    {
+      "type": "chart",
+      "kind": "donut",
+      "title": "Q3 revenue mix",
+      "span": "half",
+      "prefix": "£",
+      "unit": "k",
+      "data": [
+        { "label": "Subscriptions", "value": 1057 },
+        { "label": "Services", "value": 480 },
+        { "label": "Marketplace", "value": 115 },
+        { "label": "Training", "value": 168 }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "column",
+      "title": "Net customer change by plan",
+      "span": "half",
+      "categories": ["Starter", "Team", "Business", "Enterprise"],
+      "series": [
+        { "name": "Q2", "values": [12, 64, 41, 9] },
+        { "name": "Q3", "values": [-38, 97, 88, 33] }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "line",
+      "title": "Monthly churn by plan",
+      "unit": "%",
+      "categories": ["30/04/2026", "31/05/2026", "30/06/2026", "31/07/2026", "31/08/2026", "30/09/2026"],
+      "series": [
+        { "name": "Starter", "values": [2.8, 3.1, 3.2, 3.4, 3.6, 4.1], "tone": "bad" },
+        { "name": "Team", "values": [1.9, 1.8, 1.8, 1.7, 1.6, 1.6] },
+        { "name": "Business", "values": [1.1, 1.0, 1.1, 0.9, 0.9, 0.8] }
+      ],
+      "caption": "Month-end dates; Starter is the only plan getting worse."
+    },
+    {
+      "type": "chart",
+      "kind": "bar",
+      "stacked": true,
+      "title": "Why Starter customers left (Q3 exit survey)",
+      "categories": ["Price", "Missing integrations", "Moved to Team", "Business closed", "Other"],
+      "series": [
+        { "name": "July", "values": [14, 9, 6, 3, 2] },
+        { "name": "August", "values": [17, 11, 5, 2, 4] },
+        { "name": "September", "values": [22, 15, 4, 3, 3] }
+      ]
+    },
+    {
+      "type": "points",
+      "title": "Q4 focus",
+      "items": [
+        { "title": "Starter retention", "text": "Test an annual Starter price and the two most-requested integrations.", "tone": "warn" },
+        { "title": "Keep services steady", "text": "No new services hires; route demand to partners.", "tone": "neutral" },
+        { "title": "Grow Business plan", "text": "Our fastest-growing plan: double the onboarding team.", "tone": "good" }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "label": "About these numbers",
+      "body": "Figures are unaudited management accounts at 30/09/2026. Churn is the share of customers on a plan at the start of the month who cancelled during it."
+    }
+  ]
+}

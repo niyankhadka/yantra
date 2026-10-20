@@ -1,0 +1,945 @@
+/**
+ * Card sizing and automatic layered layout (a compact Sugiyama pipeline):
+ * cycle breaking -> ranking -> long-edge dummies -> crossing reduction ->
+ * cross-axis placement (isotonic regression) -> main-axis spacing that
+ * reserves room for edge labels.
+ */
+import { textWidth, wrapText, truncate } from './text.js';
+import { isEntity, entityWidth, measureMembers } from './entity.js';
+import { shapeOf, POINT_SHAPES } from './model.js';
+import { hasNotation } from './notation.js';
+import { measureChart, chartCardWidth, MINI } from './cardchart.js';
+
+/** Card metrics. src/css/diagram.css mirrors these numbers exactly. */
+export const CARD = {
+  width: 220,
+  minWidth: 160,
+  maxWidth: 320,
+  padX: 14,
+  padY: 12,
+  kicker: 16,
+  kickerGap: 8,
+  titleSize: 14,
+  titleLine: 19,
+  titleMax: 3,
+  subSize: 12,
+  subLine: 17,
+  subMax: 2,
+  subGap: 3,
+  techSize: 11,
+  techLine: 15,
+  techGap: 8
+};
+
+export const LABEL = { size: 11, padX: 8, height: 20 };
+
+/**
+ * Group (container) metrics. src/styles/diagram.css mirrors the title
+ * metrics. Boxes are member rects plus padding; the top padding holds the title.
+ * `toggle` is the room kept at the right of a title for the box's fold button.
+ */
+export const GROUP = { padX: 20, padTop: 36, padBottom: 20, gap: 24, radius: 12, titleSize: 11, titleX: 12, titleY: 8, titleH: 16, toggle: 34 };
+
+/**
+ * Padding of a group box by nesting depth (0 = outermost): the outer three
+ * levels keep the full padding, deeper boxes get a little tighter so six
+ * levels still fit on a screen. The top always holds the title.
+ */
+export function groupPad(depth = 0) {
+  const d = Math.max(0, depth | 0);
+  if (d <= 2) return { padX: GROUP.padX, padTop: GROUP.padTop, padBottom: GROUP.padBottom };
+  return { padX: d === 3 ? 16 : 14, padTop: 32, padBottom: d === 3 ? 16 : 14 };
+}
+
+/** Width of a group title as drawn: uppercase, semibold, 0.06em tracking. */
+export function groupTitleWidth(text) {
+  const t = String(text || '').toUpperCase();
+  return Math.ceil(textWidth(t, GROUP.titleSize, { weight: 600 }) + t.length * GROUP.titleSize * 0.06);
+}
+
+/** Room at the right of a title: the fold button of a layered-layout box (none for regions or the sequence view). */
+const titleRoom = (toggle) => (toggle ? GROUP.toggle : GROUP.titleX);
+
+/**
+ * Narrowest box that shows its whole title (capped, so a very long title is
+ * cut rather than widening the drawing without limit).
+ */
+export function groupMinWidth(title, toggle = true) {
+  return Math.min(GROUP_TITLE_MAX, groupTitleWidth(title)) + GROUP.titleX + titleRoom(toggle);
+}
+const GROUP_TITLE_MAX = 300;
+
+/** Title text cut to fit a box, and the strip it occupies (kept clear of edges and labels). */
+export function groupTitle(title, box, { toggle = false } = {}) {
+  const max = box.w - GROUP.titleX - titleRoom(toggle);
+  let text = String(title || '').toUpperCase();
+  if (groupTitleWidth(text) > max) {
+    while (text.length > 1 && groupTitleWidth(`${text}…`) > max) text = text.slice(0, -1);
+    text = `${text.trimEnd()}…`;
+  }
+  const w = Math.min(max, groupTitleWidth(text));
+  return { text, strip: { x: box.x + GROUP.titleX - 4, y: box.y + GROUP.titleY - 3, w: w + 8, h: GROUP.titleH + 6 } };
+}
+
+/** Extra width on each side that lets a box of width `w` show its title (a multiple of the grid). */
+export function titleSlack(g, w) {
+  const need = groupMinWidth(g.title, g.toggle !== false);
+  return need > w ? ceilTo((need - w) / 2, GRID) : 0;
+}
+
+/**
+ * Group boxes from member rects, innermost first so parents wrap children.
+ * @param list  [{ id, parent, depth, title?, nodes: [nodeId incl. descendants] }]
+ * @param opts  { fit: pad by depth (groupPad), titles: also widen boxes until their title
+ *                fits (around the members, so the box stays centred on them) }
+ * @returns Map<groupId, {x,y,w,h}> (groups without placed members are absent)
+ */
+export function groupBoxes(list, rects, { fit = false, titles = false } = {}) {
+  const boxes = new Map();
+  for (const g of [...list].sort((a, b) => b.depth - a.depth)) {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    const add = (r) => {
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    };
+    for (const id of g.nodes) if (rects.has(id)) add(rects.get(id));
+    for (const c of list) if (c.parent === g.id && boxes.has(c.id)) add(boxes.get(c.id));
+    if (!isFinite(x0)) continue;
+    const pad = fit ? groupPad(g.depth) : GROUP;
+    const w = x1 - x0 + pad.padX * 2;
+    const slack = titles ? titleSlack({ title: g.title, toggle: g.group?.kind !== 'region' }, w) : 0;
+    boxes.set(g.id, { x: x0 - pad.padX - slack, y: y0 - pad.padTop, w: w + slack * 2, h: y1 - y0 + pad.padTop + pad.padBottom });
+  }
+  return boxes;
+}
+
+export const GRID = 10;
+const snap = (v) => Math.round(v / GRID) * GRID;
+const ceilTo = (v, q) => Math.ceil(v / q) * q;
+
+export function labelSize(text) {
+  if (!text) return null;
+  return { w: Math.ceil(textWidth(text, LABEL.size, { weight: 500 }) + LABEL.padX * 2), h: LABEL.height };
+}
+
+/** Pseudo-state sizes (multiples of 20, so centres stay on the grid). */
+export const POINT_SIZE = { initial: 20, final: 20, choice: 40 };
+
+/**
+ * Fork / join bar: a `thick` bar drawn across the middle of a `box`-deep
+ * rect, as long as its busier side needs (`per` px per edge, at least `min`).
+ * Horizontal in TB layouts, vertical in LR; node.width sets the length.
+ */
+export const FORK = { thick: 6, box: 20, min: 80, per: 40, max: 480 };
+
+/**
+ * Self-loop metrics: legs leave the side `reach` px, `span` apart (top and
+ * bottom loops widen to hold their label), `legGap` apart on left/right sides.
+ * `marked` loops (ER / UML end markers) reach further so the label clears them;
+ * loops on a dot or diamond reach `pointReach` past its box.
+ */
+export const LOOP = { reach: 36, span: 36, inset: 16, legGap: 28, labelGap: 6, marked: 46, pointReach: 40 };
+
+/**
+ * Geometry of a self-loop on one side of its node, clockwise. Top and bottom
+ * loops carry their label on the far segment like any edge; left and right
+ * loops put it just outside, so it never covers the legs.
+ * @param r     node rect { x, y, w, h, shape? }
+ * @param side  'top' | 'right' | 'bottom' | 'left'
+ * @param lab   labelSize() of the edge label, or null
+ * @param opts  { shape: pseudo-state shape (legs start on its outline, label beyond the loop),
+ *                ys: [y0, y1] absolute leg heights on a left / right side (field rows),
+ *                marked: the edge has end markers }
+ * @returns { points, label: {x,y,w,h} (centre) | null, box (route + label), extent (beyond the side), side }
+ */
+export function selfLoop(r, side, lab, opts = {}) {
+  const across = side === 'top' || side === 'bottom';
+  const point = POINT_SHAPES.has(opts.shape) ? opts.shape : null;
+  let points;
+  let label = null;
+  let extent;
+  if (point) {
+    // A dot or diamond is too small for a loop on its side: the legs start on
+    // its outline and run out far enough to read as a loop; the label sits beyond it
+    const half = r.w / 2;
+    const s = point === 'choice' ? half - 8 : Math.round(half * 0.7);
+    const depth = point === 'choice' ? half - s : Math.round(Math.sqrt(half * half - s * s) * 10) / 10; // centre to outline
+    const reach = LOOP.pointReach;
+    const cx = r.x + half;
+    const cy = r.y + r.h / 2;
+    const dir = side === 'top' || side === 'left' ? -1 : 1;
+    if (across) {
+      const edge = cy + dir * depth;
+      const far = (dir < 0 ? r.y : r.y + r.h) + dir * reach;
+      const [a, b] = dir < 0 ? [cx - s, cx + s] : [cx + s, cx - s];
+      points = [{ x: a, y: edge }, { x: a, y: far }, { x: b, y: far }, { x: b, y: edge }];
+      if (lab) label = { x: cx, y: far + dir * (LOOP.labelGap + lab.h / 2), w: lab.w, h: lab.h };
+      extent = reach + (lab ? LOOP.labelGap + lab.h : 0);
+    } else {
+      const edge = cx + dir * depth;
+      const far = (dir < 0 ? r.x : r.x + r.w) + dir * reach;
+      const [a, b] = dir > 0 ? [cy - s, cy + s] : [cy + s, cy - s];
+      points = [{ x: edge, y: a }, { x: far, y: a }, { x: far, y: b }, { x: edge, y: b }];
+      if (lab) label = { x: far + dir * (LOOP.labelGap + lab.w / 2), y: cy, w: lab.w, h: lab.h };
+      extent = reach + (lab ? LOOP.labelGap + lab.w : 0);
+    }
+  } else if (across) {
+    const reach = opts.marked ? LOOP.marked : LOOP.reach;
+    const max = Math.min(r.w - 8, Math.max(LOOP.span, r.w - LOOP.inset * 2));
+    const span = Math.max(Math.min(LOOP.span, r.w - 8), Math.min(max, lab ? lab.w + 16 : LOOP.span));
+    const cx = Math.round(r.x + r.w / 2);
+    const x0 = Math.round(cx - span / 2);
+    const x1 = Math.round(cx + span / 2);
+    const edge = side === 'top' ? r.y : r.y + r.h;
+    const far = side === 'top' ? edge - reach : edge + reach;
+    points = side === 'top'
+      ? [{ x: x0, y: edge }, { x: x0, y: far }, { x: x1, y: far }, { x: x1, y: edge }]
+      : [{ x: x1, y: edge }, { x: x1, y: far }, { x: x0, y: far }, { x: x0, y: edge }];
+    if (lab) label = { x: cx, y: far, w: lab.w, h: lab.h };
+    extent = reach + (lab ? lab.h / 2 : 0);
+  } else {
+    const gap = Math.min(LOOP.legGap, Math.max(8, r.h - 8));
+    const cy = Math.round(r.y + r.h / 2);
+    let y0 = Math.round(cy - gap / 2);
+    let y1 = Math.round(cy + gap / 2);
+    if (Array.isArray(opts.ys)) {
+      // Field rows (ER / class cards): the loop joins the two rows it relates
+      [y0, y1] = opts.ys;
+      if (Math.abs(y1 - y0) < 12) [y0, y1] = y0 <= y1 ? [y0 - 6, y1 + 6] : [y0 + 6, y1 - 6];
+    } else if (side === 'left') [y0, y1] = [y1, y0];
+    const reach = opts.marked ? LOOP.marked : LOOP.reach;
+    const edge = side === 'right' ? r.x + r.w : r.x;
+    const far = side === 'right' ? edge + reach : edge - reach;
+    points = [{ x: edge, y: y0 }, { x: far, y: y0 }, { x: far, y: y1 }, { x: edge, y: y1 }];
+    if (lab) label = { x: far + (side === 'right' ? 1 : -1) * (LOOP.labelGap + lab.w / 2), y: Math.round((y0 + y1) / 2), w: lab.w, h: lab.h };
+    extent = reach + (lab ? LOOP.labelGap + lab.w : 0);
+  }
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  if (label) xs.push(label.x - label.w / 2, label.x + label.w / 2), ys.push(label.y - label.h / 2, label.y + label.h / 2);
+  const box = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+  return { points, label, box, extent, side };
+}
+
+/**
+ * Width/height plus the wrapped text lines a card will show.
+ * @param opts { direction: 'LR' | 'TB', ports: edges on the busier side } (fork bars only),
+ *             { L: localeOf() result (chart numbers and labels), chart: false (leave out data.chart) }
+ */
+export function measureNode(node, opts = {}) {
+  const shape = shapeOf(node);
+  if (POINT_SHAPES.has(shape)) return { w: POINT_SIZE[shape], h: POINT_SIZE[shape], lines: { title: [], subtitle: [], tech: '' } };
+  if (shape === 'fork') {
+    const want = typeof node.width === 'number' && node.width > 0 ? node.width : FORK.per * Math.max(1, opts.ports || 2);
+    const len = ceilTo(Math.min(FORK.max, Math.max(FORK.min, want)), 20);
+    const lines = { title: [], subtitle: [], tech: '' };
+    return opts.direction === 'TB' ? { w: len, h: FORK.box, lines } : { w: FORK.box, h: len, lines };
+  }
+  const d = node.data || {};
+  const entity = isEntity(d);
+  // Entity / class cards widen (up to maxWidth) to fit their rows unless a width is given;
+  // chart cards are wider (CHART_CARD in cardchart.js)
+  const want = node.width || (entity ? Math.max(CARD.width, entityWidth(d, CARD.padX)) : CARD.width);
+  const w = shape === 'chart' ? chartCardWidth(node) : ceilTo(Math.min(CARD.maxWidth, Math.max(CARD.minWidth, want)), 20);
+  const inner = w - CARD.padX * 2;
+
+  const title = wrapText(d.title || node.id, inner, CARD.titleSize, { weight: 600 }, CARD.titleMax);
+  const subtitle = d.subtitle ? wrapText(d.subtitle, inner, CARD.subSize, {}, CARD.subMax) : [];
+  const tech = d.tech ? truncate(d.tech, inner, CARD.techSize, { mono: true }) : '';
+
+  let h = CARD.padY + CARD.kicker + CARD.kickerGap + title.length * CARD.titleLine;
+  if (subtitle.length) h += CARD.subGap + subtitle.length * CARD.subLine;
+  // A chart under the subtitle (data.chart): a mini chart, or a chart card's chart
+  const chart = opts.chart === false ? null : measureChart(node, inner, opts.L);
+  if (chart) h += MINI.gap + chart.h;
+  if (tech) h += CARD.techGap + CARD.techLine;
+  // Field / method rows below the header (see entity.js)
+  const rows = entity ? measureMembers(d, inner, h) : null;
+  if (rows) h += rows.height;
+  h += CARD.padY;
+
+  // Even multiples of the grid keep centres on the grid, so aligned
+  // neighbours produce perfectly straight edges after snapping.
+  return { w, h: Math.max(ceilTo(h, 20), 80), lines: { title, subtitle, tech, ...(rows ? { rows } : {}), ...(chart ? { chart } : {}) } };
+}
+
+/**
+ * @param nodes  [{ id, w, h, rank?, shape? }]
+ * @param edges  [{ id, source, target, label? }]
+ * @param groups groupIndex() result over these nodes (optional): members stay
+ *               contiguous in every rank and get room for their boxes
+ * @returns { positions: Map<id,{x,y}>, sides: Map<edgeId,[src,tgt]> }
+ */
+export function autoLayout(nodes, edges, options = {}) {
+  const groups = options.groups;
+  const gl = groups && groups.list.some((g) => g.nodes.length) ? groups : null;
+  if (!gl) return flatLayout(nodes, edges, options);
+  // Shallow nesting: one layered pass keeps every edge in the main flow. Deep
+  // nesting (or a flat pass that cannot keep the boxes apart) lays each group
+  // out on its own and places it as one block in its parent.
+  const deepest = Math.max(...gl.list.filter((g) => g.nodes.length).map((g) => g.depth));
+  if (deepest < NESTED_FROM) {
+    // kept only when every box, widened to show its whole title, stays clear
+    const flat = flatLayout(nodes, edges, options);
+    if (boxesClean(nodes, flat.positions, gl)) return { ...flat, titled: true };
+  }
+  return nestedLayout(nodes, edges, options);
+}
+
+/** Group depth (0-based) from which the layered layout nests blocks instead of one flat pass. */
+export const NESTED_FROM = 3;
+
+/**
+ * True when no box (as drawn: padded by depth, wide enough for its title)
+ * covers a card it does not hold, and boxes that are not nested stay apart.
+ */
+function boxesClean(nodes, positions, gl) {
+  const rects = new Map(nodes.map((n) => [n.id, { ...positions.get(n.id), w: n.w, h: n.h }]));
+  const boxes = groupBoxes(gl.list, rects, { fit: true, titles: true });
+  for (const g of gl.list) {
+    const b = boxes.get(g.id);
+    if (!b) continue;
+    const members = gl.members(g.id);
+    for (const [id, r] of rects) if (!members.has(id) && overlaps(r, b)) return false;
+  }
+  const list = gl.list.filter((g) => boxes.has(g.id));
+  for (let i = 0; i < list.length; i++)
+    for (let j = i + 1; j < list.length; j++) {
+      const A = gl.ancestors(list[i].id);
+      const B = gl.ancestors(list[j].id);
+      if (A.includes(list[j].id) || B.includes(list[i].id)) continue;
+      if (overlaps(boxes.get(list[i].id), boxes.get(list[j].id))) return false;
+    }
+  return true;
+}
+
+/**
+ * Nested blocks: each group is laid out on its own (its cards and its child
+ * groups, each child a single block), boxed with its depth's padding and wide
+ * enough for its title, then placed as one card in its parent. Edges between
+ * cards in different blocks pull the blocks, not the cards; the router draws
+ * them through the box borders afterwards. Boxes never overlap by construction.
+ */
+function nestedLayout(nodes, edges, { direction = 'LR', groups: gl }) {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const order = new Map(nodes.map((n, i) => [n.id, i]));
+  const kids = new Map([[null, []], ...gl.list.map((g) => [g.id, []])]);
+  for (const g of gl.list) if (g.nodes.some((id) => byId.has(id))) kids.get(g.parent ?? null).push({ group: g, first: Math.min(...g.nodes.filter((id) => byId.has(id)).map((id) => order.get(id))) });
+  for (const n of nodes) kids.get(gl.nodeGroup.get(n.id) ?? null).push({ node: n, first: order.get(n.id) });
+  for (const list of kids.values()) list.sort((a, b) => a.first - b.first);
+
+  // The item of container `cid` (null: the drawing) that holds a node, or null when it lies outside
+  const rep = (cid, id) => {
+    const chain = gl.chain(id);
+    if (cid === null) return chain.length ? chain[0] : id;
+    const at = chain.indexOf(cid);
+    if (at < 0) return null;
+    return at === chain.length - 1 ? id : chain[at + 1];
+  };
+  const positions = new Map();
+  const sides = new Map();
+  const reversed = new Set();
+
+  // A block: its size, the drawn box inside it ({x,y,w,h}, null for the drawing) and every
+  // card's position, all relative to the block's corner (which stays on the grid)
+  const block = (cid, depth) => {
+    const items = kids.get(cid).map((k) => {
+      if (k.node) return { id: k.node.id, w: k.node.w, h: k.node.h, rank: k.node.rank, shape: k.node.shape };
+      const sub = block(k.group.id, depth + 1);
+      return { id: k.group.id, w: sub.w, h: sub.h, sub };
+    });
+    const seen = new Set();
+    const inner = [];
+    for (const e of edges) {
+      if (!byId.has(e.source) || !byId.has(e.target)) continue;
+      const a = rep(cid, e.source);
+      const b = rep(cid, e.target);
+      if (a === null || b === null) continue;
+      if (a === b) {
+        // a self-loop on a card of this container keeps its room
+        if (e.source === e.target && a === e.source) inner.push(e);
+        continue;
+      }
+      const key = `${a}\u0000${b}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const direct = a === e.source && b === e.target;
+      inner.push(direct ? e : { id: `\u0000${e.id}`, source: a, target: b, label: e.label });
+    }
+    const r = items.length ? flatLayout(items, inner, { direction }) : { positions: new Map(), sides: new Map(), reversed: new Set() };
+    r.sides.forEach((v, id) => !id.startsWith('\u0000') && sides.set(id, v));
+    r.reversed.forEach((id) => !id.startsWith('\u0000') && reversed.add(id));
+    // Content: cards and child boxes as drawn, in this layout's coordinates
+    const local = new Map();
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    const add = (x, y, w, h) => {
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x + w); y1 = Math.max(y1, y + h);
+    };
+    for (const it of items) {
+      const p = r.positions.get(it.id);
+      if (it.sub) {
+        it.sub.local.forEach((q, id) => local.set(id, { x: p.x + q.x, y: p.y + q.y }));
+        add(p.x + it.sub.box.x, p.y + it.sub.box.y, it.sub.box.w, it.sub.box.h);
+      } else {
+        local.set(it.id, { x: p.x, y: p.y });
+        add(p.x, p.y, it.w, it.h);
+      }
+    }
+    if (cid === null) return { w: x1, h: y1, box: null, local };
+    // The drawn box (exactly what groupBoxes draws), then the block around it, snapped out to the grid
+    const g = gl.byId.get(cid);
+    const pad = groupPad(depth);
+    const slack = titleSlack({ title: g.title, toggle: g.group?.kind !== 'region' }, x1 - x0 + pad.padX * 2);
+    const box = { x: x0 - pad.padX - slack, y: y0 - pad.padTop, w: x1 - x0 + (pad.padX + slack) * 2, h: y1 - y0 + pad.padTop + pad.padBottom };
+    const ox = Math.floor(box.x / GRID) * GRID;
+    const oy = Math.floor(box.y / GRID) * GRID;
+    const out = new Map();
+    local.forEach((q, id) => out.set(id, { x: q.x - ox, y: q.y - oy }));
+    return {
+      w: ceilTo(box.x + box.w, GRID) - ox,
+      h: ceilTo(box.y + box.h, GRID) - oy,
+      box: { x: box.x - ox, y: box.y - oy, w: box.w, h: box.h },
+      local: out
+    };
+  };
+  const root = block(null, 0);
+  root.local.forEach((p, id) => positions.set(id, { x: snap(p.x), y: snap(p.y) }));
+  return { positions, sides, reversed, nested: true };
+}
+
+/** One layered pass over every card (groups kept contiguous by their member paths). */
+function flatLayout(nodes, edges, { direction = 'LR', groups = null } = {}) {
+  const horiz = direction !== 'TB';
+  const ids = nodes.map((n) => n.id);
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const order0 = new Map(ids.map((id, i) => [id, i]));
+
+  const mainSize = (n) => (horiz ? n.w : n.h);
+  const crossSize = (n) => (horiz ? n.h : n.w);
+
+  const validEdges = edges.filter((e) => byId.has(e.source) && byId.has(e.target) && e.source !== e.target);
+  const loopEdges = edges.filter((e) => byId.has(e.source) && e.source === e.target);
+
+  // 1. Cycle breaking (DFS in author order; edges into the stack are reversed)
+  const outgoing = new Map(ids.map((id) => [id, []]));
+  validEdges.forEach((e) => outgoing.get(e.source).push(e));
+  const reversed = new Set();
+  const state = new Map();
+  for (const root of ids) {
+    if (state.get(root)) continue;
+    const stack = [[root, 0]];
+    state.set(root, 1);
+    while (stack.length) {
+      const top = stack[stack.length - 1];
+      const out = outgoing.get(top[0]);
+      if (top[1] >= out.length) {
+        state.set(top[0], 2);
+        stack.pop();
+        continue;
+      }
+      const e = out[top[1]++];
+      const s = state.get(e.target);
+      if (s === 1) reversed.add(e.id);
+      else if (!s) {
+        state.set(e.target, 1);
+        stack.push([e.target, 0]);
+      }
+    }
+  }
+  const oriented = validEdges.map((e) =>
+    reversed.has(e.id) ? { edge: e, u: e.target, v: e.source } : { edge: e, u: e.source, v: e.target }
+  );
+
+  // 2. Ranking: longest path, then pull pure sources next to their successors
+  const preds = new Map(ids.map((id) => [id, []]));
+  const succs = new Map(ids.map((id) => [id, []]));
+  oriented.forEach(({ u, v }) => {
+    succs.get(u).push(v);
+    preds.get(v).push(u);
+  });
+  const indeg = new Map(ids.map((id) => [id, preds.get(id).length]));
+  const topo = [];
+  const queue = ids.filter((id) => indeg.get(id) === 0);
+  while (queue.length) {
+    const id = queue.shift();
+    topo.push(id);
+    for (const v of succs.get(id)) {
+      indeg.set(v, indeg.get(v) - 1);
+      if (indeg.get(v) === 0) queue.push(v);
+    }
+  }
+  const rank = new Map();
+  for (const id of topo) {
+    const fixed = byId.get(id).rank;
+    rank.set(id, Number.isInteger(fixed) ? fixed : Math.max(0, ...preds.get(id).map((p) => rank.get(p) + 1)));
+  }
+  for (let i = topo.length - 1; i >= 0; i--) {
+    const id = topo[i];
+    if (Number.isInteger(byId.get(id).rank)) continue;
+    if (preds.get(id).length === 0 && succs.get(id).length) {
+      rank.set(id, Math.min(...succs.get(id).map((s) => rank.get(s))) - 1);
+    }
+  }
+  const minRank = Math.min(...ids.map((id) => rank.get(id)));
+  ids.forEach((id) => rank.set(id, rank.get(id) - minRank));
+  const maxRank = Math.max(0, ...ids.map((id) => rank.get(id)));
+
+  // 3. Layers with dummy nodes for edges that span several ranks
+  const items = new Map(); // id -> { id, real, size, rank, path, up: [{id,w}], down: [{id,w}] }
+  const layers = Array.from({ length: maxRank + 1 }, () => []);
+  const gl = groups && groups.list.some((g) => g.nodes.length) ? groups : null;
+  const chainOf = (id) => (gl ? gl.chain(id) : []);
+  const commonPath = (a, b) => {
+    const pa = chainOf(a);
+    const pb = chainOf(b);
+    let k = 0;
+    while (k < pa.length && k < pb.length && pa[k] === pb[k]) k++;
+    return pa.slice(0, k);
+  };
+  for (const id of ids) {
+    const it = { id, real: true, size: crossSize(byId.get(id)), rank: rank.get(id), path: chainOf(id), up: [], down: [] };
+    items.set(id, it);
+    layers[it.rank].push(it);
+  }
+  const link = (a, b, w) => {
+    items.get(a).down.push({ id: b, w });
+    items.get(b).up.push({ id: a, w });
+  };
+  for (const { edge, u, v } of oriented) {
+    const ru = rank.get(u);
+    const rv = rank.get(v);
+    if (rv <= ru) continue; // same-rank edge from explicit ranks: routed freely
+    // Main-flow edges pull hard (straight rows); return edges barely pull
+    const weight = reversed.has(edge.id) ? 0.25 : 1;
+    let prev = u;
+    const chain = [];
+    for (let r = ru + 1; r < rv; r++) {
+      const id = `\u0000${edge.id}:${r}`;
+      const it = { id, real: false, back: reversed.has(edge.id), edge: edge.id, size: 16, rank: r, path: commonPath(u, v), up: [], down: [] };
+      items.set(id, it);
+      layers[r].push(it);
+      chain.push(id);
+      link(prev, id, (prev === u ? 1 : 2) * weight);
+      prev = id;
+    }
+    link(prev, v, (chain.length ? 1 : 4) * weight);
+  }
+  // A group is present in every rank it spans: placeholders keep outsiders
+  // from being ordered into the middle of its box where it has no members.
+  const span = new Map();
+  if (gl) {
+    for (const g of gl.list) {
+      const rs = g.nodes.filter((id) => rank.has(id)).map((id) => rank.get(id));
+      if (rs.length) span.set(g.id, [Math.min(...rs), Math.max(...rs)]);
+    }
+    for (const [gid, [r0, r1]] of span)
+      for (let r = r0; r <= r1; r++) {
+        if (layers[r].some((it) => it.path.includes(gid))) continue;
+        const id = `\u0000group:${gid}:${r}`;
+        const it = { id, real: false, ph: true, size: 0, rank: r, path: gl.ancestors(gid), up: [], down: [] };
+        items.set(id, it);
+        layers[r].push(it);
+      }
+  }
+
+  // 4. Crossing reduction: barycentre sweeps, keep the best ordering
+  const pos = new Map();
+  const reindex = () => layers.forEach((layer) => layer.forEach((it, i) => pos.set(it.id, i)));
+  // Members of a group stay contiguous: order units (single items or whole
+  // groups, keyed by mean position) and recurse into each group.
+  const cluster = (list, depth, globalKey) => {
+    const units = [];
+    const byGroup = new Map();
+    for (const it of list) {
+      const g = it.path[depth];
+      if (g === undefined) units.push({ key: pos.get(it.id), items: [it] });
+      else {
+        if (!byGroup.has(g)) {
+          const u = { key: 0, items: [], g };
+          byGroup.set(g, u);
+          units.push(u);
+        }
+        byGroup.get(g).items.push(it);
+      }
+    }
+    byGroup.forEach((u) => (u.key = u.items.reduce((s, it) => s + pos.get(it.id), 0) / u.items.length));
+    units.sort((a, b) => a.key - b.key);
+    if (globalKey) {
+      // sibling groups keep one relative order in every rank
+      const slots = units.map((u, i) => (u.g !== undefined ? i : -1)).filter((i) => i >= 0);
+      const sorted = slots.map((i) => units[i]).sort((a, b) => globalKey.get(a.g) - globalKey.get(b.g));
+      slots.forEach((i, k) => (units[i] = sorted[k]));
+    }
+    return units.flatMap((u) => (u.g === undefined ? u.items : cluster(u.items, depth + 1, globalKey)));
+  };
+  const clusterLayer = (layer, globalKey) => {
+    if (!gl) return;
+    const next = cluster(layer, 0, globalKey);
+    layer.splice(0, layer.length, ...next);
+    layer.forEach((it, i) => pos.set(it.id, i));
+  };
+  layers.forEach((layer) => layer.sort((a, b) => (order0.get(a.id) ?? 1e9) - (order0.get(b.id) ?? 1e9)));
+  reindex();
+  layers.forEach((layer) => clusterLayer(layer));
+
+  const crossings = () => {
+    let total = 0;
+    for (let r = 0; r < layers.length - 1; r++) {
+      const segs = [];
+      layers[r].forEach((it) => it.down.forEach((d) => segs.push([pos.get(it.id), pos.get(d.id)])));
+      for (let i = 0; i < segs.length; i++)
+        for (let j = i + 1; j < segs.length; j++)
+          if ((segs[i][0] - segs[j][0]) * (segs[i][1] - segs[j][1]) < 0) total++;
+    }
+    return total;
+  };
+  const sortLayer = (layer, key) => {
+    const bary = new Map(
+      layer.map((it) => {
+        const ns = it[key];
+        return [it.id, ns.length ? ns.reduce((s, n) => s + pos.get(n.id), 0) / ns.length : pos.get(it.id)];
+      })
+    );
+    layer.sort((a, b) => bary.get(a.id) - bary.get(b.id) || pos.get(a.id) - pos.get(b.id));
+    layer.forEach((it, i) => pos.set(it.id, i));
+    clusterLayer(layer);
+  };
+
+  let best = crossings();
+  let bestOrder = layers.map((l) => l.slice());
+  for (let iter = 0; iter < 24 && best > 0; iter++) {
+    if (iter % 2 === 0) for (let r = 1; r < layers.length; r++) sortLayer(layers[r], 'up');
+    else for (let r = layers.length - 2; r >= 0; r--) sortLayer(layers[r], 'down');
+    const c = crossings();
+    if (c < best) {
+      best = c;
+      bestOrder = layers.map((l) => l.slice());
+    }
+  }
+  if (gl) {
+    // One consistent order of sibling groups across ranks (mean centred index)
+    layers.forEach((_, r) => (layers[r] = bestOrder[r]));
+    reindex();
+    const acc = new Map();
+    layers.forEach((layer) =>
+      layer.forEach((it, i) => {
+        const v = i - (layer.length - 1) / 2;
+        for (const g of it.path) {
+          const a = acc.get(g) || [0, 0];
+          acc.set(g, [a[0] + v, a[1] + 1]);
+        }
+      })
+    );
+    const globalKey = new Map([...acc].map(([g, [s, n]]) => [g, s / n]));
+    layers.forEach((layer) => clusterLayer(layer, globalKey));
+    bestOrder = layers.map((l) => l.slice());
+  }
+  // Return paths run in a corridor outside the drawing: above it when both
+  // ends are first in their layer, otherwise below it.
+  const realOrder = bestOrder.map((l) => l.filter((it) => it.real));
+  const first = (id) => realOrder[rank.get(id)][0]?.id === id;
+  const last = (id) => realOrder[rank.get(id)].at(-1)?.id === id;
+  const corridor = new Map();
+  for (const { edge } of oriented) {
+    if (!reversed.has(edge.id) || commonPath(edge.source, edge.target).length) continue;
+    if (first(edge.source) && first(edge.target)) corridor.set(edge.id, 'start');
+    else if (last(edge.source) && last(edge.target)) corridor.set(edge.id, 'end');
+  }
+  bestOrder.forEach((l, r) => {
+    const side = (it) => (it.back && !it.path.length ? corridor.get(it.edge) || 'end' : 'mid');
+    layers[r] = [...l.filter((it) => side(it) === 'start'), ...l.filter((it) => side(it) === 'mid'), ...l.filter((it) => side(it) === 'end')];
+  });
+  reindex();
+
+  // Self-loops take a free side across the flow (top in LR, right in TB), away
+  // from corridors; spacing below makes room for the loop and its label.
+  const laneSide = (lane) => (horiz ? (lane === 'start' ? 'top' : 'bottom') : lane === 'start' ? 'left' : 'right');
+  const prefer = horiz ? ['top', 'bottom', 'right', 'left'] : ['right', 'left', 'bottom', 'top'];
+  const loopSide = new Map(); // edgeId -> side
+  const mainLoops = []; // loops on a side facing a rank gap: { rank, after, extent }
+  for (const e of loopEdges) {
+    const id = e.source;
+    const taken = new Set();
+    for (const { edge } of oriented) if (corridor.has(edge.id) && (edge.source === id || edge.target === id)) taken.add(laneSide(corridor.get(edge.id)));
+    for (const o of loopEdges) if (o.source === id && loopSide.has(o.id)) taken.add(loopSide.get(o.id));
+    let order = prefer;
+    if (fieldLoop(e)) {
+      // A loop between two field rows runs on the left or right side: the one with fewer edges
+      const right = horiz ? oriented.filter((o) => o.u === id).length : 0;
+      const left = horiz ? oriented.filter((o) => o.v === id).length : 0;
+      order = right <= left ? ['right', 'left'] : ['left', 'right'];
+    }
+    const side = order.find((x) => !taken.has(x)) || order[0];
+    loopSide.set(e.id, side);
+    const n = byId.get(id);
+    const { extent } = selfLoop({ x: 0, y: 0, w: n.w, h: n.h }, side, labelSize(e.label), loopOpts(n, e));
+    const it = items.get(id);
+    // A dot or diamond may take its loop on either free side once ports are known: room on both
+    const point = POINT_SHAPES.has(n.shape);
+    if (side === (horiz ? 'top' : 'left') || (point && side === (horiz ? 'bottom' : 'right'))) it.loopStart = Math.max(it.loopStart || 0, extent);
+    if (side === (horiz ? 'bottom' : 'right') || (point && side === (horiz ? 'top' : 'left'))) it.loopEnd = Math.max(it.loopEnd || 0, extent);
+    if (side === 'left' || side === 'right' ? horiz : !horiz) mainLoops.push({ rank: rank.get(id), after: side === (horiz ? 'right' : 'bottom'), extent });
+  }
+
+  // 5. Cross-axis placement: pull towards neighbours, keep order and spacing
+  const nodeGap = horiz ? 40 : 60;
+  const dummyGap = 34;
+  // Crossing a group boundary adds that box's padding (title side first; deeper boxes pad less)
+  const padStart = (d) => (horiz ? groupPad(d).padTop : groupPad(d).padX);
+  const padEnd = (d) => (horiz ? groupPad(d).padBottom : groupPad(d).padX);
+  const boundary = (a, b) => {
+    let k = 0;
+    while (k < a.path.length && k < b.path.length && a.path[k] === b.path[k]) k++;
+    let room = 0;
+    for (let d = k; d < a.path.length; d++) room += padEnd(d);
+    for (let d = k; d < b.path.length; d++) room += padStart(d);
+    return room;
+  };
+  const sep = (a, b) =>
+    a.size / 2 + b.size / 2 + (a.ph || b.ph ? 0 : a.real && b.real ? nodeGap : dummyGap) + (gl ? boundary(a, b) : 0) +
+    (a.loopEnd || 0) + (b.loopStart || 0);
+  const cross = new Map();
+  layers.forEach((layer) => {
+    let c = 0;
+    layer.forEach((it, i) => {
+      if (i > 0) c += sep(layer[i - 1], it);
+      cross.set(it.id, c);
+    });
+    const mid = c / 2;
+    layer.forEach((it) => cross.set(it.id, cross.get(it.id) - mid));
+  });
+
+  const place = (layer, keys) => {
+    if (!layer.length) return;
+    const desired = layer.map((it) => {
+      let sw = 0;
+      let s = 0;
+      for (const key of keys)
+        for (const n of it[key]) {
+          sw += n.w;
+          s += n.w * cross.get(n.id);
+        }
+      return sw ? s / sw : cross.get(it.id);
+    });
+    const weights = layer.map((it) => (it.real ? 2 : 1));
+    // offsets so that constraint p[i+1] - p[i] >= sep becomes q non-decreasing
+    const offset = [0];
+    for (let i = 1; i < layer.length; i++) offset.push(offset[i - 1] + sep(layer[i - 1], layer[i]));
+    const q = isotonic(desired.map((d, i) => d - offset[i]), weights);
+    layer.forEach((it, i) => cross.set(it.id, q[i] + offset[i]));
+  };
+  for (let iter = 0; iter < 20; iter++) {
+    if (iter % 2 === 0) for (let r = 1; r < layers.length; r++) place(layers[r], ['up']);
+    else for (let r = layers.length - 2; r >= 0; r--) place(layers[r], ['down']);
+  }
+  for (let r = 0; r < layers.length; r++) place(layers[r], ['up', 'down']);
+
+  // 6. Main axis: rank bands separated by gaps wide enough for labels
+  const bandSize = layers.map((layer) => Math.max(0, ...layer.filter((it) => it.real).map((it) => mainSize(byId.get(it.id)))));
+  const gapNeed = Array.from({ length: Math.max(0, layers.length - 1) }, () => (horiz ? 90 : 80));
+  for (const { edge, u, v } of oriented) {
+    const lab = labelSize(edge.label);
+    const ends = endLabelRoom(edge, horiz);
+    if ((!lab && !ends) || corridor.has(edge.id)) continue; // corridor labels sit on the long run
+    const g = Math.min(rank.get(u), rank.get(v));
+    if (g < gapNeed.length) gapNeed[g] = Math.max(gapNeed[g], (lab ? (horiz ? lab.w : lab.h) : 0) + ends + 52);
+  }
+  // Edges both ways between the same two nodes (common in state machines) run
+  // side by side through one gap: make room for their labels next to each other
+  const pairs = new Map();
+  for (const { edge, u, v } of oriented) {
+    const lab = labelSize(edge.label);
+    if (!lab || corridor.has(edge.id) || Math.abs(rank.get(u) - rank.get(v)) !== 1) continue;
+    const key = [u, v].sort().join('\u0000');
+    const p = pairs.get(key) || { g: Math.min(rank.get(u), rank.get(v)), sum: 0, n: 0 };
+    p.sum += horiz ? lab.w : lab.h;
+    p.n++;
+    pairs.set(key, p);
+  }
+  for (const { g, sum, n } of pairs.values()) if (n > 1) gapNeed[g] = Math.max(gapNeed[g], sum + 24 * n + 52);
+  for (const { rank: r, after, extent } of mainLoops) {
+    const g = after ? r : r - 1;
+    if (g >= 0 && g < gapNeed.length) gapNeed[g] = Math.max(gapNeed[g], extent + 60);
+  }
+  if (gl) {
+    // Boxes closing after rank r and opening at r + 1 need their padding
+    const closeAt = new Array(layers.length).fill(0);
+    const openAt = new Array(layers.length).fill(0);
+    for (const g of gl.list) {
+      if (!span.has(g.id)) continue;
+      const [r0, r1] = span.get(g.id);
+      const chain = gl.ancestors(g.id).map((a, d) => [a, d]).filter(([a]) => span.has(a));
+      const sum = (list, side) => list.reduce((t, [, d]) => t + (side ? (horiz ? groupPad(d).padX : groupPad(d).padTop) : horiz ? groupPad(d).padX : groupPad(d).padBottom), 0);
+      closeAt[r1] = Math.max(closeAt[r1], sum(chain.filter(([a]) => span.get(a)[1] === r1), false));
+      openAt[r0] = Math.max(openAt[r0], sum(chain.filter(([a]) => span.get(a)[0] === r0), true));
+    }
+    for (let r = 0; r < gapNeed.length; r++) gapNeed[r] += closeAt[r] + openAt[r + 1];
+  }
+  const bandStart = [];
+  let m = 0;
+  for (let r = 0; r < layers.length; r++) {
+    bandStart.push(m);
+    m += bandSize[r] + (gapNeed[r] || 0);
+  }
+  for (let r = 0; r < gapNeed.length; r++) bandStart[r + 1] = snap(bandStart[r + 1]);
+
+  // 6b. Push outsiders and sibling groups out of each other's boxes (cross axis)
+  if (gl) separateGroups();
+
+  // 7. Emit positions, snapped, normalised to the origin
+  const raw = new Map();
+  for (const id of ids) {
+    const n = byId.get(id);
+    const r = rank.get(id);
+    const main = bandStart[r] + (bandSize[r] - mainSize(n)) / 2;
+    const c = cross.get(id) - crossSize(n) / 2;
+    raw.set(id, horiz ? { x: main, y: c } : { x: c, y: main });
+  }
+  const minX = Math.min(...[...raw.values()].map((p) => p.x));
+  const minY = Math.min(...[...raw.values()].map((p) => p.y));
+  const positions = new Map();
+  raw.forEach((p, id) => positions.set(id, { x: snap(p.x - minX), y: snap(p.y - minY) }));
+
+  const sides = new Map();
+  for (const { edge, u, v } of oriented) {
+    const rev = reversed.has(edge.id);
+    const lane = corridor.get(edge.id);
+    if (lane) {
+      const s = horiz ? (lane === 'start' ? 'top' : 'bottom') : lane === 'start' ? 'left' : 'right';
+      sides.set(edge.id, [s, s]);
+    } else if (rank.get(v) > rank.get(u)) {
+      sides.set(edge.id, horiz ? (rev ? ['left', 'right'] : ['right', 'left']) : rev ? ['top', 'bottom'] : ['bottom', 'top']);
+    }
+  }
+  loopSide.forEach((side, id) => sides.set(id, [side, side]));
+
+  return { positions, sides, reversed };
+
+  function separateGroups() {
+    const list = gl.list.filter((g) => span.has(g.id));
+    const lo = (b) => (horiz ? b.y : b.x);
+    const hi = (b) => (horiz ? b.y + b.h : b.x + b.w);
+    const rectOf = (id) => {
+      const n = byId.get(id);
+      const k = rank.get(id);
+      const main = bandStart[k] + (bandSize[k] - mainSize(n)) / 2;
+      const c = cross.get(id) - crossSize(n) / 2;
+      const card = horiz ? { x: main, y: c, w: n.w, h: n.h } : { x: c, y: main, w: n.w, h: n.h };
+      // a group box also wraps its members' self-loops
+      let r = card;
+      for (const e of loopEdges) if (e.source === id) r = union(r, selfLoop(card, loopSide.get(e.id), labelSize(e.label), loopOpts(n, e)).box);
+      return r;
+    };
+    const shift = (r, from, to, d) => {
+      for (let i = from; i < to; i++) cross.set(layers[r][i].id, cross.get(layers[r][i].id) + d);
+    };
+    const G = GROUP.gap;
+    for (let iter = 0; iter < 200; iter++) {
+      const rects = new Map(ids.map((id) => [id, rectOf(id)]));
+      const boxes = groupBoxes(list, rects, { fit: true });
+      let fixed = false;
+      // (a) a node inside a box it does not belong to: move it (and everything
+      // beyond it in its rank) out on the side it is ordered on
+      for (const g of list) {
+        const b = boxes.get(g.id);
+        if (!b) continue;
+        const members = gl.members(g.id);
+        for (const id of ids) {
+          if (members.has(id) || !overlaps(rects.get(id), inflate(b, G - 1))) continue;
+          const r = rank.get(id);
+          const layer = layers[r];
+          const idx = layer.findIndex((it) => it.id === id);
+          const at = layer.findIndex((it) => it.path.includes(g.id));
+          const rc = rects.get(id);
+          const before = at >= 0 ? idx < at : lo(rc) + hi(rc) < lo(b) + hi(b);
+          if (before) shift(r, 0, idx + 1, -(hi(rc) + G - lo(b)));
+          else shift(r, idx, layer.length, hi(b) + G - lo(rc));
+          fixed = true;
+          break;
+        }
+        if (fixed) break;
+      }
+      if (fixed) continue;
+      // (b) two boxes that are not nested overlap: move the later sibling branch
+      for (let i = 0; i < list.length && !fixed; i++)
+        for (let j = i + 1; j < list.length && !fixed; j++) {
+          const A = gl.ancestors(list[i].id);
+          const B = gl.ancestors(list[j].id);
+          if (A.includes(list[j].id) || B.includes(list[i].id)) continue;
+          const ba = boxes.get(list[i].id);
+          const bb = boxes.get(list[j].id);
+          if (!ba || !bb || !overlaps(inflate(ba, G - 1), bb)) continue;
+          let k = 0;
+          while (A[k] === B[k]) k++;
+          const ga = boxes.get(A[k]);
+          const gb = boxes.get(B[k]);
+          const aFirst = lo(ga) + hi(ga) <= lo(gb) + hi(gb);
+          const later = aFirst ? B[k] : A[k];
+          const d = hi(aFirst ? ga : gb) + G - lo(aFirst ? gb : ga);
+          for (let r = 0; r < layers.length; r++) {
+            const at = layers[r].findIndex((it) => it.path.includes(later));
+            if (at >= 0) shift(r, at, layers[r].length, d);
+          }
+          fixed = true;
+        }
+      if (!fixed) break;
+    }
+  }
+}
+
+/**
+ * Room along the flow that an edge's end labels (sourceLabel / targetLabel)
+ * take next to its edge label: their width in LR, their 14px height in TB.
+ */
+function endLabelRoom(edge, horiz) {
+  let room = 0;
+  for (const t of [edge.sourceLabel, edge.targetLabel])
+    if (typeof t === 'string' && t.trim()) room += (horiz ? Math.ceil(textWidth(t.trim(), 10.5, { weight: 500 })) + 6 : 14) + 8;
+  return room;
+}
+
+/** True when a self-loop joins field rows (sourceField / targetField on an entity or class card). */
+export const fieldLoop = (e) => typeof e?.sourceField === 'string' || typeof e?.targetField === 'string';
+
+/** selfLoop() options for a loop on node n (layout input or rect: { shape? }). */
+const loopOpts = (n, e) => ({ shape: n.shape, marked: hasNotation(e) });
+
+function union(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+}
+
+function overlaps(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function inflate(r, m) {
+  return { x: r.x - m, y: r.y - m, w: r.w + m * 2, h: r.h + m * 2 };
+}
+
+/** Weighted pool-adjacent-violators: closest non-decreasing sequence. */
+export function isotonic(values, weights) {
+  const blocks = [];
+  values.forEach((v, i) => {
+    blocks.push({ sum: v * weights[i], w: weights[i], n: 1 });
+    while (blocks.length > 1) {
+      const b = blocks[blocks.length - 1];
+      const a = blocks[blocks.length - 2];
+      if (a.sum / a.w <= b.sum / b.w) break;
+      blocks.splice(-2, 2, { sum: a.sum + b.sum, w: a.w + b.w, n: a.n + b.n });
+    }
+  });
+  const out = [];
+  blocks.forEach((b) => {
+    for (let i = 0; i < b.n; i++) out.push(b.sum / b.w);
+  });
+  return out;
+}

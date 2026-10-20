@@ -1,0 +1,208 @@
+{
+  "meta": {
+    "title": "E-commerce database schema",
+    "description": "Tables behind a web shop: customers, the catalogue, orders and how they are paid and shipped.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "Orders sit at the centre: every table either feeds an order or records what happened to it.",
+      "points": [
+        "A customer has many addresses and places many orders; each order ships to one address.",
+        "order_items joins orders to products, so prices are copied at the time of sale.",
+        "Payments and the shipment hang off the order, so retries and partial refunds stay auditable."
+      ],
+      "facts": { "Engine": "PostgreSQL 16", "Tables": 8 }
+    }
+  },
+  "roles": {
+    "customer": { "label": "Customer data", "color": "blue" },
+    "catalog": { "label": "Catalogue", "color": "teal" },
+    "sales": { "label": "Sales", "color": "violet" },
+    "fulfilment": { "label": "Fulfilment", "color": "amber" }
+  },
+  "nodes": [
+    {
+      "id": "customers",
+      "type": "customer",
+      "data": {
+        "title": "customers",
+        "icon": "user",
+        "description": "One row per registered shopper. Guest checkouts create a customer without a password.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "email", "type": "varchar(255)", "unique": true },
+          { "name": "full_name", "type": "varchar(120)" },
+          { "name": "created_at", "type": "timestamptz" }
+        ]
+      }
+    },
+    {
+      "id": "addresses",
+      "type": "customer",
+      "data": {
+        "title": "addresses",
+        "icon": "building",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "customer_id", "type": "uuid", "fk": true, "ref": "customers.id" },
+          { "name": "line1", "type": "text" },
+          { "name": "city", "type": "text" },
+          { "name": "postcode", "type": "varchar(12)" },
+          { "name": "country", "type": "char(2)" }
+        ]
+      }
+    },
+    {
+      "id": "orders",
+      "type": "sales",
+      "data": {
+        "title": "orders",
+        "icon": "file-text",
+        "description": "The order header. total_cents is denormalised from order_items when the order is placed.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "customer_id", "type": "uuid", "fk": true, "ref": "customers.id" },
+          { "name": "address_id", "type": "uuid", "fk": true, "ref": "addresses.id" },
+          { "name": "status", "type": "order_status" },
+          { "name": "total_cents", "type": "bigint" },
+          { "name": "placed_at", "type": "timestamptz" }
+        ]
+      }
+    },
+    {
+      "id": "order_items",
+      "type": "sales",
+      "data": {
+        "title": "order_items",
+        "icon": "layers",
+        "description": "One row per product in an order. The composite key stops the same product appearing twice.",
+        "fields": [
+          { "name": "order_id", "type": "uuid", "pk": true, "fk": true, "ref": "orders.id" },
+          { "name": "product_id", "type": "uuid", "pk": true, "fk": true, "ref": "products.id" },
+          { "name": "quantity", "type": "int" },
+          { "name": "unit_price_cents", "type": "bigint", "note": "Copied from products at checkout" }
+        ]
+      }
+    },
+    {
+      "id": "products",
+      "type": "catalog",
+      "data": {
+        "title": "products",
+        "icon": "package",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "category_id", "type": "uuid", "fk": true, "ref": "categories.id" },
+          { "name": "sku", "type": "varchar(32)", "unique": true },
+          { "name": "name", "type": "text" },
+          { "name": "price_cents", "type": "bigint" },
+          { "name": "stock", "type": "int" }
+        ]
+      }
+    },
+    {
+      "id": "categories",
+      "type": "catalog",
+      "data": {
+        "title": "categories",
+        "icon": "layers",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "parent_id", "type": "uuid", "fk": true, "nullable": true, "ref": "categories.id", "note": "Top-level categories have no parent" },
+          { "name": "slug", "type": "text", "unique": true },
+          { "name": "name", "type": "text" }
+        ]
+      }
+    },
+    {
+      "id": "payments",
+      "type": "fulfilment",
+      "data": {
+        "title": "payments",
+        "icon": "credit-card",
+        "description": "Every attempt is kept, so a declined card followed by a successful retry is two rows.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "order_id", "type": "uuid", "fk": true, "ref": "orders.id" },
+          { "name": "provider", "type": "text" },
+          { "name": "amount_cents", "type": "bigint" },
+          { "name": "status", "type": "payment_status" },
+          { "name": "paid_at", "type": "timestamptz", "nullable": true }
+        ]
+      }
+    },
+    {
+      "id": "shipments",
+      "type": "fulfilment",
+      "data": {
+        "title": "shipments",
+        "icon": "truck",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "order_id", "type": "uuid", "fk": true, "unique": true, "ref": "orders.id" },
+          { "name": "carrier", "type": "text" },
+          { "name": "tracking_no", "type": "text", "nullable": true },
+          { "name": "shipped_at", "type": "timestamptz", "nullable": true }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "customers-addresses", "source": "customers", "target": "addresses", "label": "has", "sourceEnd": "one", "sourceField": "id", "targetField": "customer_id", "targetEnd": "zero-or-many" },
+    { "id": "customers-orders", "source": "customers", "target": "orders", "label": "places", "sourceEnd": "one", "sourceField": "id", "targetField": "customer_id", "targetEnd": "zero-or-many" },
+    { "id": "addresses-orders", "source": "addresses", "target": "orders", "label": "ships to", "sourceEnd": "one", "sourceField": "id", "targetField": "address_id", "targetEnd": "zero-or-many" },
+    { "id": "orders-items", "source": "orders", "target": "order_items", "label": "contains", "sourceEnd": "one", "sourceField": "id", "targetField": "order_id", "targetEnd": "one-or-many" },
+    { "id": "products-items", "source": "products", "target": "order_items", "label": "sold as", "sourceEnd": "one", "sourceField": "id", "targetField": "product_id", "targetEnd": "zero-or-many" },
+    { "id": "categories-products", "source": "categories", "target": "products", "label": "groups", "sourceEnd": "one", "sourceField": "id", "targetField": "category_id", "targetEnd": "zero-or-many" },
+    { "id": "categories-parent", "source": "categories", "target": "categories", "label": "parent of", "sourceEnd": "zero-or-one", "sourceField": "id", "targetField": "parent_id", "targetEnd": "zero-or-many" },
+    { "id": "orders-payments", "source": "orders", "target": "payments", "label": "paid by", "sourceEnd": "one", "sourceField": "id", "targetField": "order_id", "targetEnd": "zero-or-many" },
+    { "id": "orders-shipments", "source": "orders", "target": "shipments", "label": "shipped in", "sourceEnd": "one", "sourceField": "id", "targetField": "order_id", "targetEnd": "zero-or-one" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the schema",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Eight tables. Crow's feet mark the many side of each relationship; a bar means exactly one, a circle means optional."
+        },
+        {
+          "id": "customers",
+          "title": "Customers and addresses",
+          "description": "A customer can save any number of addresses (zero or more), and every address belongs to exactly one customer.",
+          "highlightNodes": ["customers", "addresses"],
+          "highlightEdges": ["customers-addresses"]
+        },
+        {
+          "id": "order",
+          "title": "Placing an order",
+          "description": "An order belongs to one customer and ships to one of their addresses; a customer may have no orders yet.",
+          "highlightNodes": ["customers", "addresses", "orders"],
+          "highlightEdges": ["customers-orders", "addresses-orders"]
+        },
+        {
+          "id": "items",
+          "title": "Line items",
+          "description": "order_items joins orders and products. Every order has at least one item; a product may never have been sold.",
+          "highlightNodes": ["orders", "order_items", "products"],
+          "highlightEdges": ["orders-items", "products-items"]
+        },
+        {
+          "id": "catalogue",
+          "title": "Catalogue",
+          "description": "Each product sits in one category. Categories nest through parent_id, which is empty for top-level ones.",
+          "highlightNodes": ["categories", "products"],
+          "highlightEdges": ["categories-products", "categories-parent"]
+        },
+        {
+          "id": "after",
+          "title": "Payment and shipping",
+          "description": "An order collects any number of payment attempts and at most one shipment (shipments.order_id is unique).",
+          "highlightNodes": ["orders", "payments", "shipments"],
+          "highlightEdges": ["orders-payments", "orders-shipments"]
+        }
+      ]
+    }
+  ]
+}

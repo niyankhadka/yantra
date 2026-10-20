@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "title": "ML training and serving pipeline",
+    "description": "How a model moves from raw data to production predictions, and how monitoring feeds retraining. Thresholds and figures are illustrative.",
+    "summary": {
+      "headline": "One feature store feeds both training and serving, and a monitoring loop decides when the model must be retrained.",
+      "points": [
+        "Offline: data is ingested, turned into features, trained on and evaluated in batches",
+        "Only models that pass evaluation are registered and promoted",
+        "Online: the serving API reads the same feature definitions, avoiding training/serving skew",
+        "Drift or accuracy drops in monitoring trigger a new training run"
+      ],
+      "facts": {
+        "Retraining cadence": "Weekly, or on drift alert (illustrative)",
+        "Promotion gate": "Beats current model on holdout set",
+        "Serving latency target": "Under 100 ms p95 (illustrative)"
+      }
+    },
+    "layout": { "direction": "LR" }
+  },
+  "roles": {
+    "source": { "label": "Data source / consumer", "color": "slate" },
+    "pipeline": { "label": "Pipeline job", "color": "blue" },
+    "store": { "label": "Store / registry", "color": "violet" },
+    "online": { "label": "Online service", "color": "teal" }
+  },
+  "nodes": [
+    { "id": "sources", "type": "source", "data": { "title": "Raw data sources", "subtitle": "Events, databases, labels", "icon": "database", "badge": "Input", "description": "Application events, operational databases and human-labelled outcomes. Data contracts define each source's schema." } },
+    { "id": "ingest", "type": "pipeline", "data": { "title": "Ingestion and validation", "subtitle": "Batch and streaming loads", "icon": "layers", "badge": "Job", "description": "Loads raw data on a schedule, checks schema and null rates, and quarantines bad batches instead of passing them on.", "metadata": { "Checks": "Schema, ranges, freshness" } } },
+    { "id": "features", "type": "store", "data": { "title": "Feature store", "subtitle": "Shared feature definitions", "icon": "database", "badge": "Store", "description": "Computes each feature once. An offline table serves training; a low-latency online table serves predictions, so both use the same logic." } },
+    { "id": "train", "type": "pipeline", "data": { "title": "Training", "subtitle": "Fit on point-in-time data", "icon": "cpu", "badge": "Job", "description": "Builds a point-in-time-correct dataset (no future data leaks in), fits candidate models and logs parameters and metrics." } },
+    { "id": "evaluate", "type": "pipeline", "data": { "title": "Evaluation", "subtitle": "Holdout and fairness checks", "icon": "check-circle", "badge": "Gate", "description": "Compares the candidate with the current production model on a holdout set and slice-level checks. Failing candidates stop here." } },
+    { "id": "registry", "type": "store", "data": { "title": "Model registry", "subtitle": "Versions and approvals", "icon": "package", "badge": "Store", "description": "Stores each approved model with its training data version, metrics and approver, so any prediction can be traced to a model version." } },
+    { "id": "serving", "type": "online", "data": { "title": "Prediction API", "subtitle": "Real-time scoring", "icon": "server", "badge": "Service", "description": "Loads the promoted model, fetches online features per request and returns a prediction. Logs inputs and outputs for monitoring." } },
+    { "id": "apps", "type": "source", "data": { "title": "Product applications", "subtitle": "Use the predictions", "icon": "monitor", "badge": "Consumer" } },
+    { "id": "monitor", "type": "online", "data": { "title": "Monitoring", "subtitle": "Drift and accuracy", "icon": "activity", "badge": "Service", "description": "Compares live feature distributions with training data and, once labels arrive, live accuracy with the evaluation baseline." } }
+  ],
+  "edges": [
+    { "id": "e-src-ingest", "source": "sources", "target": "ingest", "label": "Raw data" },
+    { "id": "e-ingest-feat", "source": "ingest", "target": "features", "label": "Clean tables" },
+    { "id": "e-feat-train", "source": "features", "target": "train", "label": "Training set" },
+    { "id": "e-train-eval", "source": "train", "target": "evaluate", "label": "Candidate" },
+    { "id": "e-eval-reg", "source": "evaluate", "target": "registry", "label": "Approved model" },
+    { "id": "e-reg-serve", "source": "registry", "target": "serving", "label": "Deploy" },
+    { "id": "e-feat-serve", "source": "features", "target": "serving", "label": "Online features", "type": "async" },
+    { "id": "e-serve-apps", "source": "serving", "target": "apps", "label": "Predictions" },
+    { "id": "e-serve-mon", "source": "serving", "target": "monitor", "label": "Prediction logs", "type": "event" },
+    { "id": "e-mon-train", "source": "monitor", "target": "train", "label": "Retrain trigger", "style": "dashed" }
+  ],
+  "groups": [
+    { "id": "g-offline", "title": "Offline (batch)", "nodes": ["ingest", "features", "train", "evaluate", "registry"], "color": "blue", "description": "Scheduled jobs; minutes to hours per run." },
+    { "id": "g-online", "title": "Online (real time)", "nodes": ["serving", "monitor"], "color": "teal", "description": "Always-on services; milliseconds per request." }
+  ],
+  "scenarios": [
+    {
+      "id": "lifecycle",
+      "name": "Model lifecycle",
+      "steps": [
+        { "id": "s1", "title": "Overview", "description": "Batch jobs on the left build and approve a model; online services on the right use it and watch how it performs." },
+        { "id": "s2", "title": "Ingest and build features", "description": "Raw data is validated, then turned into features once and stored for both training and serving.", "highlightNodes": ["sources", "ingest", "features"], "highlightEdges": ["e-src-ingest", "e-ingest-feat"] },
+        { "id": "s3", "title": "Train and evaluate", "description": "Training reads a point-in-time snapshot. The candidate must beat the current model on held-out data before it can go further.", "highlightNodes": ["features", "train", "evaluate"], "highlightEdges": ["e-feat-train", "e-train-eval"] },
+        { "id": "s4", "title": "Register and deploy", "description": "An approved model is versioned in the registry, then promoted to the prediction API.", "highlightNodes": ["evaluate", "registry", "serving"], "highlightEdges": ["e-eval-reg", "e-reg-serve"] },
+        { "id": "s5", "title": "Serve predictions", "description": "Each request fetches online features and returns a prediction to the product.", "highlightNodes": ["features", "serving", "apps"], "highlightEdges": ["e-feat-serve", "e-serve-apps"] },
+        { "id": "s6", "title": "Monitor and retrain", "description": "Prediction logs are checked for drift and accuracy loss. Crossing a threshold triggers a new training run, closing the loop.", "highlightNodes": ["serving", "monitor", "train"], "highlightEdges": ["e-serve-mon", "e-mon-train"] }
+      ]
+    }
+  ]
+}

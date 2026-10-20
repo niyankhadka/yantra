@@ -1,0 +1,88 @@
+<mxfile host="app.diagrams.net" version="24.7.17">
+  <diagram id="shop-schema" name="Shop schema">
+    <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="customers" value="customers" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" value="" style="shape=tableRow;horizontal=0;fillColor=none;" vertex="1" parent="customers">
+          <mxGeometry y="30" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c1k" value="PK" style="shape=partialRectangle;html=1;" vertex="1" parent="c1">
+          <mxGeometry width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c1n" value="id uuid" style="shape=partialRectangle;html=1;" vertex="1" parent="c1">
+          <mxGeometry x="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="" style="shape=tableRow;horizontal=0;fillColor=none;" vertex="1" parent="customers">
+          <mxGeometry y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c2k" value="UK" style="shape=partialRectangle;html=1;" vertex="1" parent="c2">
+          <mxGeometry width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="c2n" value="email text" style="shape=partialRectangle;html=1;" vertex="1" parent="c2">
+          <mxGeometry x="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="orders" value="orders" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="40" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="o1" value="" style="shape=tableRow;horizontal=0;fillColor=none;" vertex="1" parent="orders">
+          <mxGeometry y="30" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o1k" value="PK" style="shape=partialRectangle;html=1;" vertex="1" parent="o1">
+          <mxGeometry width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o1n" value="id uuid" style="shape=partialRectangle;html=1;" vertex="1" parent="o1">
+          <mxGeometry x="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o2" value="" style="shape=tableRow;horizontal=0;fillColor=none;" vertex="1" parent="orders">
+          <mxGeometry y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o2k" value="FK" style="shape=partialRectangle;html=1;" vertex="1" parent="o2">
+          <mxGeometry width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o2n" value="customer_id uuid" style="shape=partialRectangle;html=1;" vertex="1" parent="o2">
+          <mxGeometry x="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o3" value="" style="shape=tableRow;horizontal=0;fillColor=none;" vertex="1" parent="orders">
+          <mxGeometry y="90" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o3k" value="" style="shape=partialRectangle;html=1;" vertex="1" parent="o3">
+          <mxGeometry width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="o3n" value="total numeric(10,2)" style="shape=partialRectangle;html=1;" vertex="1" parent="o3">
+          <mxGeometry x="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="items" value="order_items" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="680" y="40" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="i1" value="" style="shape=tableRow;horizontal=0;fillColor=none;" vertex="1" parent="items">
+          <mxGeometry y="30" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="i1k" value="FK" style="shape=partialRectangle;html=1;" vertex="1" parent="i1">
+          <mxGeometry width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="i1n" value="order_id uuid" style="shape=partialRectangle;html=1;" vertex="1" parent="i1">
+          <mxGeometry x="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="i2" value="" style="shape=tableRow;horizontal=0;fillColor=none;" vertex="1" parent="items">
+          <mxGeometry y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="i2k" value="" style="shape=partialRectangle;html=1;" vertex="1" parent="i2">
+          <mxGeometry width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="i2n" value="quantity int" style="shape=partialRectangle;html=1;" vertex="1" parent="i2">
+          <mxGeometry x="40" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" value="places" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERzeroToMany;startArrow=ERmandOne;html=1;" edge="1" parent="1" source="c1" target="o2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="contains" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERoneToMany;startArrow=ERmandOne;html=1;" edge="1" parent="1" source="o1" target="i1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

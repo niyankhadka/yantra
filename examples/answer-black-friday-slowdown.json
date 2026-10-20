@@ -1,0 +1,305 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Why did our website slow down on Black Friday?",
+    "title": "Black Friday slowdown, 28/11/2025",
+    "kicker": "Incident explainer",
+    "author": "Platform team, Thistle & Thread (fictional)",
+    "date": "20/10/2026",
+    "footer": "Fictional company and data, for illustration only."
+  },
+  "answer": {
+    "headline": "The product database ran out of connections: a new 'recently viewed' feature made each page open four database queries instead of one, so at four times normal traffic requests queued and pages took up to 9 seconds.",
+    "text": "Servers, network and the content delivery network all had spare capacity. The bottleneck was a fixed pool of 200 database connections shared by every web server, which the new feature quietly used up.",
+    "points": [
+      "Slow from 08:55 to 10:40; pages took a median of 4.2 seconds at the worst point",
+      "Adding web servers made it worse: each new server added more queries to the same pool",
+      "Turning off 'recently viewed' at 10:32 fixed it within eight minutes"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "chart",
+      "kind": "line",
+      "title": "Traffic and page time on the morning",
+      "categories": [
+        "07:00",
+        "07:30",
+        "08:00",
+        "08:30",
+        "09:00",
+        "09:30",
+        "10:00",
+        "10:30",
+        "11:00",
+        "11:30",
+        "12:00"
+      ],
+      "series": [
+        {
+          "name": "Visitors a minute (thousands)",
+          "values": [
+            1.1,
+            1.4,
+            2.2,
+            3.1,
+            4.2,
+            4.6,
+            4.4,
+            4.3,
+            4.1,
+            3.9,
+            3.7
+          ]
+        },
+        {
+          "name": "Page time, 95th percentile (seconds)",
+          "values": [
+            0.9,
+            1,
+            1.2,
+            1.8,
+            6.1,
+            8.8,
+            9,
+            7.4,
+            1.4,
+            1.2,
+            1.1
+          ],
+          "tone": "bad"
+        }
+      ],
+      "caption": "Page time jumped once traffic passed about 4,000 visitors a minute, and recovered after 10:40 although traffic stayed high."
+    },
+    {
+      "type": "diagram",
+      "title": "Where the requests queued",
+      "step": 3,
+      "caption": "Step 3 of the walkthrough: every web server draws from one connection pool.",
+      "diagram": {
+        "meta": {
+          "title": "Product page request path",
+          "description": "A product page goes through the CDN to a web server, which reads from the product database through a shared connection pool.",
+          "layout": {
+            "direction": "LR"
+          }
+        },
+        "roles": {
+          "edge": {
+            "label": "Edge",
+            "color": "slate"
+          },
+          "app": {
+            "label": "Application",
+            "color": "blue"
+          },
+          "data": {
+            "label": "Data",
+            "color": "violet"
+          }
+        },
+        "nodes": [
+          {
+            "id": "cdn",
+            "type": "edge",
+            "data": {
+              "title": "Content delivery network",
+              "subtitle": "Had spare capacity",
+              "icon": "globe"
+            }
+          },
+          {
+            "id": "web",
+            "type": "app",
+            "data": {
+              "title": "Web servers",
+              "subtitle": "Scaled from 8 to 20",
+              "icon": "server"
+            }
+          },
+          {
+            "id": "pool",
+            "type": "data",
+            "data": {
+              "title": "Connection pool",
+              "subtitle": "200 connections, shared",
+              "icon": "layers",
+              "badge": "Bottleneck"
+            }
+          },
+          {
+            "id": "db",
+            "type": "data",
+            "data": {
+              "title": "Product database",
+              "subtitle": "CPU at 45%",
+              "icon": "database"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "e2",
+            "source": "cdn",
+            "target": "web",
+            "label": "Page HTML"
+          },
+          {
+            "id": "e3",
+            "source": "web",
+            "target": "pool",
+            "label": "4 queries a page"
+          },
+          {
+            "id": "e4",
+            "source": "pool",
+            "target": "db",
+            "label": "SQL"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "main",
+            "name": "Product page",
+            "steps": [
+              {
+                "id": "s1",
+                "title": "Overview",
+                "description": "The request path for one product page."
+              },
+              {
+                "id": "s2",
+                "title": "Edge is fine",
+                "description": "The CDN served images and scripts with plenty of headroom.",
+                "highlightNodes": [
+                  "cdn",
+                  "web"
+                ],
+                "highlightEdges": [
+                  "e2"
+                ]
+              },
+              {
+                "id": "s3",
+                "title": "Queue at the pool",
+                "description": "Each page now held four connections. At peak, requests waited for a free connection.",
+                "highlightNodes": [
+                  "web",
+                  "pool"
+                ],
+                "highlightEdges": [
+                  "e3"
+                ]
+              },
+              {
+                "id": "s4",
+                "title": "Database had room",
+                "description": "The database itself was at 45% CPU: it was never the limit.",
+                "highlightNodes": [
+                  "pool",
+                  "db"
+                ],
+                "highlightEdges": [
+                  "e4"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeline",
+      "title": "What happened",
+      "items": [
+        {
+          "date": "21/11/2025",
+          "title": "'Recently viewed' released",
+          "text": "Load-tested at normal traffic only."
+        },
+        {
+          "date": "28/11/2025 08:55",
+          "title": "Pages slow down",
+          "text": "Traffic passes 4,000 visitors a minute.",
+          "tone": "warn"
+        },
+        {
+          "date": "09:10",
+          "title": "Web servers scaled from 8 to 20",
+          "text": "Page time gets worse, not better.",
+          "tone": "bad"
+        },
+        {
+          "date": "10:05",
+          "title": "Connection pool identified",
+          "text": "Database dashboards show all 200 connections in use."
+        },
+        {
+          "date": "10:32",
+          "title": "Feature switched off",
+          "text": "Using its feature flag; no deploy needed."
+        },
+        {
+          "date": "10:40",
+          "title": "Back to normal",
+          "tone": "good"
+        }
+      ]
+    },
+    {
+      "type": "points",
+      "title": "Why it was hard to spot",
+      "span": "half",
+      "items": [
+        {
+          "title": "The usual signs were green",
+          "text": "CPU and memory looked healthy everywhere."
+        },
+        {
+          "title": "Scaling hid the cause",
+          "text": "More servers is the normal fix for slowness, and here it made the queue longer."
+        },
+        {
+          "title": "No pool alert",
+          "text": "We measured database CPU, not waiting for connections."
+        }
+      ]
+    },
+    {
+      "type": "checklist",
+      "title": "Follow-up actions",
+      "span": "half",
+      "items": [
+        {
+          "text": "Load 'recently viewed' in one query, from a cache",
+          "done": true
+        },
+        {
+          "text": "Alert when the connection pool is over 80% in use",
+          "done": true
+        },
+        {
+          "text": "Load-test at five times normal traffic before peak events"
+        },
+        {
+          "text": "Add a connection proxy so the pool size does not grow with server count"
+        }
+      ]
+    },
+    {
+      "type": "faq",
+      "title": "Questions from the business",
+      "items": [
+        {
+          "q": "Did we lose orders?",
+          "a": "Orders still went through, but about 18% fewer than forecast for those two hours. Most of that demand returned later in the day."
+        },
+        {
+          "q": "Why not just make the pool bigger?",
+          "a": "Each connection uses memory on the database. A proxy that shares connections between servers fixes the cause instead of moving the limit."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Which database should the new order service use?",
+    "title": "Choosing a database for the order service",
+    "kicker": "Decision",
+    "author": "Architecture group",
+    "date": "20/10/2026",
+    "toc": true
+  },
+  "answer": {
+    "headline": "Use PostgreSQL: orders need multi-row transactions and ad-hoc reporting, and our load is well within what one managed primary with read replicas can serve.",
+    "text": "DynamoDB scales further but pushes joins and reporting into application code; MongoDB fits flexible documents, which orders are not. Revisit if sustained writes pass about 5,000 per second.",
+    "points": [
+      "Transactions across orders, lines and payments come built in",
+      "The team already runs PostgreSQL in production",
+      "Reporting queries work without a separate data pipeline"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "compare",
+      "title": "Options",
+      "options": [
+        {
+          "name": "PostgreSQL",
+          "recommended": true,
+          "summary": "Relational, managed (RDS or Cloud SQL).",
+          "pros": ["ACID transactions across tables", "SQL for reporting and support queries", "Skills and tooling already in house"],
+          "cons": ["Write scaling needs partitioning later", "Schema changes need migrations"],
+          "verdict": "Best fit for the next three years."
+        },
+        {
+          "name": "DynamoDB",
+          "summary": "Key-value and document, serverless.",
+          "pros": ["Near-unlimited scale", "No servers to patch"],
+          "cons": ["Access patterns must be designed up front", "Reporting needs an export pipeline"],
+          "verdict": "Overkill at our volume."
+        },
+        {
+          "name": "MongoDB",
+          "summary": "Document store, managed (Atlas).",
+          "pros": ["Flexible documents", "Good developer ergonomics"],
+          "cons": ["Orders are relational in practice", "New skill set to operate"],
+          "verdict": "Solves a problem we do not have."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "How they meet our requirements",
+      "columns": ["Requirement", "PostgreSQL", "DynamoDB", "MongoDB"],
+      "rows": [
+        ["Multi-row transactions", "Yes", "Limited (100 items)", "Yes"],
+        ["Ad-hoc reporting", "SQL", "Export first", "Aggregation pipeline"],
+        ["Peak writes we need (1,200/s)", "Comfortable", "Comfortable", "Comfortable"],
+        ["Existing team experience", "High", "Low", "None"]
+      ]
+    },
+    {
+      "type": "chart",
+      "title": "p99 write latency in our load test",
+      "unit": " ms",
+      "span": "half",
+      "data": [
+        { "label": "PostgreSQL", "value": 9, "tone": "good" },
+        { "label": "DynamoDB", "value": 7, "tone": "info" },
+        { "label": "MongoDB", "value": 11, "tone": "neutral" }
+      ]
+    },
+    {
+      "type": "quote",
+      "title": "From the design review",
+      "span": "half",
+      "text": "Every order question support asks us is a join. Pick the database that answers joins.",
+      "by": "Lead engineer, Payments",
+      "source": "Design review, 13/10/2026"
+    },
+    {
+      "type": "diagram",
+      "title": "Where the database sits",
+      "src": "cloud-architecture.json",
+      "interactive": true,
+      "height": 560,
+      "caption": "Step through the order flow to see where order data is written. The ledger store on the right is the database this decision covers."
+    },
+    {
+      "type": "callout",
+      "title": "When to revisit",
+      "tone": "info",
+      "label": "Review trigger",
+      "body": "Re-open this decision if sustained writes pass **5,000 per second**, or if a single table grows beyond about 2 TB. Both are at least two years away on current growth."
+    }
+  ]
+}

@@ -1,0 +1,277 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Can we launch the mobile app by 18/12/2026, and what could stop us?",
+    "title": "Mobile app launch plan",
+    "kicker": "Project plan",
+    "author": "Delivery lead",
+    "date": "20/10/2026",
+    "footer": "Example project plan. Names, dates and risks are illustrative."
+  },
+  "answer": {
+    "headline": "Yes: on the current plan store review ends on 26/11/2026, leaving three weeks of slack before launch, provided payments sign-off is not late.",
+    "text": "Design is finished and the build is on track. The critical path runs through payments integration, security review and app store submission; everything else has at least a week of float.",
+    "points": [
+      "Critical path: payments → security review → store submission → launch",
+      "Biggest risk: app store rejection, which would use about a week of the slack",
+      "Decision needed by 30/10/2026: drop offline mode from release 1 to protect the date"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "gantt",
+      "title": "Plan to launch",
+      "today": "20/10/2026",
+      "workdays": true,
+      "items": [
+        {
+          "id": "design",
+          "title": "UX design",
+          "group": "Design",
+          "start": "28/09/2026",
+          "end": "16/10/2026",
+          "progress": 100
+        },
+        {
+          "id": "signoff",
+          "title": "Design sign-off",
+          "group": "Design",
+          "milestone": true,
+          "after": "design"
+        },
+        {
+          "id": "api",
+          "title": "API endpoints",
+          "group": "Build",
+          "start": "05/10/2026",
+          "days": 18,
+          "progress": 60
+        },
+        {
+          "id": "app",
+          "title": "App screens",
+          "group": "Build",
+          "after": "signoff",
+          "days": 20,
+          "progress": 15
+        },
+        {
+          "id": "pay",
+          "title": "Payments integration",
+          "group": "Build",
+          "after": "api",
+          "days": 10
+        },
+        {
+          "id": "sec",
+          "title": "Security review",
+          "group": "Release",
+          "after": [
+            "pay",
+            "app"
+          ],
+          "days": 4,
+          "tone": "warn"
+        },
+        {
+          "id": "beta",
+          "title": "Beta with staff",
+          "group": "Release",
+          "start": "16/11/2026",
+          "end": "01/12/2026"
+        },
+        {
+          "id": "store",
+          "title": "App store review",
+          "group": "Release",
+          "after": "sec",
+          "days": 5
+        },
+        {
+          "id": "launch",
+          "title": "Public launch",
+          "group": "Release",
+          "milestone": true,
+          "start": "18/12/2026",
+          "after": "store",
+          "tone": "good"
+        }
+      ],
+      "caption": "Durations are working days. Arrows show dependencies; the dashed line is today."
+    },
+    {
+      "type": "matrix",
+      "title": "What to cut if we slip",
+      "span": "half",
+      "x": {
+        "label": "Effort",
+        "low": "Low",
+        "high": "High"
+      },
+      "y": {
+        "label": "Value to users",
+        "low": "Low",
+        "high": "High"
+      },
+      "quadrants": [
+        {
+          "title": "Quick wins",
+          "tone": "good"
+        },
+        {
+          "title": "Big bets"
+        },
+        {
+          "title": "Fill-ins"
+        },
+        {
+          "title": "Cut first",
+          "tone": "bad"
+        }
+      ],
+      "items": [
+        {
+          "label": "Push alerts",
+          "x": 2.5,
+          "y": 8
+        },
+        {
+          "label": "Apple Pay",
+          "x": 4,
+          "y": 7.2
+        },
+        {
+          "label": "Offline mode",
+          "x": 8.5,
+          "y": 6.5,
+          "tone": "warn"
+        },
+        {
+          "label": "Dark theme",
+          "x": 2,
+          "y": 3.5
+        },
+        {
+          "label": "Widgets",
+          "x": 7.5,
+          "y": 2.5
+        },
+        {
+          "label": "In-app chat",
+          "x": 8,
+          "y": 4
+        }
+      ]
+    },
+    {
+      "type": "checklist",
+      "title": "Launch readiness",
+      "items": [
+        {
+          "text": "Designs signed off",
+          "done": true,
+          "note": "16/10/2026"
+        },
+        {
+          "text": "Payments contract signed",
+          "done": true
+        },
+        {
+          "text": "Store listing copy and screenshots"
+        },
+        {
+          "text": "Support team trained"
+        },
+        {
+          "text": "Rollback plan agreed"
+        }
+      ],
+      "span": "half"
+    },
+    {
+      "type": "matrix",
+      "title": "Risk heat map",
+      "grid": 5,
+      "x": {
+        "label": "Likelihood",
+        "labels": [
+          "Rare",
+          "Unlikely",
+          "Possible",
+          "Likely",
+          "Almost certain"
+        ]
+      },
+      "y": {
+        "label": "Impact",
+        "labels": [
+          "Minimal",
+          "Minor",
+          "Moderate",
+          "Major",
+          "Severe"
+        ]
+      },
+      "items": [
+        {
+          "label": "Store rejection",
+          "x": 3,
+          "y": 4,
+          "tone": "bad"
+        },
+        {
+          "label": "Payments late",
+          "x": 2,
+          "y": 5,
+          "tone": "bad"
+        },
+        {
+          "label": "Beta bugs",
+          "x": 4,
+          "y": 2
+        },
+        {
+          "label": "Key person away",
+          "x": 2,
+          "y": 3
+        },
+        {
+          "label": "API slow",
+          "x": 3,
+          "y": 2
+        },
+        {
+          "label": "Design rework",
+          "x": 1,
+          "y": 2
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Risk responses",
+      "columns": [
+        "Risk",
+        "Response",
+        "Owner"
+      ],
+      "rows": [
+        [
+          "App store rejection",
+          "Pre-submission review against store guidelines on 27/11/2026",
+          "Mobile lead"
+        ],
+        [
+          "Payments sign-off late",
+          "Weekly check-in with the payments provider; fallback to card-only",
+          "Product owner"
+        ],
+        [
+          "Beta finds serious bugs",
+          "Keep one week of fix time before store submission",
+          "QA lead"
+        ]
+      ]
+    }
+  ]
+}

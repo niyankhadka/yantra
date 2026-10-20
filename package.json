@@ -1,0 +1,65 @@
+{
+  "name": "@niyankhadka/yantra",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Interactive, step-by-step diagrams with automatic layout, orthogonal routing and a geometry validator. Single-file offline HTML output.",
+  "keywords": [
+    "diagram",
+    "diagrams",
+    "architecture",
+    "sequence-diagram",
+    "flowchart",
+    "interactive",
+    "walkthrough",
+    "visualization",
+    "mermaid",
+    "drawio",
+    "plantuml",
+    "offline",
+    "html",
+    "mcp",
+    "cli"
+  ],
+  "license": "MIT",
+  "author": "niyankhadka",
+  "homepage": "https://github.com/niyankhadka/yantra#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niyankhadka/yantra.git"
+  },
+  "bugs": {
+    "url": "https://github.com/niyankhadka/yantra/issues"
+  },
+  "bin": {
+    "yantra": "./bin/yantra.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "mcp/",
+    "src/",
+    "schemas/",
+    "docs/*.md",
+    "examples/",
+    "dist/",
+    "index.html",
+    "vite.config.js",
+    "AGENTS.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "validate": "node bin/yantra.js validate",
+    "test": "node --test",
+    "mcp": "node mcp/server.js",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}

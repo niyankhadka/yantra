@@ -1,0 +1,449 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/niyankhadka/yantra/schemas/yantra-page.schema.json",
+  "title": "Yantra answer page",
+  "description": "A question answered on one printable page: the answer first, then typed blocks. Build with `yantra build page.json`.",
+  "type": "object",
+  "required": [
+    "kind",
+    "meta",
+    "answer"
+  ],
+  "properties": {
+    "kind": {
+      "const": "page"
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "question": {
+          "type": "string",
+          "description": "The question being answered; shown as the page heading."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title (browser tab); shown under the question when different."
+        },
+        "kicker": {
+          "type": "string",
+          "description": "Small label above the heading, e.g. Explainer, Decision, How-to. Default: Question."
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "description": "Shown as written, e.g. 20/10/2026."
+        },
+        "footer": {
+          "type": "string",
+          "description": "Small print at the bottom left."
+        },
+        "lang": {
+          "type": "string",
+          "default": "en",
+          "description": "BCP 47 language of the content, e.g. en, es, pt-BR, ne, zh, ja, ar. Sets <html lang> / xml:lang, number formats and the interface strings (built in: en, es, fr, de, pt, hi, ne, zh, ja, ar; other languages use English labels). ar, he, fa, ur and other RTL languages turn on right-to-left."
+        },
+        "dir": {
+          "enum": [
+            "ltr",
+            "rtl"
+          ],
+          "description": "Text direction; default from lang. rtl mirrors the chrome (toolbar, walkthrough, inspector, legend, badge) and the text inside cards; the diagram layout keeps its direction."
+        },
+        "strings": {
+          "type": "object",
+          "description": "Overrides for interface strings by key (see docs/authoring.md), e.g. {\"story.next\": \"Continue\"}. Placeholders are written {name}. Unknown keys are reported by the validator (i18n/unknown-string).",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "watermark": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "false hides the badge; a string replaces its text."
+        },
+        "updated": {
+          "type": "string",
+          "description": "Last revised, shown in the byline as \"Updated …\", e.g. 20/10/2026."
+        },
+        "toc": {
+          "type": "boolean",
+          "description": "true shows a contents row linking to every titled block; false hides it. Default: shown from 6 titled blocks."
+        }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "required": [
+        "headline"
+      ],
+      "properties": {
+        "headline": {
+          "type": "string",
+          "description": "The conclusion in one or two sentences (under 220 characters)."
+        },
+        "text": {
+          "type": "string",
+          "description": "A short paragraph of context. Inline markdown allowed."
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "3-5 supporting points, shown as a checklist."
+        }
+      }
+    },
+    "blocks": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "text",
+              "points",
+              "steps",
+              "metrics",
+              "table",
+              "compare",
+              "callout",
+              "diagram",
+              "chart",
+              "code",
+              "sources",
+              "timeline",
+              "faq",
+              "checklist",
+              "quote",
+              "image",
+              "kv",
+              "gantt",
+              "matrix"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Section heading; also the block anchor (#slug-of-title) used by the contents row."
+          },
+          "span": {
+            "enum": [
+              "full",
+              "half"
+            ],
+            "default": "full",
+            "description": "half puts two blocks side by side on wide screens."
+          },
+          "body": {
+            "type": "string",
+            "description": "text, callout: markdown (paragraphs, - lists, 1. lists, **bold**, *italic*, `code`, [link](https://...))."
+          },
+          "label": {
+            "type": "string",
+            "description": "callout: bold lead-in."
+          },
+          "tone": {
+            "enum": [
+              "info",
+              "good",
+              "warn",
+              "bad",
+              "neutral"
+            ],
+            "description": "callout colour."
+          },
+          "items": {
+            "type": "array",
+            "description": "points/steps: {title, text?, tone?}; metrics: {label, value, note?, tone?, trend?: [numbers] (sparkline)}; sources: {title, url?, note?}; timeline: {date, title, text?, tone?}; faq: {q, a}; checklist: {text, done?, note?}; kv: {k, v}; gantt: {title, id?, group?, start? (date or day number), end? (last day) | days?, after? (id or [ids]), milestone?, progress? (0-100), tone?}; matrix: {label, x, y, tone?}.",
+            "items": {
+              "type": "object"
+            }
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "table header."
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array"
+            },
+            "description": "table rows, one cell per column."
+          },
+          "options": {
+            "type": "array",
+            "description": "compare: {name, summary?, pros?, cons?, verdict?, recommended?}.",
+            "items": {
+              "type": "object"
+            }
+          },
+          "diagram": {
+            "type": "object",
+            "description": "diagram: an inline Yantra diagram payload."
+          },
+          "src": {
+            "type": "string",
+            "description": "diagram: path to a diagram .json, relative to this page file. image: an https: URL or a data:image/ URI (other schemes are rejected)."
+          },
+          "step": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "diagram: highlight this walkthrough step."
+          },
+          "mode": {
+            "type": "string",
+            "description": "diagram: render this mode."
+          },
+          "caption": {
+            "type": "string",
+            "description": "diagram, image, chart, gantt, matrix: caption under the figure."
+          },
+          "data": {
+            "type": "array",
+            "description": "chart: [{label, value (number), tone?}]. Without kind (or kind bar) drawn as horizontal bars; also the slices of pie and donut charts.",
+            "items": {
+              "type": "object"
+            }
+          },
+          "unit": {
+            "type": "string",
+            "description": "chart: suffix for values, e.g. ms or %."
+          },
+          "language": {
+            "type": "string",
+            "description": "code: language label."
+          },
+          "code": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Inspector panels only: show this block only while one of these cards is selected."
+          },
+          "text": {
+            "type": "string",
+            "description": "quote: the quoted words (markdown)."
+          },
+          "by": {
+            "type": "string",
+            "description": "quote: who said it."
+          },
+          "source": {
+            "type": "string",
+            "description": "quote: where it was said or written."
+          },
+          "alt": {
+            "type": "string",
+            "description": "image: required text alternative for screen readers."
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "image: maximum display width in pixels."
+          },
+          "interactive": {
+            "type": "boolean",
+            "description": "diagram: embed the full step-through viewer on screen (the static figure is printed). Keep to 2 per page."
+          },
+          "height": {
+            "type": "number",
+            "minimum": 240,
+            "default": 560,
+            "description": "diagram (interactive): viewer height in pixels."
+          },
+          "kind": {
+            "enum": [
+              "bar",
+              "column",
+              "line",
+              "area",
+              "pie",
+              "donut"
+            ],
+            "default": "bar",
+            "description": "chart: bar (horizontal, default), column, line, area, pie or donut."
+          },
+          "stacked": {
+            "type": "boolean",
+            "description": "chart (bar, column, area with series): stack the series instead of grouping or overlapping them."
+          },
+          "target": {
+            "type": "number",
+            "description": "chart (column, bar, line, area): a target or reference value, drawn as a dashed line labelled \"Target 160 ms\" and listed in the data table."
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "description": "chart: x-axis labels (or dates, YYYY-MM-DD or DD/MM/YYYY, spaced by time on line and area charts), one per series value."
+          },
+          "series": {
+            "type": "array",
+            "description": "chart: [{name, values: [number or null], tone?}], one value per category; at most 6 series.",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "values"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "tone": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "prefix": {
+            "type": "string",
+            "description": "chart: put before values, e.g. £."
+          },
+          "start": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "gantt: the plan's first day (YYYY-MM-DD or DD/MM/YYYY); numeric task starts count days from it."
+          },
+          "today": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "gantt: draw a 'today' line on this date (or day number)."
+          },
+          "workdays": {
+            "type": "boolean",
+            "default": false,
+            "description": "gantt: count days as working days. Saturdays, Sundays and holidays are skipped by days, numeric starts and today, and a task that follows another starts on the next working day. Needs dates (a start date)."
+          },
+          "holidays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "gantt with workdays: dates (YYYY-MM-DD or DD/MM/YYYY) that are not working days, e.g. public holidays."
+          },
+          "grid": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 5,
+            "default": 2,
+            "description": "matrix: 2 for a 2x2 quadrant (items placed by score), 3-5 for a heat map (items listed in cells)."
+          },
+          "x": {
+            "type": [
+              "object",
+              "string"
+            ],
+            "description": "matrix: horizontal axis, a label or {label, low?, high?, labels? (one per column, heat maps), min?, max?}. Default range 0-10 (2x2) or 1-grid.",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "low": {
+                "type": "string"
+              },
+              "high": {
+                "type": "string"
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            }
+          },
+          "y": {
+            "type": [
+              "object",
+              "string"
+            ],
+            "description": "matrix: vertical axis (counted upwards), as for x.",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "low": {
+                "type": "string"
+              },
+              "high": {
+                "type": "string"
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            }
+          },
+          "quadrants": {
+            "type": "array",
+            "description": "matrix (grid 2): 4 titles or {title, tone?}: top left, top right, bottom left, bottom right.",
+            "items": {
+              "type": [
+                "string",
+                "object"
+              ]
+            }
+          },
+          "heat": {
+            "type": "boolean",
+            "default": true,
+            "description": "matrix (grid 3-5): colour cells low to high by row x column; false keeps them plain."
+          },
+          "level": {
+            "type": "string",
+            "description": "diagram: show this detail diagram (an id in the diagram's diagrams map) instead of its overview; an interactive viewer opens there and can go back up."
+          }
+        }
+      }
+    }
+  }
+}

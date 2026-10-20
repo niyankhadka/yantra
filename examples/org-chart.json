@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "title": "Northwind Labs organisation",
+    "description": "Who leads what at a 120-person product company: the leadership team and the teams that report to each executive.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "compact": true
+    },
+    "summary": {
+      "headline": "Four executives report to the CEO; engineering is the largest organisation.",
+      "points": [
+        "Engineering owns the platform, the product teams and security.",
+        "Product and design share one leader so roadmap and research stay together.",
+        "Finance, legal, people and support sit under operations and finance."
+      ],
+      "facts": {
+        "Headcount": "120",
+        "Updated": "01/10/2026"
+      }
+    }
+  },
+  "roles": {
+    "exec": { "label": "Executive", "color": "violet", "icon": "award" },
+    "eng": { "label": "Engineering", "color": "blue", "icon": "cpu" },
+    "product": { "label": "Product", "color": "teal", "icon": "crosshair" },
+    "ops": { "label": "Operations", "color": "amber", "icon": "users" }
+  },
+  "nodes": [
+    { "id": "ceo", "type": "exec", "width": 200, "data": { "title": "Amara Okafor", "subtitle": "Chief Executive Officer", "badge": "CEO", "metadata": { "Reports": 4, "Location": "London" } } },
+    { "id": "cos", "type": "exec", "width": 200, "data": { "title": "Rhys Morgan", "subtitle": "Chief of Staff", "badge": "Staff", "assistant": true, "description": "Runs the leadership meeting and the planning cycle; sits beside the CEO rather than in a reporting line." } },
+    { "id": "cto", "type": "exec", "width": 200, "data": { "title": "Daniel Reyes", "subtitle": "Chief Technology Officer", "badge": "CTO", "metadata": { "Teams": 4, "Headcount": 58 } } },
+    { "id": "cpo", "type": "exec", "width": 200, "data": { "title": "Mei Lin", "subtitle": "Chief Product Officer", "badge": "CPO", "metadata": { "Teams": 2, "Headcount": 21 } } },
+    { "id": "cfo", "type": "exec", "width": 200, "data": { "title": "Tomás Silva", "subtitle": "Chief Financial Officer", "badge": "CFO", "metadata": { "Teams": 2, "Headcount": 12 } } },
+    { "id": "coo", "type": "exec", "width": 200, "data": { "title": "Priya Nair", "subtitle": "Chief Operating Officer", "badge": "COO", "metadata": { "Teams": 2, "Headcount": 28 } } },
+    { "id": "platform", "type": "eng", "width": 180, "data": { "title": "Jonas Weber", "subtitle": "Head of Platform", "badge": "Platform", "description": "Infrastructure, developer tooling and the data platform." } },
+    { "id": "sre", "type": "eng", "width": 180, "data": { "title": "Sofia Rossi", "subtitle": "SRE lead", "badge": "Reliability" } },
+    { "id": "data", "type": "eng", "width": 180, "data": { "title": "Kwame Mensah", "subtitle": "Data platform lead", "badge": "Data" } },
+    { "id": "apps", "type": "eng", "width": 180, "data": { "title": "Hannah Berg", "subtitle": "Head of Engineering", "badge": "Product eng" } },
+    { "id": "security", "type": "eng", "width": 180, "data": { "title": "Omar Haddad", "subtitle": "Security lead", "badge": "Security" } },
+    { "id": "design", "type": "product", "width": 180, "data": { "title": "Lucía Gómez", "subtitle": "Head of Design", "badge": "Design" } },
+    { "id": "pm", "type": "product", "width": 180, "data": { "title": "Arjun Mehta", "subtitle": "Group product manager", "badge": "Product" } },
+    { "id": "finance", "type": "ops", "width": 180, "data": { "title": "Claire Dubois", "subtitle": "Financial controller", "badge": "Finance" } },
+    { "id": "legal", "type": "ops", "width": 180, "data": { "title": "Ben Carter", "subtitle": "General counsel", "badge": "Legal" } },
+    { "id": "people", "type": "ops", "width": 180, "data": { "title": "Yuki Tanaka", "subtitle": "Head of People", "badge": "People" } },
+    { "id": "support", "type": "ops", "width": 180, "data": { "title": "Leo Martins", "subtitle": "Head of Customer Support", "badge": "Support" } }
+  ],
+  "edges": [
+    { "id": "ceo-cos", "source": "ceo", "target": "cos" },
+    { "id": "ceo-cto", "source": "ceo", "target": "cto" },
+    { "id": "ceo-cpo", "source": "ceo", "target": "cpo" },
+    { "id": "ceo-cfo", "source": "ceo", "target": "cfo" },
+    { "id": "ceo-coo", "source": "ceo", "target": "coo" },
+    { "id": "cto-platform", "source": "cto", "target": "platform" },
+    { "id": "platform-sre", "source": "platform", "target": "sre" },
+    { "id": "platform-data", "source": "platform", "target": "data" },
+    { "id": "cto-apps", "source": "cto", "target": "apps" },
+    { "id": "cto-security", "source": "cto", "target": "security" },
+    { "id": "cpo-design", "source": "cpo", "target": "design" },
+    { "id": "cpo-pm", "source": "cpo", "target": "pm" },
+    { "id": "cfo-finance", "source": "cfo", "target": "finance" },
+    { "id": "cfo-legal", "source": "cfo", "target": "legal" },
+    { "id": "coo-people", "source": "coo", "target": "people" },
+    { "id": "coo-support", "source": "coo", "target": "support" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Tour of the organisation",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Seventeen leaders in four levels. The chief of staff sits beside the CEO; small teams are listed under their leader. Use the fold buttons under a card to hide or show its team." },
+        { "id": "leadership", "title": "Leadership team", "description": "The CEO and four executives meet weekly as the leadership team; the chief of staff runs the meeting.", "highlightNodes": ["ceo", "cos", "cto", "cpo", "cfo", "coo"], "highlightEdges": ["ceo-cos", "ceo-cto", "ceo-cpo", "ceo-cfo", "ceo-coo"] },
+        { "id": "engineering", "title": "Engineering", "description": "Platform (with reliability and data), product engineering and security report to the CTO.", "highlightNodes": ["cto", "platform", "sre", "data", "apps", "security"], "highlightEdges": ["cto-platform", "platform-sre", "platform-data", "cto-apps", "cto-security"] },
+        { "id": "product", "title": "Product and design", "description": "Design and product management share one leader.", "highlightNodes": ["cpo", "design", "pm"], "highlightEdges": ["cpo-design", "cpo-pm"] },
+        { "id": "operations", "title": "Finance and operations", "description": "Finance and legal report to the CFO; people and support to the COO.", "highlightNodes": ["cfo", "finance", "legal", "coo", "people", "support"], "highlightEdges": ["cfo-finance", "cfo-legal", "coo-people", "coo-support"] }
+      ]
+    }
+  ]
+}

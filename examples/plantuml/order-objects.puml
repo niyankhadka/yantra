@@ -1,0 +1,27 @@
+@startuml
+title One order, as stored
+object "alice : Customer" as alice {
+  id = 42
+  email = "alice@example.com"
+}
+object "order 1001 : Order" as o1 {
+  status = "paid"
+  total = 59.90
+}
+object "line 1 : OrderLine" as l1 {
+  sku = "MUG-01"
+  quantity = 2
+}
+object "line 2 : OrderLine" as l2 {
+  sku = "TEA-12"
+  quantity = 1
+}
+map "shipping : Address" as addr {
+  city => Leeds
+  postcode => LS1 4AP
+}
+alice --> o1 : placed
+o1 *-- l1
+o1 *-- l2
+o1 --> addr : ships to
+@enduml
