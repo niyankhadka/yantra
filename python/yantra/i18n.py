@@ -13,14 +13,29 @@ from typing import Any, Dict, Mapping, Optional
 
 from ._cli import YantraError
 
-__all__ = ["LANGUAGES", "RTL_LANGUAGES", "is_rtl", "language_meta"]
+__all__ = ["LANGUAGES", "RTL_LANGUAGES", "builtin_language", "is_rtl", "language_meta"]
 
 #: Languages with built-in interface strings.
-LANGUAGES = ("en", "es", "fr", "de", "pt", "hi", "ne", "zh", "ja", "ar")
+LANGUAGES = ("en", "es", "fr", "de", "pt", "it", "hi", "bn", "ne", "zh", "zh-Hant", "ja", "ko", "id",
+             "ar", "he", "fa", "ur")
 #: Primary language subtags written right to left.
 RTL_LANGUAGES = ("ar", "he", "fa", "ur", "yi", "ps", "sd", "ckb", "dv", "ug")
 
 _TAG = re.compile(r"^[a-z]{2,3}(-[a-z0-9]{1,8})*$", re.IGNORECASE)
+_HANT_REGIONS = ("tw", "hk", "mo")
+
+
+def builtin_language(lang: str) -> Optional[str]:
+    """The built-in table a tag uses, or None (English labels): "pt-BR" -> "pt";
+    Chinese is "zh-Hant" for the Hant script and for TW, HK and MO unless Hans is given."""
+    if not isinstance(lang, str) or not _TAG.match(lang):
+        return None
+    parts = lang.lower().split("-")
+    if parts[0] == "zh":
+        sub = parts[1:]
+        hant = "hant" in sub or ("hans" not in sub and any(s in _HANT_REGIONS for s in sub))
+        return "zh-Hant" if hant else "zh"
+    return parts[0] if parts[0] in LANGUAGES else None
 
 
 def is_rtl(lang: str, dir: Optional[str] = None) -> bool:

@@ -5,14 +5,14 @@
  *   { level: 'error' | 'warning', code, message, ...context }
  */
 import { normalize, GROUP_MAX_DEPTH, has, NODE_SHAPES, EDGE_ARROWS, shapeOf, arrowOf } from './model.js';
-import { TEXT_CAP } from './text.js';
+import { TEXT_CAP, displayWidth } from './text.js';
 import { HUES } from './theme.js';
 import { WINDOW_NODES, WINDOW_EDGES } from './route.js';
 import { computeScene } from './scene.js';
 import { computeSequenceScene, hasSequence } from './sequence.js';
 import { overlaps, segmentsOf, segmentHitsBox } from './route.js';
 import { ICONS } from './icons.js';
-import { STRING_KEYS, LANGUAGES, isLangTag, shippedLang } from './i18n.js';
+import { STRING_KEYS, LANGUAGES, isLangTag, shippedLang, isPluralKey } from './i18n.js';
 import { ALGORITHMS, isTreeAlgorithm, treeIndex } from './tree.js';
 import { ROWS, members } from './entity.js';
 import { END_KINDS, RELATIONS } from './notation.js';
@@ -25,7 +25,19 @@ import { CHART_NEEDS, CHART_SHAPES, checkChartBlock } from './charts.js';
 
 export const BUILTIN_TABS = ['summary', 'step', 'node'];
 
+/**
+ * Title and label budgets are display widths (src/core/text.js displayWidth):
+ * a Latin, Cyrillic, Arabic or Devanagari character counts 1, a full-width Han,
+ * kana or Hangul character 2 and a combining mark 0, so 42 means about 21 CJK
+ * characters. For text without wide characters this is the character count.
+ */
 export const BUDGET = { nodes: 14, edges: 20, labelChars: 28, titleChars: 42 };
+
+/** Size of a text against a width budget: { n, wide } (wide: the width differs from the character count). */
+function budgetSize(text) {
+  const n = displayWidth(text);
+  return { n, wide: n !== [...text].length };
+}
 
 /**
  * Trees stay readable at larger sizes (one reading direction, no crossings):
@@ -110,8 +122,12 @@ function diagramFindings(payload, add) {
     if (nodeIds.has(n.id)) add('error', 'ref/duplicate-node-id', `Duplicate node id "${n.id}".`, { node: n.id });
     nodeIds.add(n.id);
     if (!n.data?.title || typeof n.data.title !== 'string') add('error', 'schema/node-missing-title', `Node "${n.id}" needs data.title (a string).`, { node: n.id });
-    else if (n.data.title.length > BUDGET.titleChars && n.data.title.length <= TEXT_CAP)
-      add('warning', 'content/title-too-long', `Node "${n.id}" title is ${n.data.title.length} chars; keep titles under ${BUDGET.titleChars} and move detail to subtitle/description.`, { node: n.id });
+    else if (displayWidth(n.data.title) > BUDGET.titleChars && n.data.title.length <= TEXT_CAP) {
+      const { n: size, wide } = budgetSize(n.data.title);
+      add('warning', 'content/title-too-long', wide
+        ? `Node "${n.id}" title is ${size} columns wide (full-width characters count as 2); keep titles under ${BUDGET.titleChars} columns and move detail to subtitle/description.`
+        : `Node "${n.id}" title is ${size} chars; keep titles under ${BUDGET.titleChars} and move detail to subtitle/description.`, { node: n.id });
+    }
     if (n.shape !== undefined && !NODE_SHAPES.includes(n.shape))
       add('error', 'schema/node-shape-invalid', `Node "${n.id}" shape "${n.shape}" is not one of ${NODE_SHAPES.join(', ')}.`, { node: n.id });
     if (n.data?.icon && !has(ICONS, n.data.icon))
@@ -144,8 +160,12 @@ function diagramFindings(payload, add) {
     if (e.label !== undefined && typeof e.label !== 'string') add('error', 'schema/edge-label-invalid', `Edge "${e.id}" label must be a string.`, { edge: e.id });
     else if (!e.label) {
       if (!pseudoEnd(e) && !SELF_EXPLAINING.has(e.relation) && !hierarchy?.tree.has(e.id)) add('warning', 'content/edge-missing-label', `Edge "${e.id}" has no label; say what flows along it.`, { edge: e.id });
-    } else if (e.label.length > BUDGET.labelChars && e.label.length <= TEXT_CAP)
-      add('warning', 'content/label-too-long', `Edge "${e.id}" label is ${e.label.length} chars; keep labels under ${BUDGET.labelChars}.`, { edge: e.id });
+    } else if (displayWidth(e.label) > BUDGET.labelChars && e.label.length <= TEXT_CAP) {
+      const { n: size, wide } = budgetSize(e.label);
+      add('warning', 'content/label-too-long', wide
+        ? `Edge "${e.id}" label is ${size} columns wide (full-width characters count as 2); keep labels under ${BUDGET.labelChars} columns.`
+        : `Edge "${e.id}" label is ${size} chars; keep labels under ${BUDGET.labelChars}.`, { edge: e.id });
+    }
   });
 
   // --- entity / class cards and relationship notation -----------------------
@@ -604,7 +624,7 @@ function checkLocale(meta, add) {
   if (!meta.strings || typeof meta.strings !== 'object' || Array.isArray(meta.strings))
     return add('warning', 'i18n/bad-strings', 'meta.strings must be an object of string-key -> text overrides.');
   for (const [key, value] of Object.entries(meta.strings)) {
-    if (!KNOWN_KEYS.has(key)) add('warning', 'i18n/unknown-string', `meta.strings has unknown key "${key}"; see STRING_KEYS in src/core/i18n.js (docs/authoring.md lists them).`, { key });
+    if (!KNOWN_KEYS.has(key) && !isPluralKey(key)) add('warning', 'i18n/unknown-string', `meta.strings has unknown key "${key}"; see STRING_KEYS in src/core/i18n.js (docs/authoring.md lists them).`, { key });
     else if (typeof value !== 'string') add('warning', 'i18n/bad-strings', `meta.strings["${key}"] must be a string.`, { key });
   }
 }
@@ -671,8 +691,10 @@ export function lintPage(page) {
   const answer = page.answer;
   if (!answer || typeof answer !== 'object' || !answer.headline)
     add('error', 'page/missing-answer', 'answer.headline is required: state the conclusion first, in one or two sentences.');
-  else if (answer.headline.length > PAGE_BUDGET.headlineChars)
-    add('warning', 'page/headline-too-long', `answer.headline is ${answer.headline.length} chars; keep it under ${PAGE_BUDGET.headlineChars} and move detail to answer.text.`);
+  else if (displayWidth(answer.headline) > PAGE_BUDGET.headlineChars) {
+    const { n, wide } = budgetSize(answer.headline);
+    add('warning', 'page/headline-too-long', `answer.headline is ${n} ${wide ? 'columns wide (full-width characters count as 2)' : 'chars'}; keep it under ${PAGE_BUDGET.headlineChars} and move detail to answer.text.`);
+  }
 
   const blocks = Array.isArray(page.blocks) ? page.blocks : [];
   if (page.blocks !== undefined && !Array.isArray(page.blocks)) add('error', 'schema/blocks-invalid', 'blocks must be an array.');

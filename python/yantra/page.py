@@ -186,9 +186,10 @@ class Page:
             payload["blocks"] = resolved
         return payload
 
-    def validate(self) -> Dict[str, Any]:
-        """Run the Yantra validator (embedded diagrams included); returns {"valid", "errors", "warnings"}."""
-        return validate_payload(self._resolved(), "page.json")
+    def validate(self, lang: Optional[str] = None) -> Dict[str, Any]:
+        """Run the Yantra validator (embedded diagrams included); returns {"valid", "errors", "warnings"}.
+        `lang` translates the common messages ("auto": the page's language); codes do not change."""
+        return validate_payload(self._resolved(), "page.json", lang=lang)
 
     def build_html(self, output_html: str, force: bool = False) -> str:
         """Validate and write a single-file offline HTML page (prints to A4)."""

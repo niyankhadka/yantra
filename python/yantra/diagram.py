@@ -538,10 +538,11 @@ class Diagram:
         Path(path).write_text(self.to_json(), encoding="utf-8")
         return path
 
-    def validate(self, base_dir: Optional[str] = None) -> Dict[str, Any]:
+    def validate(self, base_dir: Optional[str] = None, lang: Optional[str] = None) -> Dict[str, Any]:
         """Run the Yantra validator; returns {"valid", "errors", "warnings"}. `base_dir` is the
-        folder that detail-diagram paths (``detail(id, "x.json")``) are relative to."""
-        return validate_payload(self.to_dict(), "diagram.json", base_dir)
+        folder that detail-diagram paths (``detail(id, "x.json")``) are relative to. `lang`
+        translates the common messages ("auto": the diagram's language); codes do not change."""
+        return validate_payload(self.to_dict(), "diagram.json", base_dir, lang)
 
     def build_html(self, output_html: str, force: bool = False, base_dir: Optional[str] = None) -> str:
         """Validate and write a single-file offline HTML diagram (every detail level included)."""

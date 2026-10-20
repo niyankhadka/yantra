@@ -39,8 +39,8 @@ direction of the edges, so **edge direction is your layout tool**:
 | Nodes | ≤ 14 (aim for 6–10); trees and mind maps ≤ 40 as they open, ≤ 120 in all | Beyond that, split into an overview plus detail diagrams (see Drill-down), or fold branches |
 | Edges | ≤ 20 | Merge parallel flows that say the same thing |
 | Roles | 3–5 | Colour means something only when it repeats |
-| Node title | ≤ 42 chars | Detail goes in `subtitle` (card) or `description` (inspector) |
-| Edge label | ≤ 28 chars, ideally 1–3 words | Labels name what flows: `JWT`, `Order event`, `SQL write` |
+| Node title | ≤ 42 columns (characters; CJK count 2) | Detail goes in `subtitle` (card) or `description` (inspector) |
+| Edge label | ≤ 28 columns, ideally 1–3 words | Labels name what flows: `JWT`, `Order event`, `SQL write` |
 | Steps per scenario | 3–8 | The first step is usually an overview |
 
 ## Content rules
@@ -352,14 +352,24 @@ See `examples/ecommerce-schema.json` and `examples/payment-classes.json`.
   It sets `<html lang>` (built HTML) and `xml:lang` (SVG), the number format of metrics,
   charts, counters and zoom (`Intl.NumberFormat`), and the language of every fixed label:
   toolbar, tooltips, walkthrough, inspector, help dialog, toasts, export menu, the badge,
-  and the SVG and Markdown exports. Built-in tables: `en es fr de pt hi ne zh ja ar`.
-  A region tag uses its language (`pt-BR` → `pt`). Any other language keeps English labels
+  and the SVG and Markdown exports. Built-in tables: `en es fr de pt it hi bn ne zh zh-Hant
+  ja ko id ar he fa ur`. A region tag uses its language (`pt-BR` → `pt`); Chinese uses
+  Traditional (`zh-Hant`) for `zh-Hant*`, `zh-TW`, `zh-HK` and `zh-MO` (unless `Hans` is
+  given) and Simplified otherwise. Any other language keeps English labels
   and the validator warns `i18n/unknown-lang`; the content still gets its `lang`.
 - Write the payload text (titles, labels, steps) in that language yourself; Yantra only
   translates its own interface. Keyboard keys, Yantra and GitHub are never translated.
 - `meta.strings` overrides labels by key, e.g. `{ "story.next": "Continue" }`; placeholders
   are written `{n}`, `{total}`, `{title}`, `{role}`, `{name}`. The keys are `STRING_KEYS` in
   `src/core/i18n.js` (listed below). `meta.inspector.labels` still renames the built-in tabs.
+- **Plurals.** Counted words (`chart.day1` / `chart.days`, `chart.point1` / `chart.points`)
+  are chosen with `Intl.PluralRules`: the CLDR category `one` uses the first key, anything
+  else the second. A table or `meta.strings` may add `zero`, `two`, `few` or `many` forms
+  as `<key>.<category>`, e.g. `"chart.days.two": "יומיים"`; Arabic and Hebrew ship them.
+- **File size.** A built HTML file carries the English table plus only the tables its
+  payload uses (its `meta.lang` and those of detail diagrams; an answer page: those of its
+  interactive diagrams). The tables live in `src/core/locales/<lang>.js`; the dev viewer and
+  gallery load them all.
 - **Right to left.** `ar`, `he`, `fa`, `ur` (and `yi ps sd ckb dv ug`), or `meta.dir: "rtl"`,
   set `dir="rtl"`: the toolbar, walkthrough, step chips, inspector (docks left), legend and
   badge (bottom-left) mirror, arrow keys follow the reading direction, and the text inside
@@ -374,9 +384,20 @@ See `examples/ecommerce-schema.json` and `examples/payment-classes.json`.
 - Text is measured per script: Han, kana and Hangul count as full width, Devanagari and
   Arabic letters have their own widths and combining marks count as zero, so cards are
   sized without clipping. Chinese and Japanese wrap between characters without spaces
-  (no line starts with `、。」` or ends with `「`). Character budgets (`content/title-too-long`
-  at 42 characters, labels at 28) count characters, so CJK titles are about twice as wide
-  at the limit; keep them shorter.
+  (no line starts with `、。」` or ends with `「`).
+- **Budgets measure width.** `content/title-too-long` (42), `content/label-too-long` (28)
+  and `page/headline-too-long` (220) count display columns, as terminals do: a full-width
+  Han, kana or Hangul character counts 2, a combining mark (Devanagari vowel signs, Arabic
+  harakat) 0, anything else 1. A 20-character Chinese title (40 columns) passes, a
+  25-character one does not; for text without wide characters the count equals its length.
+  The codes are unchanged; the message says "columns wide" when the two differ.
+- **Validation messages in a language.** Codes and English messages are the interface for
+  tooling. For people, `yantra validate file.json --lang ja` (or `--lang auto` for the
+  payload's `meta.lang`; MCP `yantra_validate` takes `lang`; Python `validate(lang=...)`)
+  translates the `content/`, `story/`, `ref/` and `i18n/` messages into any built-in
+  language and keeps the English text in `messageEn`. Other messages (geometry, schema,
+  pages) stay in English: they are rarer and name JSON fields and layout terms that read
+  best as written in the schema.
 
 | Code | Fix |
 |---|---|

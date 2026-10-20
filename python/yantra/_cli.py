@@ -104,11 +104,14 @@ class _PayloadFile:
             os.remove(self.path)
 
 
-def validate_payload(payload: Dict[str, Any], name: str = "payload.json", base_dir: Optional[str] = None) -> Dict[str, Any]:
+def validate_payload(payload: Dict[str, Any], name: str = "payload.json", base_dir: Optional[str] = None,
+                     lang: Optional[str] = None) -> Dict[str, Any]:
     """Validate a diagram or page payload; returns ``{"valid", "errors", "warnings"}``.
-    `base_dir`: folder that relative file references in the payload resolve against."""
+    `base_dir`: folder that relative file references in the payload resolve against.
+    `lang`: messages in a built-in language ("auto": the payload's meta.lang); codes stay
+    the same, translated findings keep the English text in ``messageEn``."""
     with _PayloadFile(payload, name, base_dir) as file:
-        res = run_cli(["validate", file, "--json"], check=False)
+        res = run_cli(["validate", file, "--json"] + (["--lang", lang] if lang else []), check=False)
     try:
         return json.loads(res.stdout)
     except json.JSONDecodeError as exc:

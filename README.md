@@ -184,8 +184,12 @@ reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&
 Set `meta.lang` (BCP 47) on a diagram or page: the viewer chrome, answer-page labels, the
 badge and the SVG / Markdown exports switch language, `<html lang>` and `xml:lang` are set,
 and numbers in metrics and charts use that language's format. Built in: English, Spanish,
-French, German, Portuguese, Hindi, Nepali, Chinese, Japanese and Arabic; other languages keep
-English labels (the validator warns) and `meta.strings` overrides any label by key.
+French, German, Portuguese, Italian, Hindi, Bengali, Nepali, Chinese (Simplified, and
+Traditional for `zh-Hant`, `zh-TW`, `zh-HK`), Japanese, Korean, Indonesian, Arabic, Hebrew,
+Persian and Urdu; other languages keep English labels (the validator warns) and
+`meta.strings` overrides any label by key. A built file carries only English plus the
+languages it uses. `yantra validate --lang ja` (MCP: `lang`) translates the common
+validation messages; codes stay the same.
 Arabic, Hebrew, Persian and Urdu (or `meta.dir: "rtl"`) mirror the toolbar, walkthrough,
 inspector, legend and badge; the diagram itself keeps its layout direction. Card text is
 measured per script (full-width CJK, Devanagari, Arabic) and CJK wraps without spaces.
@@ -244,7 +248,8 @@ src/core/              Shared engine: model, layout, routing, scene, lint, SVG/M
   page.js              Answer pages
   charts.js            Page charts, gantt plans, matrices (inline SVG)
   drill.js             Drill-down levels and link sanitising
-  i18n.js              Interface strings (10 languages), RTL, number formats
+  i18n.js              Interface strings (English; locales/: 17 more languages), RTL, plurals, number formats
+  lintmessages.js      Translated validation messages (`validate --lang`)
 src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos

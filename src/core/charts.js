@@ -46,6 +46,8 @@ export function chartStringsFor(L) {
   // English without chart overrides keeps the original set (and its exact wording)
   if (!L || (L.ui === 'en' && !Object.keys(L.overrides || {}).some((k) => k.startsWith('chart.')))) return CHART_STRINGS;
   const { t, num } = L;
+  // Counted words follow the language's plural rules (Intl.PluralRules)
+  const count = (n, one, other) => (L.plural ? L.plural(n, one, other, { n: num(n) }) : t(n === 1 ? one : other, { n: num(n) }));
   let months = CHART_STRINGS.months;
   if (L.ui !== 'en') {
     try {
@@ -63,12 +65,12 @@ export function chartStringsFor(L) {
     trend: t('chart.trend'),
     series: (n) => t('chart.series', { n: num(n) }),
     more: (n) => t('chart.more', { n: num(n) }),
-    days: (n) => t(n === 1 ? 'chart.day1' : 'chart.days', { n: num(n) }),
+    days: (n) => count(n, 'chart.day1', 'chart.days'),
     dayN: (n) => t('chart.day', { n: num(n) }),
     quadrants: ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].map((q) => t(`chart.${q}`)),
     months,
     kinds,
-    summary: (kind, n, s) => t('chart.summary', { kind, points: `${t(n === 1 ? 'chart.point1' : 'chart.points', { n: num(n) })}${s > 1 ? `, ${t('chart.seriesCount', { n: num(s) })}` : ''}` })
+    summary: (kind, n, s) => t('chart.summary', { kind, points: `${count(n, 'chart.point1', 'chart.points')}${s > 1 ? `, ${t('chart.seriesCount', { n: num(s) })}` : ''}` })
   };
 }
 

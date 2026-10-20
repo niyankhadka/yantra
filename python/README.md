@@ -148,7 +148,9 @@ p.matrix([("Alerts", 2, 8), ("Chat", 8, 3)], x="Effort", y="Value",
 
 Languages: `d.language("ne")`, `Page(..., lang="ar")` or `p.language("ar", strings={"page.answer": "..."})`
 set `meta.lang` / `meta.dir` / `meta.strings` (labels, number formats, right to left; see
-`docs/authoring.md`). `yantra.LANGUAGES` lists the built-in tables, `yantra.is_rtl(lang)` the direction.
+`docs/authoring.md`). `yantra.LANGUAGES` lists the built-in tables, `yantra.builtin_language("zh-TW")` the
+one a tag uses (`"zh-Hant"`), `yantra.is_rtl(lang)` the direction, and `d.validate(lang="auto")` returns
+the common validation messages in the diagram language (codes unchanged, English in `messageEn`).
 
 Examples: `python python/example.py [out-dir]`, `python python/example_page.py [out-dir]`
 (default: the OS temp dir). Tests: `python -m unittest discover -s python/tests -v`.

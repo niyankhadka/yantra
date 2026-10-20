@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "python"))
 
-from yantra import LANGUAGES, RTL_LANGUAGES, Diagram, Page, YantraError, blocks, field, is_rtl, method  # noqa: E402
+from yantra import LANGUAGES, RTL_LANGUAGES, Diagram, builtin_language, Page, YantraError, blocks, field, is_rtl, method  # noqa: E402
 
 SCHEMAS = {p.name: json.loads(p.read_text(encoding="utf-8")) for p in (ROOT / "schemas").glob("*.json")}
 HAS_NODE = shutil.which("node") is not None and (ROOT / "node_modules").exists()
@@ -568,6 +568,30 @@ class LanguageTests(unittest.TestCase):
         js = json.loads(res.stdout)
         self.assertEqual(list(LANGUAGES), js["langs"])
         self.assertEqual(list(RTL_LANGUAGES), js["rtl"])
+
+    @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are required")
+    def test_builtin_language_matches_js(self) -> None:
+        tags = ["en", "pt-BR", "zh", "zh-CN", "zh-TW", "zh-HK", "zh-MO", "zh-Hant", "zh-Hans-TW",
+                "ko-KR", "he", "fa-IR", "ur", "bn-BD", "id", "it-CH", "sw", "not a tag", "ZH-tw"]
+        script = ("import('./src/core/i18n.js').then(m => console.log(JSON.stringify("
+                  + json.dumps(tags) + ".map(t => m.shippedLang(t)))))")
+        res = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual([builtin_language(t) for t in tags], json.loads(res.stdout))
+        self.assertEqual(builtin_language("zh-TW"), "zh-Hant")
+
+    @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are required")
+    def test_validate_messages_in_a_language(self) -> None:
+        d = Diagram("Pedido").language("es")
+        d.add_node("a", "Tienda").connect(d.add_node("b", "Pedidos"), "")
+        d.add_step("Todo")
+        english = d.validate()
+        spanish = d.validate(lang="auto")
+        codes = [w["code"] for w in english["warnings"]]
+        self.assertEqual(codes, [w["code"] for w in spanish["warnings"]])
+        translated = [w for w in spanish["warnings"] if "messageEn" in w]
+        self.assertTrue(translated, spanish)
+        self.assertNotEqual(translated[0]["message"], translated[0]["messageEn"])
 
     @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are required")
     def test_language_validates_and_builds(self) -> None:

@@ -16,7 +16,7 @@ import { getMode } from '../core/model.js';
 import { isEntity, members, memberKey, memberName, memberType } from '../core/entity.js';
 import { notationText } from '../core/notation.js';
 import { REPO_URL, GITHUB_MARK } from '../core/icons.js';
-import { localeOf } from '../core/i18n.js';
+import { localeOf, registerStrings } from '../core/i18n.js';
 import { hscroll, menu, tooltips } from './ui.js';
 import { hashParams } from './hash.js';
 import { Renderer } from './renderer.js';
@@ -1328,7 +1328,19 @@ function download(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Interface tables a built file embeds for its languages (the bundle itself carries English only). */
+function readEmbeddedStrings() {
+  try {
+    const raw = document.getElementById('yantra-strings')?.textContent?.trim();
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error('[yantra] embedded strings are not valid JSON:', err);
+    return null;
+  }
+}
+
 async function boot() {
+  registerStrings(readEmbeddedStrings());
   const embedded = readEmbeddedPayload();
   if (!embedded) EXAMPLES = (await import('./examples.js')).EXAMPLES;
   new App(embedded);

@@ -7,6 +7,14 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Built HTML carries English plus only the languages its payload uses (answer pages: those
+  of their interactive diagrams); every interface table moved to `src/core/locales/`. An
+  English diagram is about 389 kB instead of 469 kB, and adding languages no longer grows it.
+- Title, edge-label and headline budgets measure display width: a full-width (CJK)
+  character counts 2 and a combining mark 0, so 42 means about 21 Chinese characters.
+
 ### Added
 
 - Charts and plans on answer pages: bar, column, line, area, pie and donut charts,
@@ -35,6 +43,13 @@ All notable changes to Yantra are documented here. The format follows
   `meta.dir: "rtl"`) mirror the chrome while diagrams keep their layout. Text is measured
   per script (full-width CJK, Devanagari, Arabic) and CJK wraps without spaces.
   `Diagram.language()` / `Page(lang=...)` in the Python SDK; Nepali and Arabic examples.
+- More languages: Italian, Bengali, Korean, Indonesian, Hebrew, Persian, Urdu and
+  Traditional Chinese (`zh-Hant`; `zh-TW`, `zh-HK` and `zh-MO` use it). Counted words follow
+  `Intl.PluralRules` (tables may add `zero` / `two` / `few` / `many` forms, as Arabic and
+  Hebrew do).
+- `yantra validate --lang xx` (`auto`: the payload's language), a `lang` input on the MCP
+  validate tool and `validate(lang=...)` in the Python SDK translate the content/, story/,
+  ref/ and i18n/ messages; codes are unchanged and the English text stays in `messageEn`.
 - Release tooling: npm `files` whitelist with a prebuilt viewer (`prepack`), Python
   packaging metadata, a tag-triggered release workflow, contribution and security guides,
   issue and pull request templates.

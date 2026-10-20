@@ -13,7 +13,7 @@ from __future__ import annotations
 from . import blocks
 from ._cli import YantraError, cli_command, import_diagram
 from .diagram import ALGORITHMS, ARROWS, COLORS, END_KINDS, RELATIONS, SHAPES, Diagram, Edge, Group, Node, Scenario, Step, field, method
-from .i18n import LANGUAGES, RTL_LANGUAGES, is_rtl
+from .i18n import LANGUAGES, RTL_LANGUAGES, builtin_language, is_rtl
 from .page import Page
 
 __version__ = "2.0.0"
@@ -21,5 +21,5 @@ __version__ = "2.0.0"
 __all__ = [
     "Diagram", "Node", "Edge", "Step", "Scenario", "Group", "Page", "blocks",
     "YantraError", "COLORS", "SHAPES", "ARROWS", "RELATIONS", "END_KINDS", "ALGORITHMS", "field", "method",
-    "LANGUAGES", "RTL_LANGUAGES", "is_rtl", "cli_command", "import_diagram", "__version__",
+    "LANGUAGES", "RTL_LANGUAGES", "builtin_language", "is_rtl", "cli_command", "import_diagram", "__version__",
 ]

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Yantra CLI.
- *   yantra validate <diagram.json> [--json]
+ *   yantra validate <diagram.json> [--json] [--lang xx]
  *   yantra build <diagram.json> [-o out.html]
  *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
  *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id]
@@ -14,6 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { lint } from '../src/core/lint.js';
+import { localizeFindings } from '../src/core/lintmessages.js';
 import { renderSvg } from '../src/core/svg.js';
 import { sceneForView } from '../src/core/sequence.js';
 import { toMarkdown } from '../src/core/markdown.js';
@@ -28,7 +29,7 @@ const HELP = `Yantra - interactive, step-by-step diagrams
 Works with diagrams and with one-page answers (payloads with "kind": "page").
 
 Usage
-  yantra validate <file.json> [--json]         Check schema, references and rendered geometry
+  yantra validate <file.json> [--json]         Check schema, references and rendered geometry  [--lang xx]
   yantra build <file.json> [-o out.html]       Validate, then write a single offline HTML file
   yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
   yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--width] [--height]
@@ -41,6 +42,8 @@ Usage
 Options
   --force       build even when validation reports errors
   --json        machine-readable validation output
+  --lang xx     validation messages in a built-in language (es, ja, ar...; codes stay the same);
+                "auto" uses the payload's meta.lang. Untranslated messages stay in English
   --level id    a detail diagram (drill-down level) instead of the overview
   --all-levels  Markdown export: append every detail diagram after the overview
 
@@ -57,7 +60,7 @@ function parse(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page'].includes(key)) out[key] = argv[++i];
+      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang'].includes(key)) out[key] = argv[++i];
       else out[key] = true;
     } else out._.push(a);
   }
@@ -152,7 +155,9 @@ const [cmd = 'help', input] = args._;
 try {
   switch (cmd) {
     case 'validate': {
-      const report = lint(load(input));
+      const payload = load(input);
+      const lang = args.lang === 'auto' ? payload?.meta?.lang : args.lang;
+      const report = localizeFindings(lint(payload), lang);
       if (args.json) console.log(JSON.stringify(report, null, 2));
       else printReport(report, input);
       process.exit(report.valid ? 0 : 1);

@@ -57,6 +57,19 @@ function charEm(ch) {
   return 0.56;
 }
 
+/**
+ * Display width in columns, the way terminals and East Asian typesetting count
+ * it: full-width characters (Han, kana, Hangul, full-width forms, emoji) take 2,
+ * combining marks and format characters 0, everything else 1. The validator's
+ * title and label budgets use it, so a CJK title is judged by how wide it is
+ * rather than by how many characters it has.
+ */
+export function displayWidth(str) {
+  let w = 0;
+  for (const ch of String(str ?? '')) w += MARK.test(ch) ? 0 : isWide(ch.codePointAt(0)) ? 2 : 1;
+  return w;
+}
+
 const monoEm = (ch) => (MARK.test(ch) ? 0 : isWide(ch.codePointAt(0)) ? 1.0 : 0.6);
 
 export function textWidth(str, fontSize, { weight = 400, mono = false } = {}) {

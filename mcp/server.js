@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { lint } from '../src/core/lint.js';
+import { localizeFindings } from '../src/core/lintmessages.js';
 import { sceneForView } from '../src/core/sequence.js';
 import { renderSvg } from '../src/core/svg.js';
 import { toMarkdown } from '../src/core/markdown.js';
@@ -45,8 +46,8 @@ const TOOLS = [
   },
   {
     name: 'yantra_validate',
-    description: 'Validate a diagram: schema, references, story consistency, and rendered geometry (overlaps, edges through nodes, label collisions). Detail diagrams (drill-down levels in `diagrams`) are checked too, plus drill targets, cycles, depth and $ref files. Returns errors/warnings with stable codes.',
-    inputSchema: { type: 'object', properties: source }
+    description: 'Validate a diagram: schema, references, story consistency, and rendered geometry (overlaps, edges through nodes, label collisions). Detail diagrams (drill-down levels in `diagrams`) are checked too, plus drill targets, cycles, depth and $ref files. Returns errors/warnings with stable codes. Pass lang (e.g. "es", "ja", "ar", or "auto" for its meta.lang) to get the common content/story/ref/i18n messages translated; each translated finding keeps the English text in messageEn.',
+    inputSchema: { type: 'object', properties: { ...source, lang: { type: 'string', description: 'BCP 47 tag of a built-in language for the messages, or "auto" (the payload meta.lang). Codes do not change; untranslated messages stay in English.' } } }
   },
   {
     name: 'yantra_build',
@@ -208,8 +209,10 @@ function call(name, args) {
       if (!fs.existsSync(file)) throw new Error(`Unknown example "${args.name}".`);
       return JSON.parse(fs.readFileSync(file, 'utf-8'));
     }
-    case 'yantra_validate':
-      return lint(loadPayload(args));
+    case 'yantra_validate': {
+      const payload = loadPayload(args);
+      return localizeFindings(lint(payload), args.lang === 'auto' ? payload?.meta?.lang : args.lang);
+    }
     case 'yantra_build': {
       const payload = loadPayload(args);
       const out = outputPath(args.outputPath, ['.html']);

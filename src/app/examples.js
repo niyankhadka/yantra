@@ -18,6 +18,11 @@ import ecommerceSchema from '../../examples/ecommerce-schema.json';
 import paymentClasses from '../../examples/payment-classes.json';
 import platform from '../../examples/platform-overview.json';
 import ticketLifecycle from '../../examples/ticket-lifecycle.json';
+import { registerStrings } from '../core/i18n.js';
+import { TABLES } from '../core/locales/index.js';
+
+// Gallery examples come in many languages: load every interface table (built files embed only theirs)
+registerStrings(TABLES);
 
 /** Built-in gallery, shown only when the page has no embedded payload. */
 export const EXAMPLES = [
