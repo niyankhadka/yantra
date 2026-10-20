@@ -39,6 +39,11 @@ All notable changes to Yantra are documented here. The format follows
   or buy a CRM, Black Friday slowdown). Every answer page is in the example menu.
 - `renderPage(page, { frameSandbox })` sets the sandbox of live diagram embeds (default
   unchanged).
+- Answer page contents: the chip of the section being read is highlighted
+  (`aria-current`), links scroll smoothly (instantly with reduced motion) and move focus to
+  the section heading, and on long pages the row sticks to the top when it fits in a few
+  lines. Markdown export (`export -f md`) starts with the same contents list, with matching
+  anchors. `pageContents(page)` returns the anchors and links.
 
 ### Changed
 
@@ -50,9 +55,17 @@ All notable changes to Yantra are documented here. The format follows
 - Routes and edge labels keep clear of group fold buttons as well as titles.
 
 - `examples/platform-overview.json` keeps its search level in `examples/levels/` as a `$ref`.
+- Contents anchors keep non-Latin titles (Arabic, CJK, Devanagari…) instead of
+  `section`, `section-2`…; Latin anchors are unchanged. `examples/answer-order-fulfilment-arabic.json`
+  shows its contents.
+- The contents row lines wrapped chips up after the "Contents" label (the label sits above
+  them on phones); long titles end in an ellipsis with the full title as a tooltip.
 
 ### Fixed
 
+- Contents links on answer pages opened in the viewer's gallery loaded the viewer inside the
+  page frame (a srcdoc frame resolves `#anchor` against the viewer's URL); they now scroll
+  within the page, and the URL hash is only written in built files.
 - Answer pages no longer scroll sideways on wide screens: a chart's hidden data table is
   clipped inside a wrapper (a table ignored the 1 px width).
 - Bar chart and gantt labels are shortened only when their measured width does not fit;

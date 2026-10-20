@@ -38,7 +38,8 @@ export function exited(proc, ms = 10000) {
  * A headless Chrome / Edge driven over the DevTools protocol on a pipe
  * (`--remote-debugging-pipe`: JSON messages separated by NUL on fds 3 and 4),
  * so no WebSocket client or npm package is needed. `open(url)` returns a page
- * with `eval(expression)` (awaits promises, returns the value) and `waitFor`.
+ * with `eval(expression)` (awaits promises, returns the value), `waitFor` and
+ * `send(method, params)` for raw protocol commands.
  */
 export async function startBrowser(executable) {
   const profile = tempDir('yantra-cdp-');
@@ -84,6 +85,8 @@ export async function startBrowser(executable) {
       const { targetId } = await send('Target.createTarget', { url });
       const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
       const page = {
+        /** Any DevTools protocol command on this tab (Input.dispatchMouseEvent, Emulation.*, …). */
+        send: (method, params = {}) => send(method, params, sessionId),
         async eval(expression) {
           const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }, sessionId);
           if (r.exceptionDetails) throw new Error(`${expression}: ${r.exceptionDetails.exception?.description || r.exceptionDetails.text}`);
@@ -105,7 +108,12 @@ export async function startBrowser(executable) {
       await send('Browser.close').catch(() => {});
       if (proc.exitCode === null && proc.signalCode === null) proc.kill();
       await exited(proc);
-      removeDir(profile);
+      // Browser helper processes can hold the throwaway profile a little longer on Windows
+      try {
+        fs.rmSync(profile, { recursive: true, force: true, maxRetries: 30, retryDelay: 200 });
+      } catch {
+        /* left in the temp folder */
+      }
     }
   };
 }

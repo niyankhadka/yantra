@@ -57,18 +57,34 @@ const cell = (v) => mi(v).replace(/\|/g, '\\|');
 export const isSafeImageSrc = (src) =>
   typeof src === 'string' && (/^https:\/\/[^\s"'<>]+$/i.test(src.trim()) || /^data:image\/(png|jpe?g|gif|webp|avif|svg\+xml)[;,]/i.test(src.trim()));
 
-/** Stable anchor id from a block title: lower-case ASCII slug. */
+/**
+ * Stable anchor id from a block title: lower-case letters and digits joined by "-".
+ * Latin accents are dropped (Café -> cafe); other scripts (Arabic, CJK, Devanagari…)
+ * keep their letters and combining marks, so their anchors stay readable and distinct.
+ */
 export function slug(text) {
-  const s = String(text ?? '')
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+  const s = Array.from(
+    String(text ?? '')
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .normalize('NFC')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{M}\p{N}]+/gu, '-')
+      .replace(/^-+|-+$/g, '')
+  )
     .slice(0, 60)
+    .join('')
     .replace(/-+$/, '');
   return s || 'section';
 }
+
+/** A title as plain text (light markdown removed), for title attributes and tooltips. */
+const plain = (text) =>
+  String(text ?? '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 /** Anchor ids for titled blocks (null when untitled), de-duplicated with -2, -3 suffixes. */
 export function blockAnchors(blocks) {
@@ -250,6 +266,20 @@ export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null, pa
 export const TOC_MIN_BLOCKS = 6;
 
 /**
+ * The page's contents: `anchors` (one per block, null when untitled) and `items`
+ * ({ id, title } for every titled block that renders), empty when the contents row
+ * is not shown. Shared by the HTML page and its Markdown export, so links match.
+ */
+export function pageContents(page) {
+  const meta = page?.meta || {};
+  const all = list(page?.blocks);
+  const anchors = blockAnchors(all);
+  const titled = all.map((b, i) => (anchors[i] && own(BLOCKS, b?.type) ? { id: anchors[i], title: b.title } : null)).filter(Boolean);
+  const show = meta.toc === true ? titled.length > 0 : meta.toc !== false && titled.length >= TOC_MIN_BLOCKS;
+  return { anchors, items: show ? titled : [] };
+}
+
+/**
  * @param page    page payload (diagram `src` references must already be resolved)
  * @param options { logos: { light, dark } (raw SVG strings, optional),
  *                  viewerHtml: (diagramPayload, block) => standalone viewer HTML, for
@@ -273,13 +303,12 @@ export function renderPage(page, { logos = {}, viewerHtml = null, frameSandbox =
   const byline = [meta.author, meta.date, meta.updated ? L.t('page.updated', { date: meta.updated }) : null].filter(Boolean).map(h).join(' · ');
 
   const all = list(page.blocks);
-  const anchors = blockAnchors(all);
+  const { anchors, items } = pageContents(page);
   let uid = 0;
   const blocks = all.map((b, i) => renderBlock(b, `b${++uid}`, { anchor: anchors[i], viewerHtml, pageMeta: meta, locale: L, frameSandbox })).join('\n');
-  const titled = all.map((b, i) => (anchors[i] && BLOCKS[b?.type] ? { id: anchors[i], title: b.title } : null)).filter(Boolean);
-  const showToc = meta.toc === true ? titled.length > 0 : meta.toc !== false && titled.length >= TOC_MIN_BLOCKS;
-  const toc = showToc
-    ? `<nav class="p-toc" aria-label="${h(L.t('page.contents'))}"><span class="p-label">${h(L.t('page.contents'))}</span><ol>${titled.map((t) => `<li><a href="#${h(t.id)}">${inline(t.title)}</a></li>`).join('')}</ol></nav>`
+  // Chips truncate long titles; the full title is in the tooltip
+  const toc = items.length
+    ? `<nav class="p-toc" aria-label="${h(L.t('page.contents'))}"><span class="p-label" aria-hidden="true">${h(L.t('page.contents'))}</span><ol>${items.map((t) => `<li><a href="#${h(t.id)}" title="${h(plain(t.title))}">${inline(t.title)}</a></li>`).join('')}</ol></nav>`
     : '';
 
   return `<!DOCTYPE html>
@@ -328,6 +357,7 @@ ${blocks}
 (function(){var r=document.documentElement,prev,shut=[];addEventListener('beforeprint',function(){prev=r.getAttribute('data-theme');r.setAttribute('data-theme','light');shut=[].filter.call(document.querySelectorAll('.p-faq details'),function(d){return !d.open});shut.forEach(function(d){d.open=true})});addEventListener('afterprint',function(){if(prev)r.setAttribute('data-theme',prev);shut.forEach(function(d){d.open=false});shut=[]})})();
 ${FRAME_SCRIPT}
 ${SCROLL_SCRIPT}
+${TOC_SCRIPT}
 ${CHART_SCRIPT}
 </script>
 </body>
@@ -349,8 +379,13 @@ function pageMarkdown(page) {
   if (answer.text) out.push(mdBlock(answer.text), '');
   list(answer.points).forEach((p) => out.push(`- ${mi(p)}`));
   if (list(answer.points).length) out.push('');
-  for (const b of list(page.blocks)) {
+  // Contents with the page's own anchors: an explicit <a id> before each heading keeps
+  // the links working whatever slugs the Markdown renderer makes up
+  const { anchors, items } = pageContents(page);
+  if (items.length) out.push(`**${mi(t('page.contents'))}**`, '', ...items.map((it) => `- [${mi(plain(it.title))}](#${it.id})`), '');
+  for (const [i, b] of list(page.blocks).entries()) {
     if (!b || typeof b !== 'object') continue;
+    if (b.title && items.length && anchors[i]) out.push(`<a id="${h(anchors[i])}"></a>`, '');
     if (b.title) out.push(`## ${mi(b.title)}`, '');
     switch (b.type) {
       case 'text':
@@ -447,6 +482,36 @@ const FRAME_SCRIPT = `(function(){var r=document.documentElement,fs=document.que
 function send(f){try{f.contentWindow.postMessage({yantraTheme:r.getAttribute('data-theme')},'*')}catch(e){}}
 fs.forEach(function(f){f.addEventListener('load',function(){send(f)});send(f)});
 new MutationObserver(function(){fs.forEach(send)}).observe(r,{attributes:true,attributeFilter:['data-theme']})})();`;
+
+/**
+ * In-page links and the contents row. Clicks on "#id" links scroll this window only
+ * (smooth unless reduced motion is preferred) and move focus to the section heading:
+ * in a srcdoc or blob frame (the viewer's gallery) "#id" would resolve against the
+ * parent's URL and navigate the frame, so the hash is only written on http(s) and file
+ * pages. The row sticks to the top on long pages when it fits in a few lines (its height
+ * feeds the sections' scroll-margin-top), and the chip of the section being read gets
+ * aria-current (IntersectionObserver, plus scroll for the end of the page).
+ */
+const TOC_SCRIPT = `(function(){var r=document.documentElement,toc=document.querySelector('.p-toc'),own=/^(https?|file):$/.test(location.protocol);
+function byId(href){var id=href.slice(1);try{id=decodeURIComponent(id)}catch(e){}return id&&document.getElementById(id)}
+function reduce(){return !!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)}
+var links=toc?[].slice.call(toc.querySelectorAll('a[href^="#"]')):[],secs=links.map(function(a){return byId(a.getAttribute('href'))}),pin=null,cur=-1,tocH=0,sticky=false;
+function mark(i){if(i===cur)return;cur=i;links.forEach(function(a,k){if(k===i)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current')})}
+function go(sec,smooth){var m=parseFloat(getComputedStyle(sec).scrollMarginTop)||0;scrollTo({top:Math.max(0,sec.getBoundingClientRect().top+scrollY-m),behavior:smooth&&!reduce()?'smooth':'auto'})}
+document.addEventListener('click',function(e){if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;var a=e.target.closest&&e.target.closest('a[href^="#"]');if(!a)return;var sec=byId(a.getAttribute('href'));
+if(!sec){if(!own)e.preventDefault();return}e.preventDefault();go(sec,true);var hd=sec.querySelector('h3')||sec;if(!hd.hasAttribute('tabindex'))hd.setAttribute('tabindex','-1');hd.focus({preventScroll:true});
+var i=secs.indexOf(sec);if(i>=0){pin=i;mark(i)}if(own&&byId(location.hash)!==sec){try{history.pushState(null,'',a.getAttribute('href'))}catch(x){}}});
+if(!toc||!links.length)return;
+function fit(){toc.classList.remove('is-sticky','is-stuck');var h=toc.offsetHeight;sticky=innerWidth>760&&h<=Math.max(60,innerHeight*.14)&&r.scrollHeight>innerHeight*1.8;toc.classList.toggle('is-sticky',sticky);tocH=sticky?toc.offsetHeight:0;r.style.setProperty('--p-toc-h',tocH+'px');update()}
+function update(){if(sticky)toc.classList.toggle('is-stuck',toc.getBoundingClientRect().top<=1);if(pin!==null)return;var line=tocH+Math.min(140,innerHeight*.25),best=-1,top=-Infinity;
+if(innerHeight+scrollY>=r.scrollHeight-2){for(var j=secs.length-1;j>=0;j--)if(secs[j]&&secs[j].getBoundingClientRect().top<innerHeight){best=j;break}}
+else secs.forEach(function(s,k){if(!s)return;var t=s.getBoundingClientRect().top;if(t<=line&&t>top+1){best=k;top=t}});mark(best)}
+// The reader takes over (a click on a chip re-pins right after)
+['wheel','touchstart','keydown','pointerdown'].forEach(function(n){addEventListener(n,function(){if(pin!==null){pin=null;requestAnimationFrame(update)}},{passive:true})});
+var q=false;addEventListener('scroll',function(){if(q)return;q=true;requestAnimationFrame(function(){q=false;update()})},{passive:true});
+addEventListener('resize',fit);addEventListener('popstate',function(){pin=null;update()});
+if('IntersectionObserver' in window){var io=new IntersectionObserver(function(){update()},{threshold:[0,1]});secs.forEach(function(s){if(s)io.observe(s)})}
+fit();addEventListener('load',function(){fit();var s=own&&location.hash&&byId(location.hash);if(s&&secs.indexOf(s)>=0){go(s,false);pin=secs.indexOf(s);mark(pin)}})})();`;
 
 /** Drag / shift-wheel scrolling with edge fades for wide tables and figures on pages (RTL scrollLeft runs negative). */
 const SCROLL_SCRIPT = `(function(){document.querySelectorAll('.p-scroll').forEach(function(el){
@@ -583,13 +648,21 @@ h1{margin:0 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.15;letter-spacing
 .p-keypoints{margin:12px 0 0!important;padding:0!important;list-style:none;display:grid;gap:6px}
 .p-keypoints li{position:relative;padding-inline-start:24px}
 .p-keypoints li::before{content:"";position:absolute;inset-inline-start:2px;top:.45em;width:12px;height:7px;border-left:2px solid var(--y-accent);border-bottom:2px solid var(--y-accent);transform:rotate(-45deg)}
-.p-toc{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;margin:-8px 0 28px}
-.p-toc .p-label{margin:0;margin-inline-end:4px}
-.p-toc ol{display:contents;list-style:none}
-.p-toc li{display:block}
-.p-toc a{display:inline-block;padding:3px 10px;border:1px solid var(--y-border);border-radius:999px;background:var(--y-surface);color:var(--y-ink-2);font-size:13px;text-decoration:none}
-.p-toc a:hover,.p-toc a:focus-visible{border-color:var(--y-accent);color:var(--y-accent)}
-.p-grid>.p-block{scroll-margin-top:16px}
+.p-toc{display:flex;align-items:flex-start;gap:6px 14px;margin:-8px 0 28px}
+.p-toc .p-label{flex:none;margin:0;line-height:28px}
+.p-toc ol{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 auto;min-width:0;margin:0;padding:0;list-style:none}
+.p-toc li{display:block;min-width:0;max-width:min(100%,300px);margin:0}
+.p-toc a{display:block;max-width:100%;height:28px;padding:0 11px;border:1px solid var(--y-border);border-radius:999px;background:var(--y-surface);color:var(--y-ink-2);font-size:13px;line-height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none;transition:border-color .15s,color .15s,background-color .15s}
+.p-toc a:hover{border-color:var(--y-accent);color:var(--y-accent)}
+.p-toc a:focus-visible{outline:2px solid var(--y-accent);outline-offset:2px}
+.p-toc a[aria-current="true"]{border-color:var(--y-accent);background:var(--y-accent-soft);color:var(--y-accent)}
+.p-toc.is-sticky{position:sticky;top:0;z-index:5;margin-inline:-12px;padding:8px 12px;background:var(--y-bg);border-bottom:1px solid transparent;transition:border-color .15s}
+.p-toc.is-stuck{border-bottom-color:var(--y-border)}
+.p-grid>.p-block{scroll-margin-top:calc(var(--p-toc-h,0px) + 16px)}
+.p-block>h3[tabindex]:focus{outline:none}
+.p-block>h3[tabindex]:focus-visible{color:var(--y-accent)}
+@media (prefers-reduced-motion:reduce){.p-toc a,.p-toc.is-sticky{transition:none}}
+@media (max-width:520px){.p-toc{flex-direction:column;gap:6px}.p-toc .p-label{line-height:1.4}}
 .p-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 24px}
 .p-grid>.p-block{grid-column:1/-1}
 .p-grid>.p-block.is-half{grid-column:span 1}

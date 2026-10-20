@@ -89,7 +89,7 @@ test('anchors are stable slugs, de-duplicated; contents shown on request or from
   assert.doesNotMatch(renderPage(page(five)), /class="p-toc"/);
   const forced = renderPage(page(five, { toc: true }));
   assert.match(forced, /<nav class="p-toc" aria-label="Contents">/);
-  assert.match(forced, /<a href="#a">A<\/a>/);
+  assert.match(forced, /<a href="#a" title="A">A<\/a>/);
   assert.match(forced, /<section class="p-block p-block--text" id="a">/);
   assert.match(renderPage(page([...five, t('A')])), /href="#a-2"/);
   assert.doesNotMatch(renderPage(page([...five, t('F')], { toc: false })), /class="p-toc"/);

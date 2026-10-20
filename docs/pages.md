@@ -88,7 +88,15 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
   A `src` diagram's `$ref` levels are loaded relative to its own file, inside the page's folder.
 - Contents: a row of links to every titled block appears when `meta.toc` is `true`, or by
   itself from 6 titled blocks (`meta.toc: false` hides it). Anchors are the slug of the
-  block title (`#follow-up-actions`), with `-2`, `-3` for repeats, so links stay stable.
+  block title (`#follow-up-actions`), with `-2`, `-3` for repeats, so links stay stable;
+  Latin accents are dropped (`Café` -> `cafe`) and other scripts keep their letters
+  (`#مسار-الطلب`). A link scrolls smoothly (instantly when reduced motion is preferred),
+  moves focus to the section heading and, in a built file, updates the URL; in the viewer's
+  gallery it scrolls inside the page frame only. The chip of the section being read is
+  highlighted (`aria-current`). On long pages the row sticks to the top of the window when
+  it fits in a few lines (not on phones), and sections stop just below it. Long titles end
+  in an ellipsis (full title on hover). The row is left out of print; the Markdown export
+  starts with the same list, linked to `<a id>` anchors before each heading.
 - `meta.updated` adds "Updated …" to the byline next to `meta.date`.
 
 ## Charts
