@@ -1599,3 +1599,125 @@ kbd {
     display: inline;
   }
 }
+
+/* --- Drill-down breadcrumb and links ---------------------------------------- */
+.y-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 16px;
+  color: var(--y-ink-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.y-crumbs ol {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.y-crumbs li {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.y-crumbs li + li::before {
+  content: '›';
+  padding: 0 6px;
+  color: var(--y-ink-3);
+}
+
+.y-crumbs li span,
+.y-crumb {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.y-crumb,
+.y-crumb-back {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--y-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.y-crumb:hover {
+  text-decoration: underline;
+}
+
+.y-crumb-back {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.y-crumb-back:hover {
+  background: var(--y-surface-2);
+}
+
+.y-drill-open {
+  width: 100%;
+  margin: 4px 0 10px;
+  justify-content: flex-start;
+  color: var(--y-accent);
+}
+
+.y-drill-open span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.y-ext-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+  color: var(--y-accent);
+  font-size: 12.5px;
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.y-ext-link:hover {
+  text-decoration: underline;
+}
+
+.y-conns li.has-link {
+  display: flex;
+  align-items: center;
+}
+
+.y-conn-link {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--y-ink-3);
+}
+
+.y-conn-link:hover {
+  background: var(--y-surface-2);
+  color: var(--y-accent);
+}
+
+@media print {
+  .y-node-drill {
+    background: none;
+  }
+}

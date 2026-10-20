@@ -27,6 +27,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l7 8 7-8M12 13v7"/></svg>
         </span>
         <div class="y-titles">
+          <nav id="crumbs" class="y-crumbs" aria-label="Diagram levels" hidden></nav>
           <h1 id="doc-title">Yantra</h1>
           <p id="doc-desc"></p>
         </div>
@@ -64,6 +65,7 @@
             <button role="menuitem" tabindex="-1" data-action="svg">SVG vector</button>
             <button role="menuitem" tabindex="-1" data-action="html">Standalone HTML</button>
             <button role="menuitem" tabindex="-1" data-action="md">Markdown spec</button>
+            <button role="menuitem" tabindex="-1" data-action="md-all" hidden>Markdown, all levels</button>
             <hr role="separator" />
             <button role="menuitem" tabindex="-1" data-action="json">Copy JSON with positions</button>
             <button role="menuitem" tabindex="-1" data-action="reset-layout">Reset layout</button>
@@ -154,6 +156,7 @@
         <dt><kbd>V</kbd></dt><dd>Flow / sequence view</dd>
         <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>Switch scenario</dd>
         <dt><kbd>M</kbd></dt><dd>Next mode</dd>
+        <dt><kbd>D</kbd></dt><dd>Open the card's detail diagram</dd>
         <dt><kbd>I</kbd></dt><dd>Inspector</dd>
         <dt><kbd>L</kbd></dt><dd>Roles legend</dd>
         <dt><kbd>S</kbd></dt><dd>Collapse walkthrough</dd>
@@ -161,7 +164,7 @@
         <dt><kbd>+</kbd> <kbd>-</kbd></dt><dd>Zoom</dd>
         <dt><kbd>T</kbd></dt><dd>Light / dark</dd>
         <dt><kbd>F</kbd></dt><dd>Fullscreen</dd>
-        <dt><kbd>Esc</kbd></dt><dd>Clear selection</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Clear selection, then back up a level</dd>
       </dl>
       <p>Drag cards to rearrange; edges re-route live. Scroll or pinch to zoom.</p>
     </div>

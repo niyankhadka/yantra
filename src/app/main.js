@@ -9,6 +9,8 @@ import { renderSvg } from '../core/svg.js';
 import { toMarkdown } from '../core/markdown.js';
 import { escapeHtml as h } from '../core/text.js';
 import { renderBlock, BLOCK_CSS } from '../core/page.js';
+import { safeUrl } from '../core/drill.js';
+import { LINK_ICON, DRILL_ICON } from '../core/icons.js';
 import { YantraEngine } from './engine.js';
 import { getMode } from '../core/model.js';
 import { REPO_URL, GITHUB_MARK } from '../core/icons.js';
@@ -16,6 +18,7 @@ import { hscroll, menu, tooltips } from './ui.js';
 import { hashParams } from './hash.js';
 import { Renderer } from './renderer.js';
 import { InteractionManager } from './interact.js';
+import { Levels, DRILL_TEXT } from './levels.js';
 // The example gallery is loaded only when no payload is embedded, so built
 // files (always embedded) do not carry it: `vite build` puts it in its own chunk.
 let EXAMPLES = [];
@@ -80,7 +83,10 @@ class App {
     tooltips(document.querySelector('.y-app'));
 
     const initial = this.embedded || this.exampleFromHash() || EXAMPLES[0].data;
-    this.engine = new YantraEngine(initial);
+    // Drill-down: the engine shows one level; #level= (else meta.startLevel) picks which
+    this.levels = new Levels(initial);
+    this.levels.setPath(this.levelFromHash() ?? initial?.meta?.startLevel);
+    this.engine = new YantraEngine(this.levels.current());
     this.engine.setSpeed(Number(pref('speed', 4500)) || 4500);
     this.renderer = new Renderer($('world'));
     this.interact = new InteractionManager($('viewport'), $('world'), {
@@ -88,7 +94,7 @@ class App {
       getInsets: () => this.insets(),
       onNodeMove: (id, x, y) => this.moveNode(id, x, y),
       onNodeMoveEnd: () => this.engine.commitMoves(),
-      onNodeClick: (id) => this.select(id),
+      onNodeClick: (id, how) => (how?.drill ? this.drillInto(id) : this.select(id)),
       onBackgroundClick: () => this.clearFocus(),
       onZoom: (z) => ($('zoom-label').textContent = `${Math.round(z * 100)}%`)
     });
@@ -108,6 +114,7 @@ class App {
     this.loadPayloadUi();
     this.setInspector(/inspector=/.test(location.hash) && this.inspectorTabs().length > 0);
     this.hashReady = true; // deep links are applied; from now on the URL follows the UI
+    addEventListener('popstate', () => this.onHistory());
 
     const report = this.engine.validate();
     if (!report.valid) console.warn('[yantra] validation errors:', report.errors);
@@ -132,12 +139,24 @@ class App {
     set('role', this.roleFilter);
     set('inspector', this.inspectorOpen ? this.currentTab() : null);
     if (params.has('theme')) set('theme', document.documentElement.getAttribute('data-theme'));
+    if (this.levels.depth) params.set('level', this.levels.hashValue());
+    else params.delete('level');
     const hash = [...params].map(([k, v]) => `${k}=${v}`).join('&');
     if (hash === location.hash.slice(1)) return;
     // Absolute URL: in an embedded viewer (about:srcdoc) a relative path would
     // resolve against the host page and throw. Sandboxed frames may refuse anyway.
+    const url = `${location.href.split('#')[0]}${hash ? `#${hash}` : ''}`;
+    // Changing level adds a history entry (browser Back returns), except inside an
+    // embed, where it would take over the host page's Back button
+    if (this.pushLevel && window.self === window.top) {
+      try {
+        return history.pushState(null, '', url);
+      } catch {
+        // fall back to replacing the entry
+      }
+    }
     try {
-      history.replaceState(history.state, '', `${location.href.split('#')[0]}${hash ? `#${hash}` : ''}`);
+      history.replaceState(history.state, '', url);
     } catch {
       // the URL simply does not mirror the state here
     }
@@ -150,6 +169,7 @@ class App {
     $('doc-desc').textContent = meta.description || '';
     $('doc-desc').title = meta.description || '';
     document.title = meta.title ? `${meta.title} · Yantra` : 'Yantra';
+    this.renderCrumbs();
     this.renderExamples();
     this.renderScenarios();
     this.renderModes();
@@ -321,7 +341,7 @@ class App {
     const sel = $('example-select');
     sel.hidden = !!this.embedded;
     if (this.embedded) return;
-    const current = EXAMPLES.find((x) => x.data === this.engine.payload);
+    const current = EXAMPLES.find((x) => x.data === this.levels.root);
     fillSelect(sel, EXAMPLES.map((x) => [x.id, x.name]), current?.id);
   }
 
@@ -489,10 +509,10 @@ class App {
     const { meta, scenarios, nodes, panels, inspector } = this.engine.model;
     const has = {
       summary: !!(meta.summary && typeof meta.summary === 'object'),
-      step: scenarios.some((s) => (s.steps || []).some((st) => st.payload && typeof st.payload === 'object')),
+      step: scenarios.some((s) => (s.steps || []).some((st) => (st.payload && typeof st.payload === 'object') || safeUrl(st.url))),
       node: nodes.some((n) => {
         const d = n.data || {};
-        return d.description || d.tech || d.runtime || d.ports || d.status || d.sourceFile || Object.keys(d.metadata || {}).length;
+        return d.description || d.tech || d.runtime || d.ports || d.status || d.sourceFile || Object.keys(d.metadata || {}).length || this.levels.target(n) || safeUrl(d.url);
       })
     };
     const labels = { ...BUILTIN_TABS, ...(inspector.labels || {}) };
@@ -610,6 +630,7 @@ class App {
         ${(summary.points || []).length ? `<h4>Key points</h4><ul class="y-points">${summary.points.map((p) => `<li>${h(p)}</li>`).join('')}</ul>` : ''}
         ${facts.length ? `<h4>Facts</h4><dl class="y-fields">${facts.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
         ${used.length > 1 ? `<h4>Roles</h4><ul class="y-role-list">${used.map(([type, r, count]) => `<li><button data-filter-role="${h(type)}" data-hue="${r.hue}"><i></i>${h(r.label)}<em>${count}</em></button></li>`).join('')}</ul>` : ''}
+        ${this.detailsHtml(scene)}
         ${scenarios.length > 1 ? `<h4>Scenarios</h4><ul class="y-points">${scenarios.map((s) => `<li>${h(s.name || s.id)}${s.description ? ` <span class="y-muted">- ${h(s.description)}</span>` : ''}</li>`).join('')}</ul>` : ''}
       </div>`;
   }
@@ -618,7 +639,7 @@ class App {
     const step = this.engine.getStep();
     if (!step) return '<p class="y-empty">This diagram has no walkthrough steps.</p>';
     const p = step.payload;
-    let html = `<h3>${h(step.title || '')}</h3>${step.description ? `<p class="y-muted">${h(step.description)}</p>` : ''}`;
+    let html = `<h3>${h(step.title || '')}</h3>${step.description ? `<p class="y-muted">${h(step.description)}</p>` : ''}${linkHtml(step.url)}`;
     if (!p || typeof p !== 'object') return html;
     const chips = ['method', 'status', 'latency', 'protocol'].filter((k) => p[k]).map((k) => `<span class="y-chip" data-k="${k}">${h(p[k])}</span>`);
     if (chips.length) html += `<div class="y-chips">${chips.join('')}</div>`;
@@ -647,16 +668,107 @@ class App {
     const conns = this.engine.edgesOf(sel.id).map((e) => {
       const out = e.edge.source === sel.id;
       const other = out ? e.edge.target : e.edge.source;
-      return `<li><button class="y-conn" data-node="${h(other)}"><span>${out ? '→' : '←'}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || '')}</em></button></li>`;
+      const url = safeUrl(e.edge.url);
+      const link = url ? `<a class="y-conn-link" href="${h(url)}" target="_blank" rel="noopener noreferrer" data-tip="${h(DRILL_TEXT.link)}" aria-label="${h(`${DRILL_TEXT.edgeLink(e.edge.label || e.id)} ${DRILL_TEXT.newTab}`)}">${icon(LINK_ICON, 13)}</a>` : '';
+      return `<li${url ? ' class="has-link"' : ''}><button class="y-conn" data-node="${h(other)}"><span>${out ? '→' : '←'}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || '')}</em></button>${link}</li>`;
     });
     return `
       <div class="y-kicker" data-hue="${sel.hue}">${h(sel.kicker || role?.label || '')}</div>
       <h3>${h(d.title || sel.id)}</h3>
       ${d.subtitle ? `<p class="y-muted">${h(d.subtitle)}</p>` : ''}
       ${d.description ? `<p>${h(d.description)}</p>` : ''}
+      ${this.drillButton(sel.node)}${linkHtml(d.url)}
       ${fields.length ? `<dl class="y-fields">${fields.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
       <h4>Connections</h4>
       ${conns.length ? `<ul class="y-conns">${conns.join('')}</ul>` : '<p class="y-empty">No connections.</p>'}`;
+  }
+
+  // --- Levels (drill-down) ---------------------------------------------------
+  levelFromHash() {
+    const raw = hashParams(location.hash, false).get('level');
+    return raw ? Levels.parseHash(raw) : null;
+  }
+
+  /** What to restore when coming back up to a level. */
+  levelState() {
+    const e = this.engine;
+    return { modeId: e.modeId, view: e.view, scenarioIndex: e.scenarioIndex, stepIndex: e.stepIndex, selected: e.selectedNodeId };
+  }
+
+  /** Open the detail diagram of a card (no-op when it has none). */
+  drillInto(id) {
+    const n = this.engine.getScene().nodes.find((m) => m.id === id);
+    const target = n && this.levels.target(n.node);
+    if (!target) return;
+    this.levels.push(target, this.levelState());
+    this.showLevel(null, true);
+    this.toast(DRILL_TEXT.opened(this.levels.title(target)));
+  }
+
+  /** Back up to depth n (0 = overview), restoring that level's step and selection. */
+  goUp(depth) {
+    if (depth < 0 || depth >= this.levels.depth) return;
+    this.showLevel(this.levels.popTo(depth), true);
+  }
+
+  /** Load the current level into the engine and rebuild the UI. */
+  showLevel(state, push) {
+    const ready = this.hashReady;
+    this.hashReady = false; // one history entry per level change, written below
+    this.engine.load(this.levels.current());
+    this.roleFilter = null;
+    this.inspectorTab = null;
+    if (state) {
+      this.engine.setMode(state.modeId);
+      this.engine.setView(state.view);
+      this.engine.setScenario(state.scenarioIndex);
+      this.engine.goToStep(state.stepIndex);
+    }
+    this.loadPayloadUi();
+    if (state?.selected) this.engine.selectNode(state.selected);
+    this.hashReady = ready;
+    this.pushLevel = push;
+    this.syncHash();
+    this.pushLevel = false;
+  }
+
+  /** Browser Back / Forward: follow the level in the URL, then its step and view. */
+  onHistory() {
+    const want = this.levelFromHash() || [];
+    const same = want.length === this.levels.depth && want.every((id, i) => id === this.levels.path[i]);
+    if (same) return;
+    this.levels.setPath(want);
+    this.hashReady = false;
+    this.showLevel(null, false);
+    this.applyHashState();
+    this.hashReady = true;
+    this.renderLegend();
+    this.applyState();
+    this.renderInspector();
+  }
+
+  renderCrumbs() {
+    const nav = $('crumbs');
+    nav.hidden = !this.levels.depth;
+    nav.innerHTML = this.levels.crumbsHtml();
+    $('doc-desc').hidden = this.levels.depth > 0;
+    document.querySelector('[data-action="md-all"]').hidden = !this.levels.any;
+  }
+
+  /** Inspector button that opens a card's detail diagram. */
+  drillButton(node) {
+    const target = this.levels.target(node);
+    if (!target) return '';
+    return `<button class="y-btn y-drill-open" data-drill-open="${h(node.id)}">${icon(DRILL_ICON, 14)}<span>${h(DRILL_TEXT.open(this.levels.title(target)))}</span></button>`;
+  }
+
+  /** Summary tab: the detail diagrams this level opens, one button each. */
+  detailsHtml(scene) {
+    const items = scene.nodes.filter((n) => this.levels.target(n.node));
+    if (!items.length) return '';
+    return `<h4>${h(DRILL_TEXT.details)}</h4><ul class="y-role-list">${items
+      .map((n) => `<li><button data-drill-open="${h(n.id)}" data-hue="${n.hue}"><i></i>${h(this.levels.title(this.levels.target(n.node)))}</button></li>`)
+      .join('')}</ul>`;
   }
 
   // --- Focus --------------------------------------------------------------
@@ -751,6 +863,7 @@ class App {
     $('example-select').onchange = (ev) => {
       const ex = EXAMPLES.find((x) => x.id === ev.target.value);
       if (!ex) return;
+      this.levels.reset(ex.data);
       this.engine.load(ex.data);
       this.engine.setSpeed(Number(pref('speed', 4500)) || 4500);
       this.roleFilter = null;
@@ -783,6 +896,8 @@ class App {
     $('inspector-body').onclick = (ev) => {
       const node = ev.target.closest('[data-node]')?.dataset.node;
       if (node) this.select(node);
+      const drill = ev.target.closest('[data-drill-open]')?.dataset.drillOpen;
+      if (drill) this.drillInto(drill);
       const role = ev.target.closest('[data-filter-role]')?.dataset.filterRole;
       if (role) this.toggleRole(role);
       if (ev.target.closest('[data-clear-selection]')) this.engine.clearSelection();
@@ -798,6 +913,14 @@ class App {
       this.exportMenu.close(true);
       this.exportAs(action);
     };
+    $('crumbs').onclick = (ev) => {
+      const at = ev.target.closest('[data-level]')?.dataset.level;
+      if (at !== undefined) this.goUp(Number(at));
+    };
+    $('viewport').addEventListener('dblclick', (ev) => {
+      const id = ev.target.closest?.('.y-node')?.dataset.id;
+      if (id) this.drillInto(id);
+    });
     window.addEventListener('resize', () => {
       clearTimeout(this.resizeTimer);
       this.resizeTimer = setTimeout(() => this.interact.fit(), 150);
@@ -825,6 +948,7 @@ class App {
         m: () => this.engine.cycleMode(),
         v: () => this.engine.cycleView(),
         i: () => this.toggleInspector(),
+        d: () => this.drillInto(this.engine.selectedNodeId || document.activeElement?.closest?.('.y-node')?.dataset.id),
         l: () => this.legendMenu.toggle(),
         s: () => this.setStoryCollapsed(!this.storyCollapsed),
         r: () => this.interact.fit(),
@@ -834,7 +958,8 @@ class App {
         '=': () => this.interact.zoomBy(1.2),
         '-': () => this.interact.zoomBy(1 / 1.2),
         '?': () => this.setHelp($('help').hidden),
-        Escape: () => ($('help').hidden ? this.clearFocus() : this.setHelp(false))
+        // Esc closes help, then clears the selection or filter, then goes up a level
+        Escape: () => (!$('help').hidden ? this.setHelp(false) : this.engine.selectedNodeId || this.roleFilter || !this.levels.depth ? this.clearFocus() : this.goUp(this.levels.depth - 1))
       };
       const fn = map[k] || map[k.toLowerCase()];
       if (fn) {
@@ -901,7 +1026,9 @@ class App {
 
   /** meta.watermark: false hides the badge, a string replaces its text. */
   renderWatermark() {
-    const mark = this.engine.model.meta.watermark;
+    // Detail diagrams inherit the overview's badge setting unless they set their own
+    const own = this.engine.model.meta.watermark;
+    const mark = own !== undefined ? own : this.levels.root?.meta?.watermark;
     $('watermark').hidden = mark === false;
     $('watermark-text').textContent = typeof mark === 'string' ? mark : 'Made with Yantra';
     $('watermark').href = REPO_URL;
@@ -938,13 +1065,14 @@ class App {
     if (action === 'svg') download(`${base}.svg`, this.svgString(), 'image/svg+xml');
     else if (action === 'png') this.exportPng(base);
     else if (action === 'md') download(`${base}.md`, toMarkdown(this.engine.payload), 'text/markdown');
+    else if (action === 'md-all') download(`${base}-all-levels.md`, toMarkdown(this.levels.root, { levels: true }), 'text/markdown');
     else if (action === 'json') this.copy(JSON.stringify(this.engine.exportPayload(), null, 2), 'JSON copied with current positions');
     else if (action === 'reset-layout') {
       this.engine.resetLayout();
       this.toast('Layout reset');
     } else if (action === 'html') {
       if (!this.standalone) return this.toast('Run `yantra build diagram.json` to produce a standalone file');
-      download(`${base}.html`, withPayload(PRISTINE, this.engine.exportPayload()), 'text/html');
+      download(`${base}.html`, withPayload(PRISTINE, this.levels.exportRoot(this.engine.exportPayload())), 'text/html');
     }
   }
 
@@ -1007,6 +1135,16 @@ class App {
     clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => t.classList.remove('is-on'), 2400);
   }
+}
+
+/** Inline stroke icon (24x24 markup from core/icons.js). */
+const icon = (inner, size) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+
+/** External link from a node or step `url`: http(s) and mailto only, in a new tab. */
+function linkHtml(url) {
+  const u = safeUrl(url);
+  return u ? `<a class="y-ext-link" href="${h(u)}" target="_blank" rel="noopener noreferrer">${icon(LINK_ICON, 13)}<span>${h(DRILL_TEXT.link)}</span><span class="y-sr"> ${h(DRILL_TEXT.newTab)}</span></a>` : '';
 }
 
 function readEmbeddedPayload() {

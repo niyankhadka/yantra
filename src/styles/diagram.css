@@ -375,3 +375,31 @@
 .y-note.is-dim {
   opacity: 0.4;
 }
+
+/* --- Drill-down mark (card opens a detail diagram) ---------------------------- */
+.y-node.has-drill .y-node-kicker {
+  padding-right: 22px;
+}
+
+.y-node-drill {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--y-hue, var(--y-ink-3));
+  background: color-mix(in srgb, var(--y-hue, var(--y-ink-3)) 10%, transparent);
+  cursor: zoom-in;
+  transition: background 140ms ease;
+}
+
+.y-node-drill:hover {
+  background: color-mix(in srgb, var(--y-hue, var(--y-ink-3)) 22%, transparent);
+}
+
+.y-node.has-drill {
+  cursor: grab;
+}

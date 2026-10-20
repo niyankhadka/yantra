@@ -16,12 +16,16 @@ Every output is a single offline HTML file. Pick one:
 
 For "explain how X works", make the diagram first, then the page around it
 (`{ "type": "diagram", "src": "flow.json" }`). References: `examples/*.json`
-(`answer-*.json` are pages; `oauth-login.json` is a sequence; `aws-serverless.json` has groups).
+(`answer-*.json` are pages; `oauth-login.json` is a sequence; `aws-serverless.json` has groups;
+`platform-overview.json` drills into detail diagrams).
 
 ## Diagram
 
 1. **Plan the story**: the question it answers and 3-6 walkthrough steps. More than ~12
-   nodes → an overview diagram plus detail diagrams.
+   nodes → an overview plus detail diagrams: give the subsystem card `data.drill: "<id>"`
+   and put the detail diagram (its own nodes, edges, steps) under `diagrams.<id>`, or
+   `{ "$ref": "./detail.json" }` for a file next to it. At most 3 levels; see Drill-down in
+   `docs/authoring.md`.
 2. **Write the payload** (`meta`, `roles`, `nodes`, `edges`, `scenarios`) in one pass.
    - Do **not** write `x`/`y`. Point edges along the main flow; layout and routing are automatic.
    - Group node `type`s into 3-5 `roles` with one colour each; specific label in `data.badge`.
@@ -36,6 +40,8 @@ For "explain how X works", make the diagram first, then the page around it
      **Details**; anything else (risks, costs, glossary) → a `panels` entry built from page
      blocks. Set `meta.inspector.onNodeClick` (a panel id, or `"stay"`) only when needed.
    - For code-backed diagrams, read the code first and cite it in `data.sourceFile`.
+   - Runbooks, dashboards, specs: `url` on a node (`data.url`), edge or step (http, https or
+     mailto only); the inspector opens them in a new tab.
 
 ## Answer page
 
@@ -59,7 +65,8 @@ For "explain how X works", make the diagram first, then the page around it
    repair rounds; if geometry still fails, remove nodes or split the diagram.
 2. **Build**: `node bin/yantra.js build file.json -o file.html`
 3. **Look**: `node bin/yantra.js screenshot file.json` (diagrams: `--step 2`, sequence:
-   `--view sequence`; pages: `--height 3200` if long; also `--theme dark`) and view the PNG.
+   `--view sequence`; detail diagrams: `--level <id>`; pages: `--height 3200` if long; also
+   `--theme dark`) and view the PNG.
    Do not say it looks right without viewing it.
 4. **Report** the HTML path and, in chat, the answer headline or the walkthrough steps,
    plus any warnings you chose to keep. `export -f md` gives a Markdown copy to paste.
@@ -71,6 +78,6 @@ With the MCP server connected the same actions are tools: `yantra_get_schema` (p
 ## Other outputs
 
 - Static SVG: `node bin/yantra.js export diagram.json -f svg [--theme dark] [--view sequence]`
-- Markdown: `node bin/yantra.js export file.json -f md`
+- Markdown: `node bin/yantra.js export file.json -f md` (`--all-levels` adds every detail diagram)
 - `meta.watermark: false` hides the "Made with Yantra" badge; a string replaces its text.
 - Exact hand layout (rare): `meta.layout.mode: "manual"` plus `x`/`y` on the 10px grid.

@@ -129,9 +129,9 @@ def callout(body: str, label: Optional[str] = None, tone: str = "info", title: O
 
 def diagram(source: Any, step: Optional[int] = None, mode: Optional[str] = None, caption: Optional[str] = None,
             title: Optional[str] = None, span: Optional[str] = None,
-            nodes: Optional[Iterable[Any]] = None) -> Block:
+            nodes: Optional[Iterable[Any]] = None, level: Optional[str] = None) -> Block:
     """Embed a diagram: a ``Diagram`` instance, a payload dict, or a path to a diagram .json
-    (relative to the page file)."""
+    (relative to the page file). `level` shows one of its detail diagrams (drill-down)."""
     if hasattr(source, "to_dict"):
         ref: Dict[str, Any] = {"diagram": source.to_dict()}
     elif isinstance(source, Mapping):
@@ -142,7 +142,7 @@ def diagram(source: Any, step: Optional[int] = None, mode: Optional[str] = None,
         raise TypeError("diagram source must be a Diagram, a payload dict or a path")
     if step is not None and step < 1:
         raise ValueError("diagram step is 1-based")
-    return _block("diagram", title, span, nodes, **ref, step=step, mode=mode, caption=caption)
+    return _block("diagram", title, span, nodes, **ref, step=step, mode=mode, caption=caption, level=level)
 
 
 def _is_num(v: Any) -> bool:

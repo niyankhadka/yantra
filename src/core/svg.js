@@ -5,7 +5,7 @@
  */
 import { CARD, LABEL, GROUP } from './layout.js';
 import { TOKENS, HUES, FONT_SANS, FONT_MONO } from './theme.js';
-import { ICONS } from './icons.js';
+import { ICONS, DRILL_ICON } from './icons.js';
 import { sequenceLive } from './sequence.js';
 import { escapeXml as x, textWidth } from './text.js';
 
@@ -262,11 +262,15 @@ function nodeSvg(n, t, hueColor, isActive) {
     y += C.techGap;
     lines.push(`<text x="${C.padX}" y="${baseline(y, C.techLine, C.techSize)}" font-size="${C.techSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(n.lines.tech)}</text>`);
   }
+  // Cards that open a detail diagram carry the drill mark top-right, as in the viewer
+  const drill = typeof n.node?.data?.drill === 'string' && n.node.data.drill
+    ? `<g transform="translate(${n.w - C.padX - 14} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><title>Has a detail diagram</title>${DRILL_ICON}</g>`
+    : '';
   const ring = isActive ? `<rect x="-3" y="-3" width="${n.w + 6}" height="${n.h + 6}" rx="11" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>` : '';
   return `<g transform="translate(${n.x} ${n.y})" opacity="${dim ? 0.25 : 1}">
       ${ring}<rect width="${n.w}" height="${n.h}" rx="8" fill="${t.surface}" stroke="${isActive ? hueColor : t.border}" stroke-width="${isActive ? 1.5 : 1}"/>
       <g transform="translate(${C.padX} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${(typeof n.icon === 'string' && Object.hasOwn(ICONS, n.icon) ? ICONS[n.icon] : ICONS.cpu)}</g>
-      <text x="${C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600" letter-spacing="0.06em" fill="${hueColor}">${x(String(n.kicker).toUpperCase())}</text>
+      <text x="${C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600" letter-spacing="0.06em" fill="${hueColor}">${x(String(n.kicker).toUpperCase())}</text>${drill}
       ${lines.join('\n      ')}
     </g>`;
 }

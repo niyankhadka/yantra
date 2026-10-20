@@ -74,7 +74,10 @@ test('MCP resolves relative filePath against YANTRA_INPUT_ROOT, not the cwd', as
   call(3, 'yantra_validate', { filePath: '../package.json' });
   const deadline = Date.now() + 15000;
   while (replies.size < 3 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+  // Windows refuses to remove a folder that is still a live process's cwd
+  const exited = proc.exitCode === null ? new Promise((r) => proc.once('exit', r)) : null;
   proc.kill();
+  await exited;
   try {
     const text = (id) => replies.get(id).result.content[0].text;
     assert.equal(JSON.parse(text(1)).valid, true, 'page and its diagram src resolve inside the input root');

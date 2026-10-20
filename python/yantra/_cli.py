@@ -66,10 +66,34 @@ def _write(payload: Dict[str, Any], folder: str, name: str) -> str:
     return path
 
 
-def validate_payload(payload: Dict[str, Any], name: str = "payload.json") -> Dict[str, Any]:
-    """Validate a diagram or page payload; returns ``{"valid", "errors", "warnings"}``."""
-    with tempfile.TemporaryDirectory() as tmp:
-        res = run_cli(["validate", _write(payload, tmp, name), "--json"], check=False)
+class _PayloadFile:
+    """The payload as a temporary .json file: in a temp folder, or inside `base_dir` (hidden
+    name, removed afterwards) so relative file references such as ``{"$ref": "x.json"}`` resolve."""
+
+    def __init__(self, payload: Dict[str, Any], name: str, base_dir: Optional[str]):
+        self.payload, self.name, self.base_dir = payload, name, base_dir
+
+    def __enter__(self) -> str:
+        if self.base_dir is None:
+            self.tmp = tempfile.TemporaryDirectory()
+            return _write(self.payload, self.tmp.name, self.name)
+        fd, self.path = tempfile.mkstemp(prefix=".yantra-", suffix=".json", dir=self.base_dir)
+        os.close(fd)
+        Path(self.path).write_text(json.dumps(self.payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        return self.path
+
+    def __exit__(self, *exc: Any) -> None:
+        if self.base_dir is None:
+            self.tmp.cleanup()
+        else:
+            os.remove(self.path)
+
+
+def validate_payload(payload: Dict[str, Any], name: str = "payload.json", base_dir: Optional[str] = None) -> Dict[str, Any]:
+    """Validate a diagram or page payload; returns ``{"valid", "errors", "warnings"}``.
+    `base_dir`: folder that relative file references in the payload resolve against."""
+    with _PayloadFile(payload, name, base_dir) as file:
+        res = run_cli(["validate", file, "--json"], check=False)
     try:
         return json.loads(res.stdout)
     except json.JSONDecodeError as exc:
@@ -77,11 +101,11 @@ def validate_payload(payload: Dict[str, Any], name: str = "payload.json") -> Dic
 
 
 def build_payload(payload: Dict[str, Any], output_html: str, force: bool = False,
-                  name: str = "payload.json") -> str:
+                  name: str = "payload.json", base_dir: Optional[str] = None) -> str:
     """Validate and write a single-file offline HTML; returns the output path."""
     out = os.path.abspath(output_html)
-    with tempfile.TemporaryDirectory() as tmp:
-        args = ["build", _write(payload, tmp, name), "-o", out]
+    with _PayloadFile(payload, name, base_dir) as file:
+        args = ["build", file, "-o", out]
         if force:
             args.append("--force")
         run_cli(args)

@@ -9,6 +9,7 @@ import { themeCss, HUES } from './theme.js';
 import { escapeHtml as h, mdInline as mi, mdBlock } from './text.js';
 import { REPO_URL, GITHUB_MARK } from './icons.js';
 import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartMarkdown, CHART_CSS, CHART_STRINGS } from './charts.js';
+import { getLevel } from './drill.js';
 
 export const BLOCK_TYPES = ['text', 'points', 'steps', 'metrics', 'table', 'compare', 'callout', 'diagram', 'chart', 'code', 'sources', 'timeline', 'faq', 'checklist', 'quote', 'image', 'kv', 'gantt', 'matrix'];
 const TONES = { info: 'blue', good: 'green', warn: 'amber', bad: 'rose', neutral: 'slate' };
@@ -83,9 +84,11 @@ export const srcdocAttr = (html) => String(html).replace(/&/g, '&amp;').replace(
 
 /** Static diagram figure (both themes); SVG ids are suffixed with ctx.uid to stay unique. */
 function staticFigure(b, ctx) {
-  const scene = computeScene(b.diagram, { modeId: b.mode });
+  // `level` shows one of the diagram's detail diagrams (drill-down) instead of its overview
+  const diagram = (b.level && getLevel(b.diagram, b.level)) || b.diagram;
+  const scene = computeScene(diagram, { modeId: b.mode });
   let highlight = null;
-  const steps = b.diagram.scenarios?.[0]?.steps || b.diagram.steps || [];
+  const steps = diagram.scenarios?.[0]?.steps || diagram.steps || [];
   const step = Number.isInteger(b.step) ? steps[b.step - 1] : null;
   if (step && (step.highlightNodes || []).length) highlight = { nodes: new Set(step.highlightNodes), edges: new Set(step.highlightEdges || []) };
   const opts = { highlight, header: false, watermark: false, logo: null };
@@ -139,11 +142,13 @@ const BLOCKS = {
   diagram: (b, ctx) => {
     if (!b.diagram || typeof b.diagram !== 'object') return '<p class="p-muted">Diagram missing.</p>';
     const fig = staticFigure(b, ctx);
-    const viewer = b.interactive && typeof ctx.viewerHtml === 'function' ? ctx.viewerHtml(b.diagram, b) : null;
+    // A live viewer gets the whole diagram (every level); `level` only picks where it opens
+    const live = b.level ? { ...b.diagram, meta: { ...(b.diagram.meta || {}), startLevel: b.level } } : b.diagram;
+    const viewer = b.interactive && typeof ctx.viewerHtml === 'function' ? ctx.viewerHtml(live, b) : null;
     if (!viewer) return fig;
     // Live viewer on screen, the static figure on paper
     const height = Number.isFinite(b.height) && b.height >= 240 ? Math.round(b.height) : 560;
-    const label = b.diagram.meta?.title || b.title || 'Diagram';
+    const label = ((b.level && getLevel(b.diagram, b.level)) || b.diagram).meta?.title || b.title || 'Diagram';
     return `<figure class="p-figure p-live p-screen-only"><iframe class="p-frame" title="${h(label)} (interactive)" sandbox="allow-scripts allow-popups" style="height:${height}px" srcdoc="${srcdocAttr(viewer)}"></iframe>${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}</figure>
     <div class="p-print-only">${fig}</div>`;
   },

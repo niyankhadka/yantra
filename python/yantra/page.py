@@ -84,9 +84,11 @@ class Page:
         return self.add(B.callout(body, label, tone, title, span))
 
     def diagram(self, source: Any, step: Optional[int] = None, mode: Optional[str] = None,
-                caption: Optional[str] = None, title: Optional[str] = None, span: Optional[str] = None) -> "Page":
-        """Embed a ``Diagram``, a payload dict or a diagram .json path (relative to the page file)."""
-        return self.add(B.diagram(source, step, mode, caption, title, span))
+                caption: Optional[str] = None, title: Optional[str] = None, span: Optional[str] = None,
+                level: Optional[str] = None) -> "Page":
+        """Embed a ``Diagram``, a payload dict or a diagram .json path (relative to the page file);
+        `level` shows one of its detail diagrams (drill-down)."""
+        return self.add(B.diagram(source, step, mode, caption, title, span, level=level))
 
     def chart(self, data: Union[Iterable[Any], Mapping[str, float], None] = None, unit: Optional[str] = None,
               title: Optional[str] = None, span: Optional[str] = None, **kw: Any) -> "Page":

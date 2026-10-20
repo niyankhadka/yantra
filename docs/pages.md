@@ -55,7 +55,7 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
 | Priorities (impact / effort) or a risk heat map | `matrix` | `items: [{ label, x, y }]`, `x`, `y`, `quadrants?` or `grid: 3-5` |
 | Options to choose between | `compare` | `options: [{ name, summary?, pros?, cons?, verdict?, recommended? }]` |
 | Structured facts across items | `table` | `columns: [...]`, `rows: [[...]]` (one cell per column) |
-| How parts connect | `diagram` | `src: "file.json"` or `diagram: {…}`, `step?`, `mode?`, `caption?` |
+| How parts connect | `diagram` | `src: "file.json"` or `diagram: {…}`, `step?`, `mode?`, `level?`, `caption?` |
 | A warning, tip or key caveat | `callout` | `body`, `label?`, `tone: info \| good \| warn \| bad` |
 | Prose that does not fit above | `text` | `body` |
 | A command, config or snippet | `code` | `code`, `language?` |
@@ -79,6 +79,9 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
   prints (and shows without JavaScript). All embeds on a page share one copy of the viewer
   (about 270 kB), filled in at load; each embed then adds only its diagram. Still use at most
   two per page: every live viewer costs memory and attention.
+- A diagram with detail diagrams (drill-down, see `authoring.md`) embeds as one viewer with
+  every level; `level: "payments"` shows that level as the figure and opens the viewer there.
+  A `src` diagram's `$ref` levels are loaded relative to its own file, inside the page's folder.
 - Contents: a row of links to every titled block appears when `meta.toc` is `true`, or by
   itself from 6 titled blocks (`meta.toc: false` hides it). Anchors are the slug of the
   block title (`#follow-up-actions`), with `-2`, `-3` for repeats, so links stay stable.
@@ -150,6 +153,7 @@ label string or `{ label, low?, high?, labels?, min?, max? }`.
 | `page/unknown-block` | Use one of the block types above. |
 | `page/block-invalid` | Supply the fields listed in the message. |
 | `page/diagram-unresolved` | `src` must be a relative `.json` path inside the page's own folder (no `..`, no absolute paths); fix the path or inline the diagram. |
+| `page/unknown-level` | `level` must be a key of the diagram's `diagrams` map. |
 | `page/image-src` | Use an `https:` URL or a `data:image/…` URI. |
 | `page/image-alt` | Describe the image in `alt`. |
 | `page/chart-kind` | `kind` is one of bar, column, line, area, pie, donut; pie and donut take `data`, not `series`. |

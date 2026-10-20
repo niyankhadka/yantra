@@ -111,6 +111,25 @@ def full_diagram() -> Diagram:
     return d
 
 
+def drill_diagram() -> Diagram:
+    """An overview whose Payments card drills into a detail diagram, with links."""
+    d = Diagram("Shop", "Overview with one detail level.")
+    d.role("service", "Service", "teal")
+    web = d.add_node("web", "Web shop", "service", url="https://example.com/web")
+    pay = d.add_node("payments", "Payments", "service", subtitle="Charges cards")
+    web.connect(pay, "Charge", url="mailto:payments@example.com")
+    d.add_step("Overview", url="https://example.com/runbook")
+    d.add_step("Charge", nodes=[web, pay], edges=["web-payments"])
+    detail = Diagram("Payments service")
+    api = detail.add_node("api", "Payments API")
+    db = detail.add_node("ledger", "Ledger", tech="PostgreSQL")
+    api.connect(db, "Record")
+    detail.add_step("Inside")
+    detail.add_step("Record", nodes=[api, db], edges=["api-ledger"])
+    d.detail("payments", detail, from_node=pay)
+    return d
+
+
 def full_page(diagram: Any = None) -> Page:
     p = Page("Why a saga?", title="Saga", kicker="Decision", author="Platform", date="20/10/2026")
     p.answer("Because no single transaction spans the payment provider and our services.",
@@ -254,6 +273,32 @@ class PayloadShapeTests(unittest.TestCase):
             blocks.matrix([("a", 1, 2)], quadrants=["only", "two"])
         with self.assertRaises(ValueError):
             blocks.matrix([{"label": "a", "x": "high", "y": 2}])
+    def test_drill_down_and_links(self) -> None:
+        p = drill_diagram().to_dict()
+        self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
+        self.assertEqual(p["nodes"][1]["data"]["drill"], "payments")
+        self.assertEqual(p["diagrams"]["payments"]["meta"]["title"], "Payments service")
+        self.assertEqual(p["nodes"][0]["data"]["url"], "https://example.com/web")
+        self.assertEqual(p["edges"][0]["url"], "mailto:payments@example.com")
+        self.assertEqual(p["scenarios"][0]["steps"][0]["url"], "https://example.com/runbook")
+        d = Diagram("Refs")
+        d.add_node("a", "A", drill="x")
+        d.detail("x", "details/x.json").start_level("x")
+        self.assertEqual(d.to_dict()["diagrams"]["x"], {"$ref": "details/x.json"})
+        self.assertEqual(d.to_dict()["meta"]["startLevel"], "x")
+        for bad in ("/abs/x.json", "C:/x.json", "https://x.example/a.json", "x.txt"):
+            with self.assertRaises(YantraError, msg=bad):
+                Diagram("R").detail("x", bad)
+        with self.assertRaises(YantraError):
+            d.detail("x", "other.json")
+        for bad_url in ("javascript:alert(1)", "data:text/html,x", "/relative"):
+            with self.assertRaises(YantraError, msg=bad_url):
+                Diagram("U").add_node("a", "A", url=bad_url)
+        with self.assertRaises(YantraError):
+            d.add_edge("a", "a", "x", url="ftp://x")
+        with self.assertRaises(YantraError):
+            d.add_step("S", url="javascript:x")
+        self.assertEqual(blocks.diagram(drill_diagram(), level="payments")["level"], "payments")
 
     def test_diagram_block_sources(self) -> None:
         self.assertEqual(blocks.diagram("diagrams/a.json")["src"], "diagrams/a.json")
@@ -311,6 +356,35 @@ class CliTests(unittest.TestCase):
         html = Path(page.build_html(os.path.join(self.tmp, "charts.html"))).read_text(encoding="utf-8")
         for marker in ("p-chart--line", "p-chart--donut", "p-chart--gantt", "p-chart--matrix", "p-spark"):
             self.assertIn(marker, html)
+    def test_drill_down_validates_and_builds(self) -> None:
+        d = drill_diagram()
+        report = d.validate()
+        self.assertClean(report)
+        self.assertEqual(report["warnings"], [])
+        html = Path(d.build_html(os.path.join(self.tmp, "drill.html"))).read_text(encoding="utf-8")
+        self.assertIn("Payments service", html)
+        page = Page("Where do charges go?", title="Charges")
+        page.answer("Into the ledger, through the Payments API.")
+        page.diagram(d, level="payments")
+        self.assertClean(page.validate())
+
+    def test_detail_file_reference(self) -> None:
+        detail = Diagram("Ledger detail")
+        a = detail.add_node("a", "Writer")
+        b = detail.add_node("b", "Ledger")
+        a.connect(b, "Insert")
+        detail.add_step("Overview")
+        detail.save_json(os.path.join(self.tmp, "ledger.json"))
+        d = Diagram("Overview")
+        n = d.add_node("n", "Payments")
+        m = d.add_node("m", "Orders")
+        m.connect(n, "Charge")
+        d.add_step("Overview")
+        d.detail("ledger", "ledger.json", from_node=n)
+        self.assertClean(d.validate(base_dir=self.tmp))
+        self.assertEqual(sorted(os.listdir(self.tmp)), ["ledger.json"], "the temporary payload file is removed")
+        codes = [e["code"] for e in d.validate()["errors"]]
+        self.assertIn("drill/ref-missing", codes)
 
     def test_examples_run(self) -> None:
         for script, outputs in (("example.py", ["sales_pipeline.html"]),

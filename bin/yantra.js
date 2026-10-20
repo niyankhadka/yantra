@@ -3,8 +3,8 @@
  * Yantra CLI.
  *   yantra validate <diagram.json> [--json]
  *   yantra build <diagram.json> [-o out.html]
- *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n]
- *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence]
+ *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
+ *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id]
  *   yantra import <file.mmd|file.md> [-o out.json] [--title "..."] [--all]
  *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp   yantra dev
  * Works with diagrams and with one-page answers ({ "kind": "page" }).
@@ -19,7 +19,8 @@ import { sceneForView } from '../src/core/sequence.js';
 import { toMarkdown } from '../src/core/markdown.js';
 import { isPage, pageToMarkdown } from '../src/core/page.js';
 import { fromMermaid, mermaidBlocks } from '../src/core/mermaid.js';
-import { buildAny, resolvePage, readLogos, ROOT } from '../lib/build.js';
+import { collectDiagrams, getLevel } from '../src/core/drill.js';
+import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
 
 const HELP = `Yantra - interactive, step-by-step diagrams
@@ -29,8 +30,8 @@ Works with diagrams and with one-page answers (payloads with "kind": "page").
 Usage
   yantra validate <file.json> [--json]         Check schema, references and rendered geometry
   yantra build <file.json> [-o out.html]       Validate, then write a single offline HTML file
-  yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n]
-  yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--width] [--height]
+  yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
+  yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--width] [--height]
   yantra new <file.json> [--page]              Write a starter diagram (or answer page)
   yantra import <file.mmd|file.md>             Convert a Mermaid flowchart or sequence diagram  [-o out.json] [--title "..."] [--all]
   yantra examples [name] [-o file]             List built-in examples, or copy one
@@ -38,8 +39,13 @@ Usage
   yantra dev                                   Start the live editor at http://localhost:3000
 
 Options
-  --force     build even when validation reports errors
-  --json      machine-readable validation output`;
+  --force       build even when validation reports errors
+  --json        machine-readable validation output
+  --level id    a detail diagram (drill-down level) instead of the overview
+  --all-levels  Markdown export: append every detail diagram after the overview
+
+Detail diagrams: a card with data.drill opens a diagram from the payload's "diagrams" map;
+{ "$ref": "./detail.json" } entries are loaded relative to the input file.`;
 
 function parse(argv) {
   const out = { _: [] };
@@ -51,7 +57,7 @@ function parse(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title'].includes(key)) out[key] = argv[++i];
+      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level'].includes(key)) out[key] = argv[++i];
       else out[key] = true;
     } else out._.push(a);
   }
@@ -123,10 +129,21 @@ const STARTER_PAGE = {
   ]
 };
 
-/** Read a payload; pages get their diagram `src` files loaded relative to the input. */
+/**
+ * Read a payload; page diagram `src` files and drill-down `$ref` files are
+ * loaded relative to the input (and must stay inside its folder).
+ */
 function load(file) {
-  const payload = readPayload(file);
-  return isPage(payload) ? resolvePage(payload, path.dirname(path.resolve(file))) : payload;
+  return resolveAny(readPayload(file), path.dirname(path.resolve(file)));
+}
+
+/** The payload of `--level id` (a detail diagram), or the overview. */
+function pickLevel(payload, id) {
+  if (!id || id === true) return payload;
+  if (isPage(payload)) fail('--level applies to diagrams, not answer pages.');
+  const level = getLevel(payload, id);
+  if (!level) fail(`Unknown level "${id}". Detail diagrams: ${[...collectDiagrams(payload).map.keys()].join(', ') || 'none'}.`);
+  return level;
 }
 
 const args = parse(process.argv.slice(2));
@@ -156,15 +173,16 @@ try {
     case 'export': {
       const payload = load(input);
       const format = (args.format || (isPage(payload) ? 'md' : 'svg')).toLowerCase();
+      const level = pickLevel(payload, args.level);
       let content;
       if (format === 'svg') {
         if (isPage(payload)) fail('Answer pages export to html (yantra build) or md.');
         const theme = args.theme === 'dark' ? 'dark' : 'light';
         const logos = readLogos();
         const step = Number(args.step) > 0 ? Number(args.step) - 1 : null;
-        content = renderSvg(sceneForView(payload, { view: args.view, modeId: args.mode }), { theme, step, logo: logos[theme] || logos.light || logos.dark });
+        content = renderSvg(sceneForView(level, { view: args.view, modeId: args.mode }), { theme, step, logo: logos[theme] || logos.light || logos.dark });
       } else if (format === 'md' || format === 'markdown') {
-        content = isPage(payload) ? pageToMarkdown(payload) : toMarkdown(payload);
+        content = isPage(payload) ? pageToMarkdown(payload) : toMarkdown(level, { levels: !!args['all-levels'] && level === payload });
       } else fail(`Unknown format "${format}" (use svg or md).`);
       const out = path.resolve(args.output || outName(input, format === 'svg' ? '.svg' : '.md'));
       fs.writeFileSync(out, content);
@@ -180,11 +198,12 @@ try {
       if (input.endsWith('.json')) {
         const payload = load(input);
         page = isPage(payload);
+        pickLevel(payload, args.level); // fails early on an unknown level
         tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-'));
         html = path.join(tmp, 'diagram.html');
         fs.writeFileSync(html, buildAny(payload));
       }
-      const hash = [args.step ? `step=${args.step}` : '', args.mode ? `mode=${args.mode}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&');
+      const hash = [args.level ? `level=${encodeURIComponent(args.level)}` : '', args.step ? `step=${args.step}` : '', args.mode ? `mode=${args.mode}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&');
       const theme = args.theme === 'dark' ? 'dark' : 'light';
       const out = args.output || outName(input, `-${theme}.png`);
       try {

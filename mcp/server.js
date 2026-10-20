@@ -12,7 +12,8 @@ import { renderSvg } from '../src/core/svg.js';
 import { toMarkdown } from '../src/core/markdown.js';
 import { isPage, pageToMarkdown } from '../src/core/page.js';
 import { fromMermaid } from '../src/core/mermaid.js';
-import { buildAny, resolvePage, readLogos, ROOT } from '../lib/build.js';
+import { collectDiagrams, getLevel } from '../src/core/drill.js';
+import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8')).version;
@@ -21,8 +22,9 @@ const EXAMPLES = path.join(ROOT, 'examples');
 
 const source = {
   payload: { type: 'object', description: 'A Yantra diagram, or an answer page ({ "kind": "page", ... }). See yantra_get_schema.' },
-  filePath: { type: 'string', description: 'Path to a .json file (alternative to payload). Page diagram `src` paths resolve relative to it.' }
+  filePath: { type: 'string', description: 'Path to a .json file (alternative to payload). Page diagram `src` paths and drill-down `{ "$ref": "detail.json" }` entries resolve relative to it (and must stay inside the input root).' }
 };
+const level = { type: 'string', description: 'Id of a detail diagram (drill-down level, a key of the diagrams map) to use instead of the overview.' };
 
 const TOOLS = [
   {
@@ -42,7 +44,7 @@ const TOOLS = [
   },
   {
     name: 'yantra_validate',
-    description: 'Validate a diagram: schema, references, story consistency, and rendered geometry (overlaps, edges through nodes, label collisions). Returns errors/warnings with stable codes.',
+    description: 'Validate a diagram: schema, references, story consistency, and rendered geometry (overlaps, edges through nodes, label collisions). Detail diagrams (drill-down levels in `diagrams`) are checked too, plus drill targets, cycles, depth and $ref files. Returns errors/warnings with stable codes.',
     inputSchema: { type: 'object', properties: source }
   },
   {
@@ -56,7 +58,7 @@ const TOOLS = [
   },
   {
     name: 'yantra_export',
-    description: 'Export a static SVG (diagrams) or Markdown (diagrams and pages). Writes outputPath when given, otherwise returns the content.',
+    description: 'Export a static SVG (diagrams) or Markdown (diagrams and pages) of the overview or one drill-down level. Writes outputPath when given, otherwise returns the content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -66,6 +68,8 @@ const TOOLS = [
         mode: { type: 'string' },
         view: { type: 'string', enum: ['flow', 'sequence'], description: 'Default meta.view; sequence draws the walkthrough as a sequence diagram.' },
         step: { type: 'number', description: '1-based step to highlight (sequence view)' },
+        level,
+        allLevels: { type: 'boolean', description: 'Markdown only: append every detail diagram after the overview.' },
         outputPath: { type: 'string' }
       },
       required: ['format']
@@ -94,7 +98,8 @@ const TOOLS = [
         outputPath: { type: 'string' },
         theme: { type: 'string', enum: ['light', 'dark'] },
         step: { type: 'number', description: '1-based walkthrough step to show' },
-        view: { type: 'string', enum: ['flow', 'sequence'], description: 'Flow graph or sequence diagram (default meta.view)' }
+        view: { type: 'string', enum: ['flow', 'sequence'], description: 'Flow graph or sequence diagram (default meta.view)' },
+        level
       },
       required: ['outputPath']
     }
@@ -145,14 +150,23 @@ function outputPath(p, exts) {
 
 function loadPayload(args) {
   let payload;
-  let base = INPUT_ROOT; // inline payloads: page diagram `src` paths resolve (and are confined) here
+  let base = INPUT_ROOT; // inline payloads: page `src` and drill-down `$ref` paths resolve (and are confined) here
   if (args.payload && typeof args.payload === 'object') payload = args.payload;
   else if (args.filePath) {
     const file = inputPath(args.filePath);
     payload = JSON.parse(fs.readFileSync(file, 'utf-8'));
     base = path.dirname(file);
   } else throw new Error('Provide either payload or filePath.');
-  return isPage(payload) ? resolvePage(payload, base) : payload;
+  return resolveAny(payload, base, { root: INPUT_ROOT });
+}
+
+/** A drill-down level of a diagram payload (the overview when no id is given). */
+function pickLevel(payload, id) {
+  if (id === undefined || id === null || id === '') return payload;
+  if (isPage(payload)) throw new Error('level applies to diagrams, not answer pages.');
+  const lv = getLevel(payload, String(id));
+  if (!lv) throw new Error(`Unknown level "${id}". Detail diagrams: ${[...collectDiagrams(payload).map.keys()].join(', ') || 'none'}.`);
+  return lv;
 }
 
 function call(name, args) {
@@ -190,10 +204,11 @@ function call(name, args) {
       if (args.format !== 'md' && isPage(payload)) throw new Error('Answer pages export to md, or to html with yantra_build.');
       const theme = args.theme === 'dark' ? 'dark' : 'light';
       const logos = readLogos();
+      const lv = pickLevel(payload, args.level);
       const content =
         args.format === 'md'
-          ? isPage(payload) ? pageToMarkdown(payload) : toMarkdown(payload)
-          : renderSvg(sceneForView(payload, { view: args.view, modeId: args.mode }), { theme, step: args.step > 0 ? args.step - 1 : null, logo: logos[theme] || logos.light || logos.dark });
+          ? isPage(payload) ? pageToMarkdown(payload) : toMarkdown(lv, { levels: !!args.allLevels && lv === payload })
+          : renderSvg(sceneForView(lv, { view: args.view, modeId: args.mode }), { theme, step: args.step > 0 ? args.step - 1 : null, logo: logos[theme] || logos.light || logos.dark });
       if (!args.outputPath) return { content };
       const out = outputPath(args.outputPath, args.format === 'md' ? ['.md'] : ['.svg']);
       fs.writeFileSync(out, content);
@@ -215,12 +230,13 @@ function call(name, args) {
       if (!html) {
         tmp = `${png}.tmp.html`;
         const payload = loadPayload(args);
+        pickLevel(payload, args.level);
         fs.writeFileSync(tmp, buildAny(payload));
         html = tmp;
         if (isPage(payload)) args = { ...args, width: 1100, height: 2200 };
       }
       try {
-        const out = screenshot(html, png, { theme: args.theme, hash: [args.step ? `step=${args.step}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&'), width: args.width, height: args.height });
+        const out = screenshot(html, png, { theme: args.theme, hash: [args.level ? `level=${encodeURIComponent(args.level)}` : '', args.step ? `step=${args.step}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&'), width: args.width, height: args.height });
         return { outputPath: out };
       } finally {
         if (tmp) fs.rmSync(tmp, { force: true });

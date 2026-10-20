@@ -1,0 +1,180 @@
+{
+  "meta": {
+    "title": "Shop platform overview",
+    "description": "The storefront at a glance; open Payments or Search for the detail.",
+    "summary": {
+      "headline": "One gateway in front of three services; Payments and Search each have their own detail diagram.",
+      "points": [
+        "Every client request passes the API gateway",
+        "Orders drives checkout and calls Payments synchronously",
+        "Search is fed by catalogue events, never by direct writes",
+        "Cards with a magnifier open a detail diagram (D or double-click)"
+      ],
+      "facts": {
+        "Owner": "Platform team",
+        "Levels": "Overview + 2 detail diagrams"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "client": { "label": "Client", "color": "amber" },
+    "edge": { "label": "Edge", "color": "blue" },
+    "service": { "label": "Service", "color": "teal" },
+    "data": { "label": "Data", "color": "violet" }
+  },
+  "nodes": [
+    {
+      "id": "web",
+      "type": "client",
+      "data": { "title": "Web shop", "subtitle": "Browse and check out", "tech": "Next.js", "icon": "monitor" }
+    },
+    {
+      "id": "gateway",
+      "type": "edge",
+      "data": {
+        "title": "API gateway",
+        "subtitle": "Auth, rate limits, routing",
+        "tech": "Envoy",
+        "icon": "shield",
+        "description": "Terminates TLS, checks the session token and routes each request to its service.",
+        "url": "https://www.envoyproxy.io/docs"
+      }
+    },
+    {
+      "id": "search",
+      "type": "service",
+      "data": {
+        "title": "Search",
+        "subtitle": "Product search and filters",
+        "tech": "Kotlin",
+        "icon": "zap",
+        "drill": "search",
+        "description": "Answers product queries from its own index. Open the detail diagram to see how the index is kept fresh."
+      }
+    },
+    {
+      "id": "orders",
+      "type": "service",
+      "data": {
+        "title": "Orders",
+        "subtitle": "Carts, checkout, order state",
+        "tech": "Go",
+        "icon": "package",
+        "description": "Owns the order lifecycle and publishes an event for every state change.",
+        "metadata": { "Team": "Checkout", "SLO": "99.95%" }
+      }
+    },
+    {
+      "id": "payments",
+      "type": "service",
+      "data": {
+        "title": "Payments",
+        "subtitle": "Authorise and capture",
+        "tech": "Java",
+        "icon": "credit-card",
+        "drill": "payments",
+        "description": "Takes card payments for Orders. Open the detail diagram for fraud checks, the provider and the ledger."
+      }
+    },
+    {
+      "id": "bus",
+      "type": "data",
+      "data": { "title": "Event bus", "subtitle": "Domain events", "tech": "Kafka", "icon": "layers" }
+    }
+  ],
+  "edges": [
+    { "id": "web-gateway", "source": "web", "target": "gateway", "label": "HTTPS" },
+    { "id": "gateway-search", "source": "gateway", "target": "search", "label": "Query" },
+    { "id": "gateway-orders", "source": "gateway", "target": "orders", "label": "Checkout" },
+    { "id": "orders-payments", "source": "orders", "target": "payments", "label": "Charge", "url": "https://example.com/docs/payments-api" },
+    { "id": "orders-bus", "source": "orders", "target": "bus", "label": "Order events", "type": "event" },
+    { "id": "bus-search", "source": "bus", "target": "search", "label": "Catalogue events", "type": "event" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "A customer buys a lamp",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Six parts. Search and Payments carry a magnifier: each opens its own detail diagram." },
+        { "id": "browse", "title": "Find the product", "description": "The web shop sends the query through the gateway to Search.", "highlightNodes": ["web", "gateway", "search"], "highlightEdges": ["web-gateway", "gateway-search"] },
+        { "id": "checkout", "title": "Check out", "description": "The gateway routes the checkout to Orders, which creates the order.", "highlightNodes": ["web", "gateway", "orders"], "highlightEdges": ["web-gateway", "gateway-orders"] },
+        { "id": "pay", "title": "Take the payment", "description": "Orders asks Payments to charge the card. Open Payments to follow the charge inside it.", "highlightNodes": ["orders", "payments"], "highlightEdges": ["orders-payments"] },
+        { "id": "events", "title": "Publish and reindex", "description": "The paid order goes onto the event bus; Search picks up stock changes from it.", "highlightNodes": ["orders", "bus", "search"], "highlightEdges": ["orders-bus", "bus-search"], "url": "https://example.com/docs/events" }
+      ]
+    }
+  ],
+  "diagrams": {
+    "payments": {
+      "meta": {
+        "title": "Payments service",
+        "description": "How a charge is checked, authorised and recorded.",
+        "layout": { "direction": "LR" }
+      },
+      "roles": {
+        "service": { "label": "Service", "color": "teal" },
+        "data": { "label": "Data", "color": "violet" },
+        "external": { "label": "External", "color": "slate" }
+      },
+      "nodes": [
+        { "id": "api", "type": "service", "data": { "title": "Payments API", "subtitle": "Charge requests from Orders", "tech": "Java, Spring", "icon": "server" } },
+        { "id": "fraud", "type": "service", "data": { "title": "Fraud check", "subtitle": "Scores every charge", "tech": "Rules + model", "icon": "shield", "description": "Blocks charges that score above the risk threshold before they reach the provider." } },
+        { "id": "provider", "type": "external", "data": { "title": "Card provider", "subtitle": "Authorise and capture", "tech": "Stripe", "icon": "globe", "url": "https://docs.stripe.com/payments" } },
+        { "id": "ledger", "type": "data", "data": { "title": "Ledger", "subtitle": "Double-entry records", "tech": "PostgreSQL", "icon": "database", "metadata": { "Retention": "7 years" } } }
+      ],
+      "edges": [
+        { "id": "api-fraud", "source": "api", "target": "fraud", "label": "Score" },
+        { "id": "fraud-provider", "source": "fraud", "target": "provider", "label": "Authorise" },
+        { "id": "provider-ledger", "source": "provider", "target": "ledger", "label": "Capture result", "type": "async" }
+      ],
+      "scenarios": [
+        {
+          "id": "charge",
+          "name": "Charge a card",
+          "steps": [
+            { "id": "overview", "title": "Inside Payments", "description": "Four parts: the API, the fraud check, the card provider and the ledger." },
+            { "id": "score", "title": "Score the charge", "description": "The API sends the charge to the fraud check first.", "highlightNodes": ["api", "fraud"], "highlightEdges": ["api-fraud"] },
+            { "id": "authorise", "title": "Authorise", "description": "A charge that passes is authorised with the card provider.", "highlightNodes": ["fraud", "provider"], "highlightEdges": ["fraud-provider"], "payload": { "method": "POST", "endpoint": "/v1/payment_intents", "status": "200 OK", "latency": "220 ms" } },
+            { "id": "record", "title": "Record it", "description": "The capture result is written to the ledger as two entries.", "highlightNodes": ["provider", "ledger"], "highlightEdges": ["provider-ledger"] }
+          ]
+        }
+      ]
+    },
+    "search": {
+      "meta": {
+        "title": "Search service",
+        "description": "How queries are answered and the index is kept fresh.",
+        "layout": { "direction": "LR" }
+      },
+      "roles": {
+        "service": { "label": "Service", "color": "teal" },
+        "data": { "label": "Data", "color": "violet" }
+      },
+      "nodes": [
+        { "id": "query", "type": "service", "data": { "title": "Query API", "subtitle": "Parses and ranks", "tech": "Kotlin", "icon": "zap" } },
+        { "id": "index", "type": "data", "data": { "title": "Product index", "subtitle": "Full-text and facets", "tech": "OpenSearch", "icon": "database", "url": "https://opensearch.org/docs/latest/" } },
+        { "id": "indexer", "type": "service", "data": { "title": "Indexer", "subtitle": "Applies catalogue events", "tech": "Kotlin worker", "icon": "activity" } },
+        { "id": "events", "type": "data", "data": { "title": "Catalogue events", "subtitle": "From the event bus", "tech": "Kafka topic", "icon": "layers" } }
+      ],
+      "edges": [
+        { "id": "query-index", "source": "query", "target": "index", "label": "Search" },
+        { "id": "events-indexer", "source": "events", "target": "indexer", "label": "Consume", "type": "event" },
+        { "id": "indexer-index", "source": "indexer", "target": "index", "label": "Upsert" }
+      ],
+      "scenarios": [
+        {
+          "id": "main",
+          "name": "Query and reindex",
+          "steps": [
+            { "id": "overview", "title": "Inside Search", "description": "Reads go to the index; writes arrive only as events." },
+            { "id": "query", "title": "Answer a query", "description": "The Query API searches the product index and ranks the hits.", "highlightNodes": ["query", "index"], "highlightEdges": ["query-index"] },
+            { "id": "consume", "title": "Consume an event", "description": "The indexer reads the next catalogue event from the bus.", "highlightNodes": ["events", "indexer"], "highlightEdges": ["events-indexer"] },
+            { "id": "upsert", "title": "Update the index", "description": "The indexer upserts the changed product, so the next query sees it.", "highlightNodes": ["indexer", "index"], "highlightEdges": ["indexer-index"] }
+          ]
+        }
+      ]
+    }
+  }
+}

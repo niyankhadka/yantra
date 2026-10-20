@@ -12,6 +12,7 @@ import { computeScene } from './scene.js';
 import { computeSequenceScene, hasSequence } from './sequence.js';
 import { overlaps, segmentsOf, segmentHitsBox } from './route.js';
 import { ICONS } from './icons.js';
+import { collectDiagrams, drillEdges, drillOf, isUnsafeRefPath, safeUrl, DRILL_MAX_DEPTH } from './drill.js';
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => (typeof v === 'string' ? v : '');
@@ -31,6 +32,19 @@ export function lint(payload) {
     return report(findings);
   }
   if (payload.kind === 'page') return lintPage(payload);
+  diagramFindings(payload, add);
+  if (payload.diagrams !== undefined || payload.meta?.startLevel !== undefined) checkLevels(payload, add);
+  return report(findings);
+}
+
+/** Every check of one diagram level (detail diagrams are checked by checkLevels). */
+function diagramFindings(payload, add) {
+  const findings = [];
+  const push = add;
+  add = (level, code, message, extra = {}) => {
+    findings.push({ level, code });
+    push(level, code, message, extra);
+  };
   const model = normalize(payload);
 
   if (!model.meta.title) add('error', 'schema/missing-title', 'meta.title is required.');
@@ -191,7 +205,78 @@ export function lint(payload) {
         for (const i of withMessages) sequenceGeometry(computeSequenceScene(payload, { modeId: mode.id, scenarioIndex: i }), add, model.modes.length > 1 ? ` [mode ${mode.id}]` : '');
   }
 
-  return report(findings);
+  // --- external links -----------------------------------------------------
+  const link = (what, url, extra) =>
+    url !== undefined && !safeUrl(url) && add('error', 'link/unsafe-url', `${what} url must be an http(s) or mailto: link.`, extra);
+  model.nodes.forEach((n) => link(`Node "${n.id}"`, n.data?.url, { node: n.id }));
+  model.edges.forEach((e) => link(`Edge "${e.id}"`, e.url, { edge: e.id }));
+  model.scenarios.forEach((sc) => arr(sc.steps).forEach((st, i) => link(`Scenario "${sc.name || sc.id}" step ${i + 1}`, st.url, { step: st.id })));
+}
+
+/**
+ * Drill-down: detail diagrams are linted like the overview (findings prefixed
+ * with their id), then drill targets, file references, cycles and depth.
+ */
+function checkLevels(payload, add) {
+  const { map, refs, issues } = collectDiagrams(payload);
+  for (const i of issues) add('error', i.code, i.message, i.id ? { diagram: i.id } : {});
+  for (const [id, ref] of refs) {
+    if (ref.$error === 'cycle') add('error', 'drill/cycle', `diagrams.${id} references "${ref.$ref}", which is already being loaded (files reference each other).`, { diagram: id });
+    else if (ref.$error === 'unsafe' || isUnsafeRefPath(ref.$ref))
+      add('error', 'drill/ref-unsafe', `diagrams.${id} "$ref": "${ref.$ref}" was not loaded: use a relative path to a .json file inside the input folder (no absolute paths, no escaping it with "..").`, { diagram: id });
+    else add('error', 'drill/ref-missing', `diagrams.${id} references "${ref.$ref}", which was not loaded (missing, unreadable or not valid JSON). File references are resolved by the CLI and MCP server.`, { diagram: id });
+  }
+  for (const [id, sub] of map)
+    diagramFindings(sub, (level, code, message, extra = {}) => add(level, code, `diagrams.${id}: ${message}`, { ...extra, diagram: id }));
+
+  const edges = drillEdges(payload, map);
+  const known = (id) => map.has(id) || refs.has(id);
+  for (const [at, p] of [['', payload], ...map])
+    arr(p.nodes).forEach((n) => {
+      if (n?.data?.drill === undefined) return;
+      const where = `${at ? `diagrams.${at}: ` : ''}Node "${n.id}"`;
+      const t = drillOf(n);
+      if (!t) add('error', 'drill/unknown-target', `${where} data.drill must be a diagram id (a string).`, { node: n.id });
+      else if (!known(t)) add('error', 'drill/unknown-target', `${where} drills into "${t}", which is not in diagrams${map.size ? ` (known: ${[...map.keys()].join(', ')})` : ''}.`, { node: n.id, ...(at ? { diagram: at } : {}) });
+    });
+  const start = payload.meta?.startLevel;
+  if (start !== undefined && !map.has(start))
+    add('error', 'drill/unknown-start-level', `meta.startLevel "${start}" is not a detail diagram id.`);
+
+  // Cycles (A drills into B, B back into A) and depth below the overview
+  const state = new Map();
+  const cycles = new Set();
+  const visit = (id, trail) => {
+    state.set(id, 'open');
+    for (const next of edges.get(id) || []) {
+      if (!map.has(next)) continue;
+      if (state.get(next) === 'open') {
+        const loop = [...trail.slice(trail.indexOf(next)), next].join(' > ');
+        if (!cycles.has(loop)) add('error', 'drill/cycle', `Detail diagrams drill into each other: ${loop}. Remove one data.drill so levels form a tree.`, { diagrams: trail.slice(trail.indexOf(next)) });
+        cycles.add(loop);
+      } else if (!state.has(next)) visit(next, [...trail, next]);
+    }
+    state.set(id, 'done');
+  };
+  visit('', ['']);
+  for (const id of map.keys()) if (!state.has(id)) visit(id, [id]);
+  if (!cycles.size) {
+    const depth = new Map();
+    const deep = (id) => {
+      if (depth.has(id)) return depth.get(id);
+      const d = 1 + Math.max(0, ...(edges.get(id) || []).filter((x) => map.has(x)).map(deep));
+      depth.set(id, d);
+      return d;
+    };
+    const levels = Math.max(0, ...(edges.get('') || []).filter((x) => map.has(x)).map(deep));
+    if (levels > DRILL_MAX_DEPTH)
+      add('error', 'drill/too-deep', `Drill-down is ${levels} levels below the overview; the maximum is ${DRILL_MAX_DEPTH}. Merge a level or link it as a separate diagram.`);
+  }
+  const reached = new Set();
+  const reach = (id) => (edges.get(id) || []).forEach((x) => !reached.has(x) && (reached.add(x), reach(x)));
+  reach('');
+  for (const id of map.keys())
+    if (!reached.has(id) && start !== id) add('warning', 'drill/unused-diagram', `diagrams.${id} is never drilled into: add data.drill: "${id}" to a card, or remove it.`, { diagram: id });
 }
 
 function geometry(scene, mode, add, tagMode) {
@@ -454,6 +539,8 @@ function checkBlocks(blocks, add, path) {
         : `${where} references "${src}" which was not loaded (missing, unreadable or not valid JSON).`, { block: i });
     }
     if (!BLOCK_NEEDS[b.type](b)) return add('error', 'page/block-invalid', `${where} (${b.type}) needs ${BLOCK_SHAPE[b.type]}.`, { block: i });
+    if (b.type === 'diagram' && b.level !== undefined && !collectDiagrams(b.diagram).map.has(b.level))
+      add('error', 'page/unknown-level', `${where} level "${b.level}" is not a detail diagram of this diagram (see its diagrams map).`, { block: i });
     if (b.type === 'diagram') {
       const r = lint(b.diagram);
       for (const f of [...r.errors, ...r.warnings]) {

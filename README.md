@@ -16,6 +16,11 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 - **Sequence view**: the same payload as a lifeline diagram (`meta.view: "sequence"`, key `V`,
   `--view sequence`), one message per step.
 - **Modes**: alternative views (production vs local) that hide nodes or swap details.
+- **Drill-down**: an overview whose cards open detail diagrams (`data.drill`, a `diagrams` map
+  or `$ref` files), with a breadcrumb, Back/`Esc`, deep links (`#level=`) and up to 3 levels;
+  big systems stay under the card budget at every level.
+- **Links**: `url` on nodes, edges and steps opens runbooks, dashboards or specs from the
+  inspector (http, https and mailto only).
 - **Inspector**: tabs built from content (Summary, Step, Details) plus custom `panels`;
   `meta.inspector.onNodeClick` decides what a card click opens.
 - **Answer pages** (`"kind": "page"`): the answer first, then blocks - points, steps, metrics,
@@ -86,8 +91,8 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 |---|---|
 | `yantra validate <file> [--json]` | Check schema, references, story and geometry. Exit code 1 on errors. |
 | `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
-| `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n]` | Static SVG or Markdown. |
-| `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). |
+| `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
+| `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). |
 | `yantra import <file.mmd\|file.md> [-o out.json] [--title "..."] [--all]` | Convert Mermaid flowcharts / sequence diagrams, then validate. |
 | `yantra new <file> [--page]` | Starter diagram or answer page. |
 | `yantra examples [name] [-o file]` | List the examples or copy one. |
@@ -95,9 +100,10 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 
 ## Examples
 
-11 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
+12 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
 
 - Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
+  `platform-overview` (drill-down into two detail diagrams, links),
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
   (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
   `healthcare-clinical`.
@@ -114,13 +120,14 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `P` | play | `C` | camera follow |
 | `1`-`9` | scenario | `M` / `V` | cycle mode / flow-sequence view |
 | `I` | inspector | `L` | legend |
+| `D` | open the card's detail diagram | `Esc` again | back up a drill-down level |
 | `S` | collapse storyboard | `F` | present (full screen) |
 | `R` / `+` / `-` | fit / zoom | `T` | theme |
 | `?` | all shortcuts | `Esc` | close / clear focus |
 
 Drag cards to rearrange (edges re-route live); **Export → Copy JSON with positions** writes
 the arrangement back as a manual layout. The state is mirrored in the URL hash, so links
-reopen the same view: `#step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&theme=dark`
+reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&theme=dark`
 (dev server also `#example=<name>`). Printing switches to the light theme and hides the chrome.
 
 ## Branding
@@ -168,11 +175,12 @@ src/core/              Shared engine: model, layout, routing, scene, lint, SVG/M
   mermaid.js           Mermaid flowchart / sequence importer
   page.js              Answer pages
   charts.js            Page charts, gantt plans, matrices (inline SVG)
+  drill.js             Drill-down levels and link sanitising
 src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              11 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
+examples/              12 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
 docs/                  Authoring (diagrams, pages, Mermaid) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite

@@ -406,6 +406,10 @@
             "type": "boolean",
             "default": true,
             "description": "matrix (grid 3-5): colour cells low to high by row x column; false keeps them plain."
+          },
+          "level": {
+            "type": "string",
+            "description": "diagram: show this detail diagram (an id in the diagram's diagrams map) instead of its overview; an interactive viewer opens there and can go back up."
           }
         }
       }

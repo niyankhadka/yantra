@@ -1,4 +1,5 @@
-"""Diagram builder: nodes, edges, roles, groups, modes, scenarios, summary and inspector panels.
+"""Diagram builder: nodes, edges, roles, groups, modes, scenarios, summary, inspector panels,
+drill-down detail diagrams and links.
 
 Produces payloads matching ``schemas/yantra-payload.schema.json``. Layout is automatic, so
 nodes need no coordinates.
@@ -7,6 +8,7 @@ nodes need no coordinates.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
@@ -27,6 +29,18 @@ def _ids(refs: Optional[Iterable[Any]]) -> List[str]:
     return [_id(r) for r in refs] if refs else []
 
 
+_SAFE_URL = re.compile(r"^(https?://|mailto:)[^\s\"'<>]+$", re.IGNORECASE)
+
+
+def _url(url: Optional[str]) -> Optional[str]:
+    """Links open only http(s) and mailto targets (the validator reports link/unsafe-url)."""
+    if url is None:
+        return None
+    if not isinstance(url, str) or not _SAFE_URL.match(url.strip()):
+        raise YantraError(f"url must be an http(s) or mailto: link, not {url!r}")
+    return url.strip()
+
+
 class Node:
     """A card. ``data`` holds title, subtitle, tech, icon, badge, description, metadata, modes..."""
 
@@ -44,6 +58,11 @@ class Node:
         target_id = _id(target)
         self._diagram.add_edge(self.id, target_id, label=label, **edge)
         return target if isinstance(target, Node) else self
+
+    def drill(self, diagram_id: str) -> "Node":
+        """Open the detail diagram `diagram_id` (see :meth:`Diagram.detail`) from this card."""
+        self.data["drill"] = _id(diagram_id)
+        return self
 
     def mode_override(self, mode_id: str, **data: Any) -> "Node":
         """Override data fields (title, subtitle, tech, ...) while mode `mode_id` is shown."""
@@ -82,13 +101,14 @@ class Step:
 
     def __init__(self, step_id: str, title: str, description: str = "",
                  nodes: Optional[List[str]] = None, edges: Optional[List[str]] = None,
-                 payload: Optional[Dict[str, Any]] = None):
+                 payload: Optional[Dict[str, Any]] = None, url: Optional[str] = None):
         self.id = step_id
         self.title = title
         self.description = description
         self.nodes = _ids(nodes)
         self.edges = _ids(edges)
         self.payload = payload
+        self.url = _url(url)
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"id": self.id, "title": self.title}
@@ -100,6 +120,8 @@ class Step:
             d["highlightEdges"] = self.edges
         if self.payload:
             d["payload"] = self.payload
+        if self.url:
+            d["url"] = self.url
         return d
 
 
@@ -114,11 +136,12 @@ class Scenario:
 
     def step(self, title: str, description: str = "", nodes: Optional[Iterable[NodeRef]] = None,
              edges: Optional[Iterable[Any]] = None, payload: Optional[Dict[str, Any]] = None,
-             step_id: Optional[str] = None) -> Step:
-        """Append a step. `nodes`/`edges` accept ids or Node/Edge objects; `payload` shows in the inspector."""
+             step_id: Optional[str] = None, url: Optional[str] = None) -> Step:
+        """Append a step. `nodes`/`edges` accept ids or Node/Edge objects; `payload` and `url`
+        (an http(s) or mailto link) show in the inspector."""
         prefix = "step" if self.id == DEFAULT_SCENARIO else f"{self.id}-step"
         s = Step(step_id or f"{prefix}-{len(self.steps) + 1}", title, description,
-                 _ids(nodes), _ids(edges), payload)
+                 _ids(nodes), _ids(edges), payload, url)
         self.steps.append(s)
         return s
 
@@ -168,6 +191,7 @@ class Diagram:
         self.panels: List[Dict[str, Any]] = []
         self.scenarios: Dict[str, Scenario] = {}
         self.scenario_name = "Walkthrough"
+        self.diagrams: Dict[str, Any] = {}
 
     # --- meta ---------------------------------------------------------------
     def layout(self, direction: str = "LR", mode: Optional[str] = None) -> "Diagram":
@@ -248,16 +272,23 @@ class Diagram:
             raise YantraError(f"node width must be 160-320, not {width}")
         if rank is not None and (not isinstance(rank, int) or rank < 0):
             raise YantraError(f"node rank must be a non-negative integer, not {rank!r}")
+        if data.get("url") is not None:
+            data["url"] = _url(data["url"])
+        if data.get("drill") is not None:
+            data["drill"] = _id(data["drill"])
         node = Node(self, node_id, title, type, rank=rank, width=width, **data)
         self.nodes[node_id] = node
         return node
 
     def add_edge(self, source: NodeRef, target: NodeRef, label: str = "", edge_id: Optional[str] = None,
                  type: Optional[str] = None, style: Optional[str] = None, **extra: Any) -> Edge:
-        """Connect two nodes. `type`: sync | async | event | stream | data; `style`: solid | dashed | dotted."""
+        """Connect two nodes. `type`: sync | async | event | stream | data; `style`: solid | dashed | dotted;
+        `url=` adds an http(s) or mailto link shown in the inspector."""
         source, target = _id(source), _id(target)
         if style not in (None, "solid", "dashed", "dotted"):
             raise YantraError(f"edge style must be solid, dashed or dotted, not {style!r}")
+        if extra.get("url") is not None:
+            extra["url"] = _url(extra["url"])
         edge_id = edge_id or f"{source}-{target}"
         base, n = edge_id, 2
         while edge_id in self.edges:
@@ -287,6 +318,35 @@ class Diagram:
         self.panels.append({"id": panel_id, "title": title, "blocks": items})
         return self
 
+    # --- drill-down -----------------------------------------------------------
+    def detail(self, diagram_id: str, diagram: Union["Diagram", Mapping[str, Any], str, Path],
+               from_node: Optional[NodeRef] = None) -> "Diagram":
+        """Add a detail diagram that a card opens (drill-down): a ``Diagram``, a payload dict, or a
+        relative path to a diagram .json file (stored as ``{"$ref": path}``, loaded by the CLI
+        relative to the saved overview). `from_node` sets that card's ``drill``. Returns self."""
+        if diagram_id in self.diagrams:
+            raise YantraError(f"Duplicate detail diagram id: {diagram_id}")
+        if isinstance(diagram, (str, Path)):
+            ref = Path(diagram).as_posix()
+            if Path(ref).is_absolute() or ref.startswith("/") or re.match(r"^[a-zA-Z][\w+.-]*:", ref) or not ref.lower().endswith(".json"):
+                raise YantraError(f"detail diagram path must be a relative .json path, not {ref!r}")
+            self.diagrams[diagram_id] = {"$ref": ref}
+        elif isinstance(diagram, (Diagram, Mapping)):
+            self.diagrams[diagram_id] = diagram
+        else:
+            raise TypeError("detail diagram must be a Diagram, a payload dict or a .json path")
+        if from_node is not None:
+            node = self.nodes.get(_id(from_node))
+            if node is None:
+                raise YantraError(f"Unknown node: {_id(from_node)}")
+            node.drill(diagram_id)
+        return self
+
+    def start_level(self, diagram_id: str) -> "Diagram":
+        """Open the viewer on a detail diagram instead of the overview."""
+        self.meta["startLevel"] = diagram_id
+        return self
+
     # --- story --------------------------------------------------------------
     def scenario(self, scenario_id: str, name: str, description: Optional[str] = None) -> Scenario:
         """Get or create a named walkthrough. ``add_step`` writes to the default scenario ("main")."""
@@ -310,9 +370,10 @@ class Diagram:
         return self._default().steps
 
     def add_step(self, title: str, description: str = "", nodes: Optional[List[str]] = None,
-                 edges: Optional[List[str]] = None, payload: Optional[Dict[str, Any]] = None) -> Step:
+                 edges: Optional[List[str]] = None, payload: Optional[Dict[str, Any]] = None,
+                 url: Optional[str] = None) -> Step:
         """Add a step to the default walkthrough. With no nodes/edges it is an overview step."""
-        return self._default().step(title, description, nodes, edges, payload)
+        return self._default().step(title, description, nodes, edges, payload, url=url)
 
     # --- output -------------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
@@ -331,6 +392,8 @@ class Diagram:
             out["scenarios"] = scenarios
         if self.panels:
             out["panels"] = self.panels
+        if self.diagrams:
+            out["diagrams"] = {k: v.to_dict() if isinstance(v, Diagram) else dict(v) for k, v in self.diagrams.items()}
         return out
 
     def to_json(self, indent: int = 2) -> str:
@@ -340,10 +403,11 @@ class Diagram:
         Path(path).write_text(self.to_json(), encoding="utf-8")
         return path
 
-    def validate(self) -> Dict[str, Any]:
-        """Run the Yantra validator; returns {"valid", "errors", "warnings"}."""
-        return validate_payload(self.to_dict(), "diagram.json")
+    def validate(self, base_dir: Optional[str] = None) -> Dict[str, Any]:
+        """Run the Yantra validator; returns {"valid", "errors", "warnings"}. `base_dir` is the
+        folder that detail-diagram paths (``detail(id, "x.json")``) are relative to."""
+        return validate_payload(self.to_dict(), "diagram.json", base_dir)
 
-    def build_html(self, output_html: str, force: bool = False) -> str:
-        """Validate and write a single-file offline HTML diagram."""
-        return build_payload(self.to_dict(), output_html, force, "diagram.json")
+    def build_html(self, output_html: str, force: bool = False, base_dir: Optional[str] = None) -> str:
+        """Validate and write a single-file offline HTML diagram (every detail level included)."""
+        return build_payload(self.to_dict(), output_html, force, "diagram.json", base_dir)

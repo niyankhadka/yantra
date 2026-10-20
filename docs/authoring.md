@@ -34,7 +34,7 @@ direction of the edges, so **edge direction is your layout tool**:
 
 | Thing | Budget | Why |
 |---|---|---|
-| Nodes | ≤ 14 (aim for 6–10) | Beyond that, split into an overview plus detail diagrams |
+| Nodes | ≤ 14 (aim for 6–10) | Beyond that, split into an overview plus detail diagrams (see Drill-down) |
 | Edges | ≤ 20 | Merge parallel flows that say the same thing |
 | Roles | 3–5 | Colour means something only when it repeats |
 | Node title | ≤ 42 chars | Detail goes in `subtitle` (card) or `description` (inspector) |
@@ -156,6 +156,54 @@ step with `highlightEdges`, the viewer shows a Flow / Sequence toggle (key `V`, 
 that sends something, and keep the flow view readable too: both views come from one payload.
 See `examples/oauth-login.json`.
 
+## Drill-down: an overview plus detail diagrams
+
+A big system does not fit in 14 cards, and should not. Draw the **overview** with one card per
+subsystem, then give a subsystem its own **detail diagram**: the card gets a drill mark, and
+opening it (click the mark, double-click the card, key `D`, or the inspector button) shows the
+detail with a breadcrumb (`Overview › Payments`). The breadcrumb, `Esc` (once nothing is
+selected) and the browser's Back button return; the URL carries the level (`#level=payments`).
+Each level is a full diagram: its own steps, inspector tabs, modes and sequence view.
+
+```json
+{
+  "meta": { "title": "Shop platform" },
+  "nodes": [
+    { "id": "payments", "type": "service", "data": { "title": "Payments", "drill": "payments" } }
+  ],
+  "diagrams": {
+    "payments": { "meta": { "title": "Payments service" }, "nodes": [ ... ], "edges": [ ... ], "scenarios": [ ... ] },
+    "search": { "$ref": "./search.json" }
+  }
+}
+```
+
+- `data.drill` names a key of the top-level `diagrams` map. A detail diagram may drill further
+  (at most **3 levels** below the overview, no cycles); every id lives in one namespace, so a
+  detail diagram's own `diagrams` map is merged in.
+- `{ "$ref": "./search.json" }` keeps a level in its own file. The CLI and MCP server load it
+  relative to the file that contains it; it must be a relative `.json` path that stays inside
+  the input folder (the input file's folder for the CLI, `YANTRA_INPUT_ROOT` for MCP). The
+  built HTML always contains every level, so it still works offline. The browser dev server
+  and the gallery cannot load files: inline those levels.
+- `meta.startLevel: "payments"` opens the viewer on a detail diagram.
+- Exports follow the level on screen (SVG, PNG, Markdown); **Export → Markdown, all levels**
+  (CLI `export -f md --all-levels`) appends every level under its breadcrumb. CLI and MCP take
+  `--level <id>` / `level` for `export` and `screenshot`.
+- Answer pages: a diagram block with `level: "payments"` shows that level; with
+  `interactive: true` the viewer opens there and can go back up. One drillable embed is still
+  one viewer for the two-per-page budget.
+
+See `examples/platform-overview.json`.
+
+## Links
+
+`data.url` on a node, `url` on an edge or a step adds an **Open link** to the inspector (node
+Details, the edge in its card's connections, the Step tab), opened in a new tab with
+`rel="noopener noreferrer"`. Only `http:`, `https:` and `mailto:` links are allowed; Markdown
+exports keep them as links. Use links for runbooks, dashboards, specs and source, not for
+content that belongs on the card.
+
 ## Limits
 
 - Card titles, subtitles and edge labels over 200 characters are cut with an ellipsis;
@@ -192,6 +240,16 @@ Fix in this order; each fix can clear later errors.
 | `sequence/no-messages` (warning) | `meta.view` is `sequence` but no step lists `highlightEdges`: add them, or drop `meta.view`. |
 | `schema/unknown-view` | `meta.view` must be `flow` or `sequence`. |
 | `geometry/sequence-label-*` | Should not occur (gaps widen to fit); report it, and shorten the label meanwhile. |
+| `drill/unknown-target` | `data.drill` must name a key of `diagrams` (ids are case-sensitive). |
+| `drill/cycle` | Levels drill into each other (A > B > A), or `$ref` files load each other: remove one `data.drill` or ref so levels form a tree. |
+| `drill/too-deep` | More than 3 levels below the overview: merge a level, or link the deepest one as a separate diagram (`url`). |
+| `drill/ref-missing` | The `$ref` file is missing, unreadable or not valid JSON (or nothing loaded it: validate with the CLI or MCP). |
+| `drill/ref-unsafe` | Use a relative `.json` path inside the input folder: no absolute paths, URLs or `..` that leaves it. |
+| `drill/invalid-diagram`, `drill/diagrams-invalid`, `drill/duplicate-id` | `diagrams` is an object of diagram payloads (or `$ref`s) with ids unique across all levels. |
+| `drill/unknown-start-level` | `meta.startLevel` must be a key of `diagrams`. |
+| `drill/unused-diagram` (warning) | No card drills into this level: add `data.drill` or remove it. |
+| `diagrams.<id>: …` | A finding inside a detail diagram; fix it there like any other code. |
+| `link/unsafe-url` | `url` must start with `http://`, `https://` or `mailto:`. |
 | `budget/*` (warning) | Split the diagram or merge nodes. |
 | `content/*` (warning) | Shorten titles/labels; add missing edge labels. |
 

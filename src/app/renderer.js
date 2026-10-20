@@ -7,7 +7,8 @@
  * head uses the target colour, and signal dots shift colour as they travel.
  */
 import { HUES } from '../core/theme.js';
-import { iconSvg } from '../core/icons.js';
+import { iconSvg, DRILL_ICON } from '../core/icons.js';
+import { DRILL_TEXT } from './levels.js';
 import { escapeHtml as h } from '../core/text.js';
 import { sequenceLive } from '../core/sequence.js';
 
@@ -119,8 +120,12 @@ export class Renderer {
     el.dataset.role = n.node.type || 'node';
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
-    el.setAttribute('aria-label', [n.node.data?.title, n.node.data?.subtitle].filter(Boolean).join(', '));
+    const drill = typeof n.node.data?.drill === 'string' && n.node.data.drill;
+    el.setAttribute('aria-label', [n.node.data?.title, n.node.data?.subtitle, drill && DRILL_TEXT.cardHint].filter(Boolean).join(', '));
+    el.classList.toggle('has-drill', !!drill);
     el.innerHTML =
+      // Drill mark: clicking it opens the detail diagram (the card itself stays the one control)
+      (drill ? `<span class="y-node-drill" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${DRILL_ICON}</svg></span>` : '') +
       `<div class="y-node-kicker">${iconSvg(n.icon, 14)}<span>${h(n.kicker)}</span></div>` +
       `<div class="y-node-title">${n.lines.title.map((l) => `<span>${h(l)}</span>`).join('')}</div>` +
       (n.lines.subtitle.length ? `<div class="y-node-sub">${n.lines.subtitle.map((l) => `<span>${h(l)}</span>`).join('')}</div>` : '') +

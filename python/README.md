@@ -36,6 +36,22 @@ d.validate()                  # {"valid", "errors", "warnings"}
 d.build_html("checkout.html")
 ```
 
+### Detail diagrams and links
+
+```python
+pay = d.add_node("payments", "Payments", "service", url="https://example.com/runbook")
+detail = Diagram("Payments service")            # a full diagram: nodes, edges, steps
+...
+d.detail("payments", detail, from_node=pay)     # pay.drill("payments") opens it
+d.detail("search", "search.json")               # or a file: {"$ref": "search.json"}
+d.validate(base_dir="diagrams/")                # folder that file references are relative to
+d.add_edge(api, db, "INSERT", url="https://example.com/schema")
+d.add_step("Persist", url="https://example.com/adr-12")
+```
+
+Links accept `http(s)://` and `mailto:` only. `Page.diagram(d, level="payments")` shows a
+detail level on a page.
+
 ## Answer page
 
 ```python

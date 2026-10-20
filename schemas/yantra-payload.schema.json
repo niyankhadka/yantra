@@ -146,6 +146,10 @@
             }
           },
           "additionalProperties": false
+        },
+        "startLevel": {
+          "type": "string",
+          "description": "Id of a detail diagram (in diagrams) the viewer opens at; the breadcrumb still leads back to the overview."
         }
       }
     },
@@ -293,6 +297,15 @@
                 "type": "string",
                 "description": "Code reference, e.g. src/api/server.ts:42"
               },
+              "drill": {
+                "type": "string",
+                "description": "Id of a detail diagram in diagrams: the card shows a drill mark and opens that diagram (breadcrumb, Back and Esc return)."
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^(https?://|mailto:)",
+                "description": "External link (http, https or mailto) opened in a new tab from the inspector."
+              },
               "metadata": {
                 "type": "object",
                 "description": "Key/value facts shown in the inspector.",
@@ -350,6 +363,11 @@
               "dashed",
               "dotted"
             ]
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^(https?://|mailto:)",
+            "description": "External link (http, https or mailto) opened in a new tab from the inspector."
           }
         }
       }
@@ -481,6 +499,30 @@
           }
         }
       }
+    },
+    "diagrams": {
+      "type": "object",
+      "description": "Detail diagrams for drill-down, keyed by id: a card with data.drill opens one. Each value is a full diagram payload (meta, nodes, edges, scenarios...) or { \"$ref\": \"./detail.json\" }, a relative path the CLI and MCP server load (it must stay inside the input folder). Ids are shared by every level; at most 3 levels below the overview, no cycles.",
+      "additionalProperties": {
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#"
+          },
+          {
+            "required": [
+              "$ref"
+            ],
+            "properties": {
+              "$ref": {
+                "type": "string",
+                "pattern": "\\.json$",
+                "description": "Relative path to a diagram .json file."
+              }
+            }
+          }
+        ]
+      }
     }
   },
   "definitions": {
@@ -517,6 +559,11 @@
           "type": "object",
           "description": "Shown in the inspector. method/endpoint/status/latency/protocol render as chips; everything else as JSON.",
           "additionalProperties": true
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^(https?://|mailto:)",
+          "description": "External link (http, https or mailto) opened in a new tab from the inspector."
         }
       }
     },

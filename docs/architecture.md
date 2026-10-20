@@ -22,6 +22,7 @@ validator checks is exactly what the viewer draws.
 | `sequence.js` | `computeSequenceScene(payload, { modeId, scenarioIndex })`: the sequence view (participants by first appearance, one message per step `highlightEdges` id, numbered rows, group boxes over adjacent columns; gaps widen to fit labels). `sceneForView` picks flow or sequence. |
 | `lint.js` | Structural, reference, story, budget and geometry checks with stable codes. |
 | `svg.js` / `markdown.js` | Static exports. SVG is plain SVG (no `foreignObject`), so it rasterises to PNG cleanly. `renderSequenceSvg` draws the sequence view. |
+| `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build. |
 | `page.js` | Answer pages: block renderers (shared with inspector panels), `renderPage`, page lint, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. |
 | `mermaid.js` | `fromMermaid(text, { title })`: flowchart and sequence-diagram importer (nodes, edges, subgraphs to groups, a generated walkthrough) with warnings for anything skipped. |
 | `theme.js` / `icons.js` | Design tokens for both themes and the icon set; the app injects the tokens as CSS variables. |
@@ -39,6 +40,10 @@ validator checks is exactly what the viewer draws.
   The inspector shows Summary / Step / Details tabs and custom `panels`; `meta.inspector.onNodeClick`
   picks what a card click opens. Closed panels are `inert` / `hidden`, so they are neither
   visible nor focusable.
+- `src/app/levels.js`: drill-down navigation (the level stack, breadcrumb, `level=` hash key,
+  state restored on the way back up) and the feature's UI strings (`DRILL_TEXT`). Changing level
+  reloads the engine with that level's payload and adds a history entry (not inside embeds),
+  so the browser's Back button returns.
 - `src/app/examples.js`: the built-in gallery, loaded with a dynamic `import()` only when no
   payload is embedded (the dev server). `vite build` puts it in its own chunk, which built
   files never include.

@@ -2,11 +2,36 @@
 import { normalize, groupIndex, roleKey } from './model.js';
 import { pageToMarkdown } from './page.js';
 import { mdInline as md, mdBlock } from './text.js';
+import { collectDiagrams, drillOf, levelOrder, safeUrl } from './drill.js';
 
 const cell = (v) => md(v ?? '—').replace(/\|/g, '\\|') || '—';
+/** Markdown link target (safe URLs only), bare unless it has spaces or brackets. */
+const href = (u) => {
+  const t = safeUrl(u);
+  return t && (/[\s()<>]/.test(t) ? `<${t.replace(/[<>\s]/g, encodeURIComponent)}>` : t);
+};
 
-export function toMarkdown(payload) {
+/**
+ * Markdown spec of one level. `levels: true` appends every detail diagram
+ * (drill-down levels), each under a heading with its breadcrumb.
+ */
+export function toMarkdown(payload, { levels = false } = {}) {
+  let text = levelMarkdown(payload, payload);
+  if (!levels) return text;
+  const titles = collectDiagrams(payload).map;
+  const rootTitle = payload?.meta?.title || 'Overview';
+  for (const lv of levelOrder(payload)) {
+    const crumbs = [rootTitle, ...lv.trail.map((id) => titles.get(id)?.meta?.title || id)].map(md).join(' › ');
+    // One heading level down; the level title becomes its breadcrumb
+    const body = levelMarkdown(lv.payload, payload).replace(/^# .*$/m, () => `# ${crumbs}`).replace(/^(#+) /gm, '#$1 ');
+    text += `\n---\n\n${body}`;
+  }
+  return text;
+}
+
+function levelMarkdown(payload, root) {
   const model = normalize(payload);
+  const details = collectDiagrams(root).map;
   const { meta } = model;
   const title = (id) => model.nodes.find((n) => n.id === id)?.data?.title || id;
   const out = [];
@@ -27,7 +52,10 @@ export function toMarkdown(payload) {
   for (const n of model.nodes) {
     const d = n.data || {};
     const role = model.roles[roleKey(n)]?.label || n.type;
-    out.push(`| **${cell(d.title || n.id)}** | ${cell(role)} | ${cell(d.tech)} | ${cell(d.description || d.subtitle)} |`);
+    const name = href(d.url) ? `[**${cell(d.title || n.id)}**](${href(d.url)})` : `**${cell(d.title || n.id)}**`;
+    const drill = drillOf(n);
+    const detail = drill && details.has(drill) ? ` (detail: ${cell(details.get(drill).meta?.title || drill)})` : '';
+    out.push(`| ${name}${detail} | ${cell(role)} | ${cell(d.tech)} | ${cell(d.description || d.subtitle)} |`);
   }
 
   const gi = groupIndex(model.groups, new Set(model.nodes.map((n) => n.id)));
@@ -41,7 +69,7 @@ export function toMarkdown(payload) {
   }
 
   out.push('', '## Connections', '', '| From | To | Label |', '|---|---|---|');
-  for (const e of model.edges) out.push(`| ${cell(title(e.source))} | ${cell(title(e.target))} | ${cell(e.label)} |`);
+  for (const e of model.edges) out.push(`| ${cell(title(e.source))} | ${cell(title(e.target))} | ${href(e.url) ? `[${cell(e.label || 'link')}](${href(e.url)})` : cell(e.label)} |`);
 
   if (model.modes.length > 1) {
     out.push('', '## Modes', '');
@@ -65,6 +93,7 @@ export function toMarkdown(payload) {
     sc.steps.forEach((st, i) => {
       out.push(`### ${i + 1}. ${md(st.title)}`, '');
       if (st.description) out.push(mdBlock(st.description), '');
+      if (href(st.url)) out.push(`[More: ${md(st.url)}](${href(st.url)})`, '');
       const p = st.payload;
       if (p && (p.method || p.endpoint)) out.push(`${code([p.method, p.endpoint].filter(Boolean).join(' '))}${p.status ? ` → ${md(p.status)}` : ''}${p.latency ? ` (${md(p.latency)})` : ''}`, '');
     });
