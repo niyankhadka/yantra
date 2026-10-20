@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { lint } from '../src/core/index.js';
 import { renderBlock as renderWithFits, renderPage, pageToMarkdown } from '../src/core/page.js';
-import { niceTicks, parseDay, fmtDay, fmtValue, resolveGantt, chartSeries, isSimpleBars, SERIES_HUES } from '../src/core/charts.js';
+import { niceTicks, parseDay, fmtDay, fmtValue, resolveGantt, chartSeries, isSimpleBars, SERIES_HUES, chartMarkdown } from '../src/core/charts.js';
 
 // the static drawing only: narrower phone variants (template.p-fit) are covered in finish.test.js
 const renderBlock = (...args) => renderWithFits(...args).replace(/<template class="p-fit"[\s\S]*?<\/template>/g, '');
@@ -250,4 +250,66 @@ test('bar and gantt labels are clipped only when their measured width does not f
   assert.match(plan, />Migration rehearsals</);
   const long = renderBlock({ type: 'chart', kind: 'bar', stacked: true, span: 'half', categories: ['A very long category label that cannot possibly fit beside the bars', 'B'], series: [{ name: 'A', values: [1, 2] }, { name: 'B', values: [2, 1] }] });
   assert.match(long, /class="c-cat">A very[^<]*…</, 'a label too wide still ends in an ellipsis');
+});
+
+test('a chart target draws a dashed reference line with its label, in the name and the data table', () => {
+  const col = { type: 'chart', kind: 'column', title: 'p95', unit: ' ms', data: [{ label: 'Mon', value: 180 }, { label: 'Tue', value: 150 }], target: 160 };
+  const html = renderBlock(col);
+  assert.match(html, /<line class="c-target" x1="[\d.]+" x2="[\d.]+" y1="([\d.]+)" y2="\1">/, 'horizontal on a column chart');
+  assert.match(html, /class="c-target-l">Target 160 ms</);
+  assert.match(html, /aria-label="Column chart: p95; Target 160 ms"/);
+  assert.match(html, /<tr><th scope="row">Target<\/th><td>160 ms<\/td><\/tr>/);
+  // the line sits under the columns, its label over them
+  assert.ok(html.indexOf('class="c-target"') < html.indexOf('<rect data-s="0"'), 'line before the marks');
+  assert.ok(html.indexOf('c-target-l') > html.lastIndexOf('<rect data-s="0"'), 'label after the marks');
+  const bar = renderBlock({ ...col, kind: 'bar' });
+  assert.ok(!isSimpleBars({ ...col, kind: 'bar' }), 'a bar chart with a target is drawn as SVG');
+  assert.match(bar, /<line class="c-target" x1="([\d.]+)" x2="\1"/, 'vertical on a bar chart');
+  const line = renderBlock({ type: 'chart', kind: 'line', categories: ['a', 'b', 'c'], series: [{ name: 'MTTR', values: [82, 71, 38] }], target: 60, unit: ' min' });
+  assert.match(line, /class="c-target-l">Target 60 min</);
+  // a target outside the data widens the scale so the line is drawn
+  assert.match(renderBlock({ ...col, target: 400 }), />400 ms</);
+  assert.deepEqual(chartMarkdown({ ...col, kind: 'column' }).slice(-2), ['', '- **Target:** 160 ms']);
+  assert.doesNotMatch(renderBlock({ ...col, target: undefined }), /c-target/);
+  const r = lint(page([{ ...col, target: 'high' }, { type: 'chart', kind: 'pie', data: [{ label: 'a', value: 1 }], target: 2 }]));
+  assert.deepEqual(r.errors.filter((f) => f.code === 'page/chart-target').length, 1, 'a target that is not a number');
+  assert.deepEqual(r.warnings.filter((f) => f.code === 'page/chart-target').length, 1, 'pies draw no target');
+  assert.deepEqual(codes(lint(page([col]))), []);
+});
+
+test('narrow gantts put each name on its own line above its bar; the full name stays in tooltips and the table', () => {
+  const plan = {
+    type: 'gantt', today: '2026-11-04', items: [
+      { id: 'a', title: 'Migrate the warehouse management system', group: 'Warehouse system', start: '2026-11-02', days: 4 },
+      { id: 'b', title: 'Run the parallel rehearsals', group: 'Warehouse system', after: 'a', days: 3 },
+      { title: 'Go live', milestone: true, after: 'b', group: 'Warehouse system' }
+    ]
+  };
+  const ys = (html, cls) => [...html.matchAll(new RegExp(String.raw`<text x="([\d.]+)" y="([\d.]+)" font-size="[\d.]+" class="${cls}">([^<]*)`, 'g'))].map((m) => ({ x: +m[1], y: +m[2], text: m[3] }));
+  const bars = (html) => [...html.matchAll(/<rect(?: data-hue="\w+")? fill="currentColor" x="([\d.]+)" y="([\d.]+)"/g)].map((m) => ({ x: +m[1], y: +m[2] }));
+  const wide = renderBlock(plan);
+  const narrow = renderBlock(plan, 'x', { width: 308 });
+  // wide: a label column beside the bars, names on the bar's row
+  const [w1] = ys(wide, 'c-task');
+  assert.ok(Math.abs(w1.y - (bars(wide)[0].y + 11)) < 1, 'wide: the name shares its bar row');
+  // narrow: the name above its bar, the bars from the left edge, no name cut short
+  const names = ys(narrow, 'c-task');
+  assert.deepEqual(names.map((n) => n.text), ['Migrate the warehouse management system', 'Run the parallel rehearsals', 'Go live']);
+  const [b1, b2] = bars(narrow);
+  assert.ok(names[0].y < b1.y && b1.y - names[0].y < 16, 'the name sits just above its bar');
+  assert.ok(b1.x <= 12, 'bars take the full width');
+  assert.ok(names[1].x >= b2.x - 1, 'a name starts where its bar starts when it fits');
+  assert.ok(names.every((n) => n.x >= 8 && n.x < 308), 'names start inside the drawing');
+  assert.match(narrow, /class="c-group">Warehouse system</, 'group headings stay');
+  assert.match(narrow, /class="c-ms"/);
+  assert.match(narrow, /class="c-dep"/);
+  assert.match(narrow, /class="c-today"/);
+  assert.match(narrow, /<th scope="row">Migrate the warehouse management system<\/th>/, 'the data table has the full name');
+  // a name too long even for the full width ends in an ellipsis with the full name in its tooltip
+  const tiny = renderBlock(plan, 'x', { width: 240 });
+  assert.match(tiny, /class="c-task">Migrate the[^<]*…<title>Migrate the warehouse management system<\/title><\/text>/);
+  // the phone variants drawn for pages use the same layout
+  const fits = renderWithFits(plan);
+  for (const w of [320, 420]) assert.match(fits, new RegExp(String.raw`<template class="p-fit" data-w="${w}">[\s\S]*?class="c-task">Migrate the warehouse management system<`), `${w}px variant`);
+  assert.doesNotMatch(narrow, /NaN|undefined|Infinity/);
 });

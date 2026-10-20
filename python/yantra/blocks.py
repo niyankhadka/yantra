@@ -155,12 +155,17 @@ def chart(data: Union[Iterable[Item], Mapping[str, float], None] = None, unit: O
           categories: Optional[Sequence[Any]] = None,
           series: Optional[Union[Mapping[str, Sequence[Any]], Iterable[Mapping[str, Any]]]] = None,
           stacked: Optional[bool] = None, prefix: Optional[str] = None,
-          caption: Optional[str] = None) -> Block:
+          caption: Optional[str] = None, target: Optional[float] = None) -> Block:
     """A chart. ``data`` (``[{label, value, tone?}]``, ``(label, value, tone)`` or ``{label: value}``)
     for one series; or ``categories`` plus ``series`` (``{name: values}`` or ``[{name, values, tone?}]``,
-    ``None`` for a gap) for several. ``kind``: bar (default, horizontal), column, line, area, pie, donut."""
+    ``None`` for a gap) for several. ``kind``: bar (default, horizontal), column, line, area, pie, donut.
+    ``target`` draws a dashed target line labelled with its value (column, bar, line and area charts)."""
     if kind is not None and kind not in CHART_KINDS:
         raise ValueError(f"chart kind must be one of {CHART_KINDS}, not {kind!r}")
+    if target is not None and not _is_num(target):
+        raise ValueError(f"chart target must be a number, not {target!r}")
+    if target is not None and kind in ("pie", "donut"):
+        raise ValueError(f"{kind} charts do not draw a target; use a column, bar, line or area chart")
     fields: Dict[str, Any] = {}
     if series is not None:
         if data is not None:
@@ -195,7 +200,7 @@ def chart(data: Union[Iterable[Item], Mapping[str, float], None] = None, unit: O
             raise ValueError(f"{kind} chart values must be 0 or more")
         fields["data"] = rows
     return _block("chart", title, span, nodes, kind=kind, stacked=stacked, prefix=prefix, unit=unit,
-                  caption=caption, **fields)
+                  caption=caption, target=target, **fields)
 
 
 def gantt(items: Iterable[Item], start: Optional[str] = None, today: Optional[Union[str, int]] = None,

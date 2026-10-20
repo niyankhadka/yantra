@@ -5,6 +5,7 @@ import path from 'node:path';
 import { lint, computeScene, renderSvg, toMarkdown, measureNode, CARD } from '../src/core/index.js';
 import { MINI, MINI_KINDS, CHART_CARD, CHART_BUDGET, CARD_CHART_CSS, measureChart, chartBlock, miniModel, checkCardChart, inlineChart } from '../src/core/cardchart.js';
 import { computeSequenceScene } from '../src/core/sequence.js';
+import { renderBlock } from '../src/core/page.js';
 import { localeOf } from '../src/core/i18n.js';
 import { TOKENS } from '../src/core/theme.js';
 import { ROOT } from './support.js';
@@ -119,6 +120,18 @@ test('viewer CSS covers every chart class the export inlines', () => {
 test('inspector and Markdown get a full-size equivalent', () => {
   assert.deepEqual(chartBlock(card('a', MINIS.ring)).data.map((d) => d.value), [99.95, 100 - 99.95]);
   assert.equal(chartBlock(card('a', MINIS.bullet)).kind, 'bar');
+  // the card's target reaches the full-size chart as a target line
+  assert.equal(chartBlock(card('a', LINE)).target, 160);
+  assert.deepEqual(chartBlock(card('a', MINIS.bullet)).data.map((d) => d.value), [1.24], 'a bullet is its value, the target a line');
+  assert.equal(chartBlock(card('a', MINIS.bullet)).target, 1.5);
+  assert.equal(chartBlock(card('a', { ...MINIS.bar, target: 50 })).target, 50);
+  assert.equal(chartBlock(card('a', MINIS.ring)).target, undefined, 'a ring keeps its tick (a donut has no target line)');
+  const full = renderBlock({ ...chartBlock(card('a', LINE)), title: undefined }, 'x', { width: 300 });
+  assert.match(full, /class="c-target"/);
+  assert.match(full, /class="c-target-l">Target 160 ms</);
+  assert.match(full, /aria-label="Line chart; Target 160 ms"/);
+  assert.match(full, /<th scope="row">Target<\/th><td>160 ms<\/td>/);
+  assert.match(measureChart(card('a', { ...MINIS.bar, target: 50 }), 200).svg, /class="m-target"/, 'mini bars draw their target too');
   assert.equal(chartBlock(card('a', LINE)).series[0].values.length, 6);
   assert.equal(chartBlock(card('b', COLUMN_CARD, { shape: 'chart' })).type, 'chart');
   assert.equal(chartBlock(card('c')), null);

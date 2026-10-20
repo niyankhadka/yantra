@@ -121,6 +121,7 @@ class App {
 
     this.exportMenu = menu($('btn-export'), $('export-menu'));
     this.depthMenu = menu($('btn-depth'), $('depth-menu'));
+    this.moreMenu = menu($('btn-more'), $('more-menu'), { toChecked: true });
     this.focusId = null; // group the camera is zoomed to (double-click a title, key G, step.focusGroup)
     this.focusFromStep = false;
     this.crumbTrails = {}; // nav id -> breadcrumb items, for the "…" menu of hidden levels
@@ -624,11 +625,58 @@ class App {
 
   // --- Header -------------------------------------------------------------
   renderExamples() {
+    this.renderMore();
     const sel = $('example-select');
     sel.hidden = !!this.embedded;
     if (this.embedded) return;
     const current = EXAMPLES.find((x) => x.data === (this.page || this.levels.root));
     fillSelect(sel, GALLERY.map((g) => ({ label: this.L.t(g.label), items: g.items.map((x) => [x.id, x.name]) })), current?.id);
+  }
+
+  /**
+   * The toolbar's "More" menu, shown on phones (< 560px) where the example
+   * dropdown and the shortcuts button do not fit: the gallery's sections (none
+   * in built files) and the shortcuts panel (not over an answer page).
+   */
+  renderMore() {
+    const L = this.L;
+    const list = $('more-menu');
+    const focused = list.contains(document.activeElement) ? document.activeElement : null;
+    const current = this.embedded ? null : EXAMPLES.find((x) => x.data === (this.page || this.levels.root));
+    const sections = this.embedded
+      ? []
+      : GALLERY.map(
+          (g) =>
+            `<div role="group" aria-labelledby="more-${h(g.id)}"><p class="y-menu-head" id="more-${h(g.id)}">${h(L.t(g.label))}</p>${g.items
+              .map((x) => `<button role="menuitemradio" tabindex="-1" data-example="${h(x.id)}" aria-checked="${x === current}"><span>${h(x.name)}</span></button>`)
+              .join('')}</div>`
+        );
+    const help = this.page
+      ? ''
+      : `<button role="menuitem" tabindex="-1" data-more="help"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg><span>${h(L.t('help.title'))}</span><kbd>?</kbd></button>`;
+    list.innerHTML = [...sections, ...(sections.length && help ? ['<hr role="separator" />'] : []), help].join('');
+    $('more').hidden = !list.querySelector('[role^="menuitem"]');
+    if (focused) {
+      const again = focused.dataset.example ? list.querySelector(`[data-example="${CSS.escape(focused.dataset.example)}"]`) : list.querySelector(`[data-more="${focused.dataset.more}"]`);
+      if (again) this.moreMenu.focusItem(again);
+    }
+  }
+
+  /** Open a gallery entry: an answer page in its frame, or a diagram on the canvas. */
+  openExample(id) {
+    const ex = EXAMPLES.find((x) => x.id === id);
+    if (!ex) return;
+    if (isPage(ex.data)) return this.showPage(ex);
+    this.hidePage();
+    this.levels.reset(ex.data);
+    this.engine.load(ex.data);
+    this.focusId = null;
+    this.focusFromStep = false;
+    this.engine.setSpeed(Number(pref('speed', 4500)) || 4500);
+    this.roleFilter = null;
+    this.inspectorTab = null;
+    history.replaceState(null, '', `#example=${ex.id}`);
+    this.loadPayloadUi();
   }
 
   // --- Answer pages in the gallery -------------------------------------------
@@ -1316,20 +1364,13 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
       const item = ev.target.closest('[data-role]');
       if (item) this.toggleRole(item.dataset.role);
     };
-    $('example-select').onchange = (ev) => {
-      const ex = EXAMPLES.find((x) => x.id === ev.target.value);
-      if (!ex) return;
-      if (isPage(ex.data)) return this.showPage(ex);
-      this.hidePage();
-      this.levels.reset(ex.data);
-      this.engine.load(ex.data);
-      this.focusId = null;
-      this.focusFromStep = false;
-      this.engine.setSpeed(Number(pref('speed', 4500)) || 4500);
-      this.roleFilter = null;
-      this.inspectorTab = null;
-      history.replaceState(null, '', `#example=${ex.id}`);
-      this.loadPayloadUi();
+    $('example-select').onchange = (ev) => this.openExample(ev.target.value);
+    $('more-menu').onclick = (ev) => {
+      const item = ev.target.closest('[data-example], [data-more]');
+      if (!item) return;
+      this.moreMenu.close(true);
+      if (item.dataset.example) this.openExample(item.dataset.example);
+      else if (item.dataset.more === 'help') this.setHelp(true);
     };
 
     // Fold buttons on cards and group boxes

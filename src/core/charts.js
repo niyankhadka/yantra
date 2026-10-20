@@ -225,6 +225,34 @@ const wrap = (s, chars, lines = 2) => {
 
 const label = (kind, b) => `${S.kinds[kind]}${b.title ? `: ${b.title}` : ''}`;
 
+/** A chart block's target or reference value (`target`), or null. */
+const targetOf = (b) => (isNum(b.target) ? b.target : null);
+/** "Target 160 ms": the words drawn by a target line. */
+const targetText = (b) => `${S.target} ${fmtValue(b.target, b)}`;
+/** The accessible name of a chart: its kind and title, and the target when it has one. */
+const chartLabel = (kind, b) => `${label(kind, b)}${targetOf(b) !== null ? `; ${targetText(b)}` : ''}`;
+
+/**
+ * A dashed target line across the plot: horizontal at y for column, line and
+ * area charts, vertical at x for bar charts, and its label ("Target 160 ms"):
+ * [line, label], so the line can go under the marks and the label over them.
+ */
+function targetMark(b, horizontal, at, [x0, x1, y0, y1]) {
+  const tip = `<title>${h(`${S.target}: ${fmtValue(b.target, b)}`)}</title>`;
+  const words = targetText(b);
+  const tw = textW(words, 10.5);
+  if (horizontal) {
+    const x = r1(at);
+    // label above the plot, kept inside the drawing
+    const lx = Math.max(x0 + tw / 2, Math.min(x1 - tw / 2, at));
+    return [`<line class="c-target" x1="${x}" x2="${x}" y1="${y0 - 4}" y2="${y1}">${tip}</line>`, txt(lx, y0 - 7, words, { anchor: 'middle', size: 10.5, cls: 'c-target-l' })];
+  }
+  const y = r1(at);
+  // label at the right end, above the line (below it when the line is at the top)
+  const ly = at - y0 < 14 ? at + 13 : at - 5;
+  return [`<line class="c-target" x1="${x0}" x2="${x1}" y1="${y}" y2="${y}">${tip}</line>`, txt(x1 - 2, ly, words, { anchor: 'end', size: 10.5, cls: 'c-target-l' })];
+}
+
 const txt = (x, y, s, { cls = '', anchor = 'start', size = 11, extra = '' } = {}) =>
   `<text x="${r1(x)}" y="${r1(y)}" font-size="${size}"${anchor !== 'start' ? ` text-anchor="${anchor}"` : ''}${cls ? ` class="${cls}"` : ''}${extra}>${h(s)}</text>`;
 
@@ -295,7 +323,7 @@ export function chartSeries(b) {
 }
 
 /** True when a chart block keeps the original HTML bar list (single series, no negatives). */
-export const isSimpleBars = (b) => (b.kind === undefined || b.kind === 'bar') && !Array.isArray(b.series) && list(b.data).every((d) => !(isNum(d?.value) && d.value < 0));
+export const isSimpleBars = (b) => (b.kind === undefined || b.kind === 'bar') && !Array.isArray(b.series) && b.target === undefined && list(b.data).every((d) => !(isNum(d?.value) && d.value < 0));
 
 /**
  * A chart block as a figure: inline SVG, a legend for several series and a
@@ -313,7 +341,9 @@ export function renderChart(b, opts = {}) {
   const H = isNum(opts.width) && opts.width > 0 ? Math.round(Math.max(190, Math.min(280, W * 0.66))) : undefined;
   const svg = kind === 'line' || kind === 'area' ? lineChart(b, model, kind, W, { H }) : bandChart(b, model, kind, W, { H });
   const many = model.series.length > 1;
-  const table = srTable(label(kind, b), ['', ...model.series.map((s) => s.name)], model.cats.map((c, j) => [c, ...model.series.map((s) => (s.values[j] === null ? '' : fmtValue(s.values[j], b)))]));
+  const rows = model.cats.map((c, j) => [c, ...model.series.map((s) => (s.values[j] === null ? '' : fmtValue(s.values[j], b)))]);
+  if (targetOf(b) !== null) rows.push([S.target, ...model.series.map(() => fmtValue(b.target, b))]);
+  const table = srTable(chartLabel(kind, b), ['', ...model.series.map((s) => s.name)], rows);
   return figure(kind, `${many ? legendHtml(model.series, kind === 'line') : ''}<div class="p-scroll">${svg}${fitVariants(renderChart, b, opts, W)}</div>${table}`, opts.caption);
 }
 
@@ -369,6 +399,8 @@ function bandChart(b, { cats, series }, kind, W, o = {}) {
         if (v !== null) [hi, lo] = [Math.max(hi, v), Math.min(lo, v)];
       }
   }
+  const goal = targetOf(b);
+  if (goal !== null) [hi, lo] = [Math.max(hi, goal), Math.min(lo, goal)];
   const t = niceTicks(lo, hi, horizontal ? 4 : 5);
   const compact = Math.max(Math.abs(t.min), Math.abs(t.max)) >= 1e4;
   const tick = (v) => fmtValue(v, b, { dec: t.dec, compact });
@@ -381,7 +413,7 @@ function bandChart(b, { cats, series }, kind, W, o = {}) {
   if (!horizontal) {
     const H = o.H || 280;
     const ml = Math.ceil(Math.max(...t.ticks.map((v) => textW(tick(v), 11)))) + 14;
-    const [x0, x1, y0, y1] = [ml, W - 12, showValues ? 20 : 10, H - 30];
+    const [x0, x1, y0, y1] = [ml, W - 12, showValues || goal !== null ? 20 : 10, H - 30];
     const vy = (v) => y1 - ((v - t.min) / (t.max - t.min)) * (y1 - y0);
     const slot = (x1 - x0) / n;
     // Value labels only when each fits over its column (narrow panels drop them; tooltips keep them)
@@ -389,6 +421,8 @@ function bandChart(b, { cats, series }, kind, W, o = {}) {
     const gw = Math.min(slot * (single || stacked ? 0.62 : 0.8), single || stacked ? 64 : 28 * s);
     const bw = single || stacked ? gw : gw / s;
     for (const v of t.ticks) out.push(`<line class="${v === 0 ? 'c-zero' : 'c-grid'}" x1="${x0}" x2="${x1}" y1="${r1(vy(v))}" y2="${r1(vy(v))}"/>`, txt(x0 - 6, vy(v) + 4, tick(v), { anchor: 'end' }));
+    const mark = goal !== null ? targetMark(b, false, vy(goal), [x0, x1, y0, y1]) : null;
+    if (mark) out.push(mark[0]);
     const bar = (x, w, a, c, hue, title) => {
       const [ya, yb] = [vy(Math.max(a, c)), vy(Math.min(a, c))];
       return `<rect data-hue="${hue}" fill="currentColor" x="${r1(x)}" y="${r1(ya)}" width="${r1(Math.max(1, w))}" height="${r1(Math.max(0.5, yb - ya))}" rx="2">${title}</rect>`;
@@ -404,7 +438,11 @@ function bandChart(b, { cats, series }, kind, W, o = {}) {
           out.push(ofSeries(k, bar(base, gw, acc[i], acc[i] + v, hueAt(se, j), tip(j, se, v))));
           acc[i] += v;
         } else out.push(ofSeries(k, bar(base + k * bw + (single ? 0 : 0.75), bw - (single ? 0 : 1.5), 0, v, hueAt(se, j), tip(j, se, v))));
-        if (labelled) out.push(txt(base + gw / 2, v >= 0 ? vy(v) - 5 : vy(v) + 13, val(v), { anchor: 'middle', size: 10.5, cls: 'c-val' }));
+        if (!labelled) return;
+        let ly = v >= 0 ? vy(v) - 5 : vy(v) + 13;
+        // a value label the target line would strike through moves just clear of it
+        if (goal !== null && ly - 9 < vy(goal) + 2 && ly + 2 > vy(goal) - 2) ly = v >= 0 ? vy(goal) - 4 : vy(goal) + 12;
+        out.push(txt(base + gw / 2, ly, val(v), { anchor: 'middle', size: 10.5, cls: 'c-val' }));
       });
     }
     // Category labels: every k-th when they would collide, clipped to the space they get
@@ -413,18 +451,21 @@ function bandChart(b, { cats, series }, kind, W, o = {}) {
     while (k < n && slot * k < lw + 8) k++;
     const chars = Math.max(3, Math.floor((slot * k - 6) / (11 * 0.58)));
     cats.forEach((c, j) => j % k === 0 && out.push(txt(x0 + slot * (j + 0.5), y1 + 17, clip(c, chars), { anchor: 'middle' })));
-    return `${open(o, W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
+    if (mark) out.push(mark[1]);
+    return `${open(o, W, H, chartLabel(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
   }
 
   const lw = Math.min(Math.max(...cats.map((c) => textW(c, 12))), W * 0.3);
   const bandH = single || stacked ? 28 : Math.max(28, s * 10 + 12);
   const gh = single || stacked ? 14 : s * 10;
   const vw = showValues ? Math.max(...series[0].values.map((v) => (v === null ? 0 : textW(val(v), 11)))) + 10 : 0;
-  const [x0, x1, y0] = [Math.ceil(lw) + 14, W - Math.max(14, vw), 6];
+  const [x0, x1, y0] = [Math.ceil(lw) + 14, W - Math.max(14, vw), goal !== null ? 22 : 6];
   const y1 = y0 + n * bandH;
   const H = y1 + 24;
   const vx = (v) => x0 + ((v - t.min) / (t.max - t.min)) * (x1 - x0);
   for (const v of t.ticks) out.push(`<line class="${v === 0 ? 'c-zero' : 'c-grid'}" x1="${r1(vx(v))}" x2="${r1(vx(v))}" y1="${y0}" y2="${y1}"/>`, txt(vx(v), y1 + 16, tick(v), { anchor: 'middle' }));
+  const mark = goal !== null ? targetMark(b, true, vx(goal), [x0, x1, y0, y1]) : null;
+  if (mark) out.push(mark[0]);
   const bar = (y, hh, a, c, hue, title) => `<rect data-hue="${hue}" fill="currentColor" x="${r1(vx(Math.min(a, c)))}" y="${r1(y)}" width="${r1(Math.max(0.5, vx(Math.max(a, c)) - vx(Math.min(a, c))))}" height="${r1(hh)}" rx="2">${title}</rect>`;
   for (let j = 0; j < n; j++) {
     const top = y0 + bandH * j;
@@ -443,7 +484,8 @@ function bandChart(b, { cats, series }, kind, W, o = {}) {
       if (showValues) out.push(txt(v >= 0 ? vx(v) + 5 : vx(0) + 5, top + bandH / 2 + 4, val(v), { size: 10.5, cls: 'c-val' }));
     });
   }
-  return `${open(o, W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
+  if (mark) out.push(mark[1]);
+  return `${open(o, W, H, chartLabel(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
 }
 
 const MARKS = [
@@ -473,7 +515,8 @@ function lineChart(b, { cats, series }, kind, W, o = {}) {
       tops.push(se.values);
     }
   }
-  const all = tops.flat().filter((v) => v !== null);
+  const goal = targetOf(b);
+  const all = [...tops.flat().filter((v) => v !== null), ...(goal !== null ? [goal] : [])];
   let lo = Math.min(...all);
   let hi = Math.max(...all);
   if (area) [lo, hi] = [Math.min(0, lo), Math.max(0, hi)];
@@ -502,6 +545,7 @@ function lineChart(b, { cats, series }, kind, W, o = {}) {
   cats.forEach((c, j) => (j % k === 0 || (j === n - 1 && (n - 1) % k >= k / 2)) && out.push(txt(px(j), y1 + 17, clip(c, 18), { anchor: 'middle' })));
 
   const marks = n <= 24;
+  const mark = goal !== null ? targetMark(b, false, vy(goal), [x0, x1, y0, y1]) : null;
   const pt = (j, v) => `${r1(px(j))} ${r1(vy(v))}`;
   // Runs of consecutive values: a missing value (null) breaks a line
   const runs = (vals) => {
@@ -528,7 +572,7 @@ function lineChart(b, { cats, series }, kind, W, o = {}) {
       se.values.forEach((v, j) => v !== null && (g += MARKS[i % MARKS.length](px(j), vy(top[j]), ' class="c-mark"', `<title>${h(`${cats[j]}${series.length > 1 ? ` · ${se.name}` : ''}: ${fmtValue(v, b)}`)}</title>`)));
     return `<g data-hue="${se.hue}" data-s="${i}">${g}</g>`;
   });
-  return `${open(o, W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}${paths.join('')}</svg>`;
+  return `${open(o, W, H, chartLabel(kind, b), Math.round(W * 0.75))}${out.join('')}${mark ? mark[0] : ''}${paths.join('')}${mark ? mark[1] : ''}</svg>`;
 }
 
 /** Pie or donut: slices from `data`, a legend with values and shares, the total in a donut's centre. */
@@ -810,25 +854,46 @@ export function renderGantt(b, opts = {}) {
   const showToday = todayDay !== null && todayDay >= lo && todayDay <= hi;
   const rows = ganttRows(g);
   const indent = g.groups.length ? 14 : 0;
-  const lw = Math.min(Math.max(110, Math.max(...g.tasks.map((t) => textW(t.item.title, 12.5) + indent), ...g.groups.map((x) => textW(x, 12))) + 18), W * (W < 420 ? 0.42 : 0.34));
-  const [x0, x1, top, rowH] = [Math.ceil(lw), W - 18, 30, 26];
-  const H = top + rows.length * rowH + (showToday ? 22 : 8);
+  const need = Math.max(110, Math.max(...g.tasks.map((t) => textW(t.item.title, 12.5) + indent), ...g.groups.map((x) => textW(x, 12))) + 18);
+  const cap = W * (W < 420 ? 0.42 : 0.34);
+  // Narrow containers (phones, inspector panels, the 320-560px page variants): when the
+  // names would be cut short in a label column, each name goes on its own line above its
+  // bar and the bars take the full width
+  const stacked = W < 360 || (W < 600 && need > cap);
+  const lw = stacked ? 0 : Math.min(need, cap);
+  const [x0, x1, top] = [stacked ? 10 : Math.ceil(lw), W - (stacked ? 14 : 18), 30];
+  // Row geometry: top edge and height of each row, and the centre line of its bar
+  const heights = rows.map((row) => (stacked ? (row.group !== undefined ? 32 : 40) : 26));
+  const tops = [];
+  heights.reduce((y, hh) => (tops.push(y), y + hh), top);
+  const bottom = top + heights.reduce((a, v) => a + v, 0);
+  const cy = (i) => (stacked ? tops[i] + (rows[i].group !== undefined ? 24 : 28) : tops[i] + 13);
+  const H = bottom + (showToday ? 22 : 8);
   const ppd = (x1 - x0) / (hi - lo);
   const dx = (d) => x0 + (d - lo) * ppd;
   const out = [];
+  // A name drawn in maxW px; when it is shortened, its <title> carries the full name
+  const name = (x, y, s, maxW, size, cls) => {
+    const full = String(s ?? '');
+    const short = clipTo(full, maxW, size);
+    return `<text x="${r1(x)}" y="${r1(y)}" font-size="${size}" class="${cls}">${h(short)}${short !== full ? `<title>${h(full)}</title>` : ''}</text>`;
+  };
 
   // Weekends (and, with workdays, holidays) shaded when days are wide enough to see
   if (g.mode === 'date' && ppd >= 9)
     for (let d = lo; d < hi; d++) {
       const wd = dayParts(d).wd;
-      if (wd === 6 || wd === 0 || (g.workdays && g.holidays.has(d))) out.push(`<rect class="c-weekend" x="${r1(dx(d))}" y="${top - 4}" width="${r1(ppd)}" height="${rows.length * rowH + 4}"/>`);
+      if (wd === 6 || wd === 0 || (g.workdays && g.holidays.has(d))) out.push(`<rect class="c-weekend" x="${r1(dx(d))}" y="${top - 4}" width="${r1(ppd)}" height="${bottom - top + 4}"/>`);
     }
-  for (const tk of dayTicks(g, lo, hi, ppd)) out.push(`<line class="c-grid" x1="${r1(dx(tk.at))}" x2="${r1(dx(tk.at))}" y1="${top - 8}" y2="${top + rows.length * rowH}"/>`, txt(dx(tk.at) + 3, top - 12, tk.text, { size: 10.5 }));
+  for (const tk of dayTicks(g, lo, hi, ppd)) {
+    out.push(`<line class="c-grid" x1="${r1(dx(tk.at))}" x2="${r1(dx(tk.at))}" y1="${top - 8}" y2="${bottom}"/>`);
+    // a tick label that would run off the right edge is left out (its gridline stays)
+    if (dx(tk.at) + 3 + textW(tk.text, 10.5) <= W - 2) out.push(txt(dx(tk.at) + 3, top - 12, tk.text, { size: 10.5 }));
+  }
   out.push(`<line class="c-zero" x1="${x0}" x2="${x1}" y1="${top - 4}" y2="${top - 4}"/>`);
 
   const rowOf = new Map();
   rows.forEach((row, i) => row.task && rowOf.set(row.task.index, i));
-  const cy = (i) => top + i * rowH + rowH / 2;
   const tipFor = (t) => {
     const it = t.item;
     if (it.milestone) return `${it.title}: ${dayLabel(g, t.s)}`;
@@ -842,11 +907,14 @@ export function renderGantt(b, opts = {}) {
     for (const j of t.deps) {
       const p = g.tasks[j];
       if (p.s === null) continue;
-      const [ax, ay, bx, by] = [edge(p, 'end'), cy(rowOf.get(p.index)), edge(t, 'start'), cy(rowOf.get(t.index))];
+      const [ri, rj] = [rowOf.get(p.index), rowOf.get(t.index)];
+      const [ax, ay, bx, by] = [edge(p, 'end'), cy(ri), edge(t, 'start'), cy(rj)];
+      // Doubling back runs along the gap between rows (stacked: above this row's name)
+      const turn = stacked ? (by > ay ? tops[rj] + 2 : tops[rj] + heights[rj] - 2) : by + (by > ay ? -13 : 13);
       const path =
         bx - ax >= 12
           ? `M${r1(ax)} ${r1(ay)}H${r1(ax + 6)}V${r1(by)}H${r1(bx - 1)}`
-          : `M${r1(ax)} ${r1(ay)}H${r1(ax + 6)}V${r1(by + (by > ay ? -rowH / 2 : rowH / 2))}H${r1(bx - 9)}V${r1(by)}H${r1(bx - 1)}`;
+          : `M${r1(ax)} ${r1(ay)}H${r1(ax + 6)}V${r1(turn)}H${r1(bx - 9)}V${r1(by)}H${r1(bx - 1)}`;
       out.push(`<path class="c-dep" d="${path}"/><path class="c-arrow" d="M${r1(bx)} ${r1(by)}l-5 -3.5v7z"/>`);
     }
   }
@@ -854,7 +922,7 @@ export function renderGantt(b, opts = {}) {
   rows.forEach((row, i) => {
     const y = cy(i);
     if (row.group !== undefined) {
-      out.push(txt(8, y + 4, clip(row.group, Math.floor((lw - 14) / 7)), { size: 12, cls: 'c-group' }));
+      out.push(stacked ? name(8, tops[i] + 13, row.group, W - 16, 12, 'c-group') : name(8, y + 4, row.group, lw - 14, 12, 'c-group'));
       const ms = row.members.filter((t) => t.s !== null);
       if (ms.length) {
         const [a, c] = [dx(Math.min(...ms.map((t) => t.s))), dx(Math.max(...ms.map((t) => t.e)))];
@@ -864,7 +932,14 @@ export function renderGantt(b, opts = {}) {
     }
     const t = row.task;
     const it = t.item;
-    out.push(txt(8 + (row.indent ? indent : 0), y + 4, clipTo(it.title, lw - 18 - (row.indent ? indent : 0), 12.5), { size: 12.5, cls: 'c-task' }));
+    const ind = row.indent ? indent : 0;
+    if (stacked) {
+      // The name sits above its bar, starting where the bar starts when it fits there
+      const room = W - 16 - ind;
+      const tw = Math.min(textW(it.title, 12.5), room);
+      const at = t.s === null ? 8 + ind : Math.max(8 + ind, Math.min(W - 8 - tw, edge(t, 'start')));
+      out.push(name(at, tops[i] + 15, it.title, room, 12.5, 'c-task'));
+    } else out.push(name(8 + ind, y + 4, it.title, lw - 18 - ind, 12.5, 'c-task'));
     if (t.s === null) return;
     const tip = `<title>${h(tipFor(t))}</title>`;
     const hue = t.hue ? ` data-hue="${t.hue}"` : '';
@@ -882,7 +957,6 @@ export function renderGantt(b, opts = {}) {
 
   if (showToday) {
     const x = dx(todayDay);
-    const bottom = top + rows.length * rowH;
     out.push(`<line class="c-today" x1="${r1(x)}" x2="${r1(x)}" y1="${top - 6}" y2="${bottom + 2}"/>`, txt(x, bottom + 15, S.today, { anchor: 'middle', size: 10.5, cls: 'c-today-l' }));
   }
 
@@ -1258,14 +1332,15 @@ export function chartMarkdown(b) {
   // chart
   const kind = CHART_KINDS.includes(b.kind) ? b.kind : 'bar';
   const { cats, series } = chartSeries(b);
-  if (Array.isArray(b.series) && Array.isArray(b.categories)) return mdTable(['', ...series.map((s) => s.name)], cats.map((c, j) => [c, ...series.map((s) => (s.values[j] === null ? '' : fmtValue(s.values[j], b, { ascii: true })))]));
+  const goalMd = targetOf(b) !== null && kind !== 'pie' && kind !== 'donut' ? ['', `- **${S.target}:** ${fmtValue(b.target, b, { ascii: true })}`] : [];
+  if (Array.isArray(b.series) && Array.isArray(b.categories)) return [...mdTable(['', ...series.map((s) => s.name)], cats.map((c, j) => [c, ...series.map((s) => (s.values[j] === null ? '' : fmtValue(s.values[j], b, { ascii: true })))])), ...goalMd];
   const vals = series[0]?.values || [];
   if (kind === 'pie' || kind === 'donut') {
     const total = vals.filter((v) => v > 0).reduce((a, v) => a + v, 0);
     const pct = (v) => (total > 0 ? ` (${+((v / total) * 100).toFixed(1)}%)` : '');
     return [...cats.map((c, j) => `- ${mi(c)}: ${fmtValue(vals[j], b, { ascii: true })}${pct(vals[j])}`), `- **${S.total}:** ${fmtValue(total, b, { ascii: true })}`];
   }
-  return cats.map((c, j) => `- ${mi(c)}: ${fmtValue(vals[j], b, { ascii: true })}`);
+  return [...cats.map((c, j) => `- ${mi(c)}: ${fmtValue(vals[j], b, { ascii: true })}`), ...goalMd];
 }
 
 // --- validation --------------------------------------------------------------
@@ -1313,6 +1388,8 @@ export function checkChartBlock(b) {
       else if (vals.length && !vals.some((v) => v > 0)) add('error', 'page/chart-negative', `${kind} chart values add up to 0.`);
     }
     if (b.stacked !== undefined && typeof b.stacked !== 'boolean') add('warning', 'page/chart-kind', 'stacked must be true or false.');
+    if (b.target !== undefined && !isNum(b.target)) add('error', 'page/chart-target', `target must be a number (the value the dashed line marks), not ${JSON.stringify(b.target)}.`);
+    else if (b.target !== undefined && (kind === 'pie' || kind === 'donut')) add('warning', 'page/chart-target', `${kind} charts do not draw a target; use a column, bar, line or area chart.`);
   }
   if (b.type === 'gantt') {
     const g = resolveGantt(b);
@@ -1352,7 +1429,7 @@ export const CHART_CSS = `
 .p-chart-svg text{fill:var(--y-ink-3);font-family:inherit;font-variant-numeric:tabular-nums}
 .p-chart-svg .c-grid{stroke:var(--y-border);stroke-width:1}
 .p-chart-svg .c-zero{stroke:var(--y-ink-3);stroke-width:1.2}
-.p-chart-svg text.c-val{fill:var(--y-ink-2);font-weight:600}
+.p-chart-svg text.c-val{fill:var(--y-ink-2);font-weight:600;paint-order:stroke;stroke:var(--c-bg);stroke-width:3px;stroke-linejoin:round}
 .p-chart-svg text.c-cat,.p-chart-svg text.c-task,.p-chart-svg text.c-pt{fill:var(--y-ink)}
 .p-chart-svg text.c-group,.p-chart-svg text.c-axis{fill:var(--y-ink-2);font-weight:700}
 .p-chart-svg text.c-qt{fill:var(--y-ink-2);font-weight:700;letter-spacing:.02em}
@@ -1371,6 +1448,8 @@ export const CHART_CSS = `
 .p-chart-svg .c-arrow{fill:var(--y-ink-3)}
 .p-chart-svg .c-ms{fill:var(--y-ink);stroke:var(--c-bg);stroke-width:1.5}
 .p-chart-svg .c-ms.is-hued{fill:currentColor}
+.p-chart-svg .c-target{stroke:var(--y-ink-2);stroke-width:1.5;stroke-dasharray:5 3}
+.p-chart-svg text.c-target-l{fill:var(--y-ink-2);font-weight:600;paint-order:stroke;stroke:var(--c-bg);stroke-width:3px;stroke-linejoin:round}
 .p-chart-svg .c-today{stroke:var(--y-accent);stroke-width:1.5;stroke-dasharray:4 3}
 .p-chart-svg text.c-today-l{fill:var(--y-accent);font-weight:700}
 .p-chart-svg .c-cell{fill:var(--y-surface);stroke:var(--y-border)}

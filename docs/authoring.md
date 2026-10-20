@@ -521,7 +521,9 @@ the **Details** tab; the Markdown export lists the numbers under **Chart**.
 
 - `label` is the short caption drawn on the card ("p95 latency", "Uptime"). `unit` goes after
   numbers (`%`, ` ms`, `k`), `prefix` before (`£`). `target` draws a dashed line on line, area
-  and column charts and a tick on rings and bullets.
+  and column charts, a tick on rings and bullets and a dashed mark across mini bars. The
+  full-size chart in the Details tab draws it as a labelled target line ("Target 160 ms"), also
+  for bullets (the value as one bar against the line).
 - The chart takes the card's role colour; `tone` (`good`, `warn`, `bad`, `info`, `neutral` or a
   hue) overrides it, and `data` items take their own `tone`.
 - A ring states its scale ("47 / 52") unless it is a plain percentage.
@@ -532,6 +534,7 @@ is a page chart block (see `docs/pages.md`, Charts): `kind` `column`, `bar`, `li
 `pie` or `donut`, with `data` or `categories` + `series`, `stacked`, `unit` and `prefix`. They
 draw axes, gridlines and a legend at card scale, connect like any card and can be highlighted in
 steps. The card title is drawn; the chart's own `title` is what a screen reader hears.
+A chart card takes `target` too (column, bar, line, area: a dashed target line).
 
 ```json
 { "id": "latency", "type": "dashboard", "shape": "chart", "width": 400,
@@ -548,7 +551,7 @@ steps. The card title is drawn; the chart's own `title` is what a screen reader 
 - Accessibility: the card's accessible name adds the chart's kind, caption and values; chart
   cards draw a `<title>`, and the inspector adds the hidden data table.
 - Custom `panels` take `chart`, `gantt` and `matrix` blocks too; they are drawn at the panel's
-  width.
+  width (a gantt puts task names above their bars there, so they are not cut short).
 
 See `examples/live-operations-dashboard.json` (chart cards and mini charts),
 `examples/cloud-architecture.json`, `examples/sales-pipeline.json` and

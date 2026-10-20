@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'आरेख',
   'app.galleryPages': 'उत्तर पृष्ठ (प्रश्नोत्तर)',
   'app.galleryCharts': 'चार्ट और डैशबोर्ड',
+  'app.more': 'और',
   'app.mode': 'मोड',
   'app.view': 'दृश्य',
   'view.flow': 'प्रवाह',

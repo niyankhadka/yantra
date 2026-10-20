@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'תרשימים',
   'app.galleryPages': 'דפי תשובה (שאלות ותשובות)',
   'app.galleryCharts': 'גרפים ולוחות מחוונים',
+  'app.more': 'עוד',
   'app.mode': 'מצב',
   'app.view': 'תצוגה',
   'view.flow': 'זרימה',

@@ -25,6 +25,16 @@ All notable changes to Yantra are documented here. The format follows
   and `smart-city-operations`.
 - Strings `chart.kind.ring`, `chart.kind.bullet`, `chart.target`, `chart.remaining` and
   `node.chart` in every language.
+- Chart targets: `target` on a page chart block (column, bar, line, area) draws a dashed
+  reference line labelled "Target 160 ms" (vertical on bar charts), in light and dark; the
+  chart's accessible name, hidden data table and Markdown list it. Lint `page/chart-target`
+  (not a number; a warning on pie and donut). Python `blocks.chart(target=...)`.
+  `chart-sla-monitoring` draws its restore-time target this way.
+- Phones (below 560 px): a **More** (⋯) toolbar menu holds the example gallery in its three
+  sections and **Keyboard shortcuts**, so both are reachable where the example dropdown and the
+  help button are hidden; answer pages in the gallery switch from it too. Built files show
+  only the shortcuts there. Keyboard accessible (opens on the current example), right to left
+  aware; string `app.more` in every language.
 
 - Deep hierarchies in one frame: groups nest up to six levels within budget (eight at most).
   From four levels the layered layout places each group as a block in its parent, so boxes
@@ -66,6 +76,17 @@ All notable changes to Yantra are documented here. The format follows
 
 - Charts fitted to a narrow container (inspector panels) are drawn shorter, and column value
   labels that would collide are left to the tooltips.
+- A card's mini chart `target` (line, area, column, bar, bullet) is drawn as a target line on
+  the full-size chart in the inspector's Details tab; a bullet becomes its value against that
+  line (was a second "Target" bar). Mini bar charts draw their target too.
+- Gantt plans in narrow containers (inspector panels, phones and the 320 / 420 / 560 px page
+  drawings) put each task name on its own line above its bar, starting where the bar starts,
+  instead of cutting names short in a label column; group headings, milestones, dependency
+  arrows and the today line follow. A name that still does not fit ends in an ellipsis with
+  the full name in its tooltip (and, as before, in the data table). Axis dates that would run
+  off the right edge are left out.
+- The toolbar on phones is tighter (smaller gaps and buttons); with a mode switch, the brand
+  gives way so every button fits.
 - Keyboard shortcuts open in a side panel (`?` or the help button) in the inspector's place:
   same dock, theming and slide-in, on the left in right-to-left languages, a bottom sheet on
   phones. Grouped (walkthrough, navigate, view, fold and depth, drill-down and focus, mouse and

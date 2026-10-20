@@ -159,7 +159,7 @@ class Page:
     def chart(self, data: Union[Iterable[Any], Mapping[str, float], None] = None, unit: Optional[str] = None,
               title: Optional[str] = None, span: Optional[str] = None, **kw: Any) -> "Page":
         """Bars by default; ``kind=`` column, line, area, pie or donut; ``categories=`` + ``series=`` for
-        several series (``stacked=True`` to stack). See :func:`yantra.blocks.chart`."""
+        several series (``stacked=True`` to stack); ``target=`` draws a dashed target line. See :func:`yantra.blocks.chart`."""
         return self.add(B.chart(data, unit, title, span, **kw))
 
     def gantt(self, items: Iterable[Any], start: Optional[str] = None, today: Optional[Union[str, int]] = None,

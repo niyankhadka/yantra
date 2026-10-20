@@ -146,7 +146,7 @@ function miniSvg(c, W) {
     const lw = Math.min(Math.ceil(Math.max(...rows.map((r) => textWidth(r.l, 11)))), Math.round(W * 0.42));
     const x0 = lw ? lw + 8 : 0;
     const x1 = W - vw - 6;
-    const max = Math.max(m.max ?? 0, ...rows.map((r) => Math.abs(r.v))) || 1;
+    const max = Math.max(m.max ?? 0, m.target ?? 0, ...rows.map((r) => Math.abs(r.v))) || 1;
     rows.forEach((r, i) => {
       const yy = top + i * MINI.row;
       if (lw) out.push(txt(0, yy + 11.5, truncate(r.l, lw, 11), 'm-name'));
@@ -155,6 +155,10 @@ function miniSvg(c, W) {
       out.push(txt(W, yy + 11.5, vals[i], 'm-value', { anchor: 'end' }));
     });
     H = top + rows.length * MINI.row;
+    if (m.target !== null && m.target >= 0) {
+      const tx = r1(x0 + ((x1 - x0) * Math.min(m.target, max)) / max);
+      out.push(`<line class="m-target" x1="${tx}" x2="${tx}" y1="${top + 1}" y2="${H - 1}"><title>${h(`${chartWords().target}: ${fmt(m.target, m)}`)}</title></line>`);
+    }
   } else if (m.kind === 'donut') {
     const items = m.values.map((v, i) => ({ v, l: m.labels[i] || '', hue: m.hues[i] || SERIES_HUES[i % SERIES_HUES.length] })).filter((d) => d.v !== null && d.v > 0);
     const total = items.reduce((a, d) => a + d.v, 0);
@@ -318,6 +322,8 @@ export function chartBlock(node) {
   if (!m.kind) return null;
   const S = chartWords();
   const base = { type: 'chart', title: m.label || undefined, unit: m.unit, prefix: m.prefix };
+  // the card's target: a dashed line on the full-size chart (not for rings and donuts)
+  const goal = m.target !== null ? { target: m.target } : {};
   const tone = m.hue || undefined;
   if (m.kind === 'ring') {
     if (m.value === null) return null;
@@ -325,15 +331,15 @@ export function chartBlock(node) {
   }
   if (m.kind === 'bullet') {
     if (m.value === null) return null;
-    return { ...base, kind: 'bar', data: [{ label: m.label || S.value, value: m.value, tone }, ...(m.target !== null ? [{ label: S.target, value: m.target, tone: 'neutral' }] : [])] };
+    return { ...base, kind: 'bar', data: [{ label: m.label || S.value, value: m.value, tone }], ...goal };
   }
   const labels = m.values.map((_, i) => m.labels[i] || String(i + 1));
   if (m.kind === 'donut' || m.kind === 'bar') {
     const data = m.values.map((v, i) => (v === null ? null : { label: labels[i], value: v, ...(m.hues[i] ? { tone: m.hues[i] } : m.kind === 'bar' && tone ? { tone } : {}) })).filter(Boolean);
-    return data.length ? { ...base, kind: m.kind, data } : null;
+    return data.length ? { ...base, kind: m.kind, data, ...(m.kind === 'bar' ? goal : {}) } : null;
   }
   if (!m.values.some(isNum)) return null;
-  return { ...base, kind: m.kind, categories: labels, series: [{ name: m.label || S.value, values: m.values, ...(tone ? { tone } : {}) }] };
+  return { ...base, kind: m.kind, categories: labels, series: [{ name: m.label || S.value, values: m.values, ...(tone ? { tone } : {}) }], ...goal };
 }
 
 /** Markdown lines for a card's chart (a list or table, as for page charts). */
@@ -351,8 +357,8 @@ export function chartMarkdownLines(node, L = null) {
     if (m.kind === 'bullet') return [`- ${name}: ${v(m.value)}`, ...target];
     if ((m.kind === 'line' || m.kind === 'area' || m.kind === 'column') && !m.labels.some(Boolean))
       return [`- ${name}: ${m.values.map((x) => (x === null ? '-' : v(x))).join(', ')}`, ...target];
-    const lines = chartMarkdown(b);
-    return target.length ? [...lines, '', ...target] : lines;
+    // the full-size block carries the target, so chartMarkdown lists it
+    return b.target !== undefined || !target.length ? chartMarkdown(b) : [...chartMarkdown(b), '', ...target];
   };
   return L ? withChartLocale(L, run) : run();
 }
@@ -439,6 +445,8 @@ const RULES = [
   ['.c-mark', (p) => ({ fill: 'currentColor', stroke: p.surface, 'stroke-width': 1.5 })],
   ['.c-slice', (p) => ({ stroke: p.surface, 'stroke-width': 2, 'stroke-linejoin': 'round' })],
   ['.c-ring', () => ({ fill: 'none', stroke: 'currentColor' })],
+  ['.c-target', (p) => ({ stroke: p.ink2, 'stroke-width': 1.5, 'stroke-dasharray': '5 3' })],
+  ['text.c-target-l', (p) => ({ fill: p.ink2, 'font-weight': 600, 'paint-order': 'stroke', stroke: p.surface, 'stroke-width': 3, 'stroke-linejoin': 'round' })],
   ['.l-key', () => ({ fill: 'currentColor' })],
   ['text.l-text', (p) => ({ fill: p.ink2 })],
   ['text.m-label', (p) => ({ fill: p.ink3 })],

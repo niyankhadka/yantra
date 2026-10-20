@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'نمودارها',
   'app.galleryPages': 'صفحه‌های پاسخ (پرسش و پاسخ)',
   'app.galleryCharts': 'نمودارهای داده و داشبوردها',
+  'app.more': 'بیشتر',
   'app.mode': 'حالت',
   'app.view': 'نما',
   'view.flow': 'جریان',

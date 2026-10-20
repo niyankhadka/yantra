@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'المخططات',
   'app.galleryPages': 'صفحات الإجابة (سؤال وجواب)',
   'app.galleryCharts': 'الرسوم البيانية ولوحات المعلومات',
+  'app.more': 'المزيد',
   'app.mode': 'الوضع',
   'app.view': 'العرض',
   'view.flow': 'التدفق',

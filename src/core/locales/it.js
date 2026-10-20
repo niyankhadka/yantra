@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'Diagrammi',
   'app.galleryPages': 'Pagine di risposta (domande e risposte)',
   'app.galleryCharts': 'Grafici e dashboard',
+  'app.more': 'Altro',
   'app.mode': 'Modalità',
   'app.view': 'Vista',
   'view.flow': 'Flusso',

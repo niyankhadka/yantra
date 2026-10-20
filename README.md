@@ -46,7 +46,7 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   diagrams (static, or `interactive: true` for the live viewer, max 2 per page). A contents
   row appears for longer pages.
 - **Charts and plans**: bar, column, line, area, pie and donut charts (grouped or stacked
-  series, nice axes, legends, hidden data tables for screen readers), metric sparklines,
+  series, nice axes, legends, a dashed `target` line, hidden data tables for screen readers), metric sparklines,
   `gantt` plans (dates or relative days, working days and holidays, groups, milestones,
   dependencies, today line), legends that toggle series and slices, and
   `matrix` blocks (2x2 quadrants, 3x3-5x5 risk heat maps); inline SVG, both themes, no libraries. See [`docs/pages.md`](docs/pages.md).
@@ -214,7 +214,9 @@ live diagram embeds.
 
 `?` (or the toolbar's help button) opens the shortcuts in a side panel where the inspector
 docks (a bottom sheet on phones). It lists only the keys and gestures that do something in
-the open diagram, and each toolbar button's tooltip shows its key.
+the open diagram, and each toolbar button's tooltip shows its key. On phones (below 560 px)
+the toolbar's **More** (⋯) menu holds the example gallery (diagrams, answer pages, charts) and
+**Keyboard shortcuts**; in a built file it holds the shortcuts only.
 
 Drag cards to rearrange (edges re-route live); **Export → Copy JSON with positions** writes
 the arrangement back as a manual layout. The state is mirrored in the URL hash, so links

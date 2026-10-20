@@ -284,6 +284,10 @@
             "type": "boolean",
             "description": "chart (bar, column, area with series): stack the series instead of grouping or overlapping them."
           },
+          "target": {
+            "type": "number",
+            "description": "chart (column, bar, line, area): a target or reference value, drawn as a dashed line labelled \"Target 160 ms\" and listed in the data table."
+          },
           "categories": {
             "type": "array",
             "items": {

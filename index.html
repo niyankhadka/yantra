@@ -80,6 +80,13 @@
         <button id="btn-help" class="y-icon-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" data-i18n-tip="help.title" data-kbd="?" data-i18n-label="help.title" aria-pressed="false" aria-controls="help">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>
         </button>
+        <!-- Phones (< 560px): the examples and the shortcuts panel move into this menu -->
+        <div id="more" class="y-menu y-more">
+          <button id="btn-more" class="y-icon-btn" title="More" aria-label="More" data-i18n-tip="app.more" data-i18n-label="app.more" aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>
+          </button>
+          <div id="more-menu" class="y-menu-list y-more-menu" role="menu" aria-labelledby="btn-more" hidden></div>
+        </div>
       </div>
     </header>
 

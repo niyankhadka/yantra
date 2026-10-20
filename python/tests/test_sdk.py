@@ -362,6 +362,14 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertEqual(b[0]["items"][0]["trend"], [1.2, 1.4, 1.8])
         self.assertEqual((b[5]["workdays"], b[5]["holidays"]), (True, ["2026-11-11"]))
         self.assertNotIn("workdays", blocks.gantt([("A", "02/11/2026", 2)]))
+        goal = blocks.chart({"Mon": 180, "Tue": 150}, kind="column", unit=" ms", target=160)
+        self.assertEqual(goal["target"], 160)
+        self.assertNotIn("target", blocks.chart({"a": 1}))
+        self.assertEqual(check({"kind": "page", "meta": {"question": "Q?"}, "answer": {"headline": "x"}, "blocks": [goal]}, SCHEMAS["yantra-page.schema.json"], "yantra-page.schema.json"), [])
+        with self.assertRaises(ValueError):
+            blocks.chart({"a": 1}, target="high")
+        with self.assertRaises(ValueError):
+            blocks.chart({"a": 1}, kind="pie", target=2)
 
     def test_chart_blocks_reject_bad_data(self) -> None:
         with self.assertRaises(ValueError):

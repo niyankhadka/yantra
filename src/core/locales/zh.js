@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': '图表',
   'app.galleryPages': '解答页面（问答）',
   'app.galleryCharts': '统计图与仪表板',
+  'app.more': '更多',
   'app.mode': '模式',
   'app.view': '视图',
   'view.flow': '流程',

@@ -224,9 +224,10 @@ export function tooltips(root = document.body) {
  * WAI-ARIA menu button: `trigger` opens `list` (role="menu"). Enter, Space and
  * ArrowDown open on the first item, ArrowUp on the last; arrows, Home and End
  * move a roving tabindex; Escape closes and returns focus to the trigger; Tab
- * and a click outside close. Returns { open, close, toggle, isOpen }.
+ * and a click outside close. `toChecked`: open on the checked item (a long
+ * list of choices) instead of the first. Returns { open, close, toggle, isOpen }.
  */
-export function menu(trigger, list, { canOpen = () => true } = {}) {
+export function menu(trigger, list, { canOpen = () => true, toChecked = false } = {}) {
   const items = () => [...list.querySelectorAll('[role^="menuitem"]')].filter((el) => !el.disabled && !el.hidden);
 
   const focusItem = (el) => {
@@ -242,7 +243,8 @@ export function menu(trigger, list, { canOpen = () => true } = {}) {
     list.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
     const all = items();
-    focusItem(where === 'last' ? all[all.length - 1] : all[0]);
+    const checked = toChecked && where === 'first' ? all.find((el) => el.getAttribute('aria-checked') === 'true') : null;
+    focusItem(checked || (where === 'last' ? all[all.length - 1] : all[0]));
   };
 
   const close = (restoreFocus = false) => {

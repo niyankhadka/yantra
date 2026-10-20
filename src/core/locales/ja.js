@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'ダイアグラム',
   'app.galleryPages': '回答ページ（Q&A）',
   'app.galleryCharts': 'チャートとダッシュボード',
+  'app.more': 'その他',
   'app.mode': 'モード',
   'app.view': '表示',
   'view.flow': 'フロー',

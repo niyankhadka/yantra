@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'Diagram',
   'app.galleryPages': 'Halaman jawaban (tanya jawab)',
   'app.galleryCharts': 'Grafik & dasbor',
+  'app.more': 'Lainnya',
   'app.mode': 'Mode',
   'app.view': 'Tampilan',
   'view.flow': 'Alur',

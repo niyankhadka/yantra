@@ -4,10 +4,11 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { findBrowser } from '../lib/browser.js';
-import { buildAny, resolveAny, ROOT } from '../lib/build.js';
+import { buildAny, resolveAny, ensureAppBuilt, ROOT } from '../lib/build.js';
 import { REPO_URL } from '../src/core/icons.js';
 import { startBrowser, tempDir, removeDir } from './support.js';
 
@@ -140,4 +141,86 @@ test('? opens the shortcuts side panel; Esc closes it and focus returns', { skip
   assert.equal(await page.eval('document.getElementById("help").inert'), true);
   assert.equal(await page.eval('window.yantra.levels.depth'), 0, 'Esc only closed the panel');
   assert.equal(await page.eval('document.activeElement.id'), 'btn-fit', 'focus returns to where it was');
+});
+
+/** Serve dist/ (the gallery viewer, examples included) over HTTP: module scripts do not load from file:. */
+async function serveGallery() {
+  ensureAppBuilt({ log: () => {} });
+  const dist = path.join(ROOT, 'dist');
+  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html';
+    const file = path.join(dist, rel);
+    if (!file.startsWith(dist) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return res.writeHead(404).end();
+    res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream' }).end(fs.readFileSync(file));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return { url: `http://127.0.0.1:${server.address().port}/`, close: () => new Promise((resolve) => server.close(resolve)) };
+}
+
+const phone = (page) => page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 800, deviceScaleFactor: 1, mobile: true });
+
+test('phones (390px): the More menu lists the gallery sections, switches to an answer page and opens the shortcuts', { skip }, async () => {
+  const server = await serveGallery();
+  try {
+    const page = await browser.open(`${server.url}#example=platform-overview`);
+    await phone(page);
+    await page.waitFor(`location.protocol === "http:" && document.readyState === "complete" && !!window.yantra`);
+    const shown = (id) => page.eval(`getComputedStyle(document.getElementById(${JSON.stringify(id)})).display !== 'none'`);
+    assert.equal(await shown('more'), true, 'the More button shows on phones');
+    assert.equal(await shown('btn-help'), false);
+    assert.equal(await shown('example-select'), false);
+    const bar = await page.eval(`(() => { const b = document.querySelector('.y-bar').getBoundingClientRect(); const m = document.getElementById('btn-more').getBoundingClientRect(); return m.right <= b.right && m.left >= b.left; })()`);
+    assert.equal(bar, true, 'the More button fits inside the toolbar');
+
+    // Keyboard: ArrowDown opens the menu on the current example
+    await page.eval(`document.getElementById('btn-more').focus(); document.getElementById('btn-more').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))`);
+    await page.waitFor(`!document.getElementById('more-menu').hidden`);
+    const menuState = await page.eval(`(() => {
+      const m = document.getElementById('more-menu');
+      return {
+        expanded: document.getElementById('btn-more').getAttribute('aria-expanded'),
+        groups: [...m.querySelectorAll('[role="group"]')].map((g) => document.getElementById(g.getAttribute('aria-labelledby')).textContent),
+        focused: document.activeElement.dataset.example, checked: document.activeElement.getAttribute('aria-checked'),
+        help: !!m.querySelector('[data-more="help"]')
+      };
+    })()`);
+    assert.equal(menuState.expanded, 'true');
+    assert.deepEqual(menuState.groups, ['Diagrams', 'Answer pages (Q&A)', 'Charts & dashboards']);
+    assert.equal(menuState.focused, 'platform-overview');
+    assert.equal(menuState.checked, 'true');
+    assert.equal(menuState.help, true);
+
+    // An answer page from the list opens in its frame; the menu still switches from there
+    await page.eval(`document.querySelector('#more-menu [data-example="answer-launch-plan"]').click()`);
+    await page.waitFor(`document.querySelector('.y-app').classList.contains('is-page') && !!document.getElementById('page-frame')`);
+    assert.match(await page.eval('location.hash'), /example=answer-launch-plan/);
+    assert.equal(await page.eval(`document.getElementById('more-menu').hidden`), true, 'choosing closes the menu');
+    assert.equal(await page.eval('document.activeElement.id'), 'btn-more', 'and focus returns to its button');
+    assert.equal(await shown('more'), true, 'the More menu stays on answer pages');
+    assert.equal(await page.eval(`document.querySelector('#more-menu [data-more="help"]')`), null, 'no shortcuts over an answer page');
+    await page.eval(`document.getElementById('btn-more').click()`);
+    assert.equal(await page.eval(`document.activeElement.dataset.example`), 'answer-launch-plan');
+    await page.eval(`document.querySelector('#more-menu [data-example="platform-overview"]').click()`);
+    await page.waitFor(`!document.querySelector('.y-app').classList.contains('is-page')`);
+
+    // Keyboard shortcuts from the menu; Esc closes the panel and focus returns to More
+    await page.eval(`document.getElementById('btn-more').click()`);
+    await page.eval(`document.querySelector('#more-menu [data-more="help"]').click()`);
+    await page.waitFor(`document.getElementById('help').classList.contains('is-open')`);
+    assert.equal(await page.eval(`document.getElementById('help').contains(document.activeElement)`), true);
+    await page.eval(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+    await page.waitFor(`!document.getElementById('help').classList.contains('is-open')`);
+    assert.equal(await page.eval('document.activeElement.id'), 'btn-more');
+  } finally {
+    await server.close();
+  }
+});
+
+test('phones (390px): a built diagram has no gallery, so its More menu holds only the shortcuts', { skip }, async () => {
+  const page = await open('platform-overview');
+  await phone(page);
+  await page.waitFor(`getComputedStyle(document.getElementById('more')).display !== 'none'`);
+  const items = await page.eval(`[...document.querySelectorAll('#more-menu [role^="menuitem"]')].map((b) => b.dataset.more || b.dataset.example)`);
+  assert.deepEqual(items, ['help']);
 });

@@ -112,7 +112,7 @@ kbd {
   color-scheme: normal;
 }
 
-.y-app.is-page :is(.y-viewport, .y-legend, .y-story, .y-inspector, .y-watermark, #crumbs, #focus-crumbs, #crumb-menu, #mode-switch, #view-switch, .y-group, #btn-inspector, .y-menu, #btn-help) {
+.y-app.is-page :is(.y-viewport, .y-legend, .y-story, .y-inspector, .y-watermark, #crumbs, #focus-crumbs, #crumb-menu, #mode-switch, #view-switch, .y-group, #btn-inspector, .y-menu:not(.y-more), #btn-help) {
   display: none !important;
 }
 
@@ -475,6 +475,64 @@ kbd {
   margin: 4px 2px;
   border: 0;
   border-top: 1px solid var(--y-border);
+}
+
+/* "More" menu (phones): example sections and the shortcuts panel */
+.y-more {
+  display: none;
+}
+
+.y-more-menu {
+  width: min(300px, calc(100vw - 24px));
+  max-height: calc(100vh - 96px);
+  max-height: calc(100dvh - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.y-more-menu .y-menu-head {
+  margin: 6px 10px 2px;
+  color: var(--y-ink-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.y-more-menu [role='group'] + [role='group'] .y-menu-head {
+  margin-top: 10px;
+}
+
+.y-more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: normal;
+}
+
+.y-more-menu button[aria-checked='true'] {
+  background: var(--y-surface-2);
+  color: var(--y-ink);
+  font-weight: 600;
+}
+
+.y-more-menu button[aria-checked='true']::after {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-inline-start: auto;
+  border-radius: 50%;
+  background: var(--y-accent);
+}
+
+.y-more-menu kbd {
+  margin-inline-start: auto;
+}
+
+.y-more-menu button svg {
+  flex: none;
+  color: var(--y-ink-3);
 }
 
 /* --- Legend: round button, menu opens upwards ----------------------------- */
@@ -1677,6 +1735,40 @@ kbd {
   #btn-help,
   .y-select {
     display: none;
+  }
+
+  .y-more {
+    display: block;
+  }
+
+  /* Phones: a tighter toolbar, so mode, view, inspector, theme, export and
+     "More" fit beside each other */
+  .y-bar {
+    gap: 8px;
+    padding-inline: 8px 6px;
+  }
+
+  .y-tools {
+    gap: 3px;
+  }
+
+  /* With a mode switch the toolbar is full: the title has no room left, so the
+     brand gives way rather than sit under the switch */
+  .y-app:not(.is-page) .y-bar:has(#mode-switch:not([hidden])) .y-brand {
+    display: none;
+  }
+
+  .y-app:not(.is-page) .y-bar:has(#mode-switch:not([hidden])) .y-tools {
+    margin-inline-start: auto;
+  }
+
+  .y-tools .y-icon-btn {
+    width: 30px;
+  }
+
+  .y-segmented button {
+    padding: 4px 6px;
+    letter-spacing: 0;
   }
 }
 

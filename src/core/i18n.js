@@ -25,6 +25,7 @@ const en = {
   'app.galleryDiagrams': 'Diagrams',
   'app.galleryPages': 'Answer pages (Q&A)',
   'app.galleryCharts': 'Charts & dashboards',
+  'app.more': 'More',
   'app.mode': 'Mode',
   'app.view': 'View',
   'view.flow': 'Flow',

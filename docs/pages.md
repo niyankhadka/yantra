@@ -120,6 +120,10 @@ prints in colour and carries a visually hidden data table for screen readers.
 | `pie`, `donut` | Parts of one whole (2-8 slices); a donut shows the total in its centre | `data` only, values ≥ 0 |
 
 - Values are numbers; `prefix` goes before them (`£`), `unit` after (`%`, ` ms`, `k`).
+- `target` (a number) draws a dashed reference line labelled with its value ("Target 160 ms")
+  on column, line and area charts, and a vertical one on bar charts; the axis stretches to
+  include it, and the accessible name, data table and Markdown list it. A bar chart with a
+  target is drawn as SVG, not the HTML bar list. Pie and donut charts take no target.
 - Series take colours in a colour-blind-safe order (blue, orange, teal, violet, rose,
   amber…); line series also get distinct marker shapes. `tone` on a series or data item
   overrides its colour. More than 6 series, 24 bars, 60 line points or 8 slices is a warning.
@@ -142,6 +146,10 @@ numbers are days from the block's `start` date (or day 0 when the plan has no da
 everything in its `after` (an `id`, a title, or a list) has ended, else when the task above
 it ends. `milestone: true` draws a diamond; `group` adds a heading row with a span bracket;
 `progress` (0-100) fills part of the bar; `today` draws a dashed line. Arrows show `after`.
+In narrow containers (inspector panels, phones, the 320 / 420 / 560 px page drawings) task
+names that would be cut short in a label column go on their own line above their bars, which
+then take the full width; a name that still does not fit ends in an ellipsis, with the full
+name in its tooltip and the data table.
 
 ```json
 { "type": "gantt", "title": "Plan", "today": "20/10/2026", "items": [
@@ -191,6 +199,7 @@ label string or `{ label, low?, high?, labels?, min?, max? }`.
 | `page/image-alt` | Describe the image in `alt`. |
 | `page/chart-kind` | `kind` is one of bar, column, line, area, pie, donut; pie and donut take `data`, not `series`. |
 | `page/chart-mismatch` | Give one value per category in every series; `quadrants` has 4 entries; `x.labels` / `y.labels` one per row or column. |
+| `page/chart-target` | `target` is a number (the value its dashed line marks); pie and donut charts draw none (warning). |
 | `page/chart-negative` | Pie and donut values must be 0 or more (and not all 0); use a column chart for negatives. |
 | `page/chart-too-many-series`, `page/chart-too-many-points` (warnings) | Cut to the limits above: merge small items into "Other", or use a table. |
 | `page/chart-out-of-range` (warning) | A matrix item lies outside its axis range (it is drawn at the edge), or a gantt `progress` is outside 0-100. |

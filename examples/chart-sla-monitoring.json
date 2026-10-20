@@ -179,20 +179,9 @@
             74,
             38
           ]
-        },
-        {
-          "name": "Target",
-          "values": [
-            60,
-            60,
-            60,
-            60,
-            60,
-            60
-          ],
-          "tone": "neutral"
         }
-      ]
+      ],
+      "target": 60
     },
     {
       "type": "chart",

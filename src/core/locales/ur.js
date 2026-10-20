@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'خاکے',
   'app.galleryPages': 'جوابی صفحات (سوال و جواب)',
   'app.galleryCharts': 'چارٹس اور ڈیش بورڈز',
+  'app.more': 'مزید',
   'app.mode': 'موڈ',
   'app.view': 'منظر',
   'view.flow': 'بہاؤ',

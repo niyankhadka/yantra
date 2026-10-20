@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': 'ডায়াগ্রাম',
   'app.galleryPages': 'উত্তর পাতা (প্রশ্নোত্তর)',
   'app.galleryCharts': 'চার্ট ও ড্যাশবোর্ড',
+  'app.more': 'আরও',
   'app.mode': 'মোড',
   'app.view': 'দৃশ্য',
   'view.flow': 'প্রবাহ',

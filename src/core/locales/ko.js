@@ -5,6 +5,7 @@ export default {
   'app.galleryDiagrams': '다이어그램',
   'app.galleryPages': '답변 페이지(Q&A)',
   'app.galleryCharts': '차트 및 대시보드',
+  'app.more': '더 보기',
   'app.mode': '모드',
   'app.view': '보기',
   'view.flow': '흐름',
