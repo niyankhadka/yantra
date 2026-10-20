@@ -1273,8 +1273,16 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     help.classList.toggle('is-open', open);
     help.inert = !open;
     $('btn-help').setAttribute('aria-pressed', String(open));
-    if (open) help.focus({ preventScroll: true });
-    else {
+    if (open) {
+      // A slow first paint can leave the panel unfocusable for a moment; retry on timers,
+      // which (unlike animation frames) still run in a window that isn't being drawn
+      const tryFocus = (left) => {
+        if (!this.helpOpen || help.contains(document.activeElement)) return;
+        help.focus({ preventScroll: true });
+        if (left > 0 && !help.contains(document.activeElement)) setTimeout(() => tryFocus(left - 1), 60);
+      };
+      tryFocus(8);
+    } else {
       const back = this.helpReturn;
       this.helpReturn = null;
       if (refocus && (help.contains(document.activeElement) || document.activeElement === document.body)) (back?.isConnected ? back : $('btn-help')).focus?.();

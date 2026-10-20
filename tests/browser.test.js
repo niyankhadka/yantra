@@ -108,6 +108,8 @@ test('? opens the shortcuts side panel; Esc closes it and focus returns', { skip
   await page.eval(`document.getElementById('btn-fit').focus()`);
   await key('?');
   await page.waitFor(`document.getElementById('help').classList.contains('is-open')`);
+  // Focus can land a frame after the panel opens on slow machines
+  await page.waitFor(`document.getElementById('help').contains(document.activeElement)`, 5000).catch(() => {});
   const state = await page.eval(`(() => {
     const help = document.getElementById('help');
     return {
@@ -116,13 +118,15 @@ test('? opens the shortcuts side panel; Esc closes it and focus returns', { skip
       pressed: document.getElementById('btn-help').getAttribute('aria-pressed'),
       groups: [...help.querySelectorAll('[data-group]')].map((g) => g.dataset.group),
       kbd: help.querySelectorAll('kbd').length,
-      dock: getComputedStyle(help).position, visible: getComputedStyle(help).visibility
+      dock: getComputedStyle(help).position, visible: getComputedStyle(help).visibility,
+      active: document.activeElement && (document.activeElement.id || document.activeElement.tagName),
+      hasFocus: document.hasFocus(), tabindex: help.getAttribute('tabindex'), display: getComputedStyle(help).display
     };
   })()`);
   assert.equal(state.tag, 'ASIDE');
   assert.equal(state.inert, false);
   assert.equal(state.label, 'help-title');
-  assert.equal(state.focused, true, 'focus moves into the panel');
+  assert.equal(state.focused, true, `focus moves into the panel: ${JSON.stringify(state)}`);
   assert.equal(state.pressed, 'true');
   assert.deepEqual(state.groups, ['walk', 'nav', 'view', 'drill', 'pointer'], 'no fold keys on a diagram without nested groups');
   assert.ok(state.kbd > 15);
@@ -208,7 +212,9 @@ test('phones (390px): the More menu lists the gallery sections, switches to an a
     await page.eval(`document.getElementById('btn-more').click()`);
     await page.eval(`document.querySelector('#more-menu [data-more="help"]').click()`);
     await page.waitFor(`document.getElementById('help').classList.contains('is-open')`);
-    assert.equal(await page.eval(`document.getElementById('help').contains(document.activeElement)`), true);
+    await page.waitFor(`document.getElementById('help').contains(document.activeElement)`, 5000).catch(() => {});
+    const helpState = await page.eval(`(() => { const h = document.getElementById('help'); const a = document.activeElement; return { focused: h.contains(a), active: a && (a.id || a.tagName), visible: getComputedStyle(h).visibility, display: getComputedStyle(h).display, hasFocus: document.hasFocus() }; })()`);
+    assert.equal(helpState.focused, true, `focus moves into the panel: ${JSON.stringify(helpState)}`);
     await page.eval(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
     await page.waitFor(`!document.getElementById('help').classList.contains('is-open')`);
     assert.equal(await page.eval('document.activeElement.id'), 'btn-more');

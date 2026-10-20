@@ -29,7 +29,10 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: npm test 2>&1 | tee test.log
+      - name: Annotate failing tests
+        if: failure()
+        run: node .github/scripts/annotate-failures.mjs test.log
       - name: Validate examples
         run: |
           for f in examples/*.json examples/*/*.json; do

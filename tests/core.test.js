@@ -202,7 +202,10 @@ test('diagram Markdown includes custom panels', () => {
   assert.match(md, /## Glossary[\s\S]*\| Term \| Meaning \|/);
 });
 
-test('autoplay dwells per step, stops after the last step and replays from the start', async (t) => {
+// Node 18's mock timers never fire the engine's timeouts; the behaviour is covered on 20+
+const oldTimers = Number(process.versions.node.split('.')[0]) < 20 && 'mock timers differ on Node 18';
+
+test('autoplay dwells per step, stops after the last step and replays from the start', { skip: oldTimers }, async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const { YantraEngine } = await import('../src/app/engine.js');
   const e = new YantraEngine(load('sales-pipeline.json'));
