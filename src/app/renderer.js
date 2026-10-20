@@ -11,6 +11,7 @@ import { iconSvg, DRILL_ICON } from '../core/icons.js';
 import { DRILL_TEXT } from './levels.js';
 import { escapeHtml as h } from '../core/text.js';
 import { sequenceLive } from '../core/sequence.js';
+import { POINT_SHAPES } from '../core/model.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const hueVar = (hue) => `var(--y-hue-${HUES[hue] ? hue : 'slate'})`;
@@ -70,10 +71,11 @@ export class Renderer {
       g.dataset.id = e.id;
       const path = document.createElementNS(SVG_NS, 'path');
       path.setAttribute('class', 'y-edge-line');
-      path.setAttribute('marker-end', 'url(#y-arrow)');
       g.appendChild(path);
       this.edgeLayer.appendChild(g);
-      this.edges.set(e.id, { g, path, gradient, gradId, from, to });
+      const rec = { g, path, gradient, gradId, from, to, arrow: e.arrow };
+      this.edges.set(e.id, rec);
+      setHeads(rec, false);
 
       if (e.edge.label) {
         const lab = document.createElement('div');
@@ -123,6 +125,16 @@ export class Renderer {
     const drill = typeof n.node.data?.drill === 'string' && n.node.data.drill;
     el.setAttribute('aria-label', [n.node.data?.title, n.node.data?.subtitle, drill && DRILL_TEXT.cardHint].filter(Boolean).join(', '));
     el.classList.toggle('has-drill', !!drill);
+    if (n.shape === 'state') el.classList.add('is-state');
+    if (POINT_SHAPES.has(n.shape)) {
+      // Pseudo-states are textless; the title shows as a tooltip and in the inspector
+      el.classList.add('y-point', `is-${n.shape}`);
+      el.title = n.node.data?.title || n.id;
+      el.innerHTML = pointMarkup(n);
+      this.nodeLayer.appendChild(el);
+      this.nodes.set(n.id, el);
+      return el;
+    }
     el.innerHTML =
       // Drill mark: clicking it opens the detail diagram (the card itself stays the one control)
       (drill ? `<span class="y-node-drill" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${DRILL_ICON}</svg></span>` : '') +
@@ -189,7 +201,7 @@ export class Renderer {
       path.setAttribute('d', m.d);
       g.appendChild(path);
       this.edgeLayer.appendChild(g);
-      this.edges.set(m.id, { g, path, gradient, gradId, from, to });
+      this.edges.set(m.id, { g, path, gradient, gradId, from, to, arrow: m.arrow });
 
       const lab = document.createElement('div');
       lab.className = 'y-label';
@@ -245,7 +257,7 @@ export class Renderer {
       rec.g.classList.toggle('is-active', on);
       rec.g.classList.toggle('is-dim', focused && !on);
       rec.path.style.stroke = on || !focused ? `url(#${rec.gradId})` : '';
-      rec.path.setAttribute('marker-end', on || !focused ? `url(#y-arrow-${HUES[rec.to] ? rec.to : 'slate'})` : 'url(#y-arrow)');
+      setHeads(rec, on || !focused);
     });
     this.labels.forEach((el, id) => {
       el.classList.toggle('is-active', live.has(id));
@@ -341,7 +353,7 @@ export class Renderer {
       rec.g.classList.toggle('is-active', on);
       rec.g.classList.toggle('is-dim', focused && !on);
       rec.path.style.stroke = on ? `url(#${rec.gradId})` : '';
-      rec.path.setAttribute('marker-end', on ? `url(#y-arrow-${HUES[rec.to] ? rec.to : 'slate'})` : 'url(#y-arrow)');
+      setHeads(rec, on);
     });
     this.labels.forEach((el, id) => {
       el.classList.toggle('is-active', focused && activeEdges.has(id));
@@ -360,7 +372,7 @@ export class Renderer {
     if (this.reducedMotion) return;
     edges.forEach((e, i) => {
       const rec = this.edges.get(e.id);
-      if (!rec) return;
+      if (!rec || rec.arrow === 'none') return; // an undirected link has no flow to show
       const length = e.points.reduce((s, p, k) => (k ? s + Math.abs(p.x - e.points[k - 1].x) + Math.abs(p.y - e.points[k - 1].y) : 0), 0);
       const dur = Math.min(3.6, Math.max(1.4, length / 220));
       const dot = document.createElement('i');
@@ -373,4 +385,23 @@ export class Renderer {
       this.packetLayer.appendChild(dot);
     });
   }
+}
+
+/** Arrow heads for an edge's `arrow` setting, in its role colours when active. */
+function setHeads(rec, coloured) {
+  const head = (hue) => (coloured ? `url(#y-arrow-${HUES[hue] ? hue : 'slate'})` : 'url(#y-arrow)');
+  if (rec.arrow === 'none') rec.path.removeAttribute('marker-end');
+  else rec.path.setAttribute('marker-end', head(rec.to));
+  if (rec.arrow === 'both') rec.path.setAttribute('marker-start', head(rec.from));
+  else rec.path.removeAttribute('marker-start');
+}
+
+/** Inline SVG for a pseudo-state (same outlines as the SVG export). */
+function pointMarkup(n) {
+  const r = n.w / 2;
+  const body =
+    n.shape === 'initial' ? `<circle class="y-pt-fill" cx="${r}" cy="${r}" r="${r}"/>` :
+    n.shape === 'final' ? `<circle class="y-pt-ring" cx="${r}" cy="${r}" r="${r - 1}"/><circle class="y-pt-fill" cx="${r}" cy="${r}" r="${r - 5}"/>` :
+    `<polygon class="y-pt-ring" points="${r},0.75 ${n.w - 0.75},${r} ${r},${n.h - 0.75} 0.75,${r}"/>`;
+  return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" aria-hidden="true">${body}</svg>`;
 }

@@ -33,7 +33,7 @@ Usage
   yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
   yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--width] [--height]
   yantra new <file.json> [--page]              Write a starter diagram (or answer page)
-  yantra import <file.mmd|file.md>             Convert a Mermaid flowchart or sequence diagram  [-o out.json] [--title "..."] [--all]
+  yantra import <file.mmd|file.md>             Convert a Mermaid flowchart, sequence or state diagram  [-o out.json] [--title "..."] [--all]
   yantra examples [name] [-o file]             List built-in examples, or copy one
   yantra mcp                                   Start the MCP server (stdio)
   yantra dev                                   Start the live editor at http://localhost:3000

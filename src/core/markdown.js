@@ -1,5 +1,5 @@
 /** Companion Markdown spec generated from a payload. */
-import { normalize, groupIndex, roleKey } from './model.js';
+import { normalize, groupIndex, roleKey, arrowOf } from './model.js';
 import { pageToMarkdown } from './page.js';
 import { mdInline as md, mdBlock } from './text.js';
 import { collectDiagrams, drillOf, levelOrder, safeUrl } from './drill.js';
@@ -68,8 +68,15 @@ function levelMarkdown(payload, root) {
     }
   }
 
-  out.push('', '## Connections', '', '| From | To | Label |', '|---|---|---|');
-  for (const e of model.edges) out.push(`| ${cell(title(e.source))} | ${cell(title(e.target))} | ${href(e.url) ? `[${cell(e.label || 'link')}](${href(e.url)})` : cell(e.label)} |`);
+  // A Direction column appears only when some edge is not a plain one-way arrow
+  const ARROW_TEXT = { forward: '→', both: '↔ both ways', none: '— undirected' };
+  const directed = model.edges.some((e) => arrowOf(e) !== 'forward' || e.source === e.target);
+  if (directed) out.push('', '## Connections', '', '| From | To | Direction | Label |', '|---|---|---|---|');
+  else out.push('', '## Connections', '', '| From | To | Label |', '|---|---|---|');
+  for (const e of model.edges) {
+    const dir = e.source === e.target ? `↻ self-loop${arrowOf(e) === 'forward' ? '' : ` (${ARROW_TEXT[arrowOf(e)].slice(2)})`}` : ARROW_TEXT[arrowOf(e)];
+    out.push(`| ${cell(title(e.source))} | ${cell(title(e.target))} |${directed ? ` ${cell(dir)} |` : ''} ${href(e.url) ? `[${cell(e.label || 'link')}](${href(e.url)})` : cell(e.label)} |`);
+  }
 
   if (model.modes.length > 1) {
     out.push('', '## Modes', '');

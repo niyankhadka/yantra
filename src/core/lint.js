@@ -4,7 +4,7 @@
  * can repair deterministically:
  *   { level: 'error' | 'warning', code, message, ...context }
  */
-import { normalize, GROUP_MAX_DEPTH, has } from './model.js';
+import { normalize, GROUP_MAX_DEPTH, has, NODE_SHAPES, EDGE_ARROWS, shapeOf, arrowOf } from './model.js';
 import { TEXT_CAP } from './text.js';
 import { HUES } from './theme.js';
 import { WINDOW_NODES, WINDOW_EDGES } from './route.js';
@@ -97,6 +97,8 @@ function diagramFindings(payload, add) {
     if (!n.data?.title || typeof n.data.title !== 'string') add('error', 'schema/node-missing-title', `Node "${n.id}" needs data.title (a string).`, { node: n.id });
     else if (n.data.title.length > BUDGET.titleChars && n.data.title.length <= TEXT_CAP)
       add('warning', 'content/title-too-long', `Node "${n.id}" title is ${n.data.title.length} chars; keep titles under ${BUDGET.titleChars} and move detail to subtitle/description.`, { node: n.id });
+    if (n.shape !== undefined && !NODE_SHAPES.includes(n.shape))
+      add('error', 'schema/node-shape-invalid', `Node "${n.id}" shape "${n.shape}" is not one of ${NODE_SHAPES.join(', ')}.`, { node: n.id });
     if (n.data?.icon && !has(ICONS, n.data.icon))
       add('warning', 'content/unknown-icon', `Node "${n.id}" icon "${n.data.icon}" is not built in; a default is used.`, { node: n.id });
     if (model.layout.mode === 'manual') {
@@ -108,17 +110,37 @@ function diagramFindings(payload, add) {
   });
 
   const edgeIds = new Set();
+  // A transition out of an initial state or into a final state needs no label
+  const shapeById = new Map(model.nodes.map((n) => [n.id, shapeOf(n)]));
+  const pseudoEnd = (e) => shapeById.get(e.source) === 'initial' || shapeById.get(e.target) === 'final';
   model.edges.forEach((e, i) => {
     if (!e || typeof e.id !== 'string' || !e.id) return add('error', 'ref/edge-missing-id', `edges[${i}] has no id.`);
     if (edgeIds.has(e.id)) add('error', 'ref/duplicate-edge-id', `Duplicate edge id "${e.id}".`, { edge: e.id });
     edgeIds.add(e.id);
     if (typeof e.source !== 'string' || !nodeIds.has(e.source)) add('error', 'ref/edge-unknown-source', `Edge "${e.id}" source "${typeof e.source === 'string' ? e.source : JSON.stringify(e.source) ?? 'undefined'}" is not a node.`, { edge: e.id });
     if (typeof e.target !== 'string' || !nodeIds.has(e.target)) add('error', 'ref/edge-unknown-target', `Edge "${e.id}" target "${typeof e.target === 'string' ? e.target : JSON.stringify(e.target) ?? 'undefined'}" is not a node.`, { edge: e.id });
+    if (e.arrow !== undefined && !EDGE_ARROWS.includes(e.arrow))
+      add('error', 'schema/edge-arrow-invalid', `Edge "${e.id}" arrow "${e.arrow}" is not one of ${EDGE_ARROWS.join(', ')}.`, { edge: e.id });
     if (e.label !== undefined && typeof e.label !== 'string') add('error', 'schema/edge-label-invalid', `Edge "${e.id}" label must be a string.`, { edge: e.id });
-    else if (!e.label) add('warning', 'content/edge-missing-label', `Edge "${e.id}" has no label; say what flows along it.`, { edge: e.id });
-    else if (e.label.length > BUDGET.labelChars && e.label.length <= TEXT_CAP)
+    else if (!e.label) {
+      if (!pseudoEnd(e)) add('warning', 'content/edge-missing-label', `Edge "${e.id}" has no label; say what flows along it.`, { edge: e.id });
+    } else if (e.label.length > BUDGET.labelChars && e.label.length <= TEXT_CAP)
       add('warning', 'content/label-too-long', `Edge "${e.id}" label is ${e.label.length} chars; keep labels under ${BUDGET.labelChars}.`, { edge: e.id });
   });
+
+  // --- state machines: pseudo-states used the way their shape promises ------
+  for (const n of model.nodes) {
+    const shape = shapeOf(n);
+    if (shape === 'card' || shape === 'state') continue;
+    const into = model.edges.filter((e) => e.target === n.id || (e.source === n.id && arrowOf(e) === 'both')).length;
+    const out = model.edges.filter((e) => e.source === n.id || (e.target === n.id && arrowOf(e) === 'both')).length;
+    if (shape === 'initial' && into)
+      add('warning', 'story/initial-has-incoming', `Initial state "${n.id}" has an incoming edge; point transitions at the first real state instead.`, { node: n.id });
+    if (shape === 'final' && out)
+      add('warning', 'story/final-has-outgoing', `Final state "${n.id}" has an outgoing edge; nothing leaves a final state.`, { node: n.id });
+    if (shape === 'choice' && out < 2)
+      add('warning', 'story/choice-needs-branches', `Choice "${n.id}" has ${out} outgoing edge${out === 1 ? '' : 's'}; a choice needs two or more guarded branches.`, { node: n.id });
+  }
 
   // --- groups -------------------------------------------------------------
   checkGroups(payload, model, nodeIds, add);

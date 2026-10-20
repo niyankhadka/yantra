@@ -14,9 +14,13 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from ._cli import YantraError, build_payload, validate_payload
 
-__all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "DEFAULT_SCENARIO"]
+__all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO"]
 
 COLORS = ("blue", "teal", "green", "amber", "rose", "violet", "orange", "slate")
+#: Node shapes: cards ("card", "state") and state-machine pseudo-states ("initial", "final", "choice").
+SHAPES = ("card", "state", "initial", "final", "choice")
+#: Edge arrow heads: at the target (default), at both ends, or none (an undirected link).
+ARROWS = ("forward", "both", "none")
 DEFAULT_SCENARIO = "main"
 NodeRef = Union["Node", str]
 
@@ -45,11 +49,13 @@ class Node:
     """A card. ``data`` holds title, subtitle, tech, icon, badge, description, metadata, modes..."""
 
     def __init__(self, diagram: "Diagram", node_id: str, title: str, type: str = "node",
-                 rank: Optional[int] = None, width: Optional[float] = None, **data: Any):
+                 rank: Optional[int] = None, width: Optional[float] = None,
+                 shape: Optional[str] = None, **data: Any):
         self.id = node_id
         self.type = type
         self.rank = rank
         self.width = width
+        self.shape = shape
         self.data: Dict[str, Any] = {"title": title, **{k: v for k, v in data.items() if v not in (None, "", {})}}
         self._diagram = diagram
 
@@ -71,6 +77,8 @@ class Node:
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"id": self.id, "type": self.type}
+        if self.shape is not None:
+            d["shape"] = self.shape
         if self.rank is not None:
             d["rank"] = self.rank
         if self.width is not None:
@@ -80,7 +88,8 @@ class Node:
 
 
 class Edge:
-    """A connection. ``type``: sync | async | event | stream | data; ``style``: solid | dashed | dotted."""
+    """A connection. ``type``: sync | async | event | stream | data; ``style``: solid | dashed | dotted;
+    ``arrow``: forward | both | none."""
 
     def __init__(self, edge_id: str, source: str, target: str, label: str = "", **extra: Any):
         self.id = edge_id
@@ -263,11 +272,15 @@ class Diagram:
 
     # --- graph --------------------------------------------------------------
     def add_node(self, node_id: str, title: str, type: str = "node", rank: Optional[int] = None,
-                 width: Optional[float] = None, **data: Any) -> Node:
+                 width: Optional[float] = None, shape: Optional[str] = None, **data: Any) -> Node:
         """Add a card. Common data fields: subtitle, tech, icon, badge, description, metadata.
-        `rank` forces the column (LR) or row (TB); `width` is 160-320 (default 220)."""
+        `rank` forces the column (LR) or row (TB); `width` is 160-320 (default 220).
+        `shape`: "card" (default), "state" (rounder card), or the textless pseudo-states
+        "initial" (filled dot), "final" (ringed dot) and "choice" (diamond)."""
         if node_id in self.nodes:
             raise YantraError(f"Duplicate node id: {node_id}")
+        if shape is not None and shape not in SHAPES:
+            raise YantraError(f"node shape must be one of {SHAPES}, not {shape!r}")
         if width is not None and not 160 <= width <= 320:
             raise YantraError(f"node width must be 160-320, not {width}")
         if rank is not None and (not isinstance(rank, int) or rank < 0):
@@ -276,17 +289,21 @@ class Diagram:
             data["url"] = _url(data["url"])
         if data.get("drill") is not None:
             data["drill"] = _id(data["drill"])
-        node = Node(self, node_id, title, type, rank=rank, width=width, **data)
+        node = Node(self, node_id, title, type, rank=rank, width=width, shape=shape, **data)
         self.nodes[node_id] = node
         return node
 
     def add_edge(self, source: NodeRef, target: NodeRef, label: str = "", edge_id: Optional[str] = None,
-                 type: Optional[str] = None, style: Optional[str] = None, **extra: Any) -> Edge:
+                 type: Optional[str] = None, style: Optional[str] = None, arrow: Optional[str] = None,
+                 **extra: Any) -> Edge:
         """Connect two nodes. `type`: sync | async | event | stream | data; `style`: solid | dashed | dotted;
+        `arrow`: forward (default) | both | none. `source == target` draws a self-loop.
         `url=` adds an http(s) or mailto link shown in the inspector."""
         source, target = _id(source), _id(target)
         if style not in (None, "solid", "dashed", "dotted"):
             raise YantraError(f"edge style must be solid, dashed or dotted, not {style!r}")
+        if arrow not in (None,) + ARROWS:
+            raise YantraError(f"edge arrow must be one of {ARROWS}, not {arrow!r}")
         if extra.get("url") is not None:
             extra["url"] = _url(extra["url"])
         edge_id = edge_id or f"{source}-{target}"
@@ -294,7 +311,7 @@ class Diagram:
         while edge_id in self.edges:
             edge_id = f"{base}-{n}"
             n += 1
-        edge = Edge(edge_id, source, target, label, type=type, style=style, **extra)
+        edge = Edge(edge_id, source, target, label, type=type, style=style, arrow=arrow, **extra)
         self.edges[edge_id] = edge
         return edge
 

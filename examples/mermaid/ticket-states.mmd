@@ -1,0 +1,22 @@
+---
+title: Support ticket lifecycle
+---
+stateDiagram-v2
+    direction LR
+    [*] --> New
+    New --> Triage : triage
+    state Triage <<choice>>
+    Triage --> Open : valid
+    Triage --> Rejected : spam / duplicate
+    Open --> Open : add note
+    Open --> Waiting : ask customer
+    Waiting --> Open : customer replies
+    state Waiting {
+        [*] --> Reminded
+        Reminded --> Reminded : nudge
+    }
+    Open --> Resolved : send fix
+    Resolved --> Open : reopen
+    Resolved --> [*] : after 7 days
+    Rejected --> [*]
+    note right of Open : SLA clock runs here

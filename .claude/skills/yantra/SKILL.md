@@ -11,13 +11,14 @@ Every output is a single offline HTML file. Pick one:
 |---|---|---|
 | to see how parts connect or how a flow runs | **diagram** | `docs/authoring.md`, `schemas/yantra-payload.schema.json` |
 | who calls whom, in order (protocol, API call, handshake) | **diagram** with `meta.view: "sequence"` | `docs/authoring.md` (Sequence view) |
+| the states something goes through (lifecycle, state machine) | **diagram** with `shape: "state"` / `"initial"` / `"final"` / `"choice"` nodes | `docs/authoring.md` (State machines) |
 | an answer, explanation, comparison or decision on one page | **answer page** (`"kind": "page"`) | `docs/pages.md`, `schemas/yantra-page.schema.json` |
-| their Mermaid flowchart / sequence diagram as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
+| their Mermaid flowchart / sequence / state diagram as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
 
 For "explain how X works", make the diagram first, then the page around it
 (`{ "type": "diagram", "src": "flow.json" }`). References: `examples/*.json`
 (`answer-*.json` are pages; `oauth-login.json` is a sequence; `aws-serverless.json` has groups;
-`platform-overview.json` drills into detail diagrams).
+`platform-overview.json` drills into detail diagrams; `ticket-lifecycle.json` is a state machine).
 
 ## Diagram
 
@@ -30,7 +31,9 @@ For "explain how X works", make the diagram first, then the page around it
    - Do **not** write `x`/`y`. Point edges along the main flow; layout and routing are automatic.
    - Group node `type`s into 3-5 `roles` with one colour each; specific label in `data.badge`.
    - Cards show `title`, `subtitle`, `tech`; details go in `description`, `metadata`, `sourceFile`.
-   - Edge labels: 1-3 words naming what flows.
+   - Edge labels: 1-3 words naming what flows (in a state machine: the event).
+   - `edge.arrow`: `"both"` for one two-way edge, `"none"` for an undirected link. An edge
+     whose `source` is its `target` draws a self-loop (retry, edit, poll); keep it.
    - Boundaries that matter to the explanation (VPC, trust zone, team, phase) → `groups`:
      2-5 of them, each node in its innermost group only.
    - Steps: an overview first, then focused steps listing the nodes **and** edges involved.

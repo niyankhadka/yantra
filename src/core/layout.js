@@ -5,6 +5,7 @@
  * reserves room for edge labels.
  */
 import { textWidth, wrapText, truncate } from './text.js';
+import { shapeOf, POINT_SHAPES } from './model.js';
 
 /** Card metrics. src/css/diagram.css mirrors these numbers exactly. */
 export const CARD = {
@@ -86,8 +87,64 @@ export function labelSize(text) {
   return { w: Math.ceil(textWidth(text, LABEL.size, { weight: 500 }) + LABEL.padX * 2), h: LABEL.height };
 }
 
+/** Pseudo-state sizes (multiples of 20, so centres stay on the grid). */
+export const POINT_SIZE = { initial: 20, final: 20, choice: 40 };
+
+/**
+ * Self-loop metrics: legs leave the side `reach` px, `span` apart (top and
+ * bottom loops widen to hold their label), `legGap` apart on left/right sides.
+ */
+export const LOOP = { reach: 36, span: 36, inset: 16, legGap: 28, labelGap: 6 };
+
+/**
+ * Geometry of a self-loop on one side of its node, clockwise. Top and bottom
+ * loops carry their label on the far segment like any edge; left and right
+ * loops put it just outside, so it never covers the legs.
+ * @param r     node rect { x, y, w, h }
+ * @param side  'top' | 'right' | 'bottom' | 'left'
+ * @param lab   labelSize() of the edge label, or null
+ * @returns { points, label: {x,y,w,h} (centre) | null, box (route + label), extent (beyond the side) }
+ */
+export function selfLoop(r, side, lab) {
+  const across = side === 'top' || side === 'bottom';
+  let points;
+  let label = null;
+  if (across) {
+    const max = Math.min(r.w - 8, Math.max(LOOP.span, r.w - LOOP.inset * 2));
+    const span = Math.max(Math.min(LOOP.span, r.w - 8), Math.min(max, lab ? lab.w + 16 : LOOP.span));
+    const cx = Math.round(r.x + r.w / 2);
+    const x0 = Math.round(cx - span / 2);
+    const x1 = Math.round(cx + span / 2);
+    const edge = side === 'top' ? r.y : r.y + r.h;
+    const far = side === 'top' ? edge - LOOP.reach : edge + LOOP.reach;
+    points = side === 'top'
+      ? [{ x: x0, y: edge }, { x: x0, y: far }, { x: x1, y: far }, { x: x1, y: edge }]
+      : [{ x: x1, y: edge }, { x: x1, y: far }, { x: x0, y: far }, { x: x0, y: edge }];
+    if (lab) label = { x: cx, y: far, w: lab.w, h: lab.h };
+  } else {
+    const gap = Math.min(LOOP.legGap, Math.max(8, r.h - 8));
+    const cy = Math.round(r.y + r.h / 2);
+    const y0 = Math.round(cy - gap / 2);
+    const y1 = Math.round(cy + gap / 2);
+    const edge = side === 'right' ? r.x + r.w : r.x;
+    const far = side === 'right' ? edge + LOOP.reach : edge - LOOP.reach;
+    points = side === 'right'
+      ? [{ x: edge, y: y0 }, { x: far, y: y0 }, { x: far, y: y1 }, { x: edge, y: y1 }]
+      : [{ x: edge, y: y1 }, { x: far, y: y1 }, { x: far, y: y0 }, { x: edge, y: y0 }];
+    if (lab) label = { x: far + (side === 'right' ? 1 : -1) * (LOOP.labelGap + lab.w / 2), y: cy, w: lab.w, h: lab.h };
+  }
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  if (label) xs.push(label.x - label.w / 2, label.x + label.w / 2), ys.push(label.y - label.h / 2, label.y + label.h / 2);
+  const box = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+  const extent = across ? LOOP.reach + (lab ? lab.h / 2 : 0) : LOOP.reach + (lab ? LOOP.labelGap + lab.w : 0);
+  return { points, label, box, extent };
+}
+
 /** Width/height plus the wrapped text lines a card will show. */
 export function measureNode(node) {
+  const shape = shapeOf(node);
+  if (POINT_SHAPES.has(shape)) return { w: POINT_SIZE[shape], h: POINT_SIZE[shape], lines: { title: [], subtitle: [], tech: '' } };
   const d = node.data || {};
   const w = ceilTo(Math.min(CARD.maxWidth, Math.max(CARD.minWidth, node.width || CARD.width)), 20);
   const inner = w - CARD.padX * 2;
@@ -123,6 +180,7 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
   const crossSize = (n) => (horiz ? n.h : n.w);
 
   const validEdges = edges.filter((e) => byId.has(e.source) && byId.has(e.target) && e.source !== e.target);
+  const loopEdges = edges.filter((e) => byId.has(e.source) && e.source === e.target);
 
   // 1. Cycle breaking (DFS in author order; edges into the stack are reversed)
   const outgoing = new Map(ids.map((id) => [id, []]));
@@ -355,6 +413,27 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
   });
   reindex();
 
+  // Self-loops take a free side across the flow (top in LR, right in TB), away
+  // from corridors; spacing below makes room for the loop and its label.
+  const laneSide = (lane) => (horiz ? (lane === 'start' ? 'top' : 'bottom') : lane === 'start' ? 'left' : 'right');
+  const prefer = horiz ? ['top', 'bottom', 'right', 'left'] : ['right', 'left', 'bottom', 'top'];
+  const loopSide = new Map(); // edgeId -> side
+  const mainLoops = []; // loops on a side facing a rank gap: { rank, after, extent }
+  for (const e of loopEdges) {
+    const id = e.source;
+    const taken = new Set();
+    for (const { edge } of oriented) if (corridor.has(edge.id) && (edge.source === id || edge.target === id)) taken.add(laneSide(corridor.get(edge.id)));
+    for (const o of loopEdges) if (o.source === id && loopSide.has(o.id)) taken.add(loopSide.get(o.id));
+    const side = prefer.find((x) => !taken.has(x)) || prefer[0];
+    loopSide.set(e.id, side);
+    const n = byId.get(id);
+    const { extent } = selfLoop({ x: 0, y: 0, w: n.w, h: n.h }, side, labelSize(e.label));
+    const it = items.get(id);
+    if (side === (horiz ? 'top' : 'left')) it.loopStart = Math.max(it.loopStart || 0, extent);
+    else if (side === (horiz ? 'bottom' : 'right')) it.loopEnd = Math.max(it.loopEnd || 0, extent);
+    else mainLoops.push({ rank: rank.get(id), after: side === (horiz ? 'right' : 'bottom'), extent });
+  }
+
   // 5. Cross-axis placement: pull towards neighbours, keep order and spacing
   const nodeGap = horiz ? 40 : 60;
   const dummyGap = 34;
@@ -367,7 +446,8 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
     return (a.path.length - k) * padEnd + (b.path.length - k) * padStart;
   };
   const sep = (a, b) =>
-    a.size / 2 + b.size / 2 + (a.ph || b.ph ? 0 : a.real && b.real ? nodeGap : dummyGap) + (gl ? boundary(a, b) : 0);
+    a.size / 2 + b.size / 2 + (a.ph || b.ph ? 0 : a.real && b.real ? nodeGap : dummyGap) + (gl ? boundary(a, b) : 0) +
+    (a.loopEnd || 0) + (b.loopStart || 0);
   const cross = new Map();
   layers.forEach((layer) => {
     let c = 0;
@@ -412,6 +492,23 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
     if (!lab || corridor.has(edge.id)) continue; // corridor labels sit on the long run
     const g = Math.min(rank.get(u), rank.get(v));
     if (g < gapNeed.length) gapNeed[g] = Math.max(gapNeed[g], (horiz ? lab.w : lab.h) + 52);
+  }
+  // Edges both ways between the same two nodes (common in state machines) run
+  // side by side through one gap: make room for their labels next to each other
+  const pairs = new Map();
+  for (const { edge, u, v } of oriented) {
+    const lab = labelSize(edge.label);
+    if (!lab || corridor.has(edge.id) || Math.abs(rank.get(u) - rank.get(v)) !== 1) continue;
+    const key = [u, v].sort().join('\u0000');
+    const p = pairs.get(key) || { g: Math.min(rank.get(u), rank.get(v)), sum: 0, n: 0 };
+    p.sum += horiz ? lab.w : lab.h;
+    p.n++;
+    pairs.set(key, p);
+  }
+  for (const { g, sum, n } of pairs.values()) if (n > 1) gapNeed[g] = Math.max(gapNeed[g], sum + 24 * n + 52);
+  for (const { rank: r, after, extent } of mainLoops) {
+    const g = after ? r : r - 1;
+    if (g >= 0 && g < gapNeed.length) gapNeed[g] = Math.max(gapNeed[g], extent + 60);
   }
   if (gl) {
     // Boxes closing after rank r and opening at r + 1 need their padding
@@ -467,6 +564,7 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
       sides.set(edge.id, horiz ? (rev ? ['left', 'right'] : ['right', 'left']) : rev ? ['top', 'bottom'] : ['bottom', 'top']);
     }
   }
+  loopSide.forEach((side, id) => sides.set(id, [side, side]));
 
   return { positions, sides, reversed };
 
@@ -476,10 +574,14 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
     const hi = (b) => (horiz ? b.y + b.h : b.x + b.w);
     const rectOf = (id) => {
       const n = byId.get(id);
-      const r = rank.get(id);
-      const main = bandStart[r] + (bandSize[r] - mainSize(n)) / 2;
+      const k = rank.get(id);
+      const main = bandStart[k] + (bandSize[k] - mainSize(n)) / 2;
       const c = cross.get(id) - crossSize(n) / 2;
-      return horiz ? { x: main, y: c, w: n.w, h: n.h } : { x: c, y: main, w: n.w, h: n.h };
+      const card = horiz ? { x: main, y: c, w: n.w, h: n.h } : { x: c, y: main, w: n.w, h: n.h };
+      // a group box also wraps its members' self-loops
+      let r = card;
+      for (const e of loopEdges) if (e.source === id) r = union(r, selfLoop(card, loopSide.get(e.id), labelSize(e.label)).box);
+      return r;
     };
     const shift = (r, from, to, d) => {
       for (let i = from; i < to; i++) cross.set(layers[r][i].id, cross.get(layers[r][i].id) + d);
@@ -536,6 +638,12 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
       if (!fixed) break;
     }
   }
+}
+
+function union(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
 }
 
 function overlaps(a, b) {

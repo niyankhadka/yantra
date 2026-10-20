@@ -3,9 +3,9 @@
  * geometry. The browser renderer, SVG exporter and validator all draw from
  * this one function, so what is validated is exactly what is shown.
  */
-import { normalize, visibleGraph, groupIndex, roleKey } from './model.js';
+import { normalize, visibleGraph, groupIndex, roleKey, shapeOf, arrowOf, POINT_SHAPES } from './model.js';
 import { measureNode, autoLayout, labelSize, groupBoxes, groupTitle, GRID } from './layout.js';
-import { routeEdges, placeLabels, roundedPath } from './route.js';
+import { routeEdges, placeLabels, roundedPath, loopGeometry } from './route.js';
 import { iconFor, knownIcon } from './icons.js';
 
 /**
@@ -44,18 +44,25 @@ export function computeScene(payload, options = {}) {
   const rects = new Map();
   for (const s of sized) {
     const p = overrides.get(s.node.id) || base.positions.get(s.node.id) || { x: 0, y: 0 };
-    rects.set(s.node.id, { x: Math.round(p.x), y: Math.round(p.y), w: s.w, h: s.h });
+    const shape = shapeOf(s.node);
+    rects.set(s.node.id, { x: Math.round(p.x), y: Math.round(p.y), w: s.w, h: s.h, ...(POINT_SHAPES.has(shape) ? { shape } : {}) });
   }
 
-  // Layout hints only hold while nothing has been dragged
+  // Layout hints only hold while nothing has been dragged (a self-loop keeps its side)
   const routeInput = edges.map((e) => ({
     id: e.id,
     source: e.source,
     target: e.target,
-    sides: moved ? undefined : base.sides.get(e.id)
+    label: e.label,
+    sides: moved && e.source !== e.target ? undefined : base.sides.get(e.id)
   }));
-  // Group boxes always follow their members (auto, manual or dragged)
-  const boxes = groupBoxes(gi.list, rects);
+  // Group boxes always follow their members (auto, manual or dragged) and wrap their self-loops
+  const boxRects = new Map(rects);
+  for (const [id, loop] of loopGeometry(rects, routeInput)) {
+    const src = routeInput.find((e) => e.id === id).source;
+    boxRects.set(src, union(boxRects.get(src), loop.box));
+  }
+  const boxes = groupBoxes(gi.list, boxRects);
   const sceneGroups = gi.list
     .filter((g) => boxes.has(g.id))
     .map((g) => {
@@ -78,6 +85,7 @@ export function computeScene(payload, options = {}) {
       w: r.w,
       h: r.h,
       lines: s.lines,
+      shape: shapeOf(s.node),
       hue: role.hue,
       kicker: s.node.data?.badge || role.label || '',
       icon: knownIcon(s.node.data?.icon) || knownIcon(role.icon) || iconFor(s.node)
@@ -93,6 +101,8 @@ export function computeScene(payload, options = {}) {
       ok: route.ok,
       d: roundedPath(route.points),
       label: e.label ? labels.get(e.id) || null : null,
+      arrow: arrowOf(e),
+      self: e.source === e.target,
       dashed: e.style === 'dashed' || (!e.style && /async|event|stream/.test(e.type || '')),
       dotted: e.style === 'dotted'
     };
@@ -118,6 +128,12 @@ function boundsOf(nodes, edges, groups = []) {
   });
   if (!isFinite(x0)) return { x: 0, y: 0, w: 0, h: 0 };
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+function union(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
 }
 
 function toMap(o) {

@@ -7,6 +7,7 @@ import { CARD, LABEL, GROUP } from './layout.js';
 import { TOKENS, HUES, FONT_SANS, FONT_MONO } from './theme.js';
 import { ICONS, DRILL_ICON } from './icons.js';
 import { sequenceLive } from './sequence.js';
+import { POINT_SHAPES } from './model.js';
 import { escapeXml as x, textWidth } from './text.js';
 
 const PAD = 40;
@@ -53,6 +54,7 @@ export function renderSvg(scene, options = {}) {
       const dash = e.dotted ? ' stroke-dasharray="2 4"' : e.dashed ? ' stroke-dasharray="6 5"' : '';
       let stroke = t.edge;
       let marker = 'arrow';
+      let startMarker = 'arrow';
       if (on) {
         const from = hueOf.get(e.edge.source) || 'slate';
         const to = hueOf.get(e.edge.target) || 'slate';
@@ -61,10 +63,12 @@ export function renderSvg(scene, options = {}) {
         const x2 = b.x === a.x && b.y === a.y ? b.x + 1 : b.x;
         gradients.push(`<linearGradient id="g${i}" gradientUnits="userSpaceOnUse" x1="${a.x}" y1="${a.y}" x2="${x2}" y2="${b.y}"><stop offset="0" stop-color="${hue(from)}"/><stop offset="1" stop-color="${hue(to)}"/></linearGradient>`);
         usedHues.add(to);
+        if (e.arrow === 'both') usedHues.add(from);
         stroke = `url(#g${i})`;
         marker = `arrow-${to}`;
+        startMarker = `arrow-${from}`;
       }
-      return `<path d="${e.d}" fill="none" stroke="${stroke}" stroke-width="${on ? 2.25 : 1.5}"${dash} marker-end="url(#${marker})" opacity="${focus && !on ? 0.2 : 1}"/>`;
+      return `<path d="${e.d}" fill="none" stroke="${stroke}" stroke-width="${on ? 2.25 : 1.5}"${dash}${arrowHeads(e.arrow, startMarker, marker)} opacity="${focus && !on ? 0.2 : 1}"/>`;
     })
     .join('\n    ');
 
@@ -134,6 +138,10 @@ function frame({ scene, t, hue, roles, markText, logo, header, width, height, de
 `;
 }
 
+/** marker-start / marker-end attributes for an edge's arrow setting. */
+const arrowHeads = (arrow, start, end) =>
+  (arrow === 'both' ? ` marker-start="url(#${start})"` : '') + (arrow === 'none' ? '' : ` marker-end="url(#${end})"`);
+
 const arrowMarker = (id, fill) => `<marker id="${id}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1 10 5 0 9z" fill="${fill}"/></marker>`;
 
 /**
@@ -201,16 +209,19 @@ export function renderSequenceSvg(scene, { theme = 'light', step = null, header 
       const z = m.points[m.points.length - 1];
       let stroke = t.edge;
       let marker = 'arrow';
+      let startMarker = 'arrow';
       if (on) {
         gradients.push(`<linearGradient id="sg${i}" gradientUnits="userSpaceOnUse" x1="${a.x}" y1="${a.y}" x2="${z.x === a.x ? z.x + 1 : z.x}" y2="${z.y}"><stop offset="0" stop-color="${hue(from)}"/><stop offset="1" stop-color="${hue(to)}"/></linearGradient>`);
         usedHues.add(to);
+        if (m.arrow === 'both') usedHues.add(from);
         stroke = `url(#sg${i})`;
         marker = `arrow-${to}`;
+        startMarker = `arrow-${from}`;
       }
       const l = m.label;
       const pill = `<rect x="${l.x - l.w / 2}" y="${l.y - l.h / 2}" width="${l.w}" height="${l.h}" rx="${l.h / 2}" fill="${t.bg}" stroke="${on && focus ? hue(from) : t.border}"/>` +
         `<text x="${l.x}" y="${l.y + 4}" text-anchor="middle" font-size="${LABEL.size}" font-weight="500" fill="${on ? t.ink : t.ink2}">${x(m.text)}</text>`;
-      return `<g opacity="${on ? 1 : 0.3}"><path d="${m.d}" fill="none" stroke="${stroke}" stroke-width="${on && focus ? 2.25 : 1.75}"${dash} marker-end="url(#${marker})"/>${pill}</g>`;
+      return `<g opacity="${on ? 1 : 0.3}"><path d="${m.d}" fill="none" stroke="${stroke}" stroke-width="${on && focus ? 2.25 : 1.75}"${dash}${arrowHeads(m.arrow, startMarker, marker)}/>${pill}</g>`;
     })
     .join('\n    ');
 
@@ -242,9 +253,24 @@ function watermarkSvg(text, logo, width, height, t) {
   return `<g opacity="0.9"><rect x="${bx}" y="${by}" width="${w}" height="24" rx="12" fill="${t.surface}" stroke="${t.border}"/>${img}<text x="${bx + 10 + logoW}" y="${by + 16}" font-size="11.5" font-weight="600" fill="${t.ink2}">${x(text)}</text></g>`;
 }
 
+/** Pseudo-states: a filled dot (initial), a ringed dot (final), a diamond (choice). */
+function pointSvg(n, t, hueColor, isActive) {
+  const r = n.w / 2;
+  const ring = isActive ? (n.shape === 'choice'
+    ? `<polygon points="${r},-4 ${n.w + 4},${r} ${r},${n.h + 4} -4,${r}" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>`
+    : `<circle cx="${r}" cy="${r}" r="${r + 3}" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>`) : '';
+  const body =
+    n.shape === 'initial' ? `<circle cx="${r}" cy="${r}" r="${r}" fill="${hueColor}"/>` :
+    n.shape === 'final' ? `<circle cx="${r}" cy="${r}" r="${r - 1}" fill="${t.surface}" stroke="${hueColor}" stroke-width="2"/><circle cx="${r}" cy="${r}" r="${r - 5}" fill="${hueColor}"/>` :
+    `<polygon points="${r},0 ${n.w},${r} ${r},${n.h} 0,${r}" fill="${t.surface}" stroke="${hueColor}" stroke-width="${isActive ? 2 : 1.5}" stroke-linejoin="round"/>`;
+  return `<g transform="translate(${n.x} ${n.y})" opacity="${isActive === false ? 0.25 : 1}"><title>${x(n.node.data?.title || n.id)}</title>${ring}${body}</g>`;
+}
+
 function nodeSvg(n, t, hueColor, isActive) {
+  if (POINT_SHAPES.has(n.shape)) return pointSvg(n, t, hueColor, isActive);
   const C = CARD;
   const dim = isActive === false;
+  const rx = n.shape === 'state' ? 16 : 8;
   const lines = [];
   let y = C.padY + C.kicker + C.kickerGap;
   n.lines.title.forEach((line) => {
@@ -266,9 +292,9 @@ function nodeSvg(n, t, hueColor, isActive) {
   const drill = typeof n.node?.data?.drill === 'string' && n.node.data.drill
     ? `<g transform="translate(${n.w - C.padX - 14} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><title>Has a detail diagram</title>${DRILL_ICON}</g>`
     : '';
-  const ring = isActive ? `<rect x="-3" y="-3" width="${n.w + 6}" height="${n.h + 6}" rx="11" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>` : '';
+  const ring = isActive ? `<rect x="-3" y="-3" width="${n.w + 6}" height="${n.h + 6}" rx="${rx + 3}" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>` : '';
   return `<g transform="translate(${n.x} ${n.y})" opacity="${dim ? 0.25 : 1}">
-      ${ring}<rect width="${n.w}" height="${n.h}" rx="8" fill="${t.surface}" stroke="${isActive ? hueColor : t.border}" stroke-width="${isActive ? 1.5 : 1}"/>
+      ${ring}<rect width="${n.w}" height="${n.h}" rx="${rx}" fill="${t.surface}" stroke="${isActive ? hueColor : t.border}" stroke-width="${isActive ? 1.5 : 1}"/>
       <g transform="translate(${C.padX} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${(typeof n.icon === 'string' && Object.hasOwn(ICONS, n.icon) ? ICONS[n.icon] : ICONS.cpu)}</g>
       <text x="${C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600" letter-spacing="0.06em" fill="${hueColor}">${x(String(n.kicker).toUpperCase())}</text>${drill}
       ${lines.join('\n      ')}

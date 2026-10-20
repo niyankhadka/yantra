@@ -13,6 +13,9 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 - **Walkthroughs**: scenarios with steps that focus nodes and animate the active path;
   storyboard with autoplay, camera follow and a full-screen present mode.
 - **Groups**: 2-5 labelled boundaries (VPC, team, phase) drawn behind their cards.
+- **State machines and lifecycles**: state cards, initial / final dots and choice diamonds,
+  self-loops drawn on the card, two-way and undirected edges (`edge.arrow`), back-edges
+  routed cleanly. See `examples/ticket-lifecycle.json`.
 - **Sequence view**: the same payload as a lifeline diagram (`meta.view: "sequence"`, key `V`,
   `--view sequence`), one message per step.
 - **Modes**: alternative views (production vs local) that hide nodes or swap details.
@@ -31,7 +34,8 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   series, nice axes, legends, hidden data tables for screen readers), metric sparklines,
   `gantt` plans (dates or relative days, groups, milestones, dependencies, today line) and
   `matrix` blocks (2x2 quadrants, 3x3-5x5 risk heat maps); inline SVG, both themes, no libraries. See [`docs/pages.md`](docs/pages.md).
-- **Mermaid import**: `yantra import` turns flowcharts and sequence diagrams into payloads.
+- **Mermaid import**: `yantra import` turns flowcharts, sequence diagrams and state diagrams
+  into payloads.
   See [`docs/mermaid.md`](docs/mermaid.md).
 - **Accessible and shareable**: full keyboard control, state mirrored in the URL hash,
   print stylesheet, light and dark themes with WCAG contrast tests on the design tokens.
@@ -56,6 +60,7 @@ node bin/yantra.js screenshot diagram.json     # -> diagram-light.png
 
 | The question | Output | Start from |
 |---|---|---|
+| What states can it be in, and what moves it? | **Diagram** with `shape: "state"` and `initial` / `final` dots | `examples/ticket-lifecycle.json` |
 | How do the parts connect / how does the flow run? | **Diagram** (flow view) | `yantra new x.json`, `examples/cloud-architecture.json` |
 | Who calls whom, in what order? (protocols, APIs) | **Diagram** with `meta.view: "sequence"` | `examples/oauth-login.json` |
 | What is the answer / which option / what happened? | **Answer page** (`"kind": "page"`) | `yantra new x.json --page`, `examples/answer-*.json` |
@@ -93,20 +98,20 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
 | `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
 | `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). |
-| `yantra import <file.mmd\|file.md> [-o out.json] [--title "..."] [--all]` | Convert Mermaid flowcharts / sequence diagrams, then validate. |
+| `yantra import <file.mmd\|file.md> [-o out.json] [--title "..."] [--all]` | Convert Mermaid flowcharts / sequence / state diagrams, then validate. |
 | `yantra new <file> [--page]` | Starter diagram or answer page. |
 | `yantra examples [name] [-o file]` | List the examples or copy one. |
 | `yantra mcp` / `yantra dev` | MCP server on stdio / live viewer. |
 
 ## Examples
 
-12 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
+13 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
 
 - Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
   `platform-overview` (drill-down into two detail diagrams, links),
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
   (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
-  `healthcare-clinical`.
+  `healthcare-clinical`, `ticket-lifecycle` (state machine).
 - Pages: `answer-checkout-saga`, `answer-how-to-choose-database` (interactive diagram),
   `answer-incident-review`, `answer-project-kickoff`, `answer-explain-photosynthesis`,
   `answer-quarterly-review` (line, area, column, bar and donut charts, sparklines),
@@ -172,7 +177,7 @@ mcp/server.js          MCP server (stdio)
 lib/                   Node-only: standalone HTML builder, headless screenshots
 src/core/              Shared engine: model, layout, routing, scene, lint, SVG/Markdown, theme
   sequence.js          Sequence (lifeline) view
-  mermaid.js           Mermaid flowchart / sequence importer
+  mermaid.js           Mermaid flowchart / sequence / state importer
   page.js              Answer pages
   charts.js            Page charts, gantt plans, matrices (inline SVG)
   drill.js             Drill-down levels and link sanitising
@@ -180,7 +185,7 @@ src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              12 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
+examples/              13 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
 docs/                  Authoring (diagrams, pages, Mermaid) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite

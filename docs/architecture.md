@@ -17,14 +17,14 @@ validator checks is exactly what the viewer draws.
 | `model.js` | Defaults (single mode, single scenario), role → colour resolution, mode visibility and per-mode data overrides. |
 | `text.js` | Width estimation and word wrapping without a DOM, HTML/XML escaping. |
 | `layout.js` | Card sizing (`CARD` metrics) and the layered layout: DFS cycle breaking, longest-path ranking, dummy nodes for long edges, barycentre crossing reduction, cross-axis placement by weighted isotonic regression, rank gaps sized for labels, corridors for return edges. Positions snap to the 10px grid; card sizes are multiples of 20 so aligned centres stay aligned. |
-| `route.js` | Port assignment (isotonic fit so facing ports line up), A* over a sparse orthogonal grid with node obstacles, a soft halo, and penalties for bends, shared or adjacent tracks and crossings; jog removal and centring; rounded elbows; label placement on the route. |
+| `route.js` | Port assignment (isotonic fit so facing ports line up), A* over a sparse orthogonal grid with node obstacles, a soft halo, and penalties for bends, shared or adjacent tracks and crossings; jog removal and centring; rounded elbows; label placement on the route. Self-loops are fixed loops on a free side; ends at dots and diamonds are clipped to the outline. |
 | `scene.js` | `computeScene(payload, { modeId, overrides, layoutCache })`: the single entry point. |
 | `sequence.js` | `computeSequenceScene(payload, { modeId, scenarioIndex })`: the sequence view (participants by first appearance, one message per step `highlightEdges` id, numbered rows, group boxes over adjacent columns; gaps widen to fit labels). `sceneForView` picks flow or sequence. |
 | `lint.js` | Structural, reference, story, budget and geometry checks with stable codes. |
 | `svg.js` / `markdown.js` | Static exports. SVG is plain SVG (no `foreignObject`), so it rasterises to PNG cleanly. `renderSequenceSvg` draws the sequence view. |
 | `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build. |
 | `page.js` | Answer pages: block renderers (shared with inspector panels), `renderPage`, page lint, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. |
-| `mermaid.js` | `fromMermaid(text, { title })`: flowchart and sequence-diagram importer (nodes, edges, subgraphs to groups, a generated walkthrough) with warnings for anything skipped. |
+| `mermaid.js` | `fromMermaid(text, { title })`: flowchart, sequence-diagram and state-diagram importer (nodes, edges, subgraphs to groups, a generated walkthrough) with warnings for anything skipped. |
 | `theme.js` / `icons.js` | Design tokens for both themes and the icon set; the app injects the tokens as CSS variables. |
 
 ## Viewer

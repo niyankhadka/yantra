@@ -204,6 +204,36 @@ Details, the edge in its card's connections, the Step tab), opened in a new tab 
 exports keep them as links. Use links for runbooks, dashboards, specs and source, not for
 content that belongs on the card.
 
+## State machines and lifecycles
+
+Use a state diagram when the question is **what states a thing can be in and which event
+moves it** (an order, a ticket, a document, a connection). Nodes are states, edges are
+transitions labelled with their event:
+
+- `shape: "state"` draws a rounder card for a state. `shape: "initial"` (filled dot),
+  `"final"` (ringed dot) and `"choice"` (diamond) are small, textless pseudo-states; their
+  `data.title` still names them in tooltips, the inspector and exports. Give them their own
+  role (e.g. `pseudo`, slate) so the legend explains the dots.
+- A transition out of an initial state or into a final state needs no label; every other
+  transition should name its event.
+- **Self-loops** (`source` equal to `target`) draw as a small loop on a free side of the card
+  (above or below it in `LR`, to its right in `TB`), with the label on the loop. Layout makes
+  room for it; steps may highlight it like any edge.
+- **Back-edges** (reopen, retry, decline) are fine: point them the way the event goes and
+  layout routes them back. Two edges between the same pair of states get a wider gap so
+  both labels fit side by side.
+- `edge.arrow`: `"forward"` (default), `"both"` for one two-way edge (`ask / reply`), or
+  `"none"` for an undirected link. Layout still ranks by `source` → `target`.
+
+```json
+{ "id": "start", "type": "pseudo", "shape": "initial", "data": { "title": "Start" } },
+{ "id": "open", "type": "state", "shape": "state", "data": { "title": "Open" } },
+{ "id": "open-note", "source": "open", "target": "open", "label": "add note" },
+{ "id": "open-waiting", "source": "open", "target": "waiting", "label": "ask / reply", "arrow": "both" }
+```
+
+See `examples/ticket-lifecycle.json`; Mermaid `stateDiagram` imports to the same shapes.
+
 ## Limits
 
 - Card titles, subtitles and edge labels over 200 characters are cut with an ellipsis;
@@ -235,6 +265,9 @@ Fix in this order; each fix can clear later errors.
 | `ref/inspector-unknown-click-target`, `ref/panel-unknown-node` | Point `onNodeClick` at `node`, `stay` or a panel id; list only real card ids in `nodes`. |
 | `panel/*`, `ref/inspector-unknown-tab` | Give each panel a unique `id`, a `title` and blocks; list only existing tab ids. |
 | `page/block-invalid` (inside a panel) | Supply the block fields listed in the message. |
+| `schema/node-shape-invalid`, `schema/edge-arrow-invalid` | Use a listed `shape` (`card`, `state`, `initial`, `final`, `choice`) or `arrow` (`forward`, `both`, `none`). |
+| `story/initial-has-incoming`, `story/final-has-outgoing` (warnings) | Nothing enters an initial state or leaves a final one: retarget the edge at a real state. |
+| `story/choice-needs-branches` (warning) | Give the choice two or more outgoing, labelled branches, or make it a state. |
 | `story/edge-endpoint-dimmed` (warning) | Add the edge's source and target to that step's `highlightNodes`. |
 | `story/no-steps` (warning) | Add a scenario with an overview step and 2+ focused steps. |
 | `sequence/no-messages` (warning) | `meta.view` is `sequence` but no step lists `highlightEdges`: add them, or drop `meta.view`. |

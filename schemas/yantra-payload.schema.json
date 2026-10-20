@@ -236,6 +236,17 @@
             "type": "string",
             "description": "Role key; nodes sharing a type share a colour. See roles."
           },
+          "shape": {
+            "enum": [
+              "card",
+              "state",
+              "initial",
+              "final",
+              "choice"
+            ],
+            "default": "card",
+            "description": "card: the usual card. state: a rounder card for a state in a state machine. initial (filled dot), final (ringed dot) and choice (diamond) are small, textless pseudo-states; data.title still names them in tooltips, the inspector and exports."
+          },
           "rank": {
             "type": "integer",
             "minimum": 0,
@@ -368,6 +379,15 @@
             "type": "string",
             "pattern": "^(https?://|mailto:)",
             "description": "External link (http, https or mailto) opened in a new tab from the inspector."
+          },
+          "arrow": {
+            "enum": [
+              "forward",
+              "both",
+              "none"
+            ],
+            "default": "forward",
+            "description": "Arrow heads: forward (at the target), both (a two-way link) or none (an undirected link). Layout still ranks by source -> target. source == target draws a self-loop on the card's side."
           }
         }
       }

@@ -12,7 +12,7 @@
  * Column gaps grow until every label fits between the lifelines it spans, so
  * labels never collide and arrows always end exactly on a lifeline.
  */
-import { normalize, visibleGraph, groupIndex, roleKey } from './model.js';
+import { normalize, visibleGraph, groupIndex, roleKey, arrowOf } from './model.js';
 import { computeScene } from './scene.js';
 import { measureNode, labelSize, groupBoxes, groupTitle, LABEL, GROUP, GRID } from './layout.js';
 import { roundedPath } from './route.js';
@@ -87,7 +87,8 @@ export function computeSequenceScene(payload, options = {}) {
   const sized = order.map((id) => {
     const node = nodeById.get(id);
     const role = model.roles[roleKey(node)] || { label: node.type, hue: 'slate' };
-    return { id, node, role, ...measureNode(node.width ? node : { ...node, width: SEQ.headerWidth }) };
+    // Headers are always cards: pseudo-states (dots, diamonds) need a name above a lifeline
+    return { id, node, role, ...measureNode({ ...node, shape: 'card', width: node.width || SEQ.headerWidth }) };
   });
   const headerH = Math.max(80, ...sized.map((s) => s.h));
   const chains = sized.map((s) => gi.chain(s.id));
@@ -180,7 +181,8 @@ export function computeSequenceScene(payload, options = {}) {
         text: d.text,
         label,
         dashed: d.e.style === 'dashed' || (!d.e.style && /async|event|stream/.test(d.e.type || '')),
-        dotted: d.e.style === 'dotted'
+        dotted: d.e.style === 'dotted',
+        arrow: arrowOf(d.e)
       };
       messages.push(msg);
       row.messages.push(msg.id);

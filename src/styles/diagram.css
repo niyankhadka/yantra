@@ -181,6 +181,59 @@
   text-overflow: ellipsis;
 }
 
+/* --- State shapes: rounder state cards and textless pseudo-states ---------
+ * Sizes come from POINT_SIZE in src/core/layout.js (dots 20px, diamond 40px). */
+.y-node.is-state {
+  border-radius: 16px;
+}
+
+.y-node.y-point {
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.y-node.y-point.is-choice {
+  border-radius: 0;
+}
+
+.y-point svg {
+  display: block;
+  overflow: visible;
+}
+
+.y-point .y-pt-fill {
+  fill: var(--y-hue);
+}
+
+.y-point .y-pt-ring {
+  fill: var(--y-surface);
+  stroke: var(--y-hue);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.y-point.is-choice .y-pt-ring {
+  stroke-width: 1.5;
+}
+
+.y-node.y-point.is-active,
+.y-node.y-point.is-selected {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--y-hue) 25%, transparent);
+}
+
+.y-node.y-point.is-choice.is-active,
+.y-node.y-point.is-choice.is-selected {
+  box-shadow: none;
+}
+
+.y-node.y-point.is-choice.is-active svg,
+.y-node.y-point.is-choice.is-selected svg {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--y-hue) 60%, transparent));
+}
+
 /* --- Edges ---------------------------------------------------------------- */
 .y-edge-line {
   fill: none;

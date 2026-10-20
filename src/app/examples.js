@@ -10,6 +10,7 @@ import supportEscalation from '../../examples/customer-support-escalation.json';
 import manufacturing from '../../examples/manufacturing-quality.json';
 import researchPaper from '../../examples/research-paper-lifecycle.json';
 import platform from '../../examples/platform-overview.json';
+import ticketLifecycle from '../../examples/ticket-lifecycle.json';
 
 /** Built-in gallery, shown only when the page has no embedded payload. */
 export const EXAMPLES = [
@@ -24,5 +25,6 @@ export const EXAMPLES = [
   { id: 'ml-training-pipeline', name: 'ML training pipeline (groups)', data: mlPipeline },
   { id: 'customer-support-escalation', name: 'Support escalation (modes)', data: supportEscalation },
   { id: 'manufacturing-quality', name: 'Manufacturing quality (panel)', data: manufacturing },
-  { id: 'research-paper-lifecycle', name: 'Research paper lifecycle', data: researchPaper }
+  { id: 'research-paper-lifecycle', name: 'Research paper lifecycle', data: researchPaper },
+  { id: 'ticket-lifecycle', name: 'Ticket lifecycle (states)', data: ticketLifecycle }
 ];

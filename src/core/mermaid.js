@@ -1,6 +1,6 @@
 /**
- * Mermaid import: turns a Mermaid flowchart or sequence diagram into a Yantra
- * payload. Pure (no DOM, no Node APIs) and dependency-free.
+ * Mermaid import: turns a Mermaid flowchart, sequence diagram or state diagram
+ * into a Yantra payload. Pure (no DOM, no Node APIs) and dependency-free.
  *
  *   fromMermaid(text, { title? }) -> { payload, warnings: string[] }
  *   mermaidBlocks(markdown)       -> string[]   (```mermaid fenced blocks)
@@ -20,7 +20,9 @@ const SHAPE_ROLES = {
   io: { label: 'Input / output', color: 'green' },
   event: { label: 'Event', color: 'orange' },
   actor: { label: 'Actor', color: 'amber', icon: 'user' },
-  service: { label: 'Participant', color: 'blue' }
+  service: { label: 'Participant', color: 'blue' },
+  state: { label: 'State', color: 'blue' },
+  choice: { label: 'Choice', color: 'amber' }
 };
 const CLASS_HUES = ['blue', 'teal', 'green', 'amber', 'rose', 'violet', 'orange', 'slate'];
 
@@ -57,7 +59,9 @@ export function fromMermaid(text, opts = {}) {
   if (!lines.length) throw new Error('The Mermaid text is empty.');
   const header = lines[0].text;
   const ctx = { warnings, title: opts.title || frontTitle };
-  const parse = /^(graph|flowchart)\b/i.test(header) ? parseFlowchart : /^sequenceDiagram\b/.test(header) ? parseSequence : null;
+  const parse = /^(graph|flowchart)\b/i.test(header) ? parseFlowchart
+    : /^sequenceDiagram\b/.test(header) ? parseSequence
+    : /^stateDiagram(-v2)?\b/.test(header) ? parseState : null;
   if (parse) {
     try {
       return parse(lines, ctx);
@@ -67,7 +71,7 @@ export function fromMermaid(text, opts = {}) {
     }
   }
   const kind = header.split(/\s+/)[0];
-  throw new Error(`Unsupported Mermaid diagram type "${kind}". Supported: flowchart / graph, sequenceDiagram.`);
+  throw new Error(`Unsupported Mermaid diagram type "${kind}". Supported: flowchart / graph, sequenceDiagram, stateDiagram.`);
 }
 
 // --- shared helpers ------------------------------------------------------------
@@ -229,6 +233,7 @@ function parseFlowchart(lines, ctx) {
   const stack = [];
   const classDefs = new Map(); // name -> { color }
   const longLabels = [];
+  const circleHeads = new Set();
 
   const touch = (raw, shape) => {
     let n = nodes.get(raw);
@@ -353,10 +358,14 @@ function parseFlowchart(lines, ctx) {
     links.forEach((link, k) => {
       const t = link.token;
       if (t === '~~~') return ignored.add('~~~ (invisible link)');
-      if (/^[<ox]/.test(t) && /[>ox]$/.test(t)) warnings.push(`Line ${no}: bidirectional link "${t}" is drawn one way.`);
+      // Heads: "-->" one way, "<-->" / "o--o" / "x--x" both ways, "---" / "-.-" / "===" none
+      const tail = /^[<ox]/.test(t);
+      const head = /[>ox]$/.test(t);
+      if (/^[ox]|[ox]$/.test(t)) circleHeads.add(t);
+      const arrow = head ? (tail ? 'both' : 'forward') : 'none';
       const style = t.includes('.') ? 'dashed' : t.includes('=') ? 'solid' : undefined;
       for (const a of all[k].refs)
-        for (const b of all[k + 1].refs) rawEdges.push({ from: a.raw, to: b.raw, label: link.label, style, no });
+        for (const b of all[k + 1].refs) rawEdges.push({ from: a.raw, to: b.raw, label: link.label, style, arrow, no });
     });
   };
 
@@ -392,6 +401,7 @@ function parseFlowchart(lines, ctx) {
     }
   }
   ignored.flush(IGNORED_WHY);
+  if (circleHeads.size) warnings.push(`Circle and cross heads (${[...circleHeads].join(', ')}) are drawn as arrows.`);
   if (stack.length) warnings.push(`${stack.length} subgraph${stack.length > 1 ? 's were' : ' was'} not closed with "end".`);
 
   // Edges that point at a subgraph go to its first node.
@@ -434,14 +444,11 @@ function parseFlowchart(lines, ctx) {
     const s = nodes.get(e.from)?.id;
     const t = nodes.get(e.to)?.id;
     if (!s || !t) continue;
-    if (s === t) {
-      warnings.push(`Line ${e.no}: self-loop on "${s}" is not drawn.`);
-      continue;
-    }
     const edge = { id: eid(s, t), source: s, target: t };
     const label = edgeLabel(e.label, (l) => longLabels.push(l));
     if (label) edge.label = label;
     if (e.style) edge.style = e.style;
+    if (e.arrow !== 'forward') edge.arrow = e.arrow;
     outEdges.push(edge);
   }
   if (longLabels.length) warnings.push(`Shortened ${longLabels.length} edge label${longLabels.length > 1 ? 's' : ''} to ${MAX_LABEL} characters.`);
@@ -517,7 +524,12 @@ function flowSteps(nodes, edges, groups) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const incoming = new Map(nodes.map((n) => [n.id, []]));
   const outgoing = new Map(nodes.map((n) => [n.id, []]));
+  const loops = new Map(nodes.map((n) => [n.id, []]));
   for (const e of edges) {
+    if (e.source === e.target) {
+      loops.get(e.source).push(e); // a self-loop neither orders nor follows anything
+      continue;
+    }
     incoming.get(e.target).push(e);
     outgoing.get(e.source).push(e);
   }
@@ -557,9 +569,11 @@ function flowSteps(nodes, edges, groups) {
         ? `${titleOf(id)} follows ${list(inc.map((e) => `${titleOf(e.source)}${e.label ? ` (${e.label})` : ''}`))}.`
         : `${titleOf(id)} is a starting point.`;
       if (own) s += ` ${own}.`;
+      const self = loops.get(id);
+      if (self.length) s += ` It can repeat itself (${list(self.map((e) => e.label || 'loop'))}).`;
       const out = outgoing.get(id);
-      if (n.type === 'decision' && out.length) s += ` Branches: ${list(out.map((e) => `${e.label || 'otherwise'} → ${titleOf(e.target)}`))}.`;
-      else if (!out.length) s += ' The flow ends here.';
+      if ((n.type === 'decision' || n.shape === 'choice') && out.length) s += ` Branches: ${list(out.map((e) => `${e.label || 'otherwise'} → ${titleOf(e.target)}`))}.`;
+      else if (!out.length && n.shape !== 'final') s += ' The flow ends here.';
       parts.push(s.replace(/\.\./g, '.'));
     }
     return parts.join(' ');
@@ -587,7 +601,7 @@ function flowSteps(nodes, edges, groups) {
   ];
   buckets.forEach((ids, i) => {
     const set = new Set(ids);
-    const inEdges = ids.flatMap((id) => incoming.get(id));
+    const inEdges = ids.flatMap((id) => [...incoming.get(id), ...loops.get(id)]);
     const highlightNodes = [...new Set([...inEdges.map((e) => e.source), ...ids])];
     const step = {
       id: `step-${i + 1}`,
@@ -754,5 +768,206 @@ function parseSequence(lines, ctx) {
       ]
     }
   ];
+  return { payload, warnings };
+}
+
+// --- state diagrams ----------------------------------------------------------------
+
+const STATE_ID = '\\[\\*\\]|[\\w\\u00C0-\\uFFFF.]+(?:-[\\w\\u00C0-\\uFFFF.]+)*';
+const TRANSITION = new RegExp(`^(${STATE_ID})(?::::[\\w-]+)?\\s*-->\\s*(${STATE_ID})(?::::[\\w-]+)?\\s*(?::\\s*(.*))?$`);
+const STATE_IGNORED_WHY = {
+  ...IGNORED_WHY,
+  class: 'colours come from roles',
+  classDef: 'colours come from roles',
+  hide: 'not needed',
+  scale: 'layout is automatic',
+  '-- (concurrent region)': 'regions are drawn as one group'
+};
+
+function parseState(lines, ctx) {
+  const { warnings } = ctx;
+  const ignored = ignoredCollector(warnings);
+  let dir = 'TB';
+  const states = new Map(); // key -> { key, raw, label, kind, desc[], scope, order }
+  const composites = new Map(); // raw -> { raw, label, scope (parent), members: keys[] }
+  const stack = [];
+  const rawEdges = []; // { from, to, label, no }
+  let notes = 0;
+  let inNote = false;
+
+  const scope = () => stack[stack.length - 1] || null;
+  // [*] is the scope's initial state when a transition leaves it, its final state when one enters it
+  const touch = (raw, kind) => {
+    const sc = scope();
+    const key = raw === '[*]' ? `\u0000${kind}:${sc ? sc.raw : ''}` : raw;
+    let st = states.get(key);
+    if (!st) {
+      st = { key, raw, label: raw === '[*]' ? '' : raw, kind: raw === '[*]' ? kind : 'state', desc: [], scope: sc, order: states.size };
+      states.set(key, st);
+      if (sc) sc.members.push(key);
+    }
+    return st;
+  };
+
+  for (const { text: line, no } of lines.slice(1)) {
+    let m;
+    if (inNote) {
+      if (/^end\s+note$/i.test(line)) inNote = false;
+      continue;
+    }
+    if ((m = /^note\s+(?:left|right)\s+of\s+[^:]+?(\s*:.*)?$/i.exec(line))) {
+      notes++;
+      if (!m[1]) inNote = true;
+    } else if ((m = /^direction\s+(TB|TD|BT|LR|RL)$/i.exec(line))) {
+      if (stack.length) ignored.add('direction');
+      else {
+        const d = m[1].toUpperCase();
+        if (d === 'BT' || d === 'RL') warnings.push(`Direction ${d} is drawn as ${d === 'BT' ? 'TB' : 'LR'}; Yantra does not reverse the flow.`);
+        dir = d === 'LR' || d === 'RL' ? 'LR' : 'TB';
+      }
+    } else if ((m = /^state\s+(?:"([^"]*)"\s+as\s+([\w.-]+)|([\w.-]+))\s*(<<\s*(\w+)\s*>>)?\s*(\{)?$/.exec(line))) {
+      const raw = m[2] || m[3];
+      const label = m[1] !== undefined ? cleanLabel(m[1]).replace(/\n/g, ' ') : null;
+      if (m[6]) {
+        const c = composites.get(raw) || { raw, label: raw, scope: scope(), members: [] };
+        if (label) c.label = label;
+        composites.set(raw, c);
+        stack.push(c);
+      } else {
+        const st = touch(raw);
+        if (label) st.label = label;
+        const stereo = (m[5] || '').toLowerCase();
+        if (stereo === 'choice') st.kind = 'choice';
+        else if (stereo) {
+          st.desc.push(humanize(stereo));
+          warnings.push(`Line ${no}: <<${stereo}>> "${raw}" is drawn as a plain state.`);
+        }
+      }
+    } else if (line === '}') {
+      if (!stack.pop()) warnings.push(`Line ${no}: "}" without a composite state.`);
+    } else if (line === '--' || line === '||') {
+      ignored.add('-- (concurrent region)');
+    } else if ((m = TRANSITION.exec(line))) {
+      const from = touch(m[1], 'initial');
+      const to = touch(m[2], 'final');
+      if (line.includes(':::')) ignored.add('class');
+      rawEdges.push({ from: from.key, to: to.key, label: m[3] || '', no });
+    } else if ((m = /^([\w.-]+)\s*:\s*(.+)$/.exec(line))) {
+      touch(m[1]).desc.push(cleanLabel(m[2]).replace(/\n/g, ' '));
+    } else if ((m = /^(classDef|class|style|scale|hide|click|accTitle|accDescr)\b/.exec(line))) {
+      ignored.add(m[1]);
+    } else if ((m = /^([\w.-]+)(?::::[\w-]+)?$/.exec(line))) {
+      touch(m[1]);
+      if (line.includes(':::')) ignored.add('class');
+    } else warnings.push(`Line ${no}: could not parse "${line}".`);
+  }
+  ignored.flush(STATE_IGNORED_WHY);
+  if (notes) warnings.push(`Ignored ${notes} note${notes > 1 ? 's' : ''} (notes are not imported; put the text in a state description).`);
+  if (stack.length) warnings.push(`${stack.length} composite state${stack.length > 1 ? 's were' : ' was'} not closed with "}".`);
+
+  // A composite with members becomes a group. Transitions to it enter at the
+  // target of its initial state; transitions from it leave from the state
+  // that reaches its final state (else its first / last member).
+  const groupOf = new Map([...composites].filter(([, c]) => c.members.length));
+  for (const raw of groupOf.keys()) {
+    const st = states.get(raw);
+    if (!st) continue;
+    states.delete(raw);
+    if (st.scope) st.scope.members = st.scope.members.filter((k) => k !== raw);
+  }
+  const isState = (k) => states.get(k)?.kind === 'state' || states.get(k)?.kind === 'choice';
+  const entry = (raw, seen = new Set()) => {
+    const c = groupOf.get(raw);
+    if (!c || seen.has(raw)) return raw;
+    seen.add(raw);
+    const first = rawEdges.find((e) => e.from === `\u0000initial:${raw}`)?.to || c.members.find(isState) || c.members[0];
+    return entry(first, seen);
+  };
+  const exit = (raw, seen = new Set()) => {
+    const c = groupOf.get(raw);
+    if (!c || seen.has(raw)) return raw;
+    seen.add(raw);
+    const last = rawEdges.find((e) => e.to === `\u0000final:${raw}`)?.from || [...c.members].reverse().find(isState) || c.members[c.members.length - 1];
+    return exit(last, seen);
+  };
+  const attached = new Set();
+  for (const e of rawEdges) {
+    if (groupOf.has(e.from)) attached.add(e.from), (e.from = exit(e.from));
+    if (groupOf.has(e.to)) attached.add(e.to), (e.to = entry(e.to));
+  }
+  for (const raw of attached) warnings.push(`Transitions to or from composite state "${groupOf.get(raw).label}" are attached to its entry and exit states.`);
+
+  // --- assemble the payload -----------------------------------------------------
+  const taken = new Set();
+  const alloc = (base) => {
+    const b = String(base).replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'state';
+    let id = b;
+    for (let i = 2; taken.has(id); i++) id = `${b}-${i}`;
+    taken.add(id);
+    return id;
+  };
+  const pseudo = (st) => st.kind === 'initial' || st.kind === 'final';
+  const ordered = [...states.values()].sort((a, b) => a.order - b.order);
+  ordered.filter((st) => !pseudo(st)).forEach((st) => (st.id = alloc(st.raw)));
+  const groupIds = new Map([...groupOf.keys()].map((raw) => [raw, alloc(raw)]));
+  const outNodes = [];
+  for (const st of ordered) {
+    const where = st.scope && groupOf.has(st.scope.raw) ? st.scope : null;
+    if (pseudo(st)) {
+      const word = st.kind === 'initial' ? 'start' : 'end';
+      st.id = alloc(where ? `${groupIds.get(where.raw)}-${word}` : word);
+      const title = where ? `${where.label} ${word}` : word;
+      outNodes.push({ id: st.id, type: 'terminal', shape: st.kind, data: { title: title[0].toUpperCase() + title.slice(1) } });
+      continue;
+    }
+    const data = labelData(st.label || st.raw, st.raw);
+    if (st.desc.length) {
+      const text = st.desc.join(' ');
+      if (!data.subtitle && text.length <= 60) data.subtitle = text;
+      else data.description = [data.description, text].filter(Boolean).join(' ');
+    }
+    const choice = st.kind === 'choice';
+    outNodes.push({ id: st.id, type: choice ? 'choice' : 'state', shape: choice ? 'choice' : 'state', data });
+  }
+  const roles = assignRoles(outNodes.map((n) => n.type), new Map());
+
+  const eid = edgeIdFactory();
+  const longLabels = [];
+  const outEdges = [];
+  for (const e of rawEdges) {
+    const s = states.get(e.from)?.id;
+    const t = states.get(e.to)?.id;
+    if (!s || !t) continue;
+    const edge = { id: eid(s, t), source: s, target: t };
+    const label = edgeLabel(e.label, (l) => longLabels.push(l));
+    if (label) edge.label = label;
+    outEdges.push(edge);
+  }
+  if (longLabels.length) warnings.push(`Shortened ${longLabels.length} transition label${longLabels.length > 1 ? 's' : ''} to ${MAX_LABEL} characters.`);
+  // Transitions out of a start or into an end need no label (the validator agrees)
+  const dots = new Set(outNodes.filter((n) => n.shape === 'initial' || n.shape === 'final').map((n) => n.id));
+  const unlabeled = outEdges.filter((e) => !e.label && !dots.has(e.source) && !dots.has(e.target)).length;
+  if (unlabeled) warnings.push(`${unlabeled} transition${unlabeled > 1 ? 's have' : ' has'} no label; add ": event" in Mermaid or label them in the JSON.`);
+
+  const outGroups = [...groupOf.values()].map((c) => {
+    const g = { id: groupIds.get(c.raw), title: c.label, nodes: c.members.map((k) => states.get(k)?.id).filter(Boolean) };
+    if (c.scope && groupOf.has(c.scope.raw)) g.parent = groupIds.get(c.scope.raw);
+    return g;
+  });
+
+  const real = outNodes.filter((n) => !dots.has(n.id)).length;
+  const payload = {
+    meta: {
+      title: ctx.title || 'Imported state diagram',
+      description: `Imported from a Mermaid state diagram: ${real} states, ${outEdges.length} transitions.`,
+      layout: { direction: dir }
+    },
+    roles,
+    nodes: outNodes,
+    edges: outEdges
+  };
+  if (outGroups.length) payload.groups = outGroups;
+  if (!outNodes.length) warnings.push('No states were found; check the syntax (e.g. "[*] --> Idle").');
+  payload.scenarios = [{ id: 'main', name: 'Lifecycle', steps: outNodes.length ? flowSteps(outNodes, outEdges, outGroups) : [] }];
   return { payload, warnings };
 }

@@ -52,6 +52,18 @@ d.add_step("Persist", url="https://example.com/adr-12")
 Links accept `http(s)://` and `mailto:` only. `Page.diagram(d, level="payments")` shows a
 detail level on a page.
 
+State machines: `shape` is one of `SHAPES` (`"state"` cards; `"initial"`, `"final"` and
+`"choice"` pseudo-states), `arrow` one of `ARROWS` (`"forward"`, `"both"`, `"none"`), and an
+edge from a node to itself is a self-loop.
+
+```python
+start = d.add_node("start", "Start", "pseudo", shape="initial")
+open_ = d.add_node("open", "Open", "state", shape="state")
+start.connect(open_)                                      # no label needed out of a start
+d.add_edge(open_, open_, "add note")                      # self-loop
+d.add_edge(open_, "waiting", "ask / reply", arrow="both") # one two-way edge
+```
+
 ## Answer page
 
 ```python

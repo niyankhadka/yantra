@@ -10,8 +10,12 @@
  *   jogs are slid to the middle of their gap afterwards.
  * - Group boxes: edges cross borders freely where they enter or leave, but
  *   avoid running along a border and stay out of the title strip.
+ * - Self-loops are drawn, not searched: a fixed loop on the least busy side
+ *   (or the side the layout reserved), which other routes treat as an obstacle.
+ * - Ends at a pseudo-state (dot or diamond) are clipped to its outline.
  */
-import { isotonic } from './layout.js';
+import { isotonic, selfLoop, labelSize } from './layout.js';
+import { POINT_SHAPES } from './model.js';
 
 const STUB = 20; // straight run out of / into a port
 const CLEAR = 14; // minimum distance kept from any node
@@ -50,14 +54,59 @@ export function chooseSides(a, b) {
   return dy >= 0 ? ['bottom', 'top'] : ['top', 'bottom'];
 }
 
+const LOOP_ORDER = ['top', 'right', 'bottom', 'left'];
+
 /**
- * @param rects Map<nodeId, {x,y,w,h}>
- * @param edges [{ id, source, target, sides?: [src,tgt] }]
+ * Side of every self-loop: its hint (e.sides[0]) when given, otherwise the
+ * first side in LOOP_ORDER with the fewest ports of other edges.
+ * @returns Map<edgeId, side>
+ */
+export function loopSides(rects, edges) {
+  const used = new Map(); // `${node}|${side}` -> count
+  const bump = (key) => used.set(key, (used.get(key) || 0) + 1);
+  const loops = [];
+  for (const e of edges) {
+    if (!rects.has(e.source) || !rects.has(e.target)) continue;
+    if (e.source === e.target) {
+      loops.push(e);
+      continue;
+    }
+    const sides = e.sides || chooseSides(rects.get(e.source), rects.get(e.target));
+    bump(`${e.source}|${sides[0]}`);
+    bump(`${e.target}|${sides[1]}`);
+  }
+  const out = new Map();
+  for (const e of loops) {
+    const hint = e.sides?.[0];
+    const side = LOOP_ORDER.includes(hint)
+      ? hint
+      : LOOP_ORDER.reduce((best, s) => ((used.get(`${e.source}|${s}`) || 0) < (used.get(`${e.source}|${best}`) || 0) ? s : best), LOOP_ORDER[0]);
+    bump(`${e.source}|${side}`);
+    out.set(e.id, side);
+  }
+  return out;
+}
+
+/** Self-loop geometry for every loop edge: Map<edgeId, selfLoop()>. */
+export function loopGeometry(rects, edges) {
+  const out = new Map();
+  for (const [id, side] of loopSides(rects, edges)) {
+    const e = edges.find((x) => x.id === id);
+    out.set(id, selfLoop(rects.get(e.source), side, labelSize(e.label)));
+  }
+  return out;
+}
+
+/**
+ * @param rects Map<nodeId, {x,y,w,h, shape?}>
+ * @param edges [{ id, source, target, sides?: [src,tgt], label? }]
  * @param options { groups?: [{ x, y, w, h, titleBox }] }
- * @returns Map<edgeId, { points: [{x,y}], ok: boolean }>
+ * @returns Map<edgeId, { points: [{x,y}], ok: boolean, label?: fixed self-loop label }>
  */
 export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
-  const list = edges.filter((e) => rects.has(e.source) && rects.has(e.target));
+  const all = edges.filter((e) => rects.has(e.source) && rects.has(e.target));
+  const list = all.filter((e) => e.source !== e.target);
+  const loops = loopGeometry(rects, all);
   const windowed = list.length > WINDOW_EDGES || rects.size > WINDOW_NODES;
 
   // --- Sides and spread ports -------------------------------------------
@@ -71,6 +120,7 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     push(ends, `${e.source}|${sides[0]}`, { edge: e, role: 0, ref: center(b) });
     push(ends, `${e.target}|${sides[1]}`, { edge: e, role: 1, ref: center(a) });
   }
+  spreadPointPorts(ends, rects);
   // Port positions: spread along the middle of each side, then pulled
   // (isotonic fit, order and spacing preserved) towards the far port so
   // facing ports line up and edges come out straight.
@@ -131,6 +181,8 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
   const obstacles = [...rects.values()].map((r) => ({
     x0: r.x - CLEAR, y0: r.y - CLEAR, x1: r.x + r.w + CLEAR, y1: r.y + r.h + CLEAR
   }));
+  // Loops (with their labels) are fixed: other routes keep clear of them
+  for (const { box: b } of loops.values()) obstacles.push({ x0: b.x - 6, y0: b.y - 6, x1: b.x + b.w + 6, y1: b.y + b.h + 6 });
   const xsSet = new Set();
   const ysSet = new Set();
   for (const o of obstacles) {
@@ -259,6 +311,12 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     results.set(e.id, { points: simplify(points.map(({ x, y }) => ({ x, y }))), ok });
   }
   centerJogs(results, [...obstacles, ...titles]);
+  for (const e of list) {
+    const r = results.get(e.id);
+    clipToShape(r.points, rects.get(e.source), true);
+    clipToShape(r.points, rects.get(e.target), false);
+  }
+  for (const [id, loop] of loops) results.set(id, { points: loop.points, ok: true, ...(loop.label ? { label: loop.label } : {}) });
   return results;
 
   // Small graphs search the whole grid (exact, as before). Large graphs search
@@ -504,6 +562,57 @@ function centerJogs(results, obstacles) {
   }
 }
 
+/**
+ * A dot or diamond is too small for several ports on one side: keep the end
+ * that is most in line on that side and move the others to the neighbouring
+ * side that faces their far end (one per side where possible).
+ */
+function spreadPointPorts(ends, rects) {
+  const PERP = { left: ['top', 'bottom'], right: ['top', 'bottom'], top: ['left', 'right'], bottom: ['left', 'right'] };
+  for (const [key, group] of [...ends]) {
+    const [nodeId, side] = key.split('|');
+    const r = rects.get(nodeId);
+    if (!POINT_SHAPES.has(r?.shape) || group.length < 2) continue;
+    const c = center(r);
+    const axis = side === 'left' || side === 'right' ? 'y' : 'x';
+    const sorted = [...group].sort((p, q) => Math.abs(p.ref[axis] - c[axis]) - Math.abs(q.ref[axis] - c[axis]));
+    const keep = [sorted[0]];
+    for (const p of sorted.slice(1)) {
+      const [lo, hi] = PERP[side];
+      const want = p.ref[axis] < c[axis] ? lo : hi;
+      const other = want === lo ? hi : lo;
+      const free = (s) => !(ends.get(`${nodeId}|${s}`) || []).length;
+      const to = free(want) ? want : free(other) ? other : null;
+      if (!to) {
+        keep.push(p);
+        continue;
+      }
+      ends.set(`${nodeId}|${to}`, [p]);
+    }
+    ends.set(key, keep);
+  }
+}
+
+/**
+ * Pull a route end that sits on the bounding box of a dot or diamond in to
+ * the outline, along its (axis-aligned) end segment.
+ */
+function clipToShape(points, r, atStart) {
+  if (!r || !POINT_SHAPES.has(r.shape) || points.length < 2) return;
+  const k = atStart ? 0 : points.length - 1;
+  const p = points[k];
+  const q = points[atStart ? 1 : k - 1];
+  const half = r.w / 2;
+  const cx = r.x + half;
+  const cy = r.y + r.h / 2;
+  const horizontal = p.y === q.y;
+  const off = Math.abs(horizontal ? p.y - cy : p.x - cx); // distance of the port from the centre line
+  if (off >= half) return;
+  const depth = r.shape === 'choice' ? half - off : Math.sqrt(half * half - off * off); // centre to outline
+  const v = Math.round(((horizontal ? p.x < cx : p.y < cy) ? -depth : depth) * 10) / 10;
+  points[k] = horizontal ? { x: cx + v, y: p.y } : { x: p.x, y: cy + v };
+}
+
 /** Sorted unique coordinates plus channel tracks inside wide gaps. */
 function withTracks(values, maxTracks = 5) {
   const base = [...new Set(values.map((v) => Math.round(v)))].sort((a, b) => a - b);
@@ -563,6 +672,12 @@ export function roundedPath(points, radius = 8) {
 export function placeLabels(routes, rects, edges, sizeOf, avoid = []) {
   const placed = [];
   const out = new Map();
+  // Self-loop labels have a fixed spot; place them first so others avoid them
+  routes.forEach((r, id) => {
+    if (!r.label || !edges.some((e) => e.id === id && e.label)) return;
+    out.set(id, r.label);
+    placed.push({ x: r.label.x - r.label.w / 2, y: r.label.y - r.label.h / 2, w: r.label.w, h: r.label.h });
+  });
   const nodeBoxes = [...[...rects.values()].map((r) => inflate(r, 4)), ...avoid.map((r) => inflate(r, 2))];
   const allSegments = [];
   routes.forEach((r, id) => segmentsOf(r.points).forEach((s) => allSegments.push({ ...s, id })));
@@ -598,7 +713,7 @@ export function placeLabels(routes, rects, edges, sizeOf, avoid = []) {
   // Most constrained first: short, simple routes have the fewest spots
   const routeLength = (id) => segmentsOf(routes.get(id).points).reduce((s, g) => s + g.len, 0);
   const sorted = edges
-    .filter((e) => e.label && routes.has(e.id))
+    .filter((e) => e.label && routes.has(e.id) && !out.has(e.id))
     .sort((a, b) => routeLength(a.id) - routeLength(b.id) || sizeOf(b.label).w - sizeOf(a.label).w);
 
   for (const e of sorted) {

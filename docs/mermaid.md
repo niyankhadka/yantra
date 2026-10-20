@@ -1,7 +1,8 @@
 # Importing Mermaid
 
-Yantra can turn a Mermaid **flowchart** (`graph` / `flowchart`) or **sequence diagram**
-(`sequenceDiagram`) into a diagram payload with roles, groups and a walkthrough. The
+Yantra can turn a Mermaid **flowchart** (`graph` / `flowchart`), **sequence diagram**
+(`sequenceDiagram`) or **state diagram** (`stateDiagram` / `stateDiagram-v2`) into a diagram
+payload with roles, groups and a walkthrough. The
 parser is small and dependency-free (`src/core/mermaid.js`); it is not a full Mermaid
 implementation, so check the warnings it prints.
 
@@ -32,7 +33,10 @@ Samples: `examples/mermaid/*.mmd`.
 | `A>text]` | type `event` |
 | `A[/text/]`, `A[\text\]`, `A[/text\]`, `A[\text/]` | type `io` ("Input / output") |
 | `A["quoted"]`, `<br>`, `**md**`, `fa:fa-x`, `#quot;` | cleaned; first line becomes the title, later lines the subtitle |
-| `A --> B`, `A --- B`, `A --o B`, `A --x B` | edge (always drawn source → target) |
+| `A --> B`, `A --o B`, `A --x B` | edge, arrow at the target (circle/cross heads warn: drawn as arrows) |
+| `A --- B`, `A -.- B`, `A === B`, `A -- text --- B` | edge with `arrow: "none"` (undirected) |
+| `A <--> B`, `A o--o B`, `A x--x B` | edge with `arrow: "both"` |
+| `A --> A` | self-loop, drawn as a loop on the card |
 | `A -.-> B`, `A -. text .-> B` | edge with `style: "dashed"` |
 | `A ==> B`, `A == text ==> B` | edge with `style: "solid"` |
 | `A -->\|text\| B`, `A -- text --> B` | edge `label` |
@@ -77,12 +81,34 @@ Mermaid (`-->|what flows|`) to keep the validator quiet.
 
 The scenario starts with an overview step and keeps every message as its own step.
 
+## State diagrams
+
+| Mermaid | Yantra |
+|---|---|
+| `stateDiagram`, `stateDiagram-v2` | `meta.layout.direction: "TB"`; `direction LR` at the top level gives `"LR"` |
+| `A`, `state A`, `state "Long name" as A` | node, type `state` ("State"), `shape: "state"` |
+| `A : text` | subtitle (descriptions over 60 characters go to `description`) |
+| `[*] --> A` | an initial pseudo-state (`shape: "initial"`, id `start`), type `terminal` |
+| `A --> [*]` | a final pseudo-state (`shape: "final"`, id `end`), one per scope |
+| `A --> B : event`, `A --> A : event` | transition with `label`; a self-loop is kept |
+| `state X <<choice>>` | `shape: "choice"`, type `choice` ("Choice") |
+| `state X <<fork>>` / `<<join>>` | a plain state (warning) |
+| `state C { ... }` | group `C` (nested composites get `parent`); its own `[*]` become `C-start` / `C-end` |
+| transition to / from a composite | attached to its entry state (target of its `[*]`) / exit state (source into its `[*]`), with a warning |
+| `note left of / right of X : text`, `note ... end note` | ignored, with one warning counting the notes |
+| `--` (concurrent regions), `classDef`, `class`, `:::`, `style`, `scale`, `hide`, `direction` inside a composite | ignored with one warning per kind |
+
+The walkthrough is built as for flowcharts (overview, then states in topological order);
+self-loops are mentioned on their state's step. Transitions out of a start or into an end
+need no label; the validator does not ask for one.
+
 ## Limitations
 
-- Only flowcharts and sequence diagrams; other types (`classDiagram`, `stateDiagram`, `erDiagram`, ...) are rejected with an error.
-- Edges are directed: `---`, `<-->` and circle/cross heads are drawn as plain arrows.
+- Only flowcharts, sequence diagrams and state diagrams; other types (`classDiagram`, `erDiagram`, ...) are rejected with an error.
+- Circle and cross heads (`--o`, `--x`, `o--o`) are drawn as plain arrows.
+- State diagrams: notes, concurrent regions (`--`) and fork/join bars are not drawn; composite states are groups, so a transition to the composite itself lands on its entry state.
 - Mermaid styling (`style`, `linkStyle`, colours other than `classDef` fill) and interactions (`click`) are dropped.
-- Self-loops in flowcharts are dropped; per-subgraph `direction` is ignored (layout is automatic).
+- Per-subgraph `direction` is ignored (layout is automatic).
 - Node ids with hyphens before `-`, `.`, `o` or `x` (e.g. `a--ob`) can be ambiguous; add spaces around links.
 - Groups are emitted in the payload; how they are drawn depends on the viewer version.
 - Larger graphs import but may exceed the 14-node / 20-edge budget; split them as described in `docs/authoring.md`.

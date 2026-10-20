@@ -142,6 +142,20 @@ export function visibleGraph(model, modeId) {
   return { nodes, edges, mode };
 }
 
+/**
+ * Node shapes. "card" (default) and "state" (a rounder card) carry text;
+ * the state-machine pseudo-states are small and textless: "initial" (filled
+ * dot), "final" (ringed dot) and "choice" (diamond). Their title still names
+ * them in the inspector, tooltips and exports.
+ */
+export const NODE_SHAPES = ['card', 'state', 'initial', 'final', 'choice'];
+export const POINT_SHAPES = new Set(['initial', 'final', 'choice']);
+export const shapeOf = (node) => (NODE_SHAPES.includes(node?.shape) ? node.shape : 'card');
+
+/** Edge arrowheads: "forward" (default, at the target), "both", or "none" (an undirected link). */
+export const EDGE_ARROWS = ['forward', 'both', 'none'];
+export const arrowOf = (edge) => (EDGE_ARROWS.includes(edge?.arrow) ? edge.arrow : 'forward');
+
 export const GROUP_MAX_DEPTH = 3;
 
 /**

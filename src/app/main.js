@@ -670,7 +670,9 @@ class App {
       const other = out ? e.edge.target : e.edge.source;
       const url = safeUrl(e.edge.url);
       const link = url ? `<a class="y-conn-link" href="${h(url)}" target="_blank" rel="noopener noreferrer" data-tip="${h(DRILL_TEXT.link)}" aria-label="${h(`${DRILL_TEXT.edgeLink(e.edge.label || e.id)} ${DRILL_TEXT.newTab}`)}">${icon(LINK_ICON, 13)}</a>` : '';
-      return `<li${url ? ' class="has-link"' : ''}><button class="y-conn" data-node="${h(other)}"><span>${out ? '→' : '←'}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || '')}</em></button>${link}</li>`;
+      // ↻ self-loop, ↔ both ways, — undirected, else → out / ← in
+      const glyph = e.edge.source === e.edge.target ? '↻' : e.arrow === 'both' ? '↔' : e.arrow === 'none' ? '—' : out ? '→' : '←';
+      return `<li${url ? ' class="has-link"' : ''}><button class="y-conn" data-node="${h(other)}"><span>${glyph}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || '')}</em></button>${link}</li>`;
     });
     return `
       <div class="y-kicker" data-hue="${sel.hue}">${h(sel.kicker || role?.label || '')}</div>
