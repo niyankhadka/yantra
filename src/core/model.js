@@ -78,7 +78,9 @@ export function normalize(payload) {
     ).map((sc) => ({ ...sc, steps: steps(sc.steps) })),
     layout: {
       mode: layout.mode === 'manual' ? 'manual' : 'auto',
-      direction: layout.direction === 'TB' ? 'TB' : 'LR'
+      direction: layout.direction === 'TB' ? 'TB' : 'LR',
+      algorithm: layout.algorithm === 'tree' || layout.algorithm === 'mindmap' ? layout.algorithm : 'layered',
+      collapsed: strings(layout.collapsed)
     },
     roles: resolveRoles({ roles: p.roles, nodes }),
     panels: objects(p.panels),

@@ -12,15 +12,17 @@ Every output is a single offline HTML file. Pick one:
 | to see how parts connect or how a flow runs | **diagram** | `docs/authoring.md`, `schemas/yantra-payload.schema.json` |
 | who calls whom, in order (protocol, API call, handshake) | **diagram** with `meta.view: "sequence"` | `docs/authoring.md` (Sequence view) |
 | the states something goes through (lifecycle, state machine) | **diagram** with `shape: "state"` / `"initial"` / `"final"` / `"choice"` nodes | `docs/authoring.md` (State machines) |
+| a hierarchy: org chart, decision tree, breakdown, taxonomy, mind map | **diagram** with `meta.layout.algorithm: "tree"` or `"mindmap"` | `docs/authoring.md` (Trees, org charts and mind maps) |
 | a database schema (ERD) or class diagram | **diagram** with node `fields` / `methods`, edge `sourceEnd` / `targetEnd` or `relation` | `docs/authoring.md` (Data models) |
 | an answer, explanation, comparison or decision on one page | **answer page** (`"kind": "page"`) | `docs/pages.md`, `schemas/yantra-page.schema.json` |
-| their Mermaid flowchart / sequence / state / ER / class diagram as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
+| their Mermaid flowchart / sequence / state / ER / class diagram or mind map as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
 
 For "explain how X works", make the diagram first, then the page around it
 (`{ "type": "diagram", "src": "flow.json" }`). References: `examples/*.json`
 (`answer-*.json` are pages; `oauth-login.json` is a sequence; `aws-serverless.json` has groups;
 `platform-overview.json` drills into detail diagrams; `ticket-lifecycle.json` is a state machine;
-`ecommerce-schema.json` is an ERD; `payment-classes.json` is a class diagram).
+`ecommerce-schema.json` is an ERD; `payment-classes.json` is a class diagram;
+`org-chart.json`, `incident-triage-decision-tree.json` and `study-plan-mindmap.json` are trees).
 
 ## Diagram
 
@@ -38,6 +40,10 @@ For "explain how X works", make the diagram first, then the page around it
      whose `source` is its `target` draws a self-loop (retry, edit, poll); keep it.
    - Boundaries that matter to the explanation (VPC, trust zone, team, phase) → `groups`:
      2-5 of them, each node in its innermost group only.
+   - Hierarchies → `meta.layout.algorithm: "tree"` (`direction: "TB"` for org charts and
+     decision trees, `"LR"` for deep breakdowns) or `"mindmap"`. Edges go parent → child, one
+     parent per node; hierarchy edges need no label (label decision branches `Yes` / `No`).
+     Up to ~40 cards; for bigger trees fold branches with `meta.layout.collapsed`.
    - Steps: an overview first, then focused steps listing the nodes **and** edges involved.
      In the sequence view each step's `highlightEdges` become its arrows, in order.
    - Inspector tabs come from content, so include only what was asked for: `meta.summary`

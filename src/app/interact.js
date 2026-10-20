@@ -58,6 +58,7 @@ export class InteractionManager {
 
   down(e) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (e.target.closest?.('.y-toggle')) return; // fold buttons handle their own click
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.pointers.size === 2) {
       this.drag = { kind: 'pinch', dist: this.pinchDistance(), zoom: this.zoom };

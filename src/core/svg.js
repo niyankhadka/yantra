@@ -27,12 +27,14 @@ const LEGEND = 44;
  */
 export function renderSvg(scene, options = {}) {
   if (scene.kind === 'sequence') return renderSequenceSvg(scene, options);
-  const { theme = 'light', highlight = null, header = true, watermark, logo = null } = options;
+  const { theme = 'light', header = true, watermark, logo = null } = options;
+  const highlight = folded(options.highlight || null, scene.collapse);
   const t = TOKENS[theme] || TOKENS.light;
   const hue = (name) => ((typeof name === 'string' && Object.hasOwn(HUES, name) ? HUES[name] : HUES.slate))[theme === 'dark' ? 'dark' : 'light'];
   const b = scene.bounds;
   const meta = scene.model.meta;
-  const roles = Object.entries(scene.model.roles).filter(([type]) => scene.nodes.some((n) => (n.node.type || 'node') === type));
+  // Mind maps colour by branch, so a roles legend would not match the cards
+  const roles = scene.branchColors ? [] : Object.entries(scene.model.roles).filter(([type]) => scene.nodes.some((n) => (n.node.type || 'node') === type));
 
   const mark = watermark ?? meta.watermark;
   const markText = mark === false ? '' : typeof mark === 'string' ? mark : 'Made with Yantra';
@@ -66,8 +68,11 @@ export function renderSvg(scene, options = {}) {
       // Markers at both ends come from the scene: arrowheads (edge `arrow`) or notation
       const start = e.start !== undefined ? e.start : e.arrow === 'both' ? 'arrow' : null;
       const end = e.end !== undefined ? e.end : e.arrow === 'none' ? null : 'arrow';
-      const from = on ? hueOf.get(e.edge.source) || 'slate' : null;
-      const to = on ? hueOf.get(e.edge.target) || 'slate' : null;
+      // Mind maps draw every connector in its branch colour, not only active ones
+      const branch = scene.branchColors ? hueOf.get(e.edge.target) || 'slate' : null;
+      if (branch) stroke = hue(branch);
+      const from = on ? hueOf.get(e.edge.source) || 'slate' : branch;
+      const to = on ? hueOf.get(e.edge.target) || 'slate' : branch;
       if (on) {
         const a = e.points[0];
         const b = e.points[e.points.length - 1];
@@ -302,6 +307,14 @@ function nodeSvg(n, t, hueColor, isActive) {
     y += C.techGap;
     lines.push(`<text x="${C.padX}" y="${baseline(y, C.techLine, C.techSize)}" font-size="${C.techSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(n.lines.tech)}</text>`);
   }
+  // A folded subtree or group shows how many cards it holds
+  let chip = '';
+  if (n.collapsed) {
+    const text = `+${n.collapsed}`;
+    const cw = Math.ceil(textWidth(text, 11, { weight: 600 })) + 14;
+    const at = { bottom: [n.w / 2, n.h], right: [n.w, n.h / 2], left: [0, n.h / 2], corner: [n.w - cw / 2 - 10, 0] }[n.toggle] || [n.w / 2, n.h];
+    chip = `<g transform="translate(${at[0] - cw / 2} ${at[1] - 9})"><rect width="${cw}" height="18" rx="9" fill="${hueColor}"/><text x="${cw / 2}" y="12.5" text-anchor="middle" font-size="11" font-weight="600" fill="${t.surface}">${text}</text></g>`;
+  }
   if (n.lines.rows) lines.push(rowsSvg(n, t, hueColor));
   // Cards that open a detail diagram carry the drill mark top-right, as in the viewer
   const drill = typeof n.node?.data?.drill === 'string' && n.node.data.drill
@@ -312,7 +325,7 @@ function nodeSvg(n, t, hueColor, isActive) {
       ${ring}<rect width="${n.w}" height="${n.h}" rx="${rx}" fill="${t.surface}" stroke="${isActive ? hueColor : t.border}" stroke-width="${isActive ? 1.5 : 1}"/>
       <g transform="translate(${C.padX} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${(typeof n.icon === 'string' && Object.hasOwn(ICONS, n.icon) ? ICONS[n.icon] : ICONS.cpu)}</g>
       <text x="${C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600"${n.stereotype ? ' font-style="italic"' : ' letter-spacing="0.06em"'} fill="${hueColor}">${x(n.stereotype ? n.kicker : String(n.kicker).toUpperCase())}</text>${drill}
-      ${lines.join('\n      ')}
+      ${lines.join('\n      ')}${chip}
     </g>`;
 }
 
@@ -337,6 +350,18 @@ function rowsSvg(n, t, hueColor) {
     }
   }
   return out.join('\n      ');
+}
+
+/** Step highlights name original ids; folded cards and merged edges stand in for them. */
+function folded(highlight, collapse) {
+  if (!highlight || !collapse?.alias?.size) return highlight;
+  const nodes = new Set([...highlight.nodes].map((id) => collapse.alias.get(id) ?? id));
+  const edges = new Set();
+  for (const id of highlight.edges) {
+    const to = collapse.edgeAlias.has(id) ? collapse.edgeAlias.get(id) : id;
+    if (to) edges.add(to);
+  }
+  return { ...highlight, nodes, edges };
 }
 
 const baseline = (top, lineHeight, size) => Math.round((top + (lineHeight - size) / 2 + size * 0.8) * 10) / 10;

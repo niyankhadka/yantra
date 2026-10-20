@@ -140,6 +140,9 @@ class App {
     set('step', e.stepIndex > 0 ? e.stepIndex + 1 : null);
     set('role', this.roleFilter);
     set('inspector', this.inspectorOpen ? this.currentTab() : null);
+    // Folded subtrees / groups, when they differ from meta.layout.collapsed (ids encoded one by one)
+    if (e.isDefaultCollapse()) params.delete('collapsed');
+    else params.set('collapsed', [...e.collapsed].map(encodeURIComponent).join(','));
     if (params.has('theme')) set('theme', document.documentElement.getAttribute('data-theme'));
     if (this.levels.depth) params.set('level', this.levels.hashValue());
     else params.delete('level');
@@ -238,6 +241,30 @@ class App {
     this.interact.fit({ x: region.x, y: row.y - 120, w: region.w, h: row.h + 240 }, { animate });
   }
 
+  /**
+   * Fold or unfold a subtree or group, keeping the clicked card (or the group,
+   * which becomes its summary card) where it was on screen.
+   */
+  toggleCollapse(id) {
+    const anchor = (scene) => {
+      const n = scene.nodes.find((m) => m.id === id) || (scene.groups || []).find((g) => g.id === id);
+      return n ? { x: n.x, y: n.y } : null;
+    };
+    const before = anchor(this.engine.getScene());
+    const folding = !this.engine.collapsed.has(id);
+    this.engine.toggleCollapse(id);
+    const after = anchor(this.engine.getScene());
+    if (before && after) this.interact.panBy((before.x - after.x) * this.interact.zoom, (before.y - after.y) * this.interact.zoom);
+    this.toast(folding ? 'Folded' : 'Expanded');
+    requestAnimationFrame(() => this.renderer.toggles.get(id)?.focus({ preventScroll: true }));
+  }
+
+  /** Key X: fold or unfold the selected card's subtree (or a folded group card). */
+  foldSelected() {
+    const n = this.engine.getSelected();
+    if (n?.toggle) this.toggleCollapse(n.id);
+  }
+
   /** Pan (without zooming) so a card is not hidden behind the panels. */
   keepInView(id) {
     const n = this.engine.getScene().nodes.find((m) => m.id === id);
@@ -332,6 +359,11 @@ class App {
       void bar.offsetWidth;
       bar.style.animation = `y-dwell ${ms}ms linear forwards`;
     });
+    e.on('collapseChanged', () => {
+      this.redraw();
+      this.renderLegend();
+      this.syncHash();
+    });
     e.on('layoutReset', () => {
       this.redraw();
       requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
@@ -398,7 +430,8 @@ class App {
     const scene = this.engine.getScene();
     const used = new Set(scene.nodes.map((n) => n.node.type || 'node'));
     const roles = Object.entries(this.engine.model.roles).filter(([type]) => used.has(type));
-    $('legend').hidden = roles.length < 2;
+    // Mind maps colour by branch: a roles legend would not match the cards
+    $('legend').hidden = roles.length < 2 || !!scene.branchColors;
     const active = roles.find(([type]) => type === this.roleFilter);
     const fab = $('btn-legend');
     fab.classList.toggle('is-filtered', !!active);
@@ -709,7 +742,7 @@ class App {
   /** What to restore when coming back up to a level. */
   levelState() {
     const e = this.engine;
-    return { modeId: e.modeId, view: e.view, scenarioIndex: e.scenarioIndex, stepIndex: e.stepIndex, selected: e.selectedNodeId };
+    return { modeId: e.modeId, view: e.view, scenarioIndex: e.scenarioIndex, stepIndex: e.stepIndex, selected: e.selectedNodeId, collapsed: [...e.collapsed] };
   }
 
   /** Open the detail diagram of a card (no-op when it has none). */
@@ -739,6 +772,7 @@ class App {
       this.engine.setMode(state.modeId);
       this.engine.setView(state.view);
       this.engine.setScenario(state.scenarioIndex);
+      if (state.collapsed) this.engine.setCollapsed(state.collapsed); // folds survive a drill down and back
       this.engine.goToStep(state.stepIndex);
     }
     this.loadPayloadUi();
@@ -889,6 +923,14 @@ class App {
       this.loadPayloadUi();
     };
 
+    // Fold buttons on cards and group boxes
+    $('world').addEventListener('click', (ev) => {
+      const btn = ev.target.closest?.('.y-toggle');
+      if (!btn) return;
+      ev.stopPropagation();
+      this.toggleCollapse(btn.dataset.toggle);
+    });
+
     $('btn-zoom-in').onclick = () => this.interact.zoomBy(1.2);
     $('btn-zoom-out').onclick = () => this.interact.zoomBy(1 / 1.2);
     $('btn-fit').onclick = () => this.interact.fit();
@@ -965,6 +1007,7 @@ class App {
         m: () => this.engine.cycleMode(),
         v: () => this.engine.cycleView(),
         i: () => this.toggleInspector(),
+        x: () => this.foldSelected(),
         d: () => this.drillInto(this.engine.selectedNodeId || document.activeElement?.closest?.('.y-node')?.dataset.id),
         l: () => this.legendMenu.toggle(),
         s: () => this.setStoryCollapsed(!this.storyCollapsed),
@@ -1122,12 +1165,21 @@ class App {
     else download('diagram.json', text, 'application/json');
   }
 
-  /** Deep links: #mode=<id>&view=sequence&scenario=<n>&step=<n> (1-based). */
+  /** Deep links: #mode=<id>&view=sequence&collapsed=<id,id>&scenario=<n>&step=<n> (1-based). */
   applyHashState() {
     const params = hashParams(location.hash);
     const get = (k) => params.get(k) || undefined;
     if (get('mode')) this.engine.setMode(get('mode'));
     if (get('view')) this.engine.setView(get('view'));
+    const folded = hashParams(location.hash, false).get('collapsed');
+    if (folded !== undefined)
+      this.engine.setCollapsed(folded.split(',').filter(Boolean).map((v) => {
+        try {
+          return decodeURIComponent(v);
+        } catch {
+          return v;
+        }
+      }));
     if (get('scenario')) this.engine.setScenario(Number(get('scenario')) - 1);
     if (get('step')) this.engine.goToStep(Number(get('step')) - 1);
     // An unknown role (stale link, other diagram) would dim every card

@@ -29,12 +29,14 @@ direction of the edges, so **edge direction is your layout tool**:
 - `node.rank` forces a column when two nodes must line up; use sparingly.
 - `meta.layout.mode: "manual"` + `x`/`y` (multiples of 10) only when an exact
   hand layout is required. You then own overlaps.
+- `meta.layout.algorithm`: `layered` (default) for flows; `tree` or `mindmap` for
+  hierarchies (see [Trees, org charts and mind maps](#trees-org-charts-and-mind-maps)).
 
 ## Budgets
 
 | Thing | Budget | Why |
 |---|---|---|
-| Nodes | ≤ 14 (aim for 6–10) | Beyond that, split into an overview plus detail diagrams (see Drill-down) |
+| Nodes | ≤ 14 (aim for 6–10); trees and mind maps ≤ 40 as they open, ≤ 120 in all | Beyond that, split into an overview plus detail diagrams (see Drill-down), or fold branches |
 | Edges | ≤ 20 | Merge parallel flows that say the same thing |
 | Roles | 3–5 | Colour means something only when it repeats |
 | Node title | ≤ 42 chars | Detail goes in `subtitle` (card) or `description` (inspector) |
@@ -130,6 +132,60 @@ its subtitle instead.
 - During a step, a group whose members are all dimmed is dimmed too.
 
 See `examples/aws-serverless.json`.
+
+## Trees, org charts and mind maps
+
+When the answer is a hierarchy, pick a hierarchical layout. Edges still point from parent to
+child; the engine takes the hierarchy from them.
+
+| `meta.layout.algorithm` | Use for | Drawing |
+|---|---|---|
+| `"tree"` + `direction: "TB"` | org charts, decision trees, work breakdowns | rows per level, parents centred over their children, comb connectors |
+| `"tree"` + `direction: "LR"` | taxonomies, file trees, deep breakdowns | columns per level, same connectors sideways |
+| `"mindmap"` | study or project plans, brainstorms, topic overviews | the root in the centre, branches balanced left and right, curved connectors, one colour per branch |
+
+```json
+"meta": { "title": "Org chart", "layout": { "algorithm": "tree", "direction": "TB" } },
+"nodes": [
+  { "id": "ceo", "type": "exec", "data": { "title": "Amara Okafor", "subtitle": "Chief Executive Officer" } },
+  { "id": "cto", "type": "exec", "data": { "title": "Daniel Reyes", "subtitle": "Chief Technology Officer" } }
+],
+"edges": [ { "id": "ceo-cto", "source": "ceo", "target": "cto" } ]
+```
+
+- **One parent per node.** A node with two incoming edges keeps the first listed one as its
+  parent; the other is drawn as a routed cross-link and lint warns `layout/tree-cross-link`.
+  In a decision tree, repeat an outcome card (`sev2-a`, `sev2-b`) instead of merging branches.
+- **Labels are optional on hierarchy edges** (the hierarchy is the meaning). Label them when
+  the branch needs a name: `Yes` / `No` in a decision tree, a condition, a percentage.
+- **People cards**: `title` is the name, `subtitle` the role, `badge` a short team or level
+  tag; `width: 180-200` keeps wide org charts compact.
+- **Mind maps** have one root (the first node nothing points at). Branch colours replace role
+  colours on the canvas, so the roles legend is hidden; keep `roles` for the inspector.
+- Order children the way they should read: siblings keep the order of their edges.
+- State shapes work here too: a self-loop sits right of its card (TB tree) or below it (LR
+  tree, mind map) with room kept for it; dots and diamonds carry no fold button. Cards with
+  `data.drill` keep their drill mark, and each detail level opens with its own `collapsed`.
+- Groups are not drawn in these layouts (`layout/groups-ignored`); the hierarchy is the
+  boundary.
+
+See `examples/org-chart.json`, `examples/study-plan-mindmap.json` and
+`examples/incident-triage-decision-tree.json`.
+
+## Big diagrams: folding
+
+Readers can fold parts of a diagram into one card and unfold them again (`+N` / `−` buttons,
+key `X` on a selected card; the state is kept in the link as `#collapsed=id,id`):
+
+- in `tree` and `mindmap` layouts, any card with children folds its **subtree**;
+- in the `layered` layout, every **group** folds into a summary card that takes over the
+  group's edges (parallel edges merge, internal ones disappear).
+
+`meta.layout.collapsed: ["id", ...]` lists what is folded when the viewer opens. Use it for
+large trees (lint counts the cards that show at first against the budget of 40) and for detail
+groups in an architecture overview. A step that highlights a folded card unfolds it, so a
+walkthrough can open a branch at the right moment. Validation checks the drawing both as it
+opens and fully unfolded (findings for the second carry `[expanded]`).
 
 ## Sequence view
 
@@ -324,6 +380,12 @@ Fix in this order; each fix can clear later errors.
 | `story/no-steps` (warning) | Add a scenario with an overview step and 2+ focused steps. |
 | `sequence/no-messages` (warning) | `meta.view` is `sequence` but no step lists `highlightEdges`: add them, or drop `meta.view`. |
 | `schema/unknown-view` | `meta.view` must be `flow` or `sequence`. |
+| `schema/unknown-layout-algorithm`, `schema/layout-collapsed-invalid` | `meta.layout.algorithm` is `layered`, `tree` or `mindmap`; `collapsed` is an array of ids. |
+| `ref/collapsed-unknown` | List only node or group ids in `meta.layout.collapsed`. |
+| `layout/collapse-ignored` (warning) | Tree layouts fold cards that have children; the layered layout folds groups only. |
+| `layout/tree-cross-link` (warning) | A node has a second parent: repeat the shared card or drop the edge. |
+| `layout/groups-ignored` (warning) | Remove `groups` from a tree or mind map, or use the layered layout. |
+| `layout/mindmap-roots` (warning) | Connect every branch to one central root. |
 | `geometry/sequence-label-*` | Should not occur (gaps widen to fit); report it, and shorten the label meanwhile. |
 | `schema/members-invalid` | `data.fields` / `data.methods` must be arrays of objects with a `name`; `stereotype` a string. |
 | `ref/field-unknown-ref` | A field's `ref` must name a node (`"orders"`) or one of its fields (`"orders.id"`). |

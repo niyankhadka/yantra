@@ -2,8 +2,8 @@
 
 Yantra can turn a Mermaid **flowchart** (`graph` / `flowchart`), **sequence diagram**
 (`sequenceDiagram`), **state diagram** (`stateDiagram` / `stateDiagram-v2`), **ER diagram**
-(`erDiagram`) or **class diagram** (`classDiagram`) into a diagram payload with roles, groups
-and a walkthrough. The
+(`erDiagram`), **class diagram** (`classDiagram`) or **mind map** (`mindmap`) into a diagram
+payload with roles, groups and a walkthrough. The
 parser is small and dependency-free (`src/core/mermaid.js`); it is not a full Mermaid
 implementation, so check the warnings it prints.
 
@@ -156,3 +156,21 @@ Car", "Order depends on PaymentMethod".
 - Node ids with hyphens before `-`, `.`, `o` or `x` (e.g. `a--ob`) can be ambiguous; add spaces around links.
 - Groups are emitted in the payload; how they are drawn depends on the viewer version.
 - Larger graphs import but may exceed the 14-node / 20-edge budget; split them as described in `docs/authoring.md`.
+
+## Mind maps
+
+| Mermaid | Yantra |
+|---|---|
+| `mindmap` + indented lines | `meta.layout.algorithm: "mindmap"`; indentation gives the hierarchy, one edge per parent -> child |
+| first line (`root((text))`) | the central card, type `root` ("Central topic") |
+| next level / deeper lines | types `branch` ("Branch") and `topic` ("Topic"); colours follow the branch |
+| `id[text]`, `id(text)`, `id((text))`, `id))text((`, `id)text(`, `id{{text}}`, plain `text` | node; an explicit `id` is kept, otherwise the id comes from the text (`-2`, `-3` for repeats) |
+| `<br>`, `**md**`, `"quoted"` | cleaned as in flowcharts; titles over 42 characters are shortened |
+| a second line at the root's indentation | attached to the root, with a warning (a mind map has one root) |
+| `::icon(...)`, `:::class` | ignored with one warning per kind |
+
+**Walkthrough.** An overview, then one step per first-level branch (its whole subtree and the
+edge from the root), at most seven. **Big maps.** Above 40 topics every branch opens folded
+(`meta.layout.collapsed`), with a warning; readers unfold branches with `+N`.
+
+Sample: `examples/mermaid/project-mindmap.mmd`.

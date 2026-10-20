@@ -111,6 +111,19 @@ def full_diagram() -> Diagram:
     return d
 
 
+def org_chart() -> Diagram:
+    d = Diagram("Org", "Who reports to whom.").tree("TB", collapsed=["eng"])
+    d.role("exec", "Executive", "violet").role("team", "Team", "blue")
+    ceo = d.add_node("ceo", "Amara Okafor", "exec", subtitle="CEO")
+    eng = ceo.child("eng", "Daniel Reyes", subtitle="CTO")
+    eng.child("platform", "Platform", "team").child("sre", "Reliability")
+    eng.child("apps", "Product engineering", "team")
+    ceo.child("ops", "Priya Nair", subtitle="COO").child("support", "Support", "team", label="runs")
+    d.add_step("Overview", "Two executives, four teams.")
+    d.add_step("Engineering", nodes=["eng", "platform", "apps"], edges=["eng-platform", "eng-apps"])
+    return d
+
+
 def data_model() -> Diagram:
     """A small ERD plus class cards: entity fields, methods, stereotypes and end markers."""
     d = Diagram("Shop schema", "Customers and orders.", direction="LR")
@@ -244,6 +257,20 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertEqual(len(d.steps), 2)
         self.assertNotIn("groups", p)
         self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
+
+    def test_tree_layouts(self) -> None:
+        p = org_chart().to_dict()
+        self.assertEqual(p["meta"]["layout"], {"direction": "TB", "algorithm": "tree", "collapsed": ["eng"]})
+        self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
+        types = {n["id"]: n["type"] for n in p["nodes"]}
+        self.assertEqual((types["eng"], types["sre"], types["support"]), ("exec", "team", "team"))
+        self.assertIn({"id": "platform-sre", "source": "platform", "target": "sre"}, p["edges"])
+        self.assertEqual(next(e for e in p["edges"] if e["id"] == "ops-support")["label"], "runs")
+        m = Diagram("Plan").mindmap()
+        m.collapse("a", "a", "b")
+        self.assertEqual(m.meta["layout"], {"direction": "LR", "algorithm": "mindmap", "collapsed": ["a", "b"]})
+        with self.assertRaises(YantraError):
+            Diagram("X").layout("TB", algorithm="radial")
 
     def test_data_model_payload(self) -> None:
         p = data_model().to_dict()
@@ -380,6 +407,11 @@ class CliTests(unittest.TestCase):
 
     def test_diagram_validates(self) -> None:
         self.assertClean(full_diagram().validate())
+
+    def test_tree_validates_clean(self) -> None:
+        report = org_chart().validate()
+        self.assertClean(report)
+        self.assertEqual(report["warnings"], [])
 
     def test_diagram_build(self) -> None:
         out = full_diagram().build_html(os.path.join(self.tmp, "d.html"))

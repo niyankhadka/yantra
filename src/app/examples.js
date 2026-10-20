@@ -9,6 +9,9 @@ import mlPipeline from '../../examples/ml-training-pipeline.json';
 import supportEscalation from '../../examples/customer-support-escalation.json';
 import manufacturing from '../../examples/manufacturing-quality.json';
 import researchPaper from '../../examples/research-paper-lifecycle.json';
+import orgChart from '../../examples/org-chart.json';
+import studyPlan from '../../examples/study-plan-mindmap.json';
+import triageTree from '../../examples/incident-triage-decision-tree.json';
 import ecommerceSchema from '../../examples/ecommerce-schema.json';
 import paymentClasses from '../../examples/payment-classes.json';
 import platform from '../../examples/platform-overview.json';
@@ -30,5 +33,8 @@ export const EXAMPLES = [
   { id: 'customer-support-escalation', name: 'Support escalation (modes)', data: supportEscalation },
   { id: 'manufacturing-quality', name: 'Manufacturing quality (panel)', data: manufacturing },
   { id: 'research-paper-lifecycle', name: 'Research paper lifecycle', data: researchPaper },
-  { id: 'ticket-lifecycle', name: 'Ticket lifecycle (states)', data: ticketLifecycle }
+  { id: 'ticket-lifecycle', name: 'Ticket lifecycle (states)', data: ticketLifecycle },
+  { id: 'org-chart', name: 'Org chart (tree)', data: orgChart },
+  { id: 'study-plan-mindmap', name: 'Revision plan (mind map)', data: studyPlan },
+  { id: 'incident-triage-decision-tree', name: 'Incident triage (decision tree)', data: triageTree }
 ];

@@ -42,7 +42,8 @@ export class Renderer {
       </svg>
       <div class="y-packet-layer" aria-hidden="true"></div>
       <div class="y-label-layer"></div>
-      <div class="y-node-layer"></div>`;
+      <div class="y-node-layer"></div>
+      <div class="y-toggle-layer"></div>`;
     this.svg = world.querySelector('.y-edges');
     this.groupLayer = world.querySelector('.y-group-layer');
     this.gradientDefs = world.querySelector('.y-gradients');
@@ -50,6 +51,8 @@ export class Renderer {
     this.packetLayer = world.querySelector('.y-packet-layer');
     this.labelLayer = world.querySelector('.y-label-layer');
     this.nodeLayer = world.querySelector('.y-node-layer');
+    this.toggleLayer = world.querySelector('.y-toggle-layer');
+    this.toggles = new Map(); // node or group id -> fold button
     this.nodes = new Map();
     this.groups = new Map();
     this.edges = new Map(); // id -> { g, path, gradient, from, to }
@@ -63,6 +66,7 @@ export class Renderer {
     const hueOf = new Map(scene.nodes.map((n) => [n.id, n.hue]));
     this.addGroups(scene);
     for (const n of scene.nodes) this.addCard(n);
+    this.addToggles(scene);
 
     scene.edges.forEach((e, i) => {
       const from = hueOf.get(e.edge.source) || 'slate';
@@ -100,8 +104,9 @@ export class Renderer {
   }
 
   clear() {
-    for (const layer of [this.groupLayer, this.nodeLayer, this.edgeLayer, this.labelLayer, this.gradientDefs, this.packetLayer]) layer.textContent = '';
+    for (const layer of [this.groupLayer, this.nodeLayer, this.edgeLayer, this.labelLayer, this.gradientDefs, this.packetLayer, this.toggleLayer]) layer.textContent = '';
     this.nodes.clear();
+    this.toggles.clear();
     this.groups.clear();
     this.edges.clear();
     this.labels.clear();
@@ -120,6 +125,48 @@ export class Renderer {
       this.groupLayer.appendChild(el);
       this.groups.set(g.id, el);
     }
+  }
+
+  /**
+   * Fold buttons: on the child side of every card with a subtree (tree and
+   * mind-map layouts), on folded group cards and on group boxes (layered).
+   * They live in their own layer so a card stays a single focusable control.
+   */
+  addToggles(scene) {
+    const make = (id, title, folded, count, side) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = `y-toggle${folded ? ' is-folded' : ''}`;
+      el.dataset.toggle = id;
+      el.dataset.side = side;
+      el.setAttribute('aria-expanded', String(!folded));
+      const label = folded ? `Expand ${title} (${count} hidden)` : `Collapse ${title}`;
+      el.setAttribute('aria-label', label);
+      el.title = label;
+      el.textContent = folded ? `+${count}` : '\u2212';
+      this.toggleLayer.appendChild(el);
+      this.toggles.set(id, el);
+      return el;
+    };
+    for (const n of scene.nodes) {
+      if (!n.toggle) continue;
+      make(n.id, n.node.data?.title || n.id, n.collapsed > 0 || !!n.node.summary, n.collapsed, n.toggle).dataset.hue = n.hue;
+    }
+    if (scene.layout === 'layered')
+      for (const g of scene.groups || []) make(g.id, g.title, false, 0, 'group').dataset.hue = g.hue;
+  }
+
+  /** Toggle centre for a card side or a group box corner. */
+  toggleAt(scene, id) {
+    const n = scene.nodes.find((m) => m.id === id);
+    if (n) {
+      if (n.toggle === 'bottom') return { x: n.x + n.w / 2, y: n.y + n.h };
+      if (n.toggle === 'right') return { x: n.x + n.w, y: n.y + n.h / 2 };
+      if (n.toggle === 'left') return { x: n.x, y: n.y + n.h / 2 };
+      return { x: n.x + n.w - 26, y: n.y };
+    }
+    const g = (scene.groups || []).find((m) => m.id === id);
+    return g ? { x: g.x + g.w - 20, y: g.y + 16 } : null;
   }
 
   /** A node card; the sequence view reuses it for participant headers. */
@@ -299,6 +346,10 @@ export class Renderer {
       el.style.width = `${n.w}px`;
       el.style.height = `${n.h}px`;
     }
+    this.toggles.forEach((el, id) => {
+      const at = this.toggleAt(scene, id);
+      if (at) el.style.transform = `translate(${at.x}px, ${at.y}px) translate(-50%, -50%)`;
+    });
     for (const e of scene.edges) {
       const rec = this.edges.get(e.id);
       if (rec) {
@@ -359,13 +410,17 @@ export class Renderer {
       const any = focused && g.members.some((id) => activeNodes.has(id));
       el.classList.toggle('is-active', any);
       el.classList.toggle('is-dim', focused && !any);
+      this.toggles.get(g.id)?.classList.toggle('is-dim', focused && !any);
     }
+    for (const n of scene.nodes) this.toggles.get(n.id)?.classList.toggle('is-dim', focused && !activeNodes.has(n.id));
+    // Mind maps draw every connector in its branch colour, not only active ones
+    const branch = !!scene.branchColors;
     this.edges.forEach((rec, id) => {
       const on = focused && activeEdges.has(id);
       rec.g.classList.toggle('is-active', on);
       rec.g.classList.toggle('is-dim', focused && !on);
-      rec.path.style.stroke = on ? `url(#${rec.gradId})` : '';
-      this.setMarkers(rec, on);
+      rec.path.style.stroke = on ? `url(#${rec.gradId})` : branch ? hueVar(rec.to) : '';
+      this.setMarkers(rec, on || branch);
     });
     this.labels.forEach((el, id) => {
       el.classList.toggle('is-active', focused && activeEdges.has(id));

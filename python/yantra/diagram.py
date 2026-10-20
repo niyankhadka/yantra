@@ -15,13 +15,14 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 from ._cli import YantraError, build_payload, validate_payload
 
 __all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO",
-           "RELATIONS", "END_KINDS", "VISIBILITY", "field", "method"]
+           "RELATIONS", "END_KINDS", "VISIBILITY", "ALGORITHMS", "field", "method"]
 
 COLORS = ("blue", "teal", "green", "amber", "rose", "violet", "orange", "slate")
 #: Node shapes: cards ("card", "state") and state-machine pseudo-states ("initial", "final", "choice").
 SHAPES = ("card", "state", "initial", "final", "choice")
 #: Edge arrow heads: at the target (default), at both ends, or none (an undirected link).
 ARROWS = ("forward", "both", "none")
+ALGORITHMS = ("layered", "tree", "mindmap")
 #: UML relationship kinds (edge ``relation``). Triangles and diamonds sit on the source.
 RELATIONS = ("inheritance", "realization", "composition", "aggregation", "association", "dependency")
 #: Markers for ``source_end`` / ``target_end``: UML heads and ER cardinality (crow's foot).
@@ -109,6 +110,14 @@ class Node:
         target_id = _id(target)
         self._diagram.add_edge(self.id, target_id, label=label, **edge)
         return target if isinstance(target, Node) else self
+
+    def child(self, child_id: str, title: str, type: Optional[str] = None, label: str = "",
+              width: Optional[float] = None, **data: Any) -> "Node":
+        """Add a card below this one in a tree or mind map (node plus parent -> child edge).
+        `type` defaults to this node's type; returns the child for chaining."""
+        node = self._diagram.add_node(child_id, title, type or self.type, width=width, **data)
+        self._diagram.add_edge(self.id, child_id, label=label)
+        return node
 
     def drill(self, diagram_id: str) -> "Node":
         """Open the detail diagram `diagram_id` (see :meth:`Diagram.detail`) from this card."""
@@ -248,13 +257,42 @@ class Diagram:
         self.diagrams: Dict[str, Any] = {}
 
     # --- meta ---------------------------------------------------------------
-    def layout(self, direction: str = "LR", mode: Optional[str] = None) -> "Diagram":
-        """Main flow direction: "LR" (left-to-right) or "TB" (top-to-bottom). `mode="manual"` uses node x/y."""
+    def layout(self, direction: str = "LR", mode: Optional[str] = None, algorithm: Optional[str] = None,
+               collapsed: Optional[Iterable[Any]] = None) -> "Diagram":
+        """Main flow direction: "LR" (left-to-right) or "TB" (top-to-bottom). `mode="manual"` uses node x/y.
+
+        `algorithm`: "layered" (default; flows), "tree" (org charts, decision trees, breakdowns) or
+        "mindmap" (central topic, balanced branches). `collapsed`: node ids (tree, mindmap) or group
+        ids (layered) folded when the viewer opens."""
         if direction not in ("LR", "TB"):
             raise YantraError(f"layout direction must be 'LR' or 'TB', not {direction!r}")
         if mode not in (None, "auto", "manual"):
             raise YantraError(f"layout mode must be 'auto' or 'manual', not {mode!r}")
-        self.meta["layout"] = {"direction": direction, **({"mode": mode} if mode else {})}
+        if algorithm not in (None,) + ALGORITHMS:
+            raise YantraError(f"layout algorithm must be one of {ALGORITHMS}, not {algorithm!r}")
+        layout: Dict[str, Any] = {"direction": direction}
+        if mode:
+            layout["mode"] = mode
+        if algorithm:
+            layout["algorithm"] = algorithm
+        if collapsed:
+            layout["collapsed"] = _ids(collapsed)
+        self.meta["layout"] = layout
+        return self
+
+    def tree(self, direction: str = "TB", collapsed: Optional[Iterable[Any]] = None) -> "Diagram":
+        """Tidy tree layout: parents centred over children, comb connectors. Edges define the hierarchy."""
+        return self.layout(direction, algorithm="tree", collapsed=collapsed)
+
+    def mindmap(self, collapsed: Optional[Iterable[Any]] = None) -> "Diagram":
+        """Mind-map layout: the first root in the centre, branches left and right, one colour per branch."""
+        return self.layout("LR", algorithm="mindmap", collapsed=collapsed)
+
+    def collapse(self, *ids: Any) -> "Diagram":
+        """Fold these subtrees (tree, mindmap) or groups (layered) when the viewer opens."""
+        layout = self.meta.setdefault("layout", {"direction": "LR"})
+        folded = layout.setdefault("collapsed", [])
+        folded.extend(i for i in _ids(ids) if i not in folded)
         return self
 
     def summary(self, headline: str, points: Optional[List[str]] = None,

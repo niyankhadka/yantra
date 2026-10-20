@@ -52,6 +52,23 @@
               ],
               "default": "auto",
               "description": "manual uses each node's x/y instead of the automatic layout."
+            },
+            "algorithm": {
+              "enum": [
+                "layered",
+                "tree",
+                "mindmap"
+              ],
+              "default": "layered",
+              "description": "layered (default): flows and architectures. tree: a tidy hierarchy (org charts, decision trees, work breakdowns, taxonomies) with parents centred over their children and comb connectors, in `direction` TB or LR. mindmap: the root in the centre, branches balanced left and right with curved connectors, one colour per branch. In tree and mindmap, edges define the hierarchy (first parent wins), hierarchy edges need no label and groups are not drawn."
+            },
+            "collapsed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true,
+              "description": "Ids folded when the viewer opens: nodes whose subtree is hidden (tree, mindmap) or groups shown as one summary card (layered). Readers unfold them with the +N button; a step that highlights a hidden node unfolds it."
             }
           },
           "additionalProperties": false

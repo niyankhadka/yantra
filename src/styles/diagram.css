@@ -387,6 +387,54 @@
   transition: opacity 180ms ease, color 180ms ease, border-color 180ms ease;
 }
 
+/* --- Fold buttons (tree layouts, groups): centred on their anchor ---------- */
+.y-toggle-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.y-toggle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--y-hue, var(--y-ink-3)) 55%, var(--y-border));
+  border-radius: 10px;
+  background: var(--y-surface);
+  color: var(--y-hue, var(--y-ink-2));
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  cursor: pointer;
+  transition: opacity 180ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.y-toggle:hover,
+.y-toggle.is-folded {
+  border-color: var(--y-hue, var(--y-ink-3));
+  background: var(--y-hue, var(--y-ink-3));
+  color: var(--y-surface);
+}
+
+.y-toggle.is-folded {
+  font-size: 11px;
+}
+
+.y-toggle:focus-visible {
+  outline: 2px solid var(--y-accent);
+  outline-offset: 2px;
+}
+
+.y-toggle.is-dim {
+  opacity: 0.3;
+}
+
 .y-label.is-active {
   border-color: var(--y-hue);
   color: var(--y-ink);

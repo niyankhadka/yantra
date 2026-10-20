@@ -12,6 +12,7 @@ import { computeScene } from './scene.js';
 import { computeSequenceScene, hasSequence } from './sequence.js';
 import { overlaps, segmentsOf, segmentHitsBox } from './route.js';
 import { ICONS } from './icons.js';
+import { ALGORITHMS, isTreeAlgorithm, treeIndex } from './tree.js';
 import { ROWS, members } from './entity.js';
 import { END_KINDS, RELATIONS } from './notation.js';
 import { collectDiagrams, drillEdges, drillOf, isUnsafeRefPath, safeUrl, DRILL_MAX_DEPTH } from './drill.js';
@@ -24,6 +25,13 @@ import { CHART_NEEDS, CHART_SHAPES, checkChartBlock } from './charts.js';
 export const BUILTIN_TABS = ['summary', 'step', 'node'];
 
 export const BUDGET = { nodes: 14, edges: 20, labelChars: 28, titleChars: 42 };
+
+/**
+ * Trees stay readable at larger sizes (one reading direction, no crossings):
+ * nodes count as shown when the viewer opens (meta.layout.collapsed applied);
+ * `total` caps the whole tree even when it opens folded.
+ */
+export const TREE_BUDGET = { nodes: 40, total: 120, crossLinks: 4 };
 
 /** UML relations whose symbol already says what the edge means: no label needed. */
 const SELF_EXPLAINING = new Set(['inheritance', 'realization', 'composition', 'aggregation']);
@@ -114,6 +122,11 @@ function diagramFindings(payload, add) {
     }
   });
 
+  // Tree layouts: hierarchy edges need no label (the hierarchy is the meaning)
+  const algorithm = model.layout.algorithm;
+  const treeMode = isTreeAlgorithm(algorithm);
+  const hierarchy = treeMode ? treeIndex([...nodeIds], model.edges.filter((e) => e && typeof e.id === 'string')) : null;
+
   const edgeIds = new Set();
   // A transition out of an initial state or into a final state needs no label
   const shapeById = new Map(model.nodes.map((n) => [n.id, shapeOf(n)]));
@@ -128,7 +141,7 @@ function diagramFindings(payload, add) {
       add('error', 'schema/edge-arrow-invalid', `Edge "${e.id}" arrow "${e.arrow}" is not one of ${EDGE_ARROWS.join(', ')}.`, { edge: e.id });
     if (e.label !== undefined && typeof e.label !== 'string') add('error', 'schema/edge-label-invalid', `Edge "${e.id}" label must be a string.`, { edge: e.id });
     else if (!e.label) {
-      if (!pseudoEnd(e) && !SELF_EXPLAINING.has(e.relation)) add('warning', 'content/edge-missing-label', `Edge "${e.id}" has no label; say what flows along it.`, { edge: e.id });
+      if (!pseudoEnd(e) && !SELF_EXPLAINING.has(e.relation) && !hierarchy?.tree.has(e.id)) add('warning', 'content/edge-missing-label', `Edge "${e.id}" has no label; say what flows along it.`, { edge: e.id });
     } else if (e.label.length > BUDGET.labelChars && e.label.length <= TEXT_CAP)
       add('warning', 'content/label-too-long', `Edge "${e.id}" label is ${e.label.length} chars; keep labels under ${BUDGET.labelChars}.`, { edge: e.id });
   });
@@ -152,6 +165,29 @@ function diagramFindings(payload, add) {
 
   // --- groups -------------------------------------------------------------
   checkGroups(payload, model, nodeIds, add);
+
+  // --- hierarchical layouts and collapsing ----------------------------------
+  const layoutIn = model.meta.layout;
+  if (layoutIn && typeof layoutIn === 'object' && layoutIn.algorithm !== undefined && !ALGORITHMS.includes(layoutIn.algorithm))
+    add('error', 'schema/unknown-layout-algorithm', `meta.layout.algorithm is "${layoutIn.algorithm}"; use ${ALGORITHMS.join(', ')}.`);
+  if (layoutIn && typeof layoutIn === 'object' && layoutIn.collapsed !== undefined && !Array.isArray(layoutIn.collapsed))
+    add('error', 'schema/layout-collapsed-invalid', 'meta.layout.collapsed must be an array of node or group ids.');
+  const groupIds = new Set(model.groups.map((g) => g.id));
+  if (treeMode) {
+    if (model.groups.length)
+      add('warning', 'layout/groups-ignored', `Groups are not drawn in the ${algorithm} layout; the hierarchy already shows the structure. Remove groups or use the layered layout.`);
+    for (const id of hierarchy.cross)
+      add('warning', 'layout/tree-cross-link', `Edge "${id}" is not part of the ${algorithm} (its target already has a parent); it is drawn as a routed cross-link. Duplicate the shared node or drop the edge.`, { edge: id });
+    if (algorithm === 'mindmap' && hierarchy.roots.length > 1)
+      add('warning', 'layout/mindmap-roots', `The mind map has ${hierarchy.roots.length} roots; "${hierarchy.roots[0]}" is the centre and the others float unconnected. Link every branch to one root.`);
+  }
+  for (const id of arr(layoutIn?.collapsed)) {
+    if (typeof id !== 'string' || (!nodeIds.has(id) && !groupIds.has(id))) add('error', 'ref/collapsed-unknown', `meta.layout.collapsed lists "${id}", which is neither a node nor a group.`);
+    else if (treeMode ? !nodeIds.has(id) || !hierarchy.children.get(id)?.length : !groupIds.has(id))
+      add('warning', 'layout/collapse-ignored', treeMode
+        ? `meta.layout.collapsed lists "${id}", which has no children to fold in the ${algorithm} layout.`
+        : `meta.layout.collapsed lists node "${id}"; the layered layout folds groups only (use algorithm "tree" or "mindmap" to fold subtrees).`);
+  }
 
   // --- modes & story ----------------------------------------------------
   const modeIds = new Set(model.modes.map((m) => m.id));
@@ -210,16 +246,33 @@ function diagramFindings(payload, add) {
   );
 
   // --- budgets ----------------------------------------------------------
-  if (model.nodes.length > BUDGET.nodes)
-    add('warning', 'budget/too-many-nodes', `${model.nodes.length} nodes (budget ${BUDGET.nodes}). Split into an overview plus detail diagrams.`);
-  if (model.edges.length > BUDGET.edges)
-    add('warning', 'budget/too-many-edges', `${model.edges.length} edges (budget ${BUDGET.edges}). Merge parallel flows or split the diagram.`);
-  if (model.nodes.length > WINDOW_NODES || model.edges.length > WINDOW_EDGES)
-    add('warning', 'budget/large-graph-fast-routing', `Graph is large (over ${WINDOW_NODES} nodes or ${WINDOW_EDGES} edges), so edges use the faster windowed router; routes may bend more. Split the diagram for the best routing.`);
+  const sound = !findings.some((f) => f.level === 'error');
+  if (treeMode) {
+    const shown = sound ? computeScene(payload).nodes.length : model.nodes.length;
+    if (shown > TREE_BUDGET.nodes)
+      add('warning', 'budget/too-many-nodes', `${shown} cards show when the ${algorithm} opens (budget ${TREE_BUDGET.nodes}). Fold branches with meta.layout.collapsed or split the tree.`);
+    else if (model.nodes.length > TREE_BUDGET.total)
+      add('warning', 'budget/too-many-nodes', `${model.nodes.length} nodes in one ${algorithm} (budget ${TREE_BUDGET.total} even when folded). Split it into an overview plus detail trees.`);
+    if (hierarchy.cross.length > TREE_BUDGET.crossLinks)
+      add('warning', 'budget/too-many-edges', `${hierarchy.cross.length} cross-links (budget ${TREE_BUDGET.crossLinks}); a ${algorithm} reads best as a pure hierarchy.`);
+    if (hierarchy.cross.length && model.nodes.length > WINDOW_NODES)
+      add('warning', 'budget/large-graph-fast-routing', `Graph is large (over ${WINDOW_NODES} nodes), so cross-links use the faster windowed router; routes may bend more.`);
+  } else {
+    if (model.nodes.length > BUDGET.nodes)
+      add('warning', 'budget/too-many-nodes', `${model.nodes.length} nodes (budget ${BUDGET.nodes}). Split into an overview plus detail diagrams.`);
+    if (model.edges.length > BUDGET.edges)
+      add('warning', 'budget/too-many-edges', `${model.edges.length} edges (budget ${BUDGET.edges}). Merge parallel flows or split the diagram.`);
+    if (model.nodes.length > WINDOW_NODES || model.edges.length > WINDOW_EDGES)
+      add('warning', 'budget/large-graph-fast-routing', `Graph is large (over ${WINDOW_NODES} nodes or ${WINDOW_EDGES} edges), so edges use the faster windowed router; routes may bend more. Split the diagram for the best routing.`);
+  }
 
   // --- geometry (only when the graph is referentially sound) -------------
+  // A diagram that opens folded is checked as it opens and fully expanded
   if (!findings.some((f) => f.level === 'error')) {
-    for (const mode of model.modes) geometry(computeScene(payload, { modeId: mode.id }), mode, add, model.modes.length > 1);
+    const states = model.layout.collapsed.length ? [undefined, []] : [undefined];
+    for (const mode of model.modes)
+      for (const collapsed of states)
+        geometry(computeScene(payload, { modeId: mode.id, collapsed }), mode, add, model.modes.length > 1, collapsed ? ' [expanded]' : '');
   }
 
   // --- sequence view ------------------------------------------------------
@@ -309,9 +362,9 @@ function checkLevels(payload, add) {
     if (!reached.has(id) && start !== id) add('warning', 'drill/unused-diagram', `diagrams.${id} is never drilled into: add data.drill: "${id}" to a card, or remove it.`, { diagram: id });
 }
 
-function geometry(scene, mode, add, tagMode) {
+function geometry(scene, mode, add, tagMode, state = '') {
   const ctx = tagMode ? { mode: mode.id } : {};
-  const sfx = tagMode ? ` [mode ${mode.id}]` : '';
+  const sfx = `${tagMode ? ` [mode ${mode.id}]` : ''}${state}`;
   const nodes = scene.nodes;
 
   for (let i = 0; i < nodes.length; i++)
@@ -368,7 +421,8 @@ function geometry(scene, mode, add, tagMode) {
   }
 
   // Parallel edges drawn on top of each other read as one line
-  const segs = scene.edges.flatMap((e) => segmentsOf(e.points).map((s) => ({ ...s, id: e.id })));
+  // (a parent's comb or fan of hierarchy edges shares its trunk by design)
+  const segs = scene.edges.flatMap((e) => segmentsOf(e.points).map((s) => ({ ...s, id: e.id, fan: e.tree ? e.edge.source : null })));
   const seen = new Set();
   // Only segments on the same line can share track: bucket them by line
   const lineOf = (s) => (s.a.x === s.b.x ? 'v' + s.a.x : 'h' + s.a.y);
@@ -383,7 +437,7 @@ function geometry(scene, mode, add, tagMode) {
       if (j <= i) continue;
       const a = segs[i];
       const b = segs[j];
-      if (a.id === b.id) continue;
+      if (a.id === b.id || (a.fan !== null && a.fan === b.fan)) continue;
       const shared = collinearOverlap(a, b);
       const key = [a.id, b.id].sort().join('|');
       if (shared >= 8 && !seen.has(key)) {

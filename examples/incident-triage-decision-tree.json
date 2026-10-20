@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "title": "Incident severity triage",
+    "description": "A decision tree for the on-call engineer: three questions decide the severity of a new incident and who gets paged.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "collapsed": ["q-degraded"]
+    },
+    "summary": {
+      "headline": "Customer impact decides first, data or security risk second, reach third.",
+      "points": [
+        "Any data loss or security exposure is SEV1, whatever the reach.",
+        "Degraded but working service is SEV2 above 10% of users, otherwise SEV3.",
+        "No customer impact is a ticket, not a page."
+      ],
+      "facts": {
+        "Owner": "Reliability team",
+        "Reviewed": "01/09/2026"
+      }
+    }
+  },
+  "roles": {
+    "question": { "label": "Question", "color": "blue", "icon": "crosshair" },
+    "sev1": { "label": "Page now", "color": "rose", "icon": "zap" },
+    "sev2": { "label": "Page on-call", "color": "orange", "icon": "activity" },
+    "low": { "label": "Ticket", "color": "teal", "icon": "file-text" }
+  },
+  "nodes": [
+    { "id": "q-outage", "type": "question", "width": 240, "data": { "title": "Is a customer-facing feature down?", "subtitle": "Errors or timeouts for users", "badge": "Question 1" } },
+    { "id": "q-risk", "type": "question", "data": { "title": "Data loss or security risk?", "subtitle": "Writes lost, data exposed", "badge": "Question 2" } },
+    { "id": "sev1", "type": "sev1", "data": { "title": "SEV1: all hands", "subtitle": "Page on-call, lead and exec", "badge": "SEV1", "description": "Open the incident channel, page the incident commander and an executive, post a status page update within 15 minutes." } },
+    { "id": "sev2-outage", "type": "sev2", "data": { "title": "SEV2: page on-call", "subtitle": "Owning team fixes now", "badge": "SEV2", "description": "Page the owning team's on-call engineer; status page update within 30 minutes." } },
+    { "id": "q-degraded", "type": "question", "data": { "title": "Is the service degraded?", "subtitle": "Slow, partial, retries", "badge": "Question 2" } },
+    { "id": "q-reach", "type": "question", "data": { "title": "More than 10% of users?", "subtitle": "From the error dashboard", "badge": "Question 3" } },
+    { "id": "sev2-wide", "type": "sev2", "data": { "title": "SEV2: page on-call", "subtitle": "Wide degradation", "badge": "SEV2" } },
+    { "id": "sev3", "type": "low", "data": { "title": "SEV3: fix this week", "subtitle": "Ticket with an owner", "badge": "SEV3" } },
+    { "id": "sev4", "type": "low", "data": { "title": "SEV4: backlog", "subtitle": "No customer impact", "badge": "SEV4" } }
+  ],
+  "edges": [
+    { "id": "outage-yes", "source": "q-outage", "target": "q-risk", "label": "Yes" },
+    { "id": "outage-no", "source": "q-outage", "target": "q-degraded", "label": "No" },
+    { "id": "risk-yes", "source": "q-risk", "target": "sev1", "label": "Yes" },
+    { "id": "risk-no", "source": "q-risk", "target": "sev2-outage", "label": "No" },
+    { "id": "degraded-yes", "source": "q-degraded", "target": "q-reach", "label": "Yes" },
+    { "id": "degraded-no", "source": "q-degraded", "target": "sev4", "label": "No" },
+    { "id": "reach-yes", "source": "q-reach", "target": "sev2-wide", "label": "Yes" },
+    { "id": "reach-no", "source": "q-reach", "target": "sev3", "label": "No" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Triage a new incident",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Start at the top and answer each question. The degraded-service branch opens folded; the steps unfold it." },
+        { "id": "outage", "title": "Something is down", "description": "A customer-facing feature is failing, so the next question is about data and security.", "highlightNodes": ["q-outage", "q-risk"], "highlightEdges": ["outage-yes"] },
+        { "id": "sev1", "title": "Risk means SEV1", "description": "Lost writes or exposed data make it SEV1 whatever the reach: page everyone.", "highlightNodes": ["q-risk", "sev1", "sev2-outage"], "highlightEdges": ["risk-yes", "risk-no"] },
+        { "id": "degraded", "title": "Nothing down, but slow", "description": "Without an outage, ask whether the service is degraded at all.", "highlightNodes": ["q-outage", "q-degraded", "q-reach", "sev4"], "highlightEdges": ["outage-no", "degraded-yes", "degraded-no"] },
+        { "id": "reach", "title": "Reach decides", "description": "Above 10% of users it is SEV2; below, a SEV3 ticket fixed this week.", "highlightNodes": ["q-reach", "sev2-wide", "sev3"], "highlightEdges": ["reach-yes", "reach-no"] }
+      ]
+    }
+  ]
+}

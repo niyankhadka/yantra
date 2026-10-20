@@ -13,6 +13,11 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 - **Walkthroughs**: scenarios with steps that focus nodes and animate the active path;
   storyboard with autoplay, camera follow and a full-screen present mode.
 - **Groups**: 2-5 labelled boundaries (VPC, team, phase) drawn behind their cards.
+- **Trees and mind maps**: `meta.layout.algorithm: "tree"` (org charts, decision trees,
+  breakdowns; tidy layout with comb connectors, TB or LR) or `"mindmap"` (central topic,
+  balanced branches, one colour per branch).
+- **Big diagrams**: fold subtrees or groups into one card and back (`+N`, key `X`,
+  `meta.layout.collapsed`, `#collapsed=` in the link); trees get a larger node budget.
 - **State machines and lifecycles**: state cards, initial / final dots and choice diamonds,
   self-loops drawn on the card, two-way and undirected edges (`edge.arrow`), back-edges
   routed cleanly. See `examples/ticket-lifecycle.json`.
@@ -38,7 +43,7 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   and methods (visibility, «stereotype»), growing with their rows; crow's foot cardinality and
   UML heads (inheritance, realization, composition, aggregation, dependency) at edge ends.
 - **Mermaid import**: `yantra import` turns flowcharts, sequence, state, ER and class diagrams
-  into payloads.
+  and mind maps into payloads.
   See [`docs/mermaid.md`](docs/mermaid.md).
 - **Accessible and shareable**: full keyboard control, state mirrored in the URL hash,
   print stylesheet, light and dark themes with WCAG contrast tests on the design tokens.
@@ -102,21 +107,22 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
 | `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
 | `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). |
-| `yantra import <file.mmd\|file.md> [-o out.json] [--title "..."] [--all]` | Convert Mermaid flowcharts / sequence / state / ER / class diagrams, then validate. |
+| `yantra import <file.mmd\|file.md> [-o out.json] [--title "..."] [--all]` | Convert Mermaid flowcharts / sequence / state / ER / class diagrams / mind maps, then validate. |
 | `yantra new <file> [--page]` | Starter diagram or answer page. |
 | `yantra examples [name] [-o file]` | List the examples or copy one. |
 | `yantra mcp` / `yantra dev` | MCP server on stdio / live viewer. |
 
 ## Examples
 
-15 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
+18 diagrams and 7 answer pages in [`examples/`](examples) (`yantra examples` lists them):
 
 - Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
   `platform-overview` (drill-down into two detail diagrams, links),
   `ecommerce-schema` (ERD), `payment-classes` (UML class diagram),
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
   (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
-  `healthcare-clinical`, `ticket-lifecycle` (state machine).
+  `healthcare-clinical`, `ticket-lifecycle` (state machine), `org-chart` (tree),
+  `study-plan-mindmap` (mind map), `incident-triage-decision-tree` (decision tree, opens folded).
 - Pages: `answer-checkout-saga`, `answer-how-to-choose-database` (interactive diagram),
   `answer-incident-review`, `answer-project-kickoff`, `answer-explain-photosynthesis`,
   `answer-quarterly-review` (line, area, column, bar and donut charts, sparklines),
@@ -132,12 +138,13 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `I` | inspector | `L` | legend |
 | `D` | open the card's detail diagram | `Esc` again | back up a drill-down level |
 | `S` | collapse storyboard | `F` | present (full screen) |
+| `X` | fold / unfold the selected branch | | |
 | `R` / `+` / `-` | fit / zoom | `T` | theme |
 | `?` | all shortcuts | `Esc` | close / clear focus |
 
 Drag cards to rearrange (edges re-route live); **Export → Copy JSON with positions** writes
 the arrangement back as a manual layout. The state is mirrored in the URL hash, so links
-reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&theme=dark`
+reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&collapsed=<id,id>&theme=dark`
 (dev server also `#example=<name>`). Printing switches to the light theme and hides the chrome.
 
 ## Branding
@@ -182,9 +189,10 @@ mcp/server.js          MCP server (stdio)
 lib/                   Node-only: standalone HTML builder, headless screenshots
 src/core/              Shared engine: model, layout, routing, scene, lint, SVG/Markdown, theme
   sequence.js          Sequence (lifeline) view
+  tree.js              Tree and mind-map layouts, folding
   entity.js            Field / method rows of entity and class cards
   notation.js          Edge end markers: crow's foot cardinality, UML heads
-  mermaid.js           Mermaid flowchart / sequence / state / ER / class importer
+  mermaid.js           Mermaid flowchart / sequence / state / ER / class / mind-map importer
   page.js              Answer pages
   charts.js            Page charts, gantt plans, matrices (inline SVG)
   drill.js             Drill-down levels and link sanitising
@@ -192,7 +200,7 @@ src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              15 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
+examples/              18 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
 docs/                  Authoring (diagrams, pages, Mermaid) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite

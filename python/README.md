@@ -85,6 +85,19 @@ d.add_edge("method", "card", relation="realization")   # triangle on the source 
 `method(name, params, type, visibility, static=, abstract=)` build rows; `RELATIONS` and
 `END_KINDS` list the accepted `relation` and `source_end` / `target_end` values.
 
+## Trees and mind maps
+
+```python
+org = Diagram("Org chart").tree("TB")                    # or .mindmap(), or .layout(algorithm=...)
+ceo = org.add_node("ceo", "Amara Okafor", "exec", subtitle="CEO")
+cto = ceo.child("cto", "Daniel Reyes", subtitle="CTO")    # node + ceo -> cto edge, type inherited
+cto.child("platform", "Platform", "team").child("sre", "Reliability")
+org.collapse("cto")                                       # opens folded; readers unfold with +N
+```
+
+Edges define the hierarchy; hierarchy edges need no label (`label=` is shown on the connector,
+e.g. "Yes" / "No" in a decision tree).
+
 ## Answer page
 
 ```python

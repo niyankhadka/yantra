@@ -6,6 +6,8 @@ import { normalize, getMode } from '../core/model.js';
 import { computeScene } from '../core/scene.js';
 import { computeSequenceScene, hasSequence } from '../core/sequence.js';
 import { lint } from '../core/lint.js';
+import { hidingIds, isTreeAlgorithm, treeIndex } from '../core/tree.js';
+import { visibleGraph } from '../core/model.js';
 import { layoutStorageKey } from './hash.js';
 
 export class YantraEngine {
@@ -25,6 +27,7 @@ export class YantraEngine {
     this.view = this.model.meta.view === 'sequence' ? 'sequence' : 'flow';
     this.selectedNodeId = null;
     this.layoutCache = new Map();
+    this.collapsed = new Set(this.model.layout.collapsed);
     this.overrides = this.readOverrides();
     this.scene = null;
     this.emit('loaded', this.model);
@@ -41,7 +44,7 @@ export class YantraEngine {
   /** The node-link scene, whatever the view (connections, counts, layout export). */
   getFlowScene() {
     if (!this.scene) {
-      this.scene = computeScene(this.payload, { modeId: this.modeId, overrides: this.overrides, layoutCache: this.layoutCache });
+      this.scene = computeScene(this.payload, { modeId: this.modeId, overrides: this.overrides, layoutCache: this.layoutCache, collapsed: this.collapsed });
     }
     return this.scene;
   }
@@ -71,6 +74,47 @@ export class YantraEngine {
 
   cycleView() {
     if (this.canSequence()) this.setView(this.getView() === 'sequence' ? 'flow' : 'sequence');
+  }
+
+  // --- Collapsing (subtrees in tree layouts, groups in the layered layout) ----
+  /** Fold or unfold a subtree root or a group. */
+  toggleCollapse(id) {
+    if (this.collapsed.has(id)) this.collapsed.delete(id);
+    else this.collapsed.add(id);
+    this.collapseChanged();
+  }
+
+  setCollapsed(ids) {
+    const next = new Set(ids);
+    if (next.size === this.collapsed.size && [...next].every((id) => this.collapsed.has(id))) return;
+    this.collapsed = next;
+    this.collapseChanged();
+  }
+
+  /** True when the current collapse state is the one the payload opens with. */
+  isDefaultCollapse() {
+    const d = this.model.layout.collapsed;
+    return d.length === this.collapsed.size && d.every((id) => this.collapsed.has(id));
+  }
+
+  collapseChanged() {
+    this.invalidate();
+    if (this.selectedNodeId && !this.getFlowScene().nodes.some((n) => n.id === this.selectedNodeId)) this.selectedNodeId = null;
+    this.emit('collapseChanged', [...this.collapsed]);
+  }
+
+  /** Unfold whatever hides the nodes a step highlights, so the walkthrough stays visible. */
+  revealStep() {
+    const step = this.getStep();
+    const ids = step?.highlightNodes || step?.activeNodes || [];
+    if (!this.collapsed.size || !ids.length) return;
+    const algorithm = this.model.layout.algorithm;
+    const graph = visibleGraph(this.model, this.modeId);
+    const index = isTreeAlgorithm(algorithm) ? treeIndex(graph.nodes.map((n) => n.id), graph.edges) : null;
+    const hiding = hidingIds({ collapsed: this.collapsed, algorithm, index, groups: this.model.groups }, ids);
+    if (!hiding.size) return;
+    hiding.forEach((id) => this.collapsed.delete(id));
+    this.collapseChanged();
   }
 
   moveNode(id, x, y) {
@@ -186,6 +230,7 @@ export class YantraEngine {
     const steps = this.getSteps();
     if (index < 0 || index >= steps.length || index === this.stepIndex) return;
     this.stepIndex = index;
+    this.revealStep();
     this.emit('stepChanged', this.getStep());
     if (this.playing) this.schedule();
   }
@@ -211,8 +256,14 @@ export class YantraEngine {
   getHighlight() {
     const step = this.getStep();
     const scene = this.getScene();
-    const nodes = new Set(step?.highlightNodes || step?.activeNodes || []);
-    const edges = new Set(step?.highlightEdges || step?.activeEdges || []);
+    let nodes = new Set(step?.highlightNodes || step?.activeNodes || []);
+    let edges = new Set(step?.highlightEdges || step?.activeEdges || []);
+    // Folded cards stand in for the nodes and edges they hide
+    const fold = scene.kind !== 'sequence' && scene.collapse;
+    if (fold && fold.alias.size) {
+      nodes = new Set([...nodes].map((id) => fold.alias.get(id) ?? id));
+      edges = new Set([...edges].map((id) => (fold.edgeAlias.has(id) ? fold.edgeAlias.get(id) : id)).filter(Boolean));
+    }
     const visible = scene.nodes.filter((n) => nodes.has(n.id)).length;
     if (!nodes.size || visible === scene.nodes.length) return { nodes: new Set(), edges: new Set(), overview: true };
     return { nodes, edges, overview: false };

@@ -19,8 +19,9 @@ validator checks is exactly what the viewer draws.
 | `entity.js` | Entity / class cards: field and method rows (`ROWS` metrics, the "+ N more" cap), measured so the card height is known before layout. |
 | `notation.js` | Edge end markers: ER cardinality (crow's foot), UML heads, `relation` defaults; marker SVG shared by the viewer and the export. |
 | `layout.js` | Card sizing (`CARD` metrics) and the layered layout: DFS cycle breaking, longest-path ranking, dummy nodes for long edges, barycentre crossing reduction, cross-axis placement by weighted isotonic regression, rank gaps sized for labels, corridors for return edges. Positions snap to the 10px grid; card sizes are multiples of 20 so aligned centres stay aligned. |
+| `tree.js` | Hierarchical layouts and folding: the spanning forest of a graph (`treeIndex`), the tidy tree (contour packing, parents centred over children, comb connectors), the mind map (balanced halves, curved connectors, branch hues), and `collapseGraph`, which hides folded subtrees or turns folded groups into summary cards with id aliases for steps. |
 | `route.js` | Port assignment (isotonic fit so facing ports line up), A* over a sparse orthogonal grid with node obstacles, a soft halo, and penalties for bends, shared or adjacent tracks and crossings; jog removal and centring; rounded elbows; label placement on the route. Self-loops are fixed loops on a free side; ends at dots and diamonds are clipped to the outline. |
-| `scene.js` | `computeScene(payload, { modeId, overrides, layoutCache })`: the single entry point. |
+| `scene.js` | `computeScene(payload, { modeId, overrides, layoutCache, collapsed })`: the single entry point. Picks the layered, tree or mind-map layout from `meta.layout.algorithm`; hierarchy edges of trees and mind maps are drawn directly (comb or curve), the rest go through the router. |
 | `sequence.js` | `computeSequenceScene(payload, { modeId, scenarioIndex })`: the sequence view (participants by first appearance, one message per step `highlightEdges` id, numbered rows, group boxes over adjacent columns; gaps widen to fit labels). `sceneForView` picks flow or sequence. |
 | `lint.js` | Structural, reference, story, budget and geometry checks with stable codes. |
 | `svg.js` / `markdown.js` | Static exports. SVG is plain SVG (no `foreignObject`), so it rasterises to PNG cleanly. `renderSequenceSvg` draws the sequence view. |
@@ -34,11 +35,12 @@ validator checks is exactly what the viewer draws.
 - `src/app/engine.js`: state (scenario, step, mode, selection, autoplay, dragged positions
   persisted in `localStorage`), caches the auto layout per mode.
 - `src/app/renderer.js`: HTML cards over one SVG edge layer, opaque label pills, packets
-  that follow the active edges (skipped under `prefers-reduced-motion`).
+  that follow the active edges (skipped under `prefers-reduced-motion`), and fold buttons in
+  their own layer (cards stay single focusable controls).
 - `src/app/interact.js`: pointer pan, wheel/pinch zoom, drag with live re-routing, fit-to-view
   that subtracts the toolbar, walkthrough, legend and inspector.
 - `src/app/main.js`: UI wiring, keyboard shortcuts, URL-hash state (step, mode, view,
-  scenario, role, inspector tab, theme), print handling (light theme, chrome hidden), exports.
+  scenario, role, inspector tab, theme, folded ids), print handling (light theme, chrome hidden), exports.
   The inspector shows Summary / Step / Details tabs and custom `panels`; `meta.inspector.onNodeClick`
   picks what a card click opens. Closed panels are `inert` / `hidden`, so they are neither
   visible nor focusable.

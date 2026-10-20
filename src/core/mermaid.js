@@ -1,6 +1,6 @@
 /**
- * Mermaid import: turns a Mermaid flowchart, sequence, state, ER or class diagram
- * into a Yantra payload. Pure (no DOM, no Node APIs) and dependency-free.
+ * Mermaid import: turns a Mermaid flowchart, sequence, state, ER or class diagram,
+ * or a mind map, into a Yantra payload. Pure (no DOM, no Node APIs) and dependency-free.
  *
  *   fromMermaid(text, { title? }) -> { payload, warnings: string[] }
  *   mermaidBlocks(markdown)       -> string[]   (```mermaid fenced blocks)
@@ -65,6 +65,7 @@ export function fromMermaid(text, opts = {}) {
     : /^stateDiagram(-v2)?\b/.test(header) ? parseState
     : /^erDiagram\b/.test(header) ? parseErDiagram
     : /^classDiagram(-v2)?\b/.test(header) ? parseClassDiagram
+    : /^mindmap\b/.test(header) ? (_, c) => parseMindmap(String(text || ''), c) // indentation matters: parse the raw text
     : null;
   if (parse) {
     try {
@@ -75,7 +76,7 @@ export function fromMermaid(text, opts = {}) {
     }
   }
   const kind = header.split(/\s+/)[0];
-  throw new Error(`Unsupported Mermaid diagram type "${kind}". Supported: flowchart / graph, sequenceDiagram, stateDiagram, erDiagram, classDiagram.`);
+  throw new Error(`Unsupported Mermaid diagram type "${kind}". Supported: flowchart / graph, sequenceDiagram, stateDiagram, erDiagram, classDiagram, mindmap.`);
 }
 
 // --- shared helpers ------------------------------------------------------------
@@ -773,6 +774,146 @@ function parseSequence(lines, ctx) {
     }
   ];
   return { payload, warnings };
+}
+
+// --- mind maps -----------------------------------------------------------------
+
+/** Mind-map node shapes, longest delimiters first (the shape itself is not kept). */
+const MIND_SHAPES = [
+  ['((', '))'],
+  ['))', '(('],
+  ['{{', '}}'],
+  ['(', ')'],
+  [')', '('],
+  ['[', ']']
+];
+const MIND_ROLES = {
+  root: { label: 'Central topic', color: 'violet' },
+  branch: { label: 'Branch', color: 'blue' },
+  topic: { label: 'Topic', color: 'slate' }
+};
+const MIND_FOLD = 40; // above this many nodes, branches open folded
+
+/** "id((text))", "[text]", "plain text" -> { id?, text } */
+function mindNode(s) {
+  for (const [open, close] of MIND_SHAPES) {
+    const at = s.indexOf(open);
+    if (at < 0 || !s.endsWith(close) || s.length < at + open.length + close.length) continue;
+    const id = s.slice(0, at).trim();
+    if (id && /\s/.test(id)) continue;
+    return { id: id || undefined, text: s.slice(at + open.length, s.length - close.length).trim() };
+  }
+  return { text: s };
+}
+
+/**
+ * Mermaid `mindmap`: indentation gives the hierarchy. Becomes a payload with
+ * `meta.layout.algorithm: "mindmap"`, one edge per parent -> child and a walkthrough
+ * with one step per branch. Icons and classes are ignored with a warning.
+ */
+function parseMindmap(text, ctx) {
+  const { warnings } = ctx;
+  const ignored = ignoredCollector(warnings);
+  let src = text.replace(/\r\n?/g, '\n');
+  const fm = /^\s*---\n[\s\S]*?\n---[ \t]*(\n|$)/.exec(src);
+  if (fm) src = src.slice(fm[0].length);
+  const rows = [];
+  src.split('\n').forEach((raw, i) => {
+    const line = raw.replace(/%%.*$/, '').replace(/\s+$/, '');
+    if (!line.trim()) return;
+    const indent = /^[ \t]*/.exec(line)[0].replace(/\t/g, '    ').length;
+    rows.push({ indent, text: line.trim(), no: i + 1 });
+  });
+  rows.shift(); // the "mindmap" header
+
+  const taken = new Set();
+  const named = idFactory(taken);
+  const nextEdge = edgeIdFactory();
+  const nodes = [];
+  const edges = [];
+  const depth = new Map();
+  const stack = []; // [{ indent, id }]
+  let root = null;
+  for (const row of rows) {
+    if (/^::icon\(/.test(row.text)) {
+      ignored.add('::icon');
+      continue;
+    }
+    if (/^:::/.test(row.text)) {
+      ignored.add(':::class');
+      continue;
+    }
+    const { id: rawId, text: label } = mindNode(row.text);
+    const data = labelData(unquote(label), rawId || 'Topic');
+    // Explicit ids are kept; untitled repeats ("Examples" under two branches) get -2, -3
+    const id = rawId ? named(rawId) : idFactory(taken)(data.title);
+    while (stack.length && stack[stack.length - 1].indent >= row.indent) stack.pop();
+    let parent = stack.length ? stack[stack.length - 1].id : null;
+    if (!parent && root) {
+      warnings.push(`Line ${row.no}: a mind map has one root; "${data.title}" is attached to "${nodes[0].data.title}".`);
+      parent = root;
+    }
+    const d = parent ? depth.get(parent) + 1 : 0;
+    depth.set(id, d);
+    if (!root) root = id;
+    nodes.push({ id, type: d === 0 ? 'root' : d === 1 ? 'branch' : 'topic', data });
+    if (parent) edges.push({ id: nextEdge(parent, id), source: parent, target: id });
+    stack.push({ indent: row.indent, id });
+  }
+  ignored.flush({ '::icon': 'icons come from roles', ':::class': 'branch colours are automatic' });
+  if (!nodes.length) throw new Error('The mind map has no nodes; add a root line under "mindmap".');
+
+  const types = [...new Set(nodes.map((n) => n.type))];
+  const roles = Object.fromEntries(types.map((t) => [t, MIND_ROLES[t]]));
+  const branches = nodes.filter((n) => depth.get(n.id) === 1);
+  const below = new Map(nodes.map((n) => [n.id, []]));
+  for (const e of edges) below.get(e.source).push(e);
+  const subtree = (id) => {
+    const ns = [id];
+    const es = [];
+    for (const e of below.get(id)) {
+      const sub = subtree(e.target);
+      es.push(e.id, ...sub.edges);
+      ns.push(...sub.nodes);
+    }
+    return { nodes: ns, edges: es };
+  };
+  const listed = branches.slice(0, MAX_FLOW_STEPS - 1);
+  if (branches.length > listed.length) warnings.push(`Only the first ${listed.length} of ${branches.length} branches get their own walkthrough step.`);
+  const steps = [
+    { id: 'overview', title: 'Overview', description: `${nodes[0].data.title}: ${branches.length} branch${branches.length === 1 ? '' : 'es'}, ${nodes.length} topics in all.` },
+    ...listed.map((b) => {
+      const sub = subtree(b.id);
+      const kids = below.get(b.id).map((e) => nodes.find((n) => n.id === e.target).data.title);
+      return {
+        id: `branch-${b.id}`,
+        title: b.data.title,
+        description: kids.length ? `${b.data.title}: ${list(kids)}.` : `${b.data.title}.`,
+        highlightNodes: [root, ...sub.nodes],
+        highlightEdges: [edges.find((e) => e.target === b.id).id, ...sub.edges]
+      };
+    })
+  ];
+
+  const layout = { algorithm: 'mindmap' };
+  if (nodes.length > MIND_FOLD) {
+    layout.collapsed = branches.filter((b) => below.get(b.id).length).map((b) => b.id);
+    warnings.push(`${nodes.length} nodes: every branch opens folded (meta.layout.collapsed); readers unfold them with +N.`);
+  }
+  return {
+    payload: {
+      meta: {
+        title: ctx.title || shorten(nodes[0].data.title, MAX_TITLE),
+        description: `Imported from a Mermaid mind map: ${nodes.length} topics in ${branches.length} branches.`,
+        layout
+      },
+      roles,
+      nodes,
+      edges,
+      scenarios: [{ id: 'main', name: 'Branch by branch', steps }]
+    },
+    warnings
+  };
 }
 
 // --- state diagrams ----------------------------------------------------------------
