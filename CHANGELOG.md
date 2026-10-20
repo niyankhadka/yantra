@@ -7,6 +7,10 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-20
+
+First public release.
+
 ### Added
 
 - Charts in diagrams: `data.chart` draws a mini chart inside any card, under the subtitle
@@ -232,8 +236,6 @@ All notable changes to Yantra are documented here. The format follows
   project) and is published publicly; the command is still `yantra`. Vite is now a development dependency.
 - The Python SDK can also run the CLI through `npx` when no local CLI is found.
 
-## [2.0.0] - 2026-10-20
-
 ### Added
 
 - Automatic layered layout (cycle breaking, crossing reduction, aligned ports) and
@@ -242,7 +244,7 @@ All notable changes to Yantra are documented here. The format follows
   rendered geometry (overlaps, edges through cards, label collisions) in every mode and view.
 - Walkthroughs: scenarios and steps that focus nodes and animate the active path, with
   autoplay, camera follow and a full-screen present mode.
-- Groups: labelled boundaries (VPC, team, phase) drawn behind their cards, nested up to three levels.
+- Groups: labelled boundaries (VPC, team, phase) drawn behind their cards, nested up to eight levels.
 - Sequence view (`meta.view: "sequence"`): the same payload drawn as lifelines, one message per step.
 - Modes: alternative views that hide nodes or override their details.
 - Inspector with Summary, Step and Details tabs plus custom panels built from page blocks.
@@ -255,5 +257,5 @@ All notable changes to Yantra are documented here. The format follows
 - CLI (`validate`, `build`, `export`, `screenshot`, `import`, `new`, `examples`, `mcp`,
   `dev`), an MCP server with sandboxed file access, an agent skill and a Python SDK.
 
-[Unreleased]: https://github.com/niyankhadka/yantra/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/niyankhadka/yantra/releases/tag/v2.0.0
+[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/niyankhadka/yantra/releases/tag/v1.0.0

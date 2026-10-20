@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yantra-diagrams"
-version = "2.0.0"
+version = "1.0.0"
 description = "Build Yantra step-by-step diagrams and one-page answers from Python; compiled to single offline HTML files by the Yantra CLI (Node.js >= 18)."
 readme = "README.md"
 requires-python = ">=3.9"
