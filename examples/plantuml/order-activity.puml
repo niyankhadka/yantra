@@ -1,0 +1,17 @@
+@startuml
+' Handling an online order, from receipt to dispatch.
+title Order handling
+|Shop|
+start
+:Receive order;
+:Check stock;
+if (In stock?) then (yes)
+  :Reserve items;
+else (no)
+  :Back-order items;
+endif
+|Warehouse|
+:Pick and pack;
+:Ship parcel;
+stop
+@enduml

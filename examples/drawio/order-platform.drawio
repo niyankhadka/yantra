@@ -1,0 +1,69 @@
+<mxfile host="app.diagrams.net" modified="2026-10-20T09:00:00.000Z" agent="Mozilla/5.0" version="24.7.17">
+  <diagram id="order-platform" name="Order platform">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Order platform (draft)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="shopper" value="Shopper" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="30" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-zone" value="Edge" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="140" y="120" width="220" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="web" value="&lt;b&gt;Web app&lt;/b&gt;&lt;br&gt;React storefront" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="edge-zone">
+          <mxGeometry x="40" y="40" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="gw" value="API gateway" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="edge-zone">
+          <mxGeometry x="40" y="150" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="core" value="Order services" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="420" y="120" width="420" height="240" as="geometry" />
+        </mxCell>
+        <UserObject label="Orders service" tooltip="Owns the order lifecycle." id="orders">
+          <mxCell style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="core">
+            <mxGeometry x="30" y="40" width="140" height="60" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <mxCell id="paid" value="Payment ok?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="core">
+          <mxGeometry x="230" y="30" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="notify" value="Notify shopper" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="core">
+          <mxGeometry x="230" y="160" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="Orders DB" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="900" y="150" width="90" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="done" value="Order closed" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="290" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="browses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="shopper" target="web">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="web" target="gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2-label" value="HTTPS calls" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="e2">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="e3" value="POST /orders" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="gw" target="orders">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="charge card" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="core" source="orders" target="paid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="yes: save" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="paid" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="no" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;" edge="1" parent="core" source="paid" target="notify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="archive" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="db" target="done">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

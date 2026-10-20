@@ -1,10 +1,15 @@
 """Bridge to the Yantra Node CLI (`bin/yantra.js`).
 
+Producing HTML (and validating) needs Node.js >= 18; the SDK itself is pure Python.
+
 Discovery order:
 
 1. ``YANTRA_CLI`` environment variable: a path to ``yantra.js`` (run with node) or to an executable.
-2. ``bin/yantra.js`` in the Yantra repository this package lives in, run with ``node``.
-3. ``yantra`` on ``PATH`` (e.g. after ``npm link``).
+2. ``bin/yantra.js`` in the Yantra repository this package lives in, run with ``node``
+   (an editable install from a checkout).
+3. ``yantra`` on ``PATH`` (``npm i -g yantra-diagrams``, or ``npm link`` in a checkout).
+4. ``npx --yes --package yantra-diagrams yantra`` when ``npx`` is available
+   (downloads the CLI from npm on first use; set ``YANTRA_NO_NPX=1`` to disable).
 
 Commands run without a shell, so paths with spaces and Windows paths are safe.
 """
@@ -19,7 +24,12 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-__all__ = ["YantraError", "cli_command", "run_cli", "validate_payload", "build_payload"]
+__all__ = ["YantraError", "cli_command", "run_cli", "validate_payload", "build_payload", "import_diagram",
+           "NPM_PACKAGE"]
+
+NPM_PACKAGE = "yantra-diagrams"
+NODE_HINT = ("Yantra needs Node.js >= 18 to validate and build HTML (https://nodejs.org). Then either "
+             "`npm i -g yantra-diagrams`, run from a Yantra checkout, or set YANTRA_CLI to the path of bin/yantra.js.")
 
 
 class YantraError(RuntimeError):
@@ -32,7 +42,7 @@ def _node_script(script: Path) -> Optional[List[str]]:
 
 
 def cli_command() -> List[str]:
-    """Return the argv prefix that runs the Yantra CLI."""
+    """Return the argv prefix that runs the Yantra CLI (see the module docstring for the order)."""
     override = os.environ.get("YANTRA_CLI")
     if override:
         p = Path(override)
@@ -40,16 +50,21 @@ def cli_command() -> List[str]:
             cmd = _node_script(p)
             if cmd:
                 return cmd
-        elif p.exists():
-            return [str(p)]
+            raise YantraError(f"YANTRA_CLI points to {p}, but it does not exist or `node` is not on PATH. " + NODE_HINT)
+        found = shutil.which(override)
+        if p.exists() or found:
+            return [str(p) if p.exists() else found]
+        raise YantraError(f"YANTRA_CLI points to {override}, which was not found. " + NODE_HINT)
     local = _node_script(Path(__file__).resolve().parents[2] / "bin" / "yantra.js")
     if local:
         return local
     found = shutil.which("yantra")
     if found:
         return [found]
-    raise YantraError("Yantra CLI not found: install Node.js >= 18 and run `npm link` in the Yantra repo, "
-                      "or set YANTRA_CLI to the path of bin/yantra.js.")
+    npx = shutil.which("npx")
+    if npx and shutil.which("node") and not os.environ.get("YANTRA_NO_NPX"):
+        return [npx, "--yes", "--package", NPM_PACKAGE, "yantra"]
+    raise YantraError("Yantra CLI not found. " + NODE_HINT)
 
 
 def run_cli(args: List[str], check: bool = True) -> subprocess.CompletedProcess:
@@ -110,3 +125,29 @@ def build_payload(payload: Dict[str, Any], output_html: str, force: bool = False
             args.append("--force")
         run_cli(args)
     return output_html
+
+
+def import_diagram(source: str, format: Optional[str] = None, page: Optional[Any] = None,
+                   title: Optional[str] = None) -> Dict[str, Any]:
+    """Convert a Mermaid, draw.io or PlantUML file into a payload dict (``yantra import``).
+
+    ``format`` is ``"mermaid"``, ``"drawio"`` or ``"plantuml"`` (default: detected from the file
+    name or content); ``page`` picks a draw.io page by 1-based number or name.
+    Import warnings and the validation report are printed by the CLI to stderr.
+    """
+    src = os.path.abspath(source)
+    if not os.path.isfile(src):
+        raise YantraError(f"File not found: {src}")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "imported.json")
+        args = ["import", src, "-o", out]
+        if format:
+            args += ["--from", format]
+        if page is not None:
+            args += ["--page", str(page)]
+        if title:
+            args += ["--title", title]
+        res = run_cli(args, check=False)
+        if not os.path.exists(out):
+            raise YantraError(f"yantra import failed:\n{res.stderr or res.stdout}")
+        return json.loads(Path(out).read_text(encoding="utf-8"))

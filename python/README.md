@@ -1,15 +1,26 @@
 # Yantra Python SDK
 
 Build Yantra step-by-step diagrams and one-page answers from Python. The SDK writes the JSON
-payload (see `schemas/`); the Yantra CLI (Node.js >= 18) validates it and compiles a single
-offline HTML file. No third-party Python dependencies; Python >= 3.9.
+payload (see `schemas/`); the Yantra CLI validates it and compiles a single offline HTML file.
+No third-party Python dependencies; Python >= 3.9.
+
+> **Node.js 18 or later is required** to validate, build HTML or import. Building payloads
+> (`to_dict()`, `save_json()`) works without it.
 
 ```bash
-pip install -e python/          # package "yantra-diagrams", import "yantra"
+pip install yantra-diagrams     # once published; import name "yantra"
+pip install -e python/          # from a checkout of the repository
 ```
 
-The CLI is found via `YANTRA_CLI` (path to `bin/yantra.js`), then `bin/yantra.js` in this
-repository (run with `node`), then `yantra` on PATH.
+The CLI is found, in order, via:
+
+1. `YANTRA_CLI`: a path to `bin/yantra.js` (run with `node`) or to a `yantra` executable.
+2. `bin/yantra.js` in the checkout the package is installed from (editable installs).
+3. `yantra` on PATH (`npm i -g yantra-diagrams`, or `npm link` in a checkout).
+4. `npx --yes --package yantra-diagrams yantra`, which downloads the CLI from npm on first use
+   (set `YANTRA_NO_NPX=1` to turn this off).
+
+If none works, `YantraError` explains what to install.
 
 ## Diagram
 
@@ -97,6 +108,16 @@ org.collapse("cto")                                       # opens folded; reader
 
 Edges define the hierarchy; hierarchy edges need no label (`label=` is shown on the connector,
 e.g. "Yes" / "No" in a decision tree).
+
+## Import
+
+```python
+from yantra import import_diagram
+
+payload = import_diagram("architecture.drawio", page=2)    # also .mmd, .md, .puml; format= to force
+```
+
+Returns the payload dict produced by `yantra import` (see `docs/import.md`).
 
 ## Answer page
 

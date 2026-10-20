@@ -1,0 +1,14 @@
+@startwbs
+' Work breakdown for a product launch, drawn with the tree layout.
+title Product launch
+* Launch
+** Product
+*** Final build
+*** Release notes
+** Marketing
+*** Landing page
+*** Press kit
+** Support
+*** Help centre
+*** Staff training
+@endwbs

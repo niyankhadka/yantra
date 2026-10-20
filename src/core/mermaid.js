@@ -8,6 +8,9 @@
 import { humanize } from './model.js';
 import { RELATIONS, END_LABELS } from './notation.js';
 
+// Shared with the draw.io and PlantUML importers (src/core/importkit.js)
+export { SHAPE_ROLES, shorten, assignRoles, flowSteps, ignoredCollector };
+
 const MAX_TITLE = 42;
 const MAX_LABEL = 28;
 const MAX_FLOW_STEPS = 8; // including the overview

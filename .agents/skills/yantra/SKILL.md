@@ -1,6 +1,6 @@
 ---
 name: yantra
-description: Create interactive, step-by-step diagrams (architecture, request flows, pipelines, business or clinical processes) and one-page answers (explainers, comparisons, decision records) as single offline HTML files with automatic layout, routed edges, summary cards and a validator. Use when the user wants to visualise how a system or process works, explain a flow step by step, turn a description, codebase or Mermaid sketch into a shareable diagram, or asks a question whose answer should be a page to read, print or share.
+description: Create interactive, step-by-step diagrams (architecture, request flows, pipelines, business or clinical processes) and one-page answers (explainers, comparisons, decision records) as single offline HTML files with automatic layout, routed edges, summary cards and a validator. Use when the user wants to visualise how a system or process works, explain a flow step by step, turn a description, codebase or Mermaid, draw.io or PlantUML sketch into a shareable diagram, or asks a question whose answer should be a page to read, print or share.
 ---
 
 # Yantra
@@ -16,6 +16,7 @@ Every output is a single offline HTML file. Pick one:
 | a database schema (ERD) or class diagram | **diagram** with node `fields` / `methods`, edge `sourceEnd` / `targetEnd` or `relation` | `docs/authoring.md` (Data models) |
 | an answer, explanation, comparison or decision on one page | **answer page** (`"kind": "page"`) | `docs/pages.md`, `schemas/yantra-page.schema.json` |
 | their Mermaid flowchart / sequence / state / ER / class diagram or mind map as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
+| their draw.io (`.drawio`) or PlantUML (`.puml`) diagram as Yantra | `node bin/yantra.js import file.drawio` (`--page n`) then review | `docs/import.md` |
 
 For "explain how X works", make the diagram first, then the page around it
 (`{ "type": "diagram", "src": "flow.json" }`). References: `examples/*.json`
@@ -89,7 +90,8 @@ For "explain how X works", make the diagram first, then the page around it
    plus any warnings you chose to keep. `export -f md` gives a Markdown copy to paste.
 
 With the MCP server connected the same actions are tools: `yantra_get_schema` (pass
-`kind: "page"` for pages), `yantra_get_example`, `yantra_import_mermaid`, `yantra_validate`,
+`kind: "page"` for pages), `yantra_get_example`, `yantra_import` (Mermaid, draw.io, PlantUML),
+`yantra_import_mermaid`, `yantra_validate`,
 `yantra_build`, `yantra_export`, `yantra_screenshot`.
 
 ## Other outputs

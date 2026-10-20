@@ -1,7 +1,8 @@
 # Yantra
 
 Interactive, step-by-step diagrams for systems and processes, and one-page answers to
-questions. Describe the parts, the connections and the story in JSON (or import Mermaid);
+questions. Describe the parts, the connections and the story in JSON (or import Mermaid,
+draw.io or PlantUML);
 Yantra lays it out, routes the edges, checks the result and ships it as **one offline HTML file**.
 
 ## Features
@@ -42,14 +43,43 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 - **Data models and class diagrams**: cards with field rows (PK / FK / UK, types) or attributes
   and methods (visibility, «stereotype»), growing with their rows; crow's foot cardinality and
   UML heads (inheritance, realization, composition, aggregation, dependency) at edge ends.
-- **Mermaid import**: `yantra import` turns flowcharts, sequence, state, ER and class diagrams
-  and mind maps into payloads.
-  See [`docs/mermaid.md`](docs/mermaid.md).
+- **Import**: `yantra import` turns Mermaid flowcharts, sequence, state, ER and class diagrams
+  and mind maps, draw.io / diagrams.net files and PlantUML sequence, component, use-case,
+  activity, state, class and mind-map / WBS diagrams into payloads. See
+  [`docs/mermaid.md`](docs/mermaid.md) and [`docs/import.md`](docs/import.md).
 - **Accessible and shareable**: full keyboard control, state mirrored in the URL hash,
   print stylesheet, light and dark themes with WCAG contrast tests on the design tokens.
 - **Exports**: standalone HTML, SVG, PNG and Markdown; a "Made with Yantra" badge
   (`meta.watermark: false` hides it, a string renames it).
 - **Agent-ready**: CLI, MCP server, a Claude Code / Antigravity skill and a Python SDK.
+
+## Installation
+
+Yantra needs **Node.js 18 or later** for everything that validates or produces HTML.
+
+```bash
+npm i -g yantra-diagrams        # once published: puts `yantra` on PATH
+yantra build diagram.json
+
+pip install yantra-diagrams     # once published: Python SDK (import yantra)
+```
+
+The npm package ships a prebuilt viewer, so an installed copy needs no build step. The
+Python SDK writes payloads in pure Python and calls the CLI to validate and build HTML; it
+finds the CLI via `YANTRA_CLI`, a Yantra checkout it is installed from, `yantra` on PATH, or
+`npx` (see [`python/README.md`](python/README.md)). Until the packages are published, work
+from a clone as below.
+
+## Import from
+
+| Source | Command | Supported | Guide |
+|---|---|---|---|
+| Mermaid (`.mmd`, ```mermaid in `.md`) | `yantra import flow.mmd` | flowchart / graph, sequenceDiagram | [`docs/mermaid.md`](docs/mermaid.md) |
+| draw.io / diagrams.net (`.drawio`, `.xml`, `.drawio.svg`, compressed or not) | `yantra import model.drawio [--page n]` | shapes, containers / swimlanes → groups, edge labels | [`docs/import.md`](docs/import.md) |
+| PlantUML (`.puml`, ```plantuml in `.md`) | `yantra import login.puml` | sequence, component / deployment / use case, activity | [`docs/import.md`](docs/import.md) |
+
+The format is detected from the extension or the content; `--from mermaid|drawio|plantuml`
+forces it. Every import is validated straight away.
 
 ## Quick start
 
@@ -73,7 +103,7 @@ node bin/yantra.js screenshot diagram.json     # -> diagram-light.png
 | Who calls whom, in what order? (protocols, APIs) | **Diagram** with `meta.view: "sequence"` | `examples/oauth-login.json` |
 | What tables or classes exist and how do they relate? | **Diagram** with `fields` / `methods` and edge `relation` / `sourceEnd` / `targetEnd` | `examples/ecommerce-schema.json`, `examples/payment-classes.json` |
 | What is the answer / which option / what happened? | **Answer page** (`"kind": "page"`) | `yantra new x.json --page`, `examples/answer-*.json` |
-| I already have a Mermaid sketch | `yantra import sketch.mmd` | `examples/mermaid/*.mmd` |
+| I already have a Mermaid, draw.io or PlantUML sketch | `yantra import sketch.mmd` (or `.drawio`, `.puml`) | `examples/mermaid/`, `examples/drawio/`, `examples/plantuml/` |
 
 ## A diagram in 20 lines
 
@@ -107,7 +137,7 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
 | `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
 | `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). |
-| `yantra import <file.mmd\|file.md> [-o out.json] [--title "..."] [--all]` | Convert Mermaid flowcharts / sequence / state / ER / class diagrams / mind maps, then validate. |
+| `yantra import <file> [-o out.json] [--from mermaid\|drawio\|plantuml] [--page n\|name] [--title "..."] [--all]` | Convert Mermaid (flowchart, sequence, state, ER, class, mind map), draw.io or PlantUML, then validate. |
 | `yantra new <file> [--page]` | Starter diagram or answer page. |
 | `yantra examples [name] [-o file]` | List the examples or copy one. |
 | `yantra mcp` / `yantra dev` | MCP server on stdio / live viewer. |
@@ -162,7 +192,8 @@ fixed `width`/`height`.
 - **Antigravity / Codex / others**: `AGENTS.md`, `.agents/skills/yantra/`, `.agents/rules/`,
   `.agents/mcp_config.json`.
 - **MCP tools**: `yantra_get_schema`, `yantra_list_examples`, `yantra_get_example`,
-  `yantra_validate`, `yantra_build`, `yantra_export`, `yantra_import_mermaid`, `yantra_screenshot`.
+  `yantra_validate`, `yantra_build`, `yantra_export`, `yantra_import` (Mermaid, draw.io,
+  PlantUML), `yantra_import_mermaid`, `yantra_screenshot`.
 - **Python**: `pip install -e python/`, then `from yantra import Diagram, Page`; see
   [`python/README.md`](python/README.md).
 - **Embedding**: put the built HTML in an `<iframe>`; it makes no external requests.
@@ -193,6 +224,9 @@ src/core/              Shared engine: model, layout, routing, scene, lint, SVG/M
   entity.js            Field / method rows of entity and class cards
   notation.js          Edge end markers: crow's foot cardinality, UML heads
   mermaid.js           Mermaid flowchart / sequence / state / ER / class / mind-map importer
+  drawio.js            draw.io / diagrams.net importer (inflate.js: compressed pages)
+  plantuml.js          PlantUML sequence / component / activity / state / class / mind-map importer
+  import.js            Format detection and dispatch for `yantra import`
   page.js              Answer pages
   charts.js            Page charts, gantt plans, matrices (inline SVG)
   drill.js             Drill-down levels and link sanitising
@@ -200,12 +234,17 @@ src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              18 diagrams, 7 answer pages, Mermaid samples (all validate cleanly)
-docs/                  Authoring (diagrams, pages, Mermaid) and architecture
+examples/              18 diagrams, 7 answer pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
+docs/                  Authoring (diagrams, pages, imports) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite
 .github/workflows/     CI
 ```
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md); changes are listed in [`CHANGELOG.md`](CHANGELOG.md)
+and security reports go through [`SECURITY.md`](SECURITY.md).
 
 ## License
 

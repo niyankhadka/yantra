@@ -12,6 +12,7 @@ import { renderSvg } from '../src/core/svg.js';
 import { toMarkdown } from '../src/core/markdown.js';
 import { isPage, pageToMarkdown } from '../src/core/page.js';
 import { fromMermaid } from '../src/core/mermaid.js';
+import { importText, FORMATS } from '../src/core/import.js';
 import { collectDiagrams, getLevel } from '../src/core/drill.js';
 import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
@@ -89,6 +90,22 @@ const TOOLS = [
     }
   },
   {
+    name: 'yantra_import',
+    description: 'Convert a Mermaid (flowchart, sequence), draw.io / diagrams.net (.drawio, .xml, compressed pages included) or PlantUML (sequence, component / deployment / use case, activity) diagram into a Yantra payload with roles, groups and a walkthrough, then validate it. Pass the source as text or filePath; the format is detected from the file name or content unless given. Writes outputPath when given, otherwise returns the payload.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Diagram source text (alternative to filePath).' },
+        filePath: { type: 'string', description: 'Path to a .mmd, .md, .drawio, .xml, .drawio.svg or .puml file (inside the input root).' },
+        format: { type: 'string', enum: FORMATS, description: 'Source format (default: detected).' },
+        page: { type: 'string', description: 'draw.io page to import: 1-based number or page name (default: the first).' },
+        all: { type: 'boolean', description: 'Import every page / diagram block; returns results[] and writes name-1.json, name-2.json, ...' },
+        title: { type: 'string', description: 'Diagram title (default: from the source, else a generic one).' },
+        outputPath: { type: 'string', description: 'Optional .json path to write.' }
+      }
+    }
+  },
+  {
     name: 'yantra_screenshot',
     description: 'Render a diagram or answer page in the local Chrome/Edge and save a PNG, for visual review.',
     inputSchema: {
@@ -139,6 +156,8 @@ function inputPath(p, exts = ['.json']) {
   if (!within(INPUT_ROOT, file)) throw new Error(`filePath must be inside ${INPUT_ROOT} (set YANTRA_INPUT_ROOT to allow another folder).`);
   return file;
 }
+
+const IMPORT_EXTS = ['.mmd', '.mermaid', '.md', '.markdown', '.drawio', '.dio', '.xml', '.svg', '.puml', '.plantuml', '.pu', '.iuml', '.wsd', '.txt'];
 
 function outputPath(p, exts) {
   if (typeof p !== 'string' || !p) throw new Error('outputPath must be a non-empty string.');
@@ -222,6 +241,28 @@ function call(name, args) {
       const out = outputPath(args.outputPath, ['.json']);
       fs.writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`);
       return { outputPath: out, warnings, validation };
+    }
+    case 'yantra_import': {
+      let text = args.text;
+      let filename = '';
+      if (typeof text !== 'string' || !text.trim()) {
+        if (!args.filePath) throw new Error('Provide text (the diagram source) or filePath.');
+        const file = inputPath(args.filePath, IMPORT_EXTS);
+        text = fs.readFileSync(file, 'utf-8');
+        filename = path.basename(file);
+      }
+      if (args.format !== undefined && !FORMATS.includes(args.format)) throw new Error(`format must be one of ${FORMATS.join(', ')}.`);
+      const { format, results } = importText(text, { format: args.format, filename, title: args.title, page: args.page === undefined ? undefined : String(args.page), all: !!args.all });
+      const out = results.map(({ payload, warnings }) => ({ payload, warnings, validation: lint(payload) }));
+      if (args.outputPath) {
+        const base = outputPath(args.outputPath, ['.json']);
+        out.forEach((r, i) => {
+          r.outputPath = out.length > 1 ? base.replace(/\.json$/i, `-${i + 1}.json`) : base;
+          fs.writeFileSync(r.outputPath, `${JSON.stringify(r.payload, null, 2)}\n`);
+          delete r.payload;
+        });
+      }
+      return args.all ? { format, results: out } : { format, ...out[0] };
     }
     case 'yantra_screenshot': {
       const png = outputPath(args.outputPath, ['.png']);

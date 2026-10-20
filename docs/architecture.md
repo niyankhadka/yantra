@@ -28,6 +28,9 @@ validator checks is exactly what the viewer draws.
 | `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build. |
 | `page.js` | Answer pages: block renderers (shared with inspector panels), `renderPage`, page lint, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. |
 | `mermaid.js` | `fromMermaid(text, { title })`: flowchart, sequence, state, ER and class diagram importer (nodes, edges, subgraphs / namespaces / composite states to groups, state shapes, fields and methods, relationship markers, a generated walkthrough) with warnings for anything skipped. |
+| `drawio.js` / `inflate.js` | `fromDrawio(text, { title, page })`: draw.io / diagrams.net importer (small XML reader, compressed pages inflated in JS, shapes to types, containers to groups). See `docs/import.md`. |
+| `plantuml.js` | `fromPlantUml(text, { title })`: PlantUML sequence, component / use-case, activity and state importer. |
+| `importkit.js` / `import.js` | Shared payload assembly for the importers; `importText` detects the format and dispatches (used by the CLI and MCP). |
 | `theme.js` / `icons.js` | Design tokens for both themes and the icon set; the app injects the tokens as CSS variables. |
 
 ## Viewer

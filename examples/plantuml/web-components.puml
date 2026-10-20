@@ -1,0 +1,24 @@
+@startuml
+' A small web platform: clients, services and storage, grouped by tier.
+title Web platform
+left to right direction
+actor "Customer" as customer
+package "Edge" {
+  [Web app] as web
+  [API gateway] as gw
+}
+package "Services" {
+  [Orders service] as orders
+  [Billing service] as billing
+}
+database "Orders DB" as db
+queue "Event bus" as bus
+
+customer --> web : browses
+web --> gw : HTTPS calls
+gw --> orders : routes orders
+gw --> billing : routes billing
+orders --> db : SQL writes
+orders ..> bus : OrderPlaced
+bus ..> billing : delivers events
+@enduml

@@ -5,7 +5,7 @@
  *   yantra build <diagram.json> [-o out.html]
  *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
  *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id]
- *   yantra import <file.mmd|file.md> [-o out.json] [--title "..."] [--all]
+ *   yantra import <file.mmd|file.md|file.drawio|file.puml> [-o out.json] [--from mermaid|drawio|plantuml] [--page n] [--title "..."] [--all]
  *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp   yantra dev
  * Works with diagrams and with one-page answers ({ "kind": "page" }).
  */
@@ -18,7 +18,7 @@ import { renderSvg } from '../src/core/svg.js';
 import { sceneForView } from '../src/core/sequence.js';
 import { toMarkdown } from '../src/core/markdown.js';
 import { isPage, pageToMarkdown } from '../src/core/page.js';
-import { fromMermaid, mermaidBlocks } from '../src/core/mermaid.js';
+import { importText, FORMATS } from '../src/core/import.js';
 import { collectDiagrams, getLevel } from '../src/core/drill.js';
 import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
@@ -33,7 +33,7 @@ Usage
   yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
   yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--width] [--height]
   yantra new <file.json> [--page]              Write a starter diagram (or answer page)
-  yantra import <file.mmd|file.md>             Convert a Mermaid flowchart, sequence, state, ER or class diagram  [-o out.json] [--title "..."] [--all]
+  yantra import <file>                         Convert Mermaid (flowchart, sequence, state, ER, class; .mmd/.md), draw.io (.drawio/.xml) or PlantUML (.puml)  [-o out.json] [--from mermaid|drawio|plantuml] [--page n|name] [--title "..."] [--all]
   yantra examples [name] [-o file]             List built-in examples, or copy one
   yantra mcp                                   Start the MCP server (stdio)
   yantra dev                                   Start the live editor at http://localhost:3000
@@ -57,7 +57,7 @@ function parse(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level'].includes(key)) out[key] = argv[++i];
+      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page'].includes(key)) out[key] = argv[++i];
       else out[key] = true;
     } else out._.push(a);
   }
@@ -238,24 +238,24 @@ try {
     }
 
     case 'import': {
-      if (!input) fail('Missing input file: yantra import <file.mmd|file.md> [-o out.json] [--title "..."] [--all]');
+      if (!input) fail('Missing input file: yantra import <file.mmd|file.md|file.drawio|file.puml> [-o out.json] [--from mermaid|drawio|plantuml] [--page n] [--title "..."] [--all]');
+      if (args.from !== undefined && !FORMATS.includes(args.from)) fail(`Unknown --from "${args.from}" (use ${FORMATS.join(', ')}).`);
       const src = path.resolve(input);
       if (!fs.existsSync(src)) fail(`File not found: ${src}`);
-      const text = fs.readFileSync(src, 'utf-8');
-      let sources = [text];
-      if (/\.(md|markdown)$/i.test(input)) {
-        const blocks = mermaidBlocks(text);
-        if (!blocks.length) fail(`${input} has no \`\`\`mermaid fenced block.`);
-        sources = args.all ? blocks : blocks.slice(0, 1);
-      }
+      const { format, results } = importText(fs.readFileSync(src, 'utf-8'), {
+        format: args.from,
+        filename: path.basename(src),
+        title: typeof args.title === 'string' ? args.title : undefined,
+        page: typeof args.page === 'string' ? args.page : undefined,
+        all: !!args.all
+      });
       const base = args.output ? path.resolve(args.output) : outName(input, '.json');
       let failed = false;
-      sources.forEach((mmd, i) => {
-        const out = sources.length > 1 ? base.replace(/(\.json)?$/i, `-${i + 1}.json`) : base;
-        const { payload, warnings } = fromMermaid(mmd, { title: typeof args.title === 'string' ? args.title : undefined });
+      results.forEach(({ payload, warnings }, i) => {
+        const out = results.length > 1 ? base.replace(/(\.json)?$/i, `-${i + 1}.json`) : base;
         for (const w of warnings) console.error(`  import  ${w}`);
         fs.writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`);
-        console.error(`✓ Wrote ${out} (${payload.nodes.length} nodes, ${payload.edges.length} edges)`);
+        console.error(`✓ Wrote ${out} (${format}: ${payload.nodes.length} nodes, ${payload.edges.length} edges)`);
         const report = lint(payload);
         printReport(report, path.basename(out));
         if (!report.valid) failed = true;

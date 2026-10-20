@@ -19,7 +19,8 @@ if validation reports errors. From MCP, call `yantra_import_mermaid` with
 `{ mermaid, title?, outputPath? }`; it returns `{ payload | outputPath, warnings, validation }`.
 From JavaScript: `fromMermaid(text, { title }) -> { payload, warnings }`.
 
-Samples: `examples/mermaid/*.mmd`.
+Samples: `examples/mermaid/*.mmd`. draw.io and PlantUML imports use the same command and
+are described in [`import.md`](import.md); the MCP tool `yantra_import` handles all three.
 
 ## Flowcharts
 
