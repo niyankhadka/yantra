@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { startMcp } from './support.js';
 import { fileURLToPath } from 'node:url';
 import { embedPayload } from '../lib/build.js';
 
@@ -49,19 +50,8 @@ test('CLI export writes SVG and Markdown', () => {
 });
 
 test('MCP server answers initialize, tools/list and yantra_validate', async () => {
-  const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js')], { stdio: ['pipe', 'pipe', 'inherit'] });
-  const replies = new Map();
-  let buf = '';
-  proc.stdout.on('data', (d) => {
-    buf += d;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const msg = JSON.parse(buf.slice(0, i));
-      buf = buf.slice(i + 1);
-      replies.set(msg.id, msg);
-    }
-  });
-  const send = (m) => proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...m })}\n`);
+  const s = startMcp();
+  const send = s.send;
   send({ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } } });
   send({ method: 'notifications/initialized' });
   send({ id: 2, method: 'tools/list' });
@@ -69,9 +59,12 @@ test('MCP server answers initialize, tools/list and yantra_validate', async () =
   send({ id: 4, method: 'nope' });
   send({ id: 5, method: 'tools/call', params: { name: 'yantra_validate', arguments: { filePath: path.join(ROOT, 'examples', 'answer-checkout-saga.json') } } });
   send({ id: 6, method: 'tools/call', params: { name: 'yantra_get_schema', arguments: { kind: 'page' } } });
-  const deadline = Date.now() + 10000;
-  while (replies.size < 6 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-  proc.kill();
+  let replies;
+  try {
+    replies = await s.waitFor(6);
+  } finally {
+    await s.close();
+  }
 
   assert.equal(replies.get(1).result.protocolVersion, '2025-06-18');
   assert.ok(replies.get(2).result.tools.some((t) => t.name === 'yantra_build'));

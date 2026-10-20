@@ -61,7 +61,11 @@ d.add_step("Persist", url="https://example.com/adr-12")
 ```
 
 Links accept `http(s)://` and `mailto:` only. `Page.diagram(d, level="payments")` shows a
-detail level on a page.
+detail level on a page. `pay.drill("payments-local", mode="local")` opens another level in
+one mode. A page diagram given as a file (`p.diagram("diagrams/overview.json")`) has its
+`$ref` levels loaded too, relative to that file and only inside the page's `base_dir`
+(`yantra.resolve_levels(payload, folder, root)` does the same for any payload).
+`d.views("flow")` hides the Flow / Sequence toggle (`views("sequence")`: sequence only).
 
 State machines: `shape` is one of `SHAPES` (`"state"` cards; `"initial"`, `"final"` and
 `"choice"` pseudo-states), `arrow` one of `ARROWS` (`"forward"`, `"both"`, `"none"`), and an
@@ -147,7 +151,8 @@ constructors live in `yantra.blocks` for diagram panels.
 p.chart(kind="line", categories=["Jul", "Aug", "Sep"], series={"Starter": [3.4, 3.6, 4.1]}, unit="%")
 p.chart({"Subscriptions": 1057, "Services": 480}, kind="donut", prefix="£", unit="k")
 p.gantt([{"id": "api", "title": "API", "start": "05/10/2026", "days": 25},
-         {"title": "Launch", "milestone": True, "after": "api"}], today="20/10/2026")
+         {"title": "Launch", "milestone": True, "after": "api"}], today="20/10/2026",
+        workdays=True, holidays=["2026-12-25"])   # days count working days
 p.matrix([("Alerts", 2, 8), ("Chat", 8, 3)], x="Effort", y="Value",
          quadrants=["Quick wins", "Big bets", "Fill-ins", "Avoid"])
 ```

@@ -114,3 +114,39 @@ test('lint warns when the sequence view has nothing to show and rejects unknown 
   assert.ok(!ok.warnings.some((w) => w.code.startsWith('sequence/')));
   assert.ok(lint({ ...base, meta: { title: 'X', view: 'timeline' } }).errors.some((e) => e.code === 'schema/unknown-view'));
 });
+
+test('meta.views and table / class cards decide whether the sequence view is offered', async () => {
+  const { offeredViews } = await import('../src/core/sequence.js');
+  const { YantraEngine } = await import('../src/app/engine.js');
+  const flow = { meta: { title: 'T' }, nodes: [node('a'), node('b')], edges: [edge('ab', 'a', 'b')], scenarios: steps(['ab']) };
+  assert.deepEqual(offeredViews(flow), { flow: true, sequence: true });
+  assert.ok(hasSequence(flow));
+
+  // An ERD: every card is a table, so no sequence view (and no toggle) even with highlighted edges
+  const erd = example('ecommerce-schema');
+  assert.equal(offeredViews(erd).sequence, false);
+  assert.equal(hasSequence(erd), false);
+  assert.equal(sceneForView(erd, { view: 'sequence' }).kind, undefined, 'falls back to the flow scene');
+  assert.equal(new YantraEngine(erd).canSwitchView(), false);
+  // ...unless the payload asks for it
+  assert.ok(hasSequence({ ...flow, nodes: flow.nodes.map((n) => ({ ...n, data: { ...n.data, fields: [{ name: 'id' }] } })), meta: { title: 'T', views: ['flow', 'sequence'] } }));
+
+  // views: ["flow"] hides the toggle; ["sequence"] opens in the sequence view without a toggle
+  const flowOnly = { ...flow, meta: { title: 'T', views: ['flow'] } };
+  assert.equal(hasSequence(flowOnly), false);
+  assert.equal(new YantraEngine(flowOnly).canSwitchView(), false);
+  const seqOnly = { ...flow, meta: { title: 'T', views: ['sequence'] } };
+  const e = new YantraEngine(seqOnly);
+  assert.equal(e.getView(), 'sequence');
+  assert.equal(e.canSwitchView(), false);
+  assert.equal(sceneForView(seqOnly).kind, 'sequence');
+  assert.equal(new YantraEngine(flow).canSwitchView(), true);
+
+  // lint: bad lists, and a meta.view the payload does not offer
+  const codes = (p) => [...lint(p).errors, ...lint(p).warnings].map((f) => f.code);
+  assert.deepEqual(codes(flowOnly), []);
+  assert.ok(codes({ ...flow, meta: { title: 'T', views: [] } }).includes('schema/unknown-view'));
+  assert.ok(codes({ ...flow, meta: { title: 'T', views: ['graph'] } }).includes('schema/unknown-view'));
+  assert.ok(codes({ ...flow, meta: { title: 'T', view: 'sequence', views: ['flow'] } }).includes('sequence/not-offered'));
+  assert.ok(codes({ ...erd, meta: { ...erd.meta, view: 'sequence' } }).includes('sequence/not-offered'));
+});

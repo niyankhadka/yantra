@@ -9,14 +9,14 @@ import { TEXT_CAP, displayWidth } from './text.js';
 import { HUES } from './theme.js';
 import { WINDOW_NODES, WINDOW_EDGES } from './route.js';
 import { computeScene } from './scene.js';
-import { computeSequenceScene, hasSequence } from './sequence.js';
+import { computeSequenceScene, hasSequence, offeredViews, VIEWS } from './sequence.js';
 import { overlaps, segmentsOf, segmentHitsBox } from './route.js';
 import { ICONS } from './icons.js';
 import { STRING_KEYS, LANGUAGES, isLangTag, shippedLang, isPluralKey } from './i18n.js';
 import { ALGORITHMS, COMPACT_MODES, isTreeAlgorithm, treeIndex } from './tree.js';
 import { ROWS, members } from './entity.js';
 import { END_KINDS, RELATIONS } from './notation.js';
-import { collectDiagrams, drillEdges, drillOf, isUnsafeRefPath, safeUrl, DRILL_MAX_DEPTH } from './drill.js';
+import { collectDiagrams, drillEdges, drillOf, modeDrills, isUnsafeRefPath, safeUrl, DRILL_MAX_DEPTH } from './drill.js';
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => (typeof v === 'string' ? v : '');
@@ -327,7 +327,17 @@ function diagramFindings(payload, add) {
   const view = model.meta.view;
   if (view !== undefined && view !== 'flow' && view !== 'sequence')
     add('error', 'schema/unknown-view', `meta.view is "${view}"; use "flow" or "sequence".`);
-  if (view === 'sequence') {
+  const views = model.meta.views;
+  if (views !== undefined && (!Array.isArray(views) || !views.length || views.some((v) => !VIEWS.includes(v))))
+    add('error', 'schema/unknown-view', `meta.views must be a non-empty list of "flow" and "sequence".`);
+  const offered = offeredViews(payload);
+  if (view === 'sequence' && !offered.sequence)
+    add('warning', 'sequence/not-offered', Array.isArray(views)
+      ? 'meta.view is "sequence" but meta.views does not list it; the flow view is shown. Add "sequence" to meta.views or remove meta.view.'
+      : 'meta.view is "sequence" but every card is a table or class card (an ERD or class diagram has no sequence view); the flow view is shown. Set meta.views: ["flow", "sequence"] to offer it anyway.');
+  else if (view === 'flow' && !offered.flow)
+    add('warning', 'sequence/not-offered', 'meta.view is "flow" but meta.views does not list it; the sequence view is shown.');
+  if (view === 'sequence' && offered.sequence) {
     const withMessages = model.scenarios.map((sc, i) => i).filter((i) => hasSequence(payload, { scenarioIndex: i }));
     if (!withMessages.length)
       add('warning', 'sequence/no-messages', 'meta.view is "sequence" but no step has highlightEdges; the flow view is shown instead. List the edges each step sends.');
@@ -362,14 +372,27 @@ function checkLevels(payload, add) {
 
   const edges = drillEdges(payload, map);
   const known = (id) => map.has(id) || refs.has(id);
-  for (const [at, p] of [['', payload], ...map])
+  const knownList = map.size ? ` (known: ${[...map.keys()].join(', ')})` : '';
+  for (const [at, p] of [['', payload], ...map]) {
+    const modeIds = new Set(arr(p.modes).length ? arr(p.modes).map((m) => m?.id) : arr(p.meta?.modes).map((m) => m?.id));
     arr(p.nodes).forEach((n) => {
-      if (n?.data?.drill === undefined) return;
-      const where = `${at ? `diagrams.${at}: ` : ''}Node "${n.id}"`;
-      const t = drillOf(n);
-      if (!t) add('error', 'drill/unknown-target', `${where} data.drill must be a diagram id (a string).`, { node: n.id });
-      else if (!known(t)) add('error', 'drill/unknown-target', `${where} drills into "${t}", which is not in diagrams${map.size ? ` (known: ${[...map.keys()].join(', ')})` : ''}.`, { node: n.id, ...(at ? { diagram: at } : {}) });
+      const where = `${at ? `diagrams.${at}: ` : ''}Node "${n?.id}"`;
+      const extra = { node: n?.id, ...(at ? { diagram: at } : {}) };
+      if (n?.data?.drill !== undefined) {
+        const t = drillOf(n);
+        if (!t) add('error', 'drill/unknown-target', `${where} data.drill must be a diagram id (a string).`, extra);
+        else if (!known(t)) add('error', 'drill/unknown-target', `${where} drills into "${t}", which is not in diagrams${knownList}.`, extra);
+      }
+      // Mode overrides: data.modes.<id>.drill opens another level in that mode (null: none)
+      for (const { mode, drill } of modeDrills(n)) {
+        const field = `data.modes.${mode}.drill`;
+        if (modeIds.size && !modeIds.has(mode)) add('warning', 'drill/unknown-mode', `${where} ${field}: there is no mode "${mode}" (modes: ${[...modeIds].join(', ')}).`, extra);
+        if (drill === null) continue;
+        if (typeof drill !== 'string' || !drill) add('error', 'drill/unknown-target', `${where} ${field} must be a diagram id (a string), or null for no detail in that mode.`, extra);
+        else if (!known(drill)) add('error', 'drill/unknown-target', `${where} ${field} drills into "${drill}", which is not in diagrams${knownList}.`, extra);
+      }
     });
+  }
   const start = payload.meta?.startLevel;
   if (start !== undefined && !map.has(start))
     add('error', 'drill/unknown-start-level', `meta.startLevel "${start}" is not a detail diagram id.`);

@@ -28,6 +28,25 @@ export function safeUrl(u) {
 export const drillOf = (node) => (isObj(node?.data) && typeof node.data.drill === 'string' && node.data.drill ? node.data.drill : null);
 
 /**
+ * Mode-specific drill targets: `data.modes.<mode id>.drill` overrides data.drill
+ * in that mode (the viewer applies mode overrides to cards). A list of
+ * { mode, drill } for every override that sets drill (drill may be null: none in that mode).
+ */
+export function modeDrills(node) {
+  const modes = isObj(node?.data) && isObj(node.data.modes) ? node.data.modes : null;
+  if (!modes) return [];
+  return Object.entries(modes)
+    .filter(([, o]) => isObj(o) && Object.hasOwn(o, 'drill'))
+    .map(([mode, o]) => ({ mode, drill: o.drill }));
+}
+
+/** Every level a node opens, in any mode (data.drill and each mode override). */
+export function drillTargets(node) {
+  const all = [drillOf(node), ...modeDrills(node).map((m) => (typeof m.drill === 'string' && m.drill ? m.drill : null))];
+  return [...new Set(all.filter(Boolean))];
+}
+
+/**
  * Every detail diagram, flattened: { map: id -> payload, refs: id -> ref entry
  * (unresolved), issues: [{ code, id, message }] }. The first definition of an id wins.
  */
@@ -59,12 +78,12 @@ export function collectDiagrams(payload) {
   return { map, refs, issues };
 }
 
-/** Diagram ids each level drills into ('' is the overview). */
+/** Diagram ids each level drills into, in any mode ('' is the overview). */
 export function drillEdges(payload, map = collectDiagrams(payload).map) {
   const out = new Map();
   for (const [id, p] of [['', payload], ...map]) {
     const nodes = Array.isArray(p?.nodes) ? p.nodes : [];
-    out.set(id, [...new Set(nodes.map(drillOf).filter(Boolean))]);
+    out.set(id, [...new Set(nodes.flatMap(drillTargets))]);
   }
   return out;
 }

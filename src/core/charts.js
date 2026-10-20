@@ -218,12 +218,21 @@ function srTable(caption, head, rows) {
     .join('')}</tbody></table>`;
 }
 
+// data-i links a legend item to its series (data-s) or slice (data-i) for enhanceCharts()
 const legendHtml = (series, line) =>
   series.length > 1
-    ? `<ul class="p-legend" aria-hidden="true">${series.map((s) => `<li data-hue="${s.hue}"><i${line ? ' class="is-line"' : ''}></i>${h(s.name)}</li>`).join('')}</ul>`
+    ? `<ul class="p-legend" aria-hidden="true">${series.map((s, k) => `<li data-hue="${s.hue}" data-i="${k}"><i${line ? ' class="is-line"' : ''}></i>${h(s.name)}</li>`).join('')}</ul>`
     : '';
 
-const figure = (kind, inner, caption) => `<figure class="p-chart p-chart--${kind}">${inner}${caption ? `<figcaption>${caption}</figcaption>` : ''}</figure>`;
+const figure = (kind, inner, caption, attrs = '') => `<figure class="p-chart p-chart--${kind}"${attrs}>${inner}${caption ? `<figcaption>${caption}</figcaption>` : ''}</figure>`;
+
+/**
+ * Drawing width: the measured container width when the caller knows it
+ * (`opts.width`, e.g. an inspector panel), so the chart fits without scrolling;
+ * else the design width for full or half-width blocks.
+ */
+const widthFor = (opts, full, half) =>
+  isNum(opts.width) && opts.width > 0 ? Math.max(240, Math.min(full, Math.floor(opts.width))) : opts.half ? half : full;
 const empty = () => `<p class="p-muted">${h(S.noData)}</p>`;
 
 // --- chart model -------------------------------------------------------------
@@ -254,19 +263,23 @@ export const isSimpleBars = (b) => (b.kind === undefined || b.kind === 'bar') &&
 /**
  * A chart block as a figure: inline SVG, a legend for several series and a
  * visually hidden data table. `opts.half` draws a narrower chart for half-width
- * blocks; `opts.caption` is ready HTML for the figcaption.
+ * blocks, `opts.width` (px) fits it to a measured container; `opts.caption` is
+ * ready HTML for the figcaption.
  */
 export function renderChart(b, opts = {}) {
   const kind = CHART_KINDS.includes(b.kind) ? b.kind : 'bar';
   const model = chartSeries(b);
   if (!model.cats.length || !model.series.length) return empty();
   if (kind === 'pie' || kind === 'donut') return pieChart(b, model, kind, opts);
-  const W = opts.half ? 440 : 760;
+  const W = widthFor(opts, 760, 440);
   const svg = kind === 'line' || kind === 'area' ? lineChart(b, model, kind, W) : bandChart(b, model, kind, W);
   const many = model.series.length > 1;
   const table = srTable(label(kind, b), ['', ...model.series.map((s) => s.name)], model.cats.map((c, j) => [c, ...model.series.map((s) => (s.values[j] === null ? '' : fmtValue(s.values[j], b)))]));
   return figure(kind, `${many ? legendHtml(model.series, kind === 'line') : ''}<div class="p-scroll">${svg}</div>${table}`, opts.caption);
 }
+
+/** Tag a series mark with its series index (legend toggles hide data-s marks). */
+const ofSeries = (k, mark) => mark.replace(/^<(\w+) /, (_, tag) => `<${tag} data-s="${k}" `);
 
 /** Column (vertical) or bar (horizontal) chart: grouped, or stacked with `stacked: true`. */
 function bandChart(b, { cats, series }, kind, W) {
@@ -324,9 +337,9 @@ function bandChart(b, { cats, series }, kind, W) {
         if (v === null) return;
         if (stacked) {
           const i = v >= 0 ? 0 : 1;
-          out.push(bar(base, gw, acc[i], acc[i] + v, hueAt(se, j), tip(j, se, v)));
+          out.push(ofSeries(k, bar(base, gw, acc[i], acc[i] + v, hueAt(se, j), tip(j, se, v))));
           acc[i] += v;
-        } else out.push(bar(base + k * bw + (single ? 0 : 0.75), bw - (single ? 0 : 1.5), 0, v, hueAt(se, j), tip(j, se, v)));
+        } else out.push(ofSeries(k, bar(base + k * bw + (single ? 0 : 0.75), bw - (single ? 0 : 1.5), 0, v, hueAt(se, j), tip(j, se, v))));
         if (showValues) out.push(txt(base + gw / 2, v >= 0 ? vy(v) - 5 : vy(v) + 13, val(v), { anchor: 'middle', size: 10.5, cls: 'c-val' }));
       });
     }
@@ -360,9 +373,9 @@ function bandChart(b, { cats, series }, kind, W) {
       if (v === null) return;
       if (stacked) {
         const i = v >= 0 ? 0 : 1;
-        out.push(bar(base, gh, acc[i], acc[i] + v, hueAt(se, j), tip(j, se, v)));
+        out.push(ofSeries(k, bar(base, gh, acc[i], acc[i] + v, hueAt(se, j), tip(j, se, v))));
         acc[i] += v;
-      } else out.push(bar(base + k * 10 + (single ? 0 : 0.75), single ? gh : 8.5, 0, v, hueAt(se, j), tip(j, se, v)));
+      } else out.push(ofSeries(k, bar(base + k * 10 + (single ? 0 : 0.75), single ? gh : 8.5, 0, v, hueAt(se, j), tip(j, se, v))));
       // Negative values are labelled just right of zero, so they never run into the category names
       if (showValues) out.push(txt(v >= 0 ? vx(v) + 5 : vx(0) + 5, top + bandH / 2 + 4, val(v), { size: 10.5, cls: 'c-val' }));
     });
@@ -450,7 +463,7 @@ function lineChart(b, { cats, series }, kind, W) {
     }
     if (marks || top.filter((v) => v !== null).length === 1)
       se.values.forEach((v, j) => v !== null && (g += MARKS[i % MARKS.length](px(j), vy(top[j]), ' class="c-mark"', `<title>${h(`${cats[j]}${series.length > 1 ? ` · ${se.name}` : ''}: ${fmtValue(v, b)}`)}</title>`)));
-    return `<g data-hue="${se.hue}">${g}</g>`;
+    return `<g data-hue="${se.hue}" data-s="${i}">${g}</g>`;
   });
   return `${svgOpen(W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}${paths.join('')}</svg>`;
 }
@@ -471,17 +484,17 @@ function pieChart(b, { cats, series }, kind, opts) {
   const at = (a, rad) => `${r1(c + rad * Math.cos(a))} ${r1(c + rad * Math.sin(a))}`;
   const out = [];
   let a = -Math.PI / 2;
-  for (const d of items) {
+  for (const [i, d] of items.entries()) {
     const frac = d.value / total;
     const b2 = a + frac * 2 * Math.PI;
     const big = frac > 0.5 ? 1 : 0;
     const title = `<title>${h(`${d.label}: ${fmtValue(d.value, b)} (${pct(d.value)})`)}</title>`;
     if (frac > 0.9999)
       out.push(donut
-        ? `<circle data-hue="${d.hue}" class="c-ring" cx="${c}" cy="${c}" r="${(r + ir) / 2}" stroke-width="${r - ir}">${title}</circle>`
-        : `<circle data-hue="${d.hue}" fill="currentColor" cx="${c}" cy="${c}" r="${r}">${title}</circle>`);
+        ? `<circle data-hue="${d.hue}" data-i="${i}" class="c-ring" cx="${c}" cy="${c}" r="${(r + ir) / 2}" stroke-width="${r - ir}">${title}</circle>`
+        : `<circle data-hue="${d.hue}" data-i="${i}" fill="currentColor" cx="${c}" cy="${c}" r="${r}">${title}</circle>`);
     else
-      out.push(`<path data-hue="${d.hue}" fill="currentColor" class="c-slice" d="M${at(a, r)}A${r} ${r} 0 ${big} 1 ${at(b2, r)}${
+      out.push(`<path data-hue="${d.hue}" data-i="${i}" fill="currentColor" class="c-slice" d="M${at(a, r)}A${r} ${r} 0 ${big} 1 ${at(b2, r)}${
         donut ? `L${at(b2, ir)}A${ir} ${ir} 0 ${big} 0 ${at(a, ir)}` : `L${c} ${c}`
       }Z">${title}</path>`);
     if (frac >= (donut ? 0.08 : 0.06)) {
@@ -494,9 +507,11 @@ function pieChart(b, { cats, series }, kind, opts) {
   if (donut) out.push(txt(c, c + 4, fmtValue(total, b, { compact: total >= 1e5 }), { anchor: 'middle', size: 24, cls: 'c-total' }), txt(c, c + 24, S.total, { anchor: 'middle', size: 11.5 }));
   const svg = `${svgOpen(240, 240, label(kind, b), 0)}${out.join('')}</svg>`;
   const legend = `<ul class="p-legend p-legend--pie">${items
-    .map((d) => `<li data-hue="${d.hue}"><i></i><span>${h(d.label)}</span><b>${h(fmtValue(d.value, b))}</b><em>${h(pct(d.value))}</em></li>`)
+    .map((d, i) => `<li data-hue="${d.hue}" data-i="${i}" data-v="${d.value}"><i></i><span>${h(d.label)}</span><b>${h(fmtValue(d.value, b))}</b><em>${h(pct(d.value))}</em></li>`)
     .join('')}${donut ? '' : `<li class="is-total"><i></i><span>${h(S.total)}</span><b>${h(fmtValue(total, b))}</b><em>100%</em></li>`}</ul>`;
-  return figure(kind, `<div class="p-pie">${svg}${legend}</div>`, opts.caption);
+  // Number format for totals recomputed in the browser when slices are toggled
+  const fmt = h(JSON.stringify({ p: b.prefix ?? '', u: b.unit ?? '', l: NUM_LANG }));
+  return figure(kind, `<div class="p-pie">${svg}${legend}</div>`, opts.caption, ` data-fmt="${fmt}"`);
 }
 
 /** Metric sparkline: a small trend line under the value (no axes). */
@@ -533,8 +548,25 @@ export function resolveGantt(b) {
     const starts = items.map((it) => parseDay(it.start ?? it.date)).filter((d) => d !== null);
     origin = first ?? (starts.length ? Math.min(...starts) : 0);
   }
+  // Working days: `workdays: true` skips Saturdays, Sundays and `holidays` in every count of days
+  const holidays = new Set();
+  if (b.holidays !== undefined) {
+    if (!Array.isArray(b.holidays)) bad('page/gantt-date', 'holidays must be a list of dates (YYYY-MM-DD or DD/MM/YYYY).');
+    else
+      b.holidays.forEach((v, k) => {
+        const d = parseDay(v);
+        if (d === null) bad('page/gantt-date', `holidays[${k}] "${v}" is not a date; use YYYY-MM-DD or DD/MM/YYYY.`);
+        else holidays.add(d);
+      });
+    if (b.workdays !== true) bad('page/gantt-date', 'holidays only count with workdays: true.', 'warning');
+  }
+  if (b.workdays !== undefined && typeof b.workdays !== 'boolean') bad('page/gantt-date', 'workdays must be true or false.');
+  if (b.workdays === true && !dated) bad('page/gantt-date', 'workdays needs dates to know the weekends: give the plan a start date (YYYY-MM-DD or DD/MM/YYYY).', 'warning');
+  const work = b.workdays === true && dated;
+  const cal = workCalendar(work, holidays);
   const at = (v, i, field) => {
-    if (isNum(v)) return origin + v;
+    // With workdays, a number of days counts working days from the first working day
+    if (isNum(v)) return work ? cal.next(cal.add(cal.next(origin), v)) : origin + v;
     const d = parseDay(v);
     if (d === null) bad('page/gantt-date', `items[${i}] "${items[i].title}" ${field} "${v}" is not a date; use YYYY-MM-DD or DD/MM/YYYY, or a number of days.`);
     return d;
@@ -571,13 +603,17 @@ export function resolveGantt(b) {
     const given = it.start ?? it.date;
     let s = null;
     if (given !== undefined) s = at(given, i, it.start !== undefined ? 'start' : 'date');
-    else if (deps[i].length) s = Math.max(...deps[i].map((j) => solve(j)?.e ?? -Infinity));
-    else s = i > 0 ? solve(i - 1)?.e ?? origin : origin;
+    else {
+      if (deps[i].length) s = Math.max(...deps[i].map((j) => solve(j)?.e ?? -Infinity));
+      else s = i > 0 ? solve(i - 1)?.e ?? origin : origin;
+      // A task that follows another starts on the next working day (a milestone marks the moment it ends)
+      if (isNum(s) && !it.milestone) s = cal.next(s);
+    }
     if (!isNum(s)) s = null;
     let e = null;
     if (s !== null) {
       if (it.milestone) e = s;
-      else if (isNum(it.days)) e = s + it.days;
+      else if (isNum(it.days)) e = cal.add(s, it.days);
       else if (it.end !== undefined) {
         const last = at(it.end, i, 'end');
         e = last === null ? null : last + 1;
@@ -611,7 +647,39 @@ export function resolveGantt(b) {
     hue: it.tone ? toneHue(it.tone) : it.milestone ? null : groups.length ? hueOf(groups.indexOf(String(it.group ?? ''))) : 'blue'
   }));
   for (const t of tasks) if (t.group === null && groups.length && !t.item.tone && !t.item.milestone) t.hue = 'slate';
-  return { tasks, groups, mode: dated ? 'date' : 'day', origin, problems };
+  // Length in days as the plan counts them (working days with workdays)
+  for (const t of tasks) t.len = t.s === null ? null : cal.count(t.s, t.e);
+  return { tasks, groups, mode: dated ? 'date' : 'day', origin, problems, workdays: work, holidays, at: (v) => (isNum(v) ? (work ? cal.next(cal.add(cal.next(origin), v)) : origin + v) : parseDay(v)) };
+}
+
+/**
+ * Day arithmetic for a gantt: calendar days, or working days (no Saturdays,
+ * Sundays or holidays) when `work` is true. Days are day numbers; ranges are [s, e).
+ */
+function workCalendar(work, holidays) {
+  const isWork = (d) => {
+    const wd = dayParts(d).wd;
+    return wd !== 0 && wd !== 6 && !holidays.has(d);
+  };
+  // Bounded loops: a year of holidays cannot hang the renderer
+  const next = (d) => {
+    if (!work) return d;
+    for (let k = 0; k < 3700 && !isWork(d); k++) d++;
+    return d;
+  };
+  const add = (s, n) => {
+    if (!work || !(n > 0)) return s + n;
+    let d = s;
+    for (let left = n, k = 0; left > 0 && k < 100000; k++, d++) if (isWork(d)) left--;
+    return d;
+  };
+  const count = (s, e) => {
+    if (!work || !(e > s)) return e - s;
+    let n = 0;
+    for (let d = s; d < e && d - s < 100000; d++) if (isWork(d)) n++;
+    return n;
+  };
+  return { isWork, next, add, count };
 }
 
 /** Rows in display order: tasks under their group headings (groups in order of first use). */
@@ -668,26 +736,26 @@ export function renderGantt(b, opts = {}) {
   const g = resolveGantt(b);
   const placed = g.tasks.filter((t) => t.s !== null);
   if (!placed.length) return empty();
-  const W = opts.half ? 460 : 760;
+  const W = widthFor(opts, 760, 460);
   let lo = Math.min(...placed.map((t) => t.s));
   let hi = Math.max(...placed.map((t) => Math.max(t.e, t.s + (t.item.milestone ? 1 : 0))));
   if (hi <= lo) hi = lo + 1;
-  const todayDay = typeof b.today === 'string' ? parseDay(b.today) : isNum(b.today) ? g.origin + b.today : null;
+  const todayDay = typeof b.today === 'string' || isNum(b.today) ? g.at(b.today) : null;
   const showToday = todayDay !== null && todayDay >= lo && todayDay <= hi;
   const rows = ganttRows(g);
   const indent = g.groups.length ? 14 : 0;
-  const lw = Math.min(Math.max(110, Math.max(...g.tasks.map((t) => textW(t.item.title, 12.5) + indent), ...g.groups.map((x) => textW(x, 12))) + 18), W * 0.34);
+  const lw = Math.min(Math.max(110, Math.max(...g.tasks.map((t) => textW(t.item.title, 12.5) + indent), ...g.groups.map((x) => textW(x, 12))) + 18), W * (W < 420 ? 0.42 : 0.34));
   const [x0, x1, top, rowH] = [Math.ceil(lw), W - 18, 30, 26];
   const H = top + rows.length * rowH + (showToday ? 22 : 8);
   const ppd = (x1 - x0) / (hi - lo);
   const dx = (d) => x0 + (d - lo) * ppd;
   const out = [];
 
-  // Weekends shaded when days are wide enough to see
+  // Weekends (and, with workdays, holidays) shaded when days are wide enough to see
   if (g.mode === 'date' && ppd >= 9)
     for (let d = lo; d < hi; d++) {
       const wd = dayParts(d).wd;
-      if (wd === 6 || wd === 0) out.push(`<rect class="c-weekend" x="${r1(dx(d))}" y="${top - 4}" width="${r1(ppd)}" height="${rows.length * rowH + 4}"/>`);
+      if (wd === 6 || wd === 0 || (g.workdays && g.holidays.has(d))) out.push(`<rect class="c-weekend" x="${r1(dx(d))}" y="${top - 4}" width="${r1(ppd)}" height="${rows.length * rowH + 4}"/>`);
     }
   for (const tk of dayTicks(g, lo, hi, ppd)) out.push(`<line class="c-grid" x1="${r1(dx(tk.at))}" x2="${r1(dx(tk.at))}" y1="${top - 8}" y2="${top + rows.length * rowH}"/>`, txt(dx(tk.at) + 3, top - 12, tk.text, { size: 10.5 }));
   out.push(`<line class="c-zero" x1="${x0}" x2="${x1}" y1="${top - 4}" y2="${top - 4}"/>`);
@@ -698,7 +766,7 @@ export function renderGantt(b, opts = {}) {
   const tipFor = (t) => {
     const it = t.item;
     if (it.milestone) return `${it.title}: ${dayLabel(g, t.s)}`;
-    return `${it.title}: ${dayLabel(g, t.s)} – ${dayLabel(g, t.e - 1)} (${S.days(t.e - t.s)})${isNum(it.progress) ? `, ${Math.round(it.progress)}%` : ''}`;
+    return `${it.title}: ${dayLabel(g, t.s)} – ${dayLabel(g, t.e - 1)} (${S.days(t.len)})${isNum(it.progress) ? `, ${Math.round(it.progress)}%` : ''}`;
   };
   const edge = (t, side) => (t.item.milestone ? dx(t.s) + (side === 'end' ? 7 : -7) : dx(side === 'end' ? t.e : t.s));
 
@@ -798,7 +866,7 @@ export function renderMatrix(b, opts = {}) {
   const ax = axisOf(b.x, grid);
   const ay = axisOf(b.y, grid);
   const items = list(b.items).filter((it) => it && isNum(it.x) && isNum(it.y));
-  const W = opts.half ? 440 : 680;
+  const W = widthFor(opts, 680, 440);
   const yTick = grid > 2 ? Math.max(...(ay.labels || []).map((s) => textW(s, 11)), 10) : 0;
   const ml = 30 + Math.min(Math.ceil(yTick), 110) + (grid > 2 ? 8 : 0);
   const [mt, mr, mb] = [8, 10, grid > 2 ? 44 : 40];
@@ -898,6 +966,133 @@ export function renderMatrix(b, opts = {}) {
   const table = srTable(title, head, items.map((it) => [String(it.label ?? ''), String(it.x), String(it.y)]));
   const svg = `${svgOpen(x1 + mr, H, title, Math.round((x1 + mr) * 0.7), 1.1)}${out.join('')}</svg>`;
   return figure('matrix', `<div class="p-scroll">${svg}</div>${table}`, opts.caption);
+}
+
+// --- legend toggles (browser) -------------------------------------------------
+
+/**
+ * Progressive enhancement, run in the browser only (pages inline its source;
+ * the viewer calls it on inspector panels): legend items become toggle buttons.
+ * A series legend hides that series' marks (data-s); a pie or donut legend
+ * takes the slice out and redraws the rest, their percentages and the total.
+ * Self-contained (no module references) because pages embed it as text. Without
+ * JavaScript the static chart is unchanged.
+ */
+export function enhanceCharts(root) {
+  var NS = 'http://www.w3.org/2000/svg';
+  var figs = (root || document).querySelectorAll('figure.p-chart');
+  for (var n = 0; n < figs.length; n++) setup(figs[n]);
+
+  function setup(fig) {
+    var legend = fig.querySelector('.p-legend');
+    if (!legend || fig.getAttribute('data-live')) return;
+    var items = [].slice.call(legend.querySelectorAll('li[data-i]'));
+    if (items.length < 2) return;
+    var pie = legend.classList.contains('p-legend--pie');
+    var off = {};
+    fig.setAttribute('data-live', '1');
+    legend.removeAttribute('aria-hidden');
+    legend.classList.add('is-live');
+    items.forEach(function (li) {
+      var i = li.getAttribute('data-i');
+      li.setAttribute('role', 'button');
+      li.setAttribute('tabindex', '0');
+      li.setAttribute('aria-pressed', 'true');
+      var toggle = function () {
+        var shown = items.filter(function (x) { return !off[x.getAttribute('data-i')]; }).length;
+        if (!off[i] && shown < 2) return; // one series or slice always stays
+        off[i] = !off[i];
+        li.classList.toggle('is-off', off[i]);
+        li.setAttribute('aria-pressed', String(!off[i]));
+        if (pie) drawPie(fig, items, off);
+        else [].forEach.call(fig.querySelectorAll('.p-chart-svg [data-s="' + i + '"]'), function (el) { el.style.display = off[i] ? 'none' : ''; });
+      };
+      li.addEventListener('click', toggle);
+      li.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    });
+  }
+
+  function fmt(fig, v, compact) {
+    var f = {};
+    try { f = JSON.parse(fig.getAttribute('data-fmt') || '{}'); } catch (e) { f = {}; }
+    var a = Math.abs(v), s;
+    if (compact && a >= 1e3) {
+      var d = a >= 1e9 ? [1e9, 'B'] : a >= 1e6 ? [1e6, 'M'] : [1e3, 'k'];
+      s = +(a / d[0]).toFixed(2) + d[1];
+    } else s = a.toLocaleString(f.l || 'en-GB', { maximumFractionDigits: 2 });
+    return (f.p || '') + s + (f.u || '');
+  }
+
+  function drawPie(fig, items, off) {
+    var svg = fig.querySelector('.p-chart-svg');
+    var donut = fig.classList.contains('p-chart--donut');
+    var c = 120, r = 112, ir = donut ? 72 : 0;
+    var r1 = function (v) { return Math.round(v * 10) / 10; };
+    var at = function (a, rad) { return r1(c + rad * Math.cos(a)) + ' ' + r1(c + rad * Math.sin(a)); };
+    var old = svg.querySelectorAll('[data-i], text.c-pct');
+    [].forEach.call(old, function (el) { el.parentNode.removeChild(el); });
+    var on = items.filter(function (li) { return !off[li.getAttribute('data-i')]; });
+    var total = on.reduce(function (t, li) { return t + Number(li.getAttribute('data-v')); }, 0);
+    var pct = function (v) {
+      var p = (v / total) * 100;
+      return p > 0 && p < 1 ? '<1%' : +p.toFixed(p < 10 ? 1 : 0) + '%';
+    };
+    var before = svg.querySelector('text.c-total');
+    var add = function (el) { svg.insertBefore(el, before); };
+    var a = -Math.PI / 2;
+    on.forEach(function (li) {
+      var v = Number(li.getAttribute('data-v'));
+      var frac = v / total, b2 = a + frac * 2 * Math.PI, big = frac > 0.5 ? 1 : 0;
+      var el;
+      if (frac > 0.9999) {
+        el = document.createElementNS(NS, 'circle');
+        el.setAttribute('cx', c);
+        el.setAttribute('cy', c);
+        if (donut) {
+          el.setAttribute('class', 'c-ring');
+          el.setAttribute('r', (r + ir) / 2);
+          el.setAttribute('stroke-width', r - ir);
+        } else {
+          el.setAttribute('fill', 'currentColor');
+          el.setAttribute('r', r);
+        }
+      } else {
+        el = document.createElementNS(NS, 'path');
+        el.setAttribute('class', 'c-slice');
+        el.setAttribute('fill', 'currentColor');
+        el.setAttribute('d', 'M' + at(a, r) + 'A' + r + ' ' + r + ' 0 ' + big + ' 1 ' + at(b2, r) + (donut ? 'L' + at(b2, ir) + 'A' + ir + ' ' + ir + ' 0 ' + big + ' 0 ' + at(a, ir) : 'L' + c + ' ' + c) + 'Z');
+      }
+      el.setAttribute('data-hue', li.getAttribute('data-hue'));
+      el.setAttribute('data-i', li.getAttribute('data-i'));
+      var t = document.createElementNS(NS, 'title');
+      t.textContent = li.querySelector('span').textContent + ': ' + li.querySelector('b').textContent + ' (' + pct(v) + ')';
+      el.appendChild(t);
+      add(el);
+      li.querySelector('em').textContent = pct(v);
+      if (frac >= (donut ? 0.08 : 0.06)) {
+        var mid = (a + b2) / 2, rad = donut ? (r + ir) / 2 : r * 0.64;
+        var label = document.createElementNS(NS, 'text');
+        label.setAttribute('x', r1(c + rad * Math.cos(mid)));
+        label.setAttribute('y', r1(c + rad * Math.sin(mid) + 4));
+        label.setAttribute('font-size', donut ? 11 : 12);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('class', 'c-pct');
+        label.textContent = pct(v);
+        add(label);
+      }
+      a = b2;
+    });
+    items.forEach(function (li) { if (off[li.getAttribute('data-i')]) li.querySelector('em').textContent = ''; });
+    var sum = fig.querySelector('text.c-total');
+    if (sum) sum.textContent = fmt(fig, total, total >= 1e5);
+    var row = fig.querySelector('.p-legend--pie .is-total b');
+    if (row) row.textContent = fmt(fig, total, false);
+  }
 }
 
 // --- markdown ----------------------------------------------------------------
@@ -1068,6 +1263,11 @@ export const CHART_CSS = `
 .p-legend li{display:flex;align-items:center;gap:7px;margin:0;color:var(--y-ink-2)}
 .p-legend i{flex:none;width:11px;height:11px;border-radius:3px;background:var(--y-hue)}
 .p-legend i.is-line{width:16px;height:3px;border-radius:2px}
+.p-legend.is-live li{cursor:pointer;border-radius:4px;user-select:none}
+.p-legend.is-live li:hover span,.p-legend.is-live:not(.p-legend--pie) li:hover{text-decoration:underline}
+.p-legend.is-live li:focus-visible{outline:2px solid var(--y-accent);outline-offset:2px}
+.p-legend li.is-off{opacity:.45}
+.p-legend li.is-off i{background:none;box-shadow:inset 0 0 0 1.5px var(--y-hue)}
 .p-pie{display:flex;flex-wrap:wrap;align-items:center;gap:16px 32px}
 .p-pie .p-chart-svg{flex:none;width:210px;max-width:100%}
 .p-legend--pie{flex:1 1 240px;flex-direction:column;flex-wrap:nowrap;gap:2px;margin:0!important;font-size:14px}

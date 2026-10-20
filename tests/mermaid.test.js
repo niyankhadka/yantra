@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { startMcp, removeDir } from './support.js';
 import { fileURLToPath } from 'node:url';
 import { fromMermaid, mermaidBlocks, cleanLabel, hueOf, classMember } from '../src/core/mermaid.js';
 import { lint } from '../src/core/lint.js';
@@ -297,26 +298,18 @@ test('CLI import reads the first mermaid block of a .md file, or all with --all'
 test('MCP yantra_import_mermaid returns a validated payload or writes a file', async () => {
   // Writes outside the working directory need an explicit output root
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-mmd-'));
-  const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js')], { stdio: ['pipe', 'pipe', 'inherit'], env: { ...process.env, YANTRA_OUTPUT_ROOT: outDir } });
-  const replies = new Map();
-  let buf = '';
-  proc.stdout.on('data', (d) => {
-    buf += d;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const msg = JSON.parse(buf.slice(0, i));
-      buf = buf.slice(i + 1);
-      replies.set(msg.id, msg);
-    }
-  });
-  const send = (m) => proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...m })}\n`);
+  const s = startMcp({ env: { YANTRA_OUTPUT_ROOT: outDir } });
+  const send = s.send;
   const outputPath = path.join(outDir, 'out.json');
   send({ id: 1, method: 'tools/list' });
   send({ id: 2, method: 'tools/call', params: { name: 'yantra_import_mermaid', arguments: { mermaid: 'graph LR\n  A -->|x| B\n  style A fill:#fff', title: 'T' } } });
   send({ id: 3, method: 'tools/call', params: { name: 'yantra_import_mermaid', arguments: { mermaid: 'sequenceDiagram\n  A->>B: hi', outputPath } } });
-  const deadline = Date.now() + 10000;
-  while (replies.size < 3 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-  proc.kill();
+  let replies;
+  try {
+    replies = await s.waitFor(3);
+  } finally {
+    await s.close();
+  }
 
   assert.ok(replies.get(1).result.tools.some((t) => t.name === 'yantra_import_mermaid'));
   const r2 = JSON.parse(replies.get(2).result.content[0].text);
@@ -326,4 +319,5 @@ test('MCP yantra_import_mermaid returns a validated payload or writes a file', a
   const r3 = JSON.parse(replies.get(3).result.content[0].text);
   assert.equal(r3.outputPath, outputPath);
   assert.equal(JSON.parse(fs.readFileSync(outputPath, 'utf-8')).nodes.length, 2);
+  removeDir(outDir);
 });

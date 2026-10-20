@@ -4,7 +4,7 @@ import { pageToMarkdown } from './page.js';
 import { mdInline as md, mdBlock } from './text.js';
 import { isEntity, members, memberKey, memberName, memberType, VISIBILITY_NAMES } from './entity.js';
 import { hasNotation, notationText } from './notation.js';
-import { collectDiagrams, drillOf, levelOrder, safeUrl } from './drill.js';
+import { collectDiagrams, drillOf, modeDrills, levelOrder, safeUrl } from './drill.js';
 import { localeOf } from './i18n.js';
 
 const cell = (v) => md(v ?? '—').replace(/\|/g, '\\|') || '—';
@@ -61,7 +61,14 @@ function levelMarkdown(payload, root) {
     const role = model.roles[roleKey(n)]?.label || n.type;
     const name = href(d.url) ? `[**${cell(d.title || n.id)}**](${href(d.url)})` : `**${cell(d.title || n.id)}**`;
     const drill = drillOf(n);
-    const detail = drill && details.has(drill) ? ` (${cell(t('md.detail', { title: details.get(drill).meta?.title || drill }))})` : '';
+    const detailOf = (id) => t('md.detail', { title: details.get(id).meta?.title || id });
+    // Mode-specific detail levels (data.modes.<id>.drill) follow, named by their mode
+    const modeName = (id) => model.modes.find((m) => m.id === id)?.name || id;
+    const notes = [
+      ...(drill && details.has(drill) ? [detailOf(drill)] : []),
+      ...modeDrills(n).filter((m) => typeof m.drill === 'string' && m.drill !== drill && details.has(m.drill)).map((m) => `${modeName(m.mode)}: ${detailOf(m.drill)}`)
+    ];
+    const detail = notes.length ? ` (${cell(notes.join('; '))})` : '';
     out.push(`| ${name}${detail} | ${cell(role)} | ${cell(d.tech)} | ${cell(d.description || d.subtitle)} |`);
   }
 

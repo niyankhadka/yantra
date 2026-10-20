@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import { startMcp, removeDir } from './support.js';
 import { fileURLToPath } from 'node:url';
 import { inflateRaw } from '../src/core/inflate.js';
 import { fromDrawio, drawioPages, parseStyle, shapeType } from '../src/core/drawio.js';
@@ -449,31 +450,20 @@ test('CLI import: --from, --page and --all', () => {
 
 test('MCP yantra_import converts text or a file inside the input root', async () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-imp-'));
-  const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js')], {
-    stdio: ['pipe', 'pipe', 'inherit'],
-    env: { ...process.env, YANTRA_INPUT_ROOT: path.join(ROOT, 'examples'), YANTRA_OUTPUT_ROOT: outDir }
-  });
-  const replies = new Map();
-  let buf = '';
-  proc.stdout.on('data', (d) => {
-    buf += d;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const msg = JSON.parse(buf.slice(0, i));
-      buf = buf.slice(i + 1);
-      replies.set(msg.id, msg);
-    }
-  });
-  const send = (m) => proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...m })}\n`);
+  const s = startMcp({ env: { YANTRA_INPUT_ROOT: path.join(ROOT, 'examples'), YANTRA_OUTPUT_ROOT: outDir } });
+  const send = s.send;
   const call = (id, args) => send({ id, method: 'tools/call', params: { name: 'yantra_import', arguments: args } });
   send({ id: 1, method: 'tools/list' });
   call(2, { text: '@startuml\nA -> B : hi\n@enduml', title: 'T' });
   call(3, { filePath: 'drawio/order-platform.drawio', outputPath: path.join(outDir, 'o.json') });
   call(4, { filePath: path.join(ROOT, 'package.json') });
   call(5, { filePath: '../README.md' });
-  const deadline = Date.now() + 10000;
-  while (replies.size < 5 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-  proc.kill();
+  let replies;
+  try {
+    replies = await s.waitFor(5);
+  } finally {
+    await s.close();
+  }
 
   assert.ok(replies.get(1).result.tools.some((t) => t.name === 'yantra_import'));
   const r2 = JSON.parse(replies.get(2).result.content[0].text);
@@ -485,4 +475,5 @@ test('MCP yantra_import converts text or a file inside the input root', async ()
   assert.equal(JSON.parse(fs.readFileSync(r3.outputPath, 'utf-8')).meta.title, 'Order platform');
   assert.equal(replies.get(4).result.isError, true, 'extension not allowed');
   assert.match(replies.get(5).result.content[0].text, /must be inside/);
+  removeDir(outDir);
 });

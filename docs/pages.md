@@ -51,7 +51,7 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
 | Numbers that matter | `metrics` | `items: [{ label, value, note?, tone?, trend? }]` (`trend: [numbers]` adds a sparkline) |
 | A ranking or breakdown | `chart` | `data: [{ label, value, tone? }]`, `unit?`, `prefix?` (horizontal bars; see [Charts](#charts)) |
 | Change over time, a comparison across groups, parts of a whole | `chart` | `kind: column \| line \| area \| pie \| donut`, `categories` + `series` for several series |
-| A project plan or schedule | `gantt` | `items: [{ title, start?, end? \| days?, after?, group?, milestone?, progress? }]`, `today?` |
+| A project plan or schedule | `gantt` | `items: [{ title, start?, end? \| days?, after?, group?, milestone?, progress? }]`, `today?`, `workdays?`, `holidays?` |
 | Priorities (impact / effort) or a risk heat map | `matrix` | `items: [{ label, x, y }]`, `x`, `y`, `quadrants?` or `grid: 3-5` |
 | Options to choose between | `compare` | `options: [{ name, summary?, pros?, cons?, verdict?, recommended? }]` |
 | Structured facts across items | `table` | `columns: [...]`, `rows: [[...]]` (one cell per column) |
@@ -115,6 +115,10 @@ prints in colour and carries a visually hidden data table for screen readers.
   on line and area charts, and shown as written.
 - A plain `data` bar chart with no negative values keeps the original HTML bar list.
 - `span: "half"` draws a narrower chart; `caption` adds a note under any chart, gantt or matrix.
+  In inspector panels charts are drawn at the panel's width, so they fit without scrolling.
+- Clicking a legend item (or Enter / Space on it) hides that series, or takes a slice out of
+  a pie or donut and redraws the others with their new shares and total. Without JavaScript
+  (and in print) the chart is shown as written.
 
 **Gantt.** Each item is a task with a `title`; dates are `YYYY-MM-DD` or `DD/MM/YYYY`, and
 numbers are days from the block's `start` date (or day 0 when the plan has no dates). Give
@@ -129,6 +133,13 @@ it ends. `milestone: true` draws a diamond; `group` adds a heading row with a sp
   { "id": "pay", "title": "Payments", "group": "Build", "after": "api", "days": 14 },
   { "title": "Launch", "milestone": true, "after": "pay", "tone": "good" } ] }
 ```
+
+`workdays: true` counts **working days**: `days`, numeric `start`s and a numeric `today` skip
+Saturdays, Sundays and every date in `holidays` (`["2026-12-25", "28/12/2026"]`), a task that
+follows another (by `after` or by position) starts on the next working day, and weekends and
+holidays are shaded. Explicit dates and `end` are kept as written; a milestone marks the moment
+its `after` tasks end. It needs dates (a `start` date); tooltips count working days. See
+`examples/answer-launch-plan.json`.
 
 **Matrix.** `grid: 2` (default) is a 2x2: items are placed by `x` and `y` scores on
 `axis.min`..`axis.max` (default 0-10), `quadrants` names the four corners (top left, top
@@ -167,7 +178,7 @@ label string or `{ label, low?, high?, labels?, min?, max? }`.
 | `page/chart-negative` | Pie and donut values must be 0 or more (and not all 0); use a column chart for negatives. |
 | `page/chart-too-many-series`, `page/chart-too-many-points` (warnings) | Cut to the limits above: merge small items into "Other", or use a table. |
 | `page/chart-out-of-range` (warning) | A matrix item lies outside its axis range (it is drawn at the edge), or a gantt `progress` is outside 0-100. |
-| `page/gantt-date` | Use `YYYY-MM-DD` or `DD/MM/YYYY` (or a number of days), and give every task `days` or `end`. |
+| `page/gantt-date` | Use `YYYY-MM-DD` or `DD/MM/YYYY` (or a number of days), and give every task `days` or `end`. `holidays` are dates and need `workdays: true`; `workdays` needs a dated plan (warnings). |
 | `page/gantt-dependency` | `after` must name a task's `id` or title, ids must be unique, and dependencies cannot loop. |
 | `page/gantt-order` | A task ends before it starts (error), or starts before a task in its `after` ends (warning). |
 | `page/heavy-embed` (warning) | More than 2 `interactive` diagrams; make the rest static. |

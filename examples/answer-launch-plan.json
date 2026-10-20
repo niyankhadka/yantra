@@ -22,6 +22,7 @@
       "type": "gantt",
       "title": "Plan to launch",
       "today": "20/10/2026",
+      "workdays": true,
       "items": [
         {
           "id": "design",
@@ -43,7 +44,7 @@
           "title": "API endpoints",
           "group": "Build",
           "start": "05/10/2026",
-          "days": 25,
+          "days": 18,
           "progress": 60
         },
         {
@@ -51,7 +52,7 @@
           "title": "App screens",
           "group": "Build",
           "after": "signoff",
-          "days": 28,
+          "days": 20,
           "progress": 15
         },
         {
@@ -59,7 +60,7 @@
           "title": "Payments integration",
           "group": "Build",
           "after": "api",
-          "days": 14
+          "days": 10
         },
         {
           "id": "sec",
@@ -69,7 +70,7 @@
             "pay",
             "app"
           ],
-          "days": 5,
+          "days": 4,
           "tone": "warn"
         },
         {
@@ -84,7 +85,7 @@
           "title": "App store review",
           "group": "Release",
           "after": "sec",
-          "days": 7
+          "days": 5
         },
         {
           "id": "launch",
@@ -96,7 +97,7 @@
           "tone": "good"
         }
       ],
-      "caption": "Arrows show dependencies; the dashed line is today."
+      "caption": "Durations are working days. Arrows show dependencies; the dashed line is today."
     },
     {
       "type": "matrix",

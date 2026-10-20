@@ -2,11 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { hashParams, layoutStorageKey } from '../src/app/hash.js';
+import { startMcp, tempDir, removeDir } from './support.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -51,39 +50,20 @@ test('scroll arrows get their own gutters instead of covering the first chip', (
 });
 
 test('MCP resolves relative filePath against YANTRA_INPUT_ROOT, not the cwd', async () => {
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-mcp-'));
-  const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js')], {
-    cwd: out,
-    env: { ...process.env, YANTRA_INPUT_ROOT: path.join(ROOT, 'examples'), YANTRA_OUTPUT_ROOT: out },
-    stdio: ['pipe', 'pipe', 'inherit']
-  });
-  const replies = new Map();
-  let buf = '';
-  proc.stdout.on('data', (d) => {
-    buf += d;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const msg = JSON.parse(buf.slice(0, i));
-      buf = buf.slice(i + 1);
-      replies.set(msg.id, msg);
-    }
-  });
-  const call = (id, name, args) => proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } })}\n`);
-  call(1, 'yantra_validate', { filePath: 'answer-how-to-choose-database.json' });
-  call(2, 'yantra_export', { filePath: 'aws-serverless.json', format: 'svg', view: 'sequence', outputPath: 'aws.svg' });
-  call(3, 'yantra_validate', { filePath: '../package.json' });
-  const deadline = Date.now() + 15000;
-  while (replies.size < 3 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-  // Windows refuses to remove a folder that is still a live process's cwd
-  const exited = proc.exitCode === null ? new Promise((r) => proc.once('exit', r)) : null;
-  proc.kill();
-  await exited;
+  const out = tempDir('yantra-mcp-');
+  const s = startMcp({ cwd: out, env: { YANTRA_INPUT_ROOT: path.join(ROOT, 'examples'), YANTRA_OUTPUT_ROOT: out } });
   try {
+    s.call(1, 'yantra_validate', { filePath: 'answer-how-to-choose-database.json' });
+    s.call(2, 'yantra_export', { filePath: 'aws-serverless.json', format: 'svg', view: 'sequence', outputPath: 'aws.svg' });
+    s.call(3, 'yantra_validate', { filePath: '../package.json' });
+    const replies = await s.waitFor(3);
     const text = (id) => replies.get(id).result.content[0].text;
     assert.equal(JSON.parse(text(1)).valid, true, 'page and its diagram src resolve inside the input root');
     assert.ok(fs.readFileSync(path.join(out, 'aws.svg'), 'utf8').includes('<svg'), 'sequence export with groups is written to the output root');
     assert.equal(replies.get(3).result.isError, true, 'paths outside the input root are refused');
   } finally {
-    fs.rmSync(out, { recursive: true, force: true });
+    // Windows refuses to remove a folder that is still a live process's cwd
+    await s.close();
+    removeDir(out);
   }
 });

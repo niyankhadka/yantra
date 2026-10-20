@@ -26,7 +26,8 @@ const LEGEND = 44;
  *   header?: show title/description (default true),
  *   watermark?: text | false (default meta.watermark, else "Made with Yantra" in the page language),
  *   logo?: raw SVG string shown next to the watermark,
- *   locale?: localeOf() result (default: from meta.lang, meta.dir and meta.strings)
+ *   locale?: localeOf() result (default: from meta.lang, meta.dir and meta.strings),
+ *   idSuffix?: appended to every id (and reference) so several SVGs can share one document
  * }
  * The root carries xml:lang and direction. Right-to-left documents mirror the
  * chrome and the text inside cards (title, legend, badge, card lines, group
@@ -34,6 +35,29 @@ const LEGEND = 44;
  */
 export function renderSvg(scene, options = {}) {
   if (scene.kind === 'sequence') return renderSequenceSvg(scene, options);
+  return scoped(flowSvg(scene, options), options.idSuffix);
+}
+
+/**
+ * Every id in an SVG document made unique with a suffix, with the references
+ * to it (url(#..), href="#..", aria-labelledby) rewritten. Used when several
+ * SVGs share one HTML document (answer pages draw each diagram twice: a light
+ * and a dark copy), so no copy ever points at another copy's markers.
+ */
+export function scopeSvgIds(svg, suffix) {
+  const ids = new Set([...svg.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  if (!ids.size) return svg;
+  const to = (id) => (ids.has(id) ? `${id}-${suffix}` : id);
+  return svg
+    .replace(/(\sid=")([^"]+)"/g, (_, a, id) => `${a}${to(id)}"`)
+    .replace(/url\(#([^)\s]+)\)/g, (_, id) => `url(#${to(id)})`)
+    .replace(/(\s(?:xlink:)?href=")#([^"]+)"/g, (_, a, id) => `${a}#${to(id)}"`)
+    .replace(/(\saria-(?:labelledby|describedby)=")([^"]+)"/g, (_, a, list) => `${a}${list.split(/\s+/).map(to).join(' ')}"`);
+}
+
+const scoped = (svg, suffix) => (suffix ? scopeSvgIds(svg, String(suffix)) : svg);
+
+function flowSvg(scene, options) {
   const { theme = 'light', header = true, watermark, logo = null } = options;
   const highlight = folded(options.highlight || null, scene.collapse);
   const t = TOKENS[theme] || TOKENS.light;
@@ -197,7 +221,11 @@ const arrowMarker = (id, fill) => `<marker id="${id}" viewBox="0 0 10 10" refX="
  * Sequence view (computeSequenceScene): headers, lifelines, numbered step rows
  * and messages. `step` (0-based) highlights that row and dims the others.
  */
-export function renderSequenceSvg(scene, { theme = 'light', step = null, header = true, watermark, logo = null, locale = null } = {}) {
+export function renderSequenceSvg(scene, options = {}) {
+  return scoped(sequenceSvg(scene, options), options.idSuffix);
+}
+
+function sequenceSvg(scene, { theme = 'light', step = null, header = true, watermark, logo = null, locale = null } = {}) {
   const t = TOKENS[theme] || TOKENS.light;
   const L = locale || localeOf(scene.model.meta);
   const rtl = L.dir === 'rtl';

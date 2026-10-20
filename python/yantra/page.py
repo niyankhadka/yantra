@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 
@@ -15,7 +16,60 @@ from . import blocks as B
 from ._cli import YantraError, build_payload, validate_payload
 from .i18n import language_meta
 
-__all__ = ["Page"]
+__all__ = ["Page", "resolve_levels"]
+
+_UNSAFE_REF = re.compile(r"^([a-zA-Z][\w+.-]*:|[\\/])")
+
+
+def _inside(root: Path, file: Path) -> bool:
+    """True when `file` is inside `root`, by its path and once symlinks are resolved."""
+    try:
+        Path(os.path.abspath(file)).relative_to(os.path.abspath(root))
+        file.resolve().relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def resolve_levels(payload: Any, base_dir: Union[str, Path], root: Union[str, Path, None] = None) -> Any:
+    """Inline drill-down file references, as the Node builder does (``resolveLevels`` in
+    lib/build.js): every ``{"$ref": "./x.json"}`` in a ``diagrams`` map, at any depth and in
+    loaded files too, becomes that file's payload. A ref is relative to the file that contains
+    it and must be a relative .json path that stays inside `root` (default `base_dir`; symlinks
+    resolved). One that cannot be loaded stays with ``"$error"`` ("unsafe", "missing" or
+    "cycle"), which the validator reports. The input is not modified."""
+    base = Path(base_dir)
+    top = Path(root) if root is not None else base
+
+    def visit(owner: Any, folder: Path, chain: List[Path]) -> Any:
+        if not isinstance(owner, dict) or not isinstance(owner.get("diagrams"), dict):
+            return owner
+        table: Dict[str, Any] = {}
+        for key, sub in owner["diagrams"].items():
+            if not (isinstance(sub, dict) and isinstance(sub.get("$ref"), str)):
+                table[key] = visit(sub, folder, chain)
+                continue
+            ref = sub["$ref"]
+            file = folder / ref
+            if _UNSAFE_REF.match(ref) or not ref.lower().endswith(".json") or not _inside(top, file):
+                table[key] = {"$ref": ref, "$error": "unsafe"}
+                continue
+            if not file.is_file():
+                table[key] = {"$ref": ref, "$error": "missing"}
+                continue
+            real = file.resolve()
+            if real in chain:
+                table[key] = {"$ref": ref, "$error": "cycle"}
+                continue
+            try:
+                loaded = json.loads(file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                table[key] = {"$ref": ref, "$error": "missing"}
+                continue
+            table[key] = visit(loaded, file.parent, chain + [real])
+        return {**owner, "diagrams": table}
+
+    return visit(payload, base, [])
 
 
 class Page:
@@ -109,9 +163,10 @@ class Page:
         return self.add(B.chart(data, unit, title, span, **kw))
 
     def gantt(self, items: Iterable[Any], start: Optional[str] = None, today: Optional[Union[str, int]] = None,
-              title: Optional[str] = None, span: Optional[str] = None, caption: Optional[str] = None) -> "Page":
-        """A project plan; see :func:`yantra.blocks.gantt`."""
-        return self.add(B.gantt(items, start, today, title, span, caption=caption))
+              title: Optional[str] = None, span: Optional[str] = None, caption: Optional[str] = None,
+              workdays: Optional[bool] = None, holidays: Optional[Iterable[str]] = None) -> "Page":
+        """A project plan; see :func:`yantra.blocks.gantt` (``workdays=True`` skips weekends and ``holidays``)."""
+        return self.add(B.gantt(items, start, today, title, span, caption=caption, workdays=workdays, holidays=holidays))
 
     def matrix(self, items: Iterable[Any], x: Any = None, y: Any = None, quadrants: Optional[Sequence[Any]] = None,
                grid: Optional[int] = None, title: Optional[str] = None, span: Optional[str] = None,
@@ -171,6 +226,9 @@ class Page:
         The CLI validates and builds a temp copy, and only loads ``src`` paths inside the
         page's own folder, so referenced diagrams are read here (relative to ``base_dir``)
         and embedded. Missing files are left as ``src`` so validation reports them.
+        Drill-down ``{"$ref": "x.json"}`` levels inside those diagrams (and inside inline
+        diagram dicts) are loaded too, relative to the file that contains them and only
+        inside ``base_dir`` (see :func:`resolve_levels`).
         """
         payload = self.to_dict()
         base = Path(self.base_dir or os.getcwd())
@@ -180,7 +238,13 @@ class Page:
                 path = Path(b["src"]) if Path(b["src"]).is_absolute() else base / b["src"]
                 if path.is_file():
                     b = {k: v for k, v in b.items() if k != "src"}
-                    b["diagram"] = json.loads(path.read_text(encoding="utf-8"))
+                    diagram = json.loads(path.read_text(encoding="utf-8"))
+                    # Levels stay inside base_dir; a src outside it (an absolute path) is its own root
+                    root = base if _inside(base, path) else path.parent
+                    b["diagram"] = resolve_levels(diagram, path.parent, root)
+            elif b.get("type") == "diagram" and isinstance(b.get("diagram"), dict):
+                b = dict(b)
+                b["diagram"] = resolve_levels(b["diagram"], base, base)
             resolved.append(b)
         if resolved:
             payload["blocks"] = resolved

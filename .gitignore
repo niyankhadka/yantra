@@ -156,3 +156,6 @@ __pycache__/
 .claude/worktrees/
 
 *.egg-info/
+
+# Viewer build lock (lib/build.js)
+.yantra-build.lock/

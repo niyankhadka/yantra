@@ -1,4 +1,50 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'vite';
+import { resolveLevels, sourceHash, ROOT } from './lib/build.js';
+
+/**
+ * Drill-down `{ "$ref": "./levels/x.json" }` entries in imported .json payloads
+ * (the gallery examples) are inlined at import time, as the CLI does. A ref is
+ * relative to the file that contains it and must stay inside the project
+ * (lib/build.js resolveLevels: no absolute paths, no `..` out, symlinks
+ * resolved); one that cannot be loaded stays a `$ref` with `$error`, which the
+ * validator reports. Referenced files are watched, so editing a level reloads.
+ */
+function drillRefs() {
+  return {
+    name: 'yantra-drill-refs',
+    enforce: 'pre',
+    transform(code, id) {
+      const file = id.split('?')[0];
+      if (!file.endsWith('.json') || !code.includes('"$ref"')) return null;
+      let payload;
+      try {
+        payload = JSON.parse(code);
+      } catch {
+        return null;
+      }
+      if (!payload || typeof payload !== 'object' || payload.diagrams === undefined) return null;
+      const resolved = resolveLevels(payload, path.dirname(file), { root: ROOT, onLoad: (f) => this.addWatchFile(f) });
+      return { code: JSON.stringify(resolved), map: null };
+    }
+  };
+}
+
+/** After `vite build`, record which sources dist/ was built from (lib/build.js reuses a fresh build). */
+function buildStamp() {
+  let outDir = path.join(ROOT, 'dist');
+  return {
+    name: 'yantra-build-stamp',
+    apply: 'build',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      if (path.resolve(outDir) === path.join(ROOT, 'dist')) fs.writeFileSync(path.join(outDir, '.yantra-sources'), `${sourceHash()}\n`);
+    }
+  };
+}
 
 /**
  * The viewer bundle carries only the English interface strings: in `vite build`,
@@ -21,7 +67,7 @@ const englishOnly = {
 };
 
 export default defineConfig({
-  plugins: [englishOnly],
+  plugins: [drillRefs(), buildStamp(), englishOnly],
   server: {
     port: 3000,
     open: true

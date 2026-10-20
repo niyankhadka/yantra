@@ -31,7 +31,7 @@ For "explain how X works", make the diagram first, then the page around it
    nodes → an overview plus detail diagrams: give the subsystem card `data.drill: "<id>"`
    and put the detail diagram (its own nodes, edges, steps) under `diagrams.<id>`, or
    `{ "$ref": "./detail.json" }` for a file next to it. At most 3 levels; see Drill-down in
-   `docs/authoring.md`.
+   `docs/authoring.md`. A card can open another level per mode: `data.modes.<id>.drill`.
 2. **Write the payload** (`meta`, `roles`, `nodes`, `edges`, `scenarios`) in one pass.
    - Do **not** write `x`/`y`. Point edges along the main flow; layout and routing are automatic.
    - Group node `type`s into 3-5 `roles` with one colour each; specific label in `data.badge`.
@@ -65,6 +65,8 @@ For "explain how X works", make the diagram first, then the page around it
      `targetLabel` add multiplicities (`"1"`, `"0..*"`) beside the ends.
    - State machines: `shape: "fork"` is a fork / join bar; concurrent regions are child groups
      with `"kind": "region"` under the composite state's group.
+     A diagram of only table / class cards has no sequence view; `meta.views: ["flow"]` hides
+     the Flow / Sequence toggle on any other diagram whose steps are not messages.
    - Runbooks, dashboards, specs: `url` on a node (`data.url`), edge or step (http, https or
      mailto only); the inspector opens them in a new tab.
 
@@ -78,7 +80,8 @@ For "explain how X works", make the diagram first, then the page around it
    Numbers: `chart` with `kind` bar (default), column, line, area (trends; dates allowed),
    pie or donut (parts of a whole, ≤ 8 slices); several series via `categories` + `series`
    (≤ 6, `stacked: true` to stack); `trend: [..]` on a metric adds a sparkline. Plans:
-   `gantt` (tasks with `start`/`days`/`after`, `milestone`, `group`, `today`). Priorities
+   `gantt` (tasks with `start`/`days`/`after`, `milestone`, `group`, `today`; `workdays: true`
+   counts working days, `holidays: [dates]`). Priorities
    and risks: `matrix` (2x2 with `quadrants`, or `grid: 5` heat map).
 3. Diagrams are static figures; `interactive: true` embeds the live viewer - at most 2 per page.
 4. Do not state uncertain facts as certain: flag them in a `callout`, cite `sources`.

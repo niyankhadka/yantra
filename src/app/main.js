@@ -9,6 +9,7 @@ import { renderSvg } from '../core/svg.js';
 import { toMarkdown } from '../core/markdown.js';
 import { escapeHtml as h } from '../core/text.js';
 import { renderBlock, BLOCK_CSS } from '../core/page.js';
+import { enhanceCharts } from '../core/charts.js';
 import { safeUrl } from '../core/drill.js';
 import { LINK_ICON, DRILL_ICON } from '../core/icons.js';
 import { YantraEngine } from './engine.js';
@@ -142,7 +143,7 @@ class App {
     const defaultMode = getMode(e.model, e.model.meta.defaultMode)?.id;
     set('mode', e.modeId && e.modeId !== defaultMode ? e.modeId : null);
     const defaultView = e.model.meta.view === 'sequence' ? 'sequence' : 'flow';
-    set('view', e.canSequence() && e.view !== defaultView ? e.view : null);
+    set('view', e.canSwitchView() && e.view !== defaultView ? e.view : null);
     set('scenario', e.scenarioIndex > 0 ? e.scenarioIndex + 1 : null);
     set('step', e.stepIndex > 0 ? e.stepIndex + 1 : null);
     set('role', this.roleFilter);
@@ -439,11 +440,11 @@ class App {
     if (on) this.followStep();
   }
 
-  /** Flow / Sequence toggle: shown when the scenario has messages to sequence. */
+  /** Flow / Sequence toggle: shown when the scenario has messages to sequence and both views are offered. */
   renderView() {
     const box = $('view-switch');
     const view = this.engine.getView();
-    box.hidden = !this.engine.canSequence();
+    box.hidden = !this.engine.canSwitchView();
     box.querySelectorAll('[data-view]').forEach((b) => {
       const on = b.dataset.view === view;
       b.setAttribute('aria-checked', String(on));
@@ -643,6 +644,7 @@ class App {
       : tab === 'summary' ? this.summaryHtml()
       : panel ? this.panelHtml(panel)
       : '';
+    enhanceCharts($('inspector-body'));
     $('inspector-body').scrollTop = 0;
   }
 
@@ -674,8 +676,12 @@ class App {
         : `<p class="y-panel-hint">${h(L.t('panel.hint'))}</p>`
       : '';
     const meta = this.engine.model.meta;
+    // Charts are drawn at the panel's width, so they fit instead of scrolling sideways
+    const box = $('inspector-body');
+    const pad = box ? parseFloat(getComputedStyle(box).paddingLeft) + parseFloat(getComputedStyle(box).paddingRight) : 0;
+    const width = box && box.clientWidth ? box.clientWidth - pad : 300;
     const body = blocks.length
-      ? blocks.map((b, i) => renderBlock({ ...b, span: 'full' }, `${panel.id}-${i}`, { pageMeta: meta, locale: L })).join('')
+      ? blocks.map((b, i) => renderBlock({ ...b, span: 'full' }, `${panel.id}-${i}`, { pageMeta: meta, locale: L, width })).join('')
       : `<p class="y-empty">${h(L.t('panel.empty'))}</p>`;
     return `<div class="y-panel">${head}${body}</div>`;
   }

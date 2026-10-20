@@ -340,6 +340,18 @@
             ],
             "description": "gantt: draw a 'today' line on this date (or day number)."
           },
+          "workdays": {
+            "type": "boolean",
+            "default": false,
+            "description": "gantt: count days as working days. Saturdays, Sundays and holidays are skipped by days, numeric starts and today, and a task that follows another starts on the next working day. Needs dates (a start date)."
+          },
+          "holidays": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "gantt with workdays: dates (YYYY-MM-DD or DD/MM/YYYY) that are not working days, e.g. public holidays."
+          },
           "grid": {
             "type": "integer",
             "minimum": 2,

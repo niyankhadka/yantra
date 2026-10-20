@@ -147,3 +147,25 @@ test('new page examples validate with zero errors and warnings', () => {
     assert.deepEqual([...r.errors, ...r.warnings], [], f);
   }
 });
+
+test('light and dark copies of a page diagram never share an id (markers, gradients, titles)', () => {
+  const diagram = JSON.parse(fs.readFileSync(path.join(EX, 'oauth-login.json'), 'utf-8'));
+  const seq = { ...diagram, meta: { ...diagram.meta, view: 'sequence' } };
+  const html = renderPage(page([
+    { type: 'diagram', diagram, step: 2 },
+    { type: 'diagram', diagram },
+    { type: 'diagram', diagram: seq, step: 2 }
+  ]));
+  const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(new Set(ids).size, ids.length, `duplicate ids: ${ids.filter((id, i) => ids.indexOf(id) !== i).join(', ')}`);
+  // Every reference inside a copy points at an id defined in that same copy
+  const copies = [...html.matchAll(/<div class="p-scroll p-only-(light|dark)" dir="ltr">([\s\S]*?<\/svg>)/g)];
+  assert.equal(copies.length, 6);
+  for (const [, theme, svg] of copies) {
+    const own = new Set([...svg.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+    const refs = [...svg.matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1]);
+    assert.ok(refs.some((r) => /^arrow/.test(r)), 'plain arrowheads are referenced');
+    for (const r of refs) assert.ok(own.has(r) && r.endsWith(`-${theme}`), `${theme} copy uses ${r}`);
+    for (const r of /aria-labelledby="([^"]+)"/.exec(svg)[1].split(' ')) assert.ok(own.has(r));
+  }
+});

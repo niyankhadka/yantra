@@ -18,6 +18,7 @@ import { measureNode, labelSize, groupBoxes, groupTitle, LABEL, GROUP, GRID } fr
 import { roundedPath } from './route.js';
 import { iconFor, knownIcon } from './icons.js';
 import { truncate } from './text.js';
+import { isEntity } from './entity.js';
 
 export const SEQ = {
   gutter: 48, // left band holding the step numbers
@@ -44,8 +45,28 @@ function stepMessages(steps, edgeById) {
   return steps.map((st) => (st.highlightEdges || st.activeEdges || []).map((id) => edgeById.get(id)).filter(Boolean));
 }
 
-/** Does this scenario have anything to draw as a sequence? */
+export const VIEWS = ['flow', 'sequence'];
+
+/**
+ * Views a payload offers: `meta.views` lists them ("flow", "sequence"); without
+ * it both are offered, except that a diagram made only of table / class cards
+ * (an ERD or class diagram) has no sequence view.
+ * @returns { flow: boolean, sequence: boolean }  (sequence still needs messages: hasSequence)
+ */
+export function offeredViews(payload) {
+  const meta = payload && typeof payload === 'object' && payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+  if (Array.isArray(meta.views)) {
+    const listed = meta.views.filter((v) => VIEWS.includes(v));
+    if (listed.length) return { flow: listed.includes('flow'), sequence: listed.includes('sequence') };
+  }
+  const nodes = Array.isArray(payload?.nodes) ? payload.nodes : [];
+  const cardsOnly = nodes.length > 0 && nodes.every((n) => isEntity(n?.data));
+  return { flow: true, sequence: !cardsOnly };
+}
+
+/** Does this scenario have anything to draw as a sequence (and does the payload offer that view)? */
 export function hasSequence(payload, { scenarioIndex = 0 } = {}) {
+  if (!offeredViews(payload).sequence) return false;
   const model = normalize(payload);
   const sc = model.scenarios[scenarioIndex] || model.scenarios[0];
   return (sc?.steps || []).some((st) => (st.highlightEdges || st.activeEdges || []).length > 0);
@@ -269,7 +290,8 @@ export function computeSequenceScene(payload, options = {}) {
  * flow scene. view defaults to meta.view. Used by the CLI and MCP exports.
  */
 export function sceneForView(payload, { view, modeId, scenarioIndex = 0 } = {}) {
-  const want = view || payload?.meta?.view;
+  // A payload that offers only the sequence view opens in it
+  const want = view || (offeredViews(payload).flow ? payload?.meta?.view : 'sequence');
   if (want === 'sequence' && hasSequence(payload, { scenarioIndex })) return computeSequenceScene(payload, { modeId, scenarioIndex });
   return computeScene(payload, { modeId });
 }

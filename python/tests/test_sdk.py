@@ -198,7 +198,8 @@ def chart_page() -> Page:
     page.chart({"Subscriptions": 1057, "Services": 480}, kind="donut", prefix="£", unit="k", span="half")
     page.chart([("Price", 22), ("Integrations", 15)], title="Why they left", span="half")
     page.gantt([{"id": "a", "title": "Build", "start": "02/11/2026", "days": 10, "group": "Build"},
-                {"title": "Launch", "milestone": True, "after": "a"}], today="05/11/2026", title="Plan")
+                {"title": "Launch", "milestone": True, "after": "a"}], today="05/11/2026", title="Plan",
+               workdays=True, holidays=["2026-11-11"])
     page.matrix([("Alerts", 2, 8), ("Chat", 8, 3)], x={"label": "Effort", "low": "Low", "high": "High"},
                 y="Value", quadrants=["Quick wins", "Big bets", "Fill-ins", "Avoid"], title="Priorities")
     page.matrix([("Outage", 3, 3, "bad")], grid=3, x={"label": "Likelihood", "labels": ["Low", "Mid", "High"]},
@@ -359,6 +360,8 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertNotIn("kind", b[4])
         self.assertEqual(b[6]["items"][0], {"label": "Alerts", "x": 2, "y": 8})
         self.assertEqual(b[0]["items"][0]["trend"], [1.2, 1.4, 1.8])
+        self.assertEqual((b[5]["workdays"], b[5]["holidays"]), (True, ["2026-11-11"]))
+        self.assertNotIn("workdays", blocks.gantt([("A", "02/11/2026", 2)]))
 
     def test_chart_blocks_reject_bad_data(self) -> None:
         with self.assertRaises(ValueError):
@@ -373,6 +376,8 @@ class PayloadShapeTests(unittest.TestCase):
             blocks.chart()
         with self.assertRaises(ValueError):
             blocks.gantt([{"title": "No length", "start": "02/11/2026"}])
+        with self.assertRaises(ValueError):
+            blocks.gantt([("A", "02/11/2026", 2)], holidays=["2026-11-11"])
         with self.assertRaises(ValueError):
             blocks.matrix([("a", 1, 2)], grid=7)
         with self.assertRaises(ValueError):
@@ -410,6 +415,48 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertEqual(blocks.diagram("diagrams/a.json")["src"], "diagrams/a.json")
         self.assertIn("diagram", blocks.diagram({"meta": {"title": "x"}, "nodes": [], "edges": []}))
         self.assertEqual(blocks.diagram(full_diagram(), step=1, mode="prod")["mode"], "prod")
+
+    def test_views_and_mode_drill(self) -> None:
+        d = Diagram("Schema").views("flow")
+        a = d.add_node("a", "A")
+        a.drill("x").drill("y", mode="local").drill(None, mode="prod")
+        p = d.to_dict()
+        self.assertEqual(p["meta"]["views"], ["flow"])
+        self.assertEqual(p["nodes"][0]["data"]["drill"], "x")
+        self.assertEqual(p["nodes"][0]["data"]["modes"], {"local": {"drill": "y"}, "prod": {"drill": None}})
+        self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
+        for bad in ((), ("graph",), ("flow", "flow")):
+            with self.assertRaises(YantraError, msg=repr(bad)):
+                Diagram("V").views(*bad)
+        with self.assertRaises(YantraError):
+            a.drill(None)
+
+    def test_resolve_levels_is_path_safe(self) -> None:
+        from yantra import resolve_levels
+        tmp = Path(tempfile.mkdtemp(prefix="yantra-levels-"))
+        try:
+            (tmp / "levels").mkdir()
+            (tmp / "levels" / "x.json").write_text(json.dumps({"meta": {"title": "X"}, "diagrams": {"y": {"$ref": "y.json"}}}), encoding="utf-8")
+            (tmp / "levels" / "y.json").write_text(json.dumps({"meta": {"title": "Y"}, "diagrams": {"z": {"$ref": "y.json"}}}), encoding="utf-8")
+            (tmp / "levels" / "bad.json").write_text("{not json", encoding="utf-8")
+            payload = {"meta": {"title": "Top"}, "diagrams": {
+                "x": {"$ref": "levels/x.json"}, "up": {"$ref": "../outside.json"}, "abs": {"$ref": "/etc/x.json"},
+                "url": {"$ref": "https://example.com/x.json"}, "txt": {"$ref": "levels/x.txt"},
+                "gone": {"$ref": "levels/nope.json"}, "bad": {"$ref": "levels/bad.json"}}}
+            out = resolve_levels(payload, tmp)
+            self.assertEqual(out["diagrams"]["x"]["meta"]["title"], "X")
+            self.assertEqual(out["diagrams"]["x"]["diagrams"]["y"]["meta"]["title"], "Y", "refs are relative to their own file")
+            self.assertEqual(out["diagrams"]["x"]["diagrams"]["y"]["diagrams"]["z"]["$error"], "cycle")
+            for key in ("up", "abs", "url", "txt"):
+                self.assertEqual(out["diagrams"][key]["$error"], "unsafe", key)
+            self.assertEqual(out["diagrams"]["gone"]["$error"], "missing")
+            self.assertEqual(out["diagrams"]["bad"]["$error"], "missing")
+            self.assertEqual(payload["diagrams"]["x"], {"$ref": "levels/x.json"}, "input untouched")
+            # The root is enforced even when it is not the base folder
+            (tmp / "other").mkdir()
+            self.assertEqual(resolve_levels(payload, tmp, tmp / "other")["diagrams"]["x"]["$error"], "unsafe")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are needed for the Yantra CLI")
@@ -508,6 +555,33 @@ class CliTests(unittest.TestCase):
         page = full_page(diagram="cloud-architecture.json")
         page.base_dir = str(ROOT / "examples")
         self.assertClean(page.validate())
+
+    def test_page_src_diagram_with_ref_levels(self) -> None:
+        os.makedirs(os.path.join(self.tmp, "diagrams", "levels"))
+        detail = Diagram("Ledger detail")
+        a, b = detail.add_node("a", "Writer"), detail.add_node("b", "Ledger")
+        a.connect(b, "Insert")
+        detail.add_step("Overview")
+        detail.save_json(os.path.join(self.tmp, "diagrams", "levels", "ledger.json"))
+        top = Diagram("Overview")
+        n, m = top.add_node("n", "Payments"), top.add_node("m", "Orders")
+        m.connect(n, "Charge")
+        top.add_step("Overview")
+        top.detail("ledger", "levels/ledger.json", from_node=n)
+        top.save_json(os.path.join(self.tmp, "diagrams", "overview.json"))
+        page = Page("Where do charges go?", title="Charges", base_dir=self.tmp)
+        page.answer("Into the ledger.")
+        page.diagram("diagrams/overview.json", level="ledger", title="Ledger")
+        report = page.validate()
+        self.assertClean(report)
+        self.assertEqual(report["warnings"], [])
+        html = Path(page.build_html(os.path.join(self.tmp, "page.html"))).read_text(encoding="utf-8")
+        self.assertIn("Writer", html, "the $ref level is drawn")
+        # A level that leaves base_dir is not loaded: the validator reports it
+        top.diagrams["ledger"] = {"$ref": "../../outside.json"}
+        top.save_json(os.path.join(self.tmp, "diagrams", "overview.json"))
+        codes = [e["code"] for e in page.validate()["errors"]]
+        self.assertIn("drill/ref-unsafe", codes)
 
     def test_chart_page_validates_cleanly_and_builds(self) -> None:
         page = chart_page()

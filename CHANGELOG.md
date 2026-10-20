@@ -9,6 +9,19 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Changed
 
+- `examples/platform-overview.json` keeps its search level in `examples/levels/` as a `$ref`.
+
+### Fixed
+
+- Answer pages: the light and dark copies of a diagram no longer share marker, gradient or
+  title ids (dark copies could lose their arrowheads); every SVG id is scoped per figure and theme.
+- The viewer bundle is rebuilt whenever its sources change (a content fingerprint in
+  `dist/`, one build at a time across processes), never reused stale.
+- Test reliability on Windows: MCP servers are stopped and awaited before their folders are
+  removed (with retries), timing checks compare against a baseline.
+
+### Changed
+
 - Built HTML carries English plus only the languages its payload uses (answer pages: those
   of their interactive diagrams); every interface table moved to `src/core/locales/`. An
   English diagram is about 389 kB instead of 469 kB, and adding languages no longer grows it.
@@ -17,6 +30,22 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Added
 
+- Charts fit narrow containers: inspector panels draw them at the panel's measured width
+  (no sideways scrolling). Legend items toggle a series or a pie / donut slice (the rest is
+  redrawn with new shares and total) in the viewer and on pages; without JavaScript the
+  static chart is unchanged.
+- Gantt `workdays: true` (with optional `holidays`): durations, numeric starts and
+  dependencies count working days, and weekends and holidays are shaded.
+- `meta.views` (`["flow"]`, `["sequence"]`) chooses which views the reader can switch
+  between; diagrams made only of table / class cards (ERDs, class diagrams) no longer offer
+  the sequence view. New warning `sequence/not-offered`.
+- Drill-down `$ref` levels load in the dev server's gallery (a Vite plugin, confined to the
+  project) and in the Python SDK for a page diagram's `src` (`yantra.resolve_levels`,
+  confined to `base_dir`). Mode-specific `data.modes.<id>.drill` is validated (new warning
+  `drill/unknown-mode`), followed by the level order and listed in the Markdown export;
+  `Node.drill(id, mode=...)` and `Diagram.views(...)` in the Python SDK.
+- Optional browser tests (`tests/browser.test.js`): drill-down, fold, RTL, watermark and
+  chart legends in headless Chrome / Edge over the DevTools pipe; skipped without a browser.
 - Charts and plans on answer pages: bar, column, line, area, pie and donut charts,
   sparklines, `gantt` plans and `matrix` blocks (quadrants, risk heat maps).
 - Drill-down: detail diagrams per node (`$ref` files or inline), level navigation and links

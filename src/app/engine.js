@@ -4,7 +4,7 @@
  */
 import { normalize, getMode } from '../core/model.js';
 import { computeScene } from '../core/scene.js';
-import { computeSequenceScene, hasSequence } from '../core/sequence.js';
+import { computeSequenceScene, hasSequence, offeredViews } from '../core/sequence.js';
 import { lint } from '../core/lint.js';
 import { hidingIds, isTreeAlgorithm, treeIndex } from '../core/tree.js';
 import { visibleGraph } from '../core/model.js';
@@ -60,8 +60,15 @@ export class YantraEngine {
     return hasSequence(this.payload, { scenarioIndex: this.scenarioIndex });
   }
 
+  /** True when the user can switch between the two views (meta.views, table / class cards). */
+  canSwitchView() {
+    return offeredViews(this.payload).flow && this.canSequence();
+  }
+
   getView() {
-    return this.view === 'sequence' && this.canSequence() ? 'sequence' : 'flow';
+    // Without a flow view (meta.views: ["sequence"]) the sequence is all there is
+    const want = offeredViews(this.payload).flow ? this.view : 'sequence';
+    return want === 'sequence' && this.canSequence() ? 'sequence' : 'flow';
   }
 
   setView(view) {
@@ -73,7 +80,7 @@ export class YantraEngine {
   }
 
   cycleView() {
-    if (this.canSequence()) this.setView(this.getView() === 'sequence' ? 'flow' : 'sequence');
+    if (this.canSwitchView()) this.setView(this.getView() === 'sequence' ? 'flow' : 'sequence');
   }
 
   // --- Collapsing (subtrees in tree layouts, groups in the layered layout) ----

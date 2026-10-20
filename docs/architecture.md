@@ -25,7 +25,7 @@ validator checks is exactly what the viewer draws.
 | `sequence.js` | `computeSequenceScene(payload, { modeId, scenarioIndex })`: the sequence view (participants by first appearance, one message per step `highlightEdges` id, numbered rows, group boxes over adjacent columns; gaps widen to fit labels). `sceneForView` picks flow or sequence. |
 | `lint.js` | Structural, reference, story, budget and geometry checks with stable codes. |
 | `svg.js` / `markdown.js` | Static exports. SVG is plain SVG (no `foreignObject`), so it rasterises to PNG cleanly. `renderSequenceSvg` draws the sequence view. |
-| `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build. |
+| `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. `drillTargets` / `modeDrills` (mode-specific `data.modes.<id>.drill`). File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build, and by the `yantra-drill-refs` plugin in `vite.config.js` for the dev server's gallery. |
 | `page.js` | Answer pages: block renderers (shared with inspector panels), `renderPage`, page lint, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. |
 | `mermaid.js` | `fromMermaid(text, { title })`: flowchart, sequence, state, ER and class diagram importer (nodes, edges, subgraphs / namespaces / composite states to groups, state shapes, fields and methods, relationship markers, a generated walkthrough) with warnings for anything skipped. |
 | `i18n.js` | Interface strings: the English table plus `locales/<lang>.js` for 17 more (`STRINGS`, `STRING_KEYS`, `LANGUAGES`), `localeOf(meta)` -> `{ lang, dir, t, tHtml, num, plural }` with `meta.strings` overrides and English fallback, `Intl.PluralRules`, RTL detection, `Intl.NumberFormat`. Used by the viewer, pages, SVG and Markdown exports and lint. The viewer bundle is built without `locales/` (a plugin in `vite.config.js`); `lib/build.js` embeds the tables a payload needs as `<script id="yantra-strings">` and `registerStrings()` loads them, while the gallery chunk registers them all. |
@@ -62,7 +62,9 @@ validator agree on every card's height.
 
 ## Standalone build
 
-`lib/build.js` runs `vite build` when `dist/` is missing or older than the sources, inlines
+`lib/build.js` runs `vite build` when `dist/` is missing or was built from other sources (a
+content fingerprint in `dist/.yantra-sources`, written after every build; one build at a time
+across processes via a lock folder), inlines
 the single JS and CSS file, escapes `</script` inside the code, and writes the payload into
 `<script type="application/json" id="yantra-payload">` (with `<` escaped). No fonts or other
 requests are made at runtime; the system font stack is used.

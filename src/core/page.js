@@ -8,7 +8,7 @@ import { renderSvg } from './svg.js';
 import { themeCss, HUES } from './theme.js';
 import { escapeHtml as h, mdInline as mi, mdBlock } from './text.js';
 import { REPO_URL, GITHUB_MARK } from './icons.js';
-import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartMarkdown, CHART_CSS, withChartLocale } from './charts.js';
+import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartMarkdown, CHART_CSS, withChartLocale, enhanceCharts } from './charts.js';
 import { getLevel } from './drill.js';
 import { localeOf } from './i18n.js';
 
@@ -94,7 +94,7 @@ export function withPageLang(diagram, pageMeta) {
 }
 
 /**
- * Static diagram figure (both themes); SVG ids are suffixed with ctx.uid to stay unique.
+ * Static diagram figure (both themes); SVG ids are suffixed with ctx.uid and the theme to stay unique.
  * The scrollers are dir="ltr": a diagram keeps its layout direction on RTL pages.
  */
 function staticFigure(b, ctx) {
@@ -106,13 +106,12 @@ function staticFigure(b, ctx) {
   const step = Number.isInteger(b.step) ? steps[b.step - 1] : null;
   if (step && (step.highlightNodes || []).length) highlight = { nodes: new Set(step.highlightNodes), edges: new Set(step.highlightEdges || []) };
   const opts = { highlight, header: false, watermark: false, logo: null };
+  // Each copy gets its own ids: a copy must never use the other theme's (hidden) markers
   return `<figure class="p-figure">
-      <div class="p-scroll p-only-light" dir="ltr">${renderSvg(scene, { ...opts, theme: 'light' })}</div>
-      <div class="p-scroll p-only-dark" dir="ltr">${renderSvg(scene, { ...opts, theme: 'dark' })}</div>
+      <div class="p-scroll p-only-light" dir="ltr">${renderSvg(scene, { ...opts, theme: 'light', idSuffix: `${ctx.uid}-light` })}</div>
+      <div class="p-scroll p-only-dark" dir="ltr">${renderSvg(scene, { ...opts, theme: 'dark', idSuffix: `${ctx.uid}-dark` })}</div>
       ${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}
-    </figure>`.replace(/id="(y-title|y-desc|arrow[\w-]*|end-[\w-]+|g\d+)"/g, (_, id) => `id="${id}-${ctx.uid}"`)
-    .replace(/url\(#(arrow[\w-]*|end-[\w-]+|g\d+)\)/g, (_, id) => `url(#${id}-${ctx.uid})`)
-    .replace(/aria-labelledby="y-title y-desc"/g, `aria-labelledby="y-title-${ctx.uid} y-desc-${ctx.uid}"`);
+    </figure>`;
 }
 
 const BLOCKS = {
@@ -200,7 +199,7 @@ const BLOCKS = {
 
   // Single-series bars without negatives keep the HTML bar list; every other chart is inline SVG (charts.js)
   chart: (b, ctx) => {
-    if (!isSimpleBars(b)) return renderChart(b, { half: ctx.half, caption: b.caption ? inline(b.caption) : '' });
+    if (!isSimpleBars(b)) return renderChart(b, { half: ctx.half, width: ctx.width, caption: b.caption ? inline(b.caption) : '' });
     const { L } = ctx;
     const data = list(b.data).filter((d) => typeof d.value === 'number');
     const max = Math.max(1e-9, ...data.map((d) => Math.abs(d.value)));
@@ -212,9 +211,9 @@ const BLOCKS = {
       .join('')}</div>`;
   },
 
-  gantt: (b, ctx) => renderGantt(b, { half: ctx.half, caption: b.caption ? inline(b.caption) : '' }),
+  gantt: (b, ctx) => renderGantt(b, { half: ctx.half, width: ctx.width, caption: b.caption ? inline(b.caption) : '' }),
 
-  matrix: (b, ctx) => renderMatrix(b, { half: ctx.half, caption: b.caption ? inline(b.caption) : '' }),
+  matrix: (b, ctx) => renderMatrix(b, { half: ctx.half, width: ctx.width, caption: b.caption ? inline(b.caption) : '' }),
 
   code: (b) => `<pre class="p-code"${b.language ? ` data-lang="${h(b.language)}"` : ''}><code>${h(b.code || '')}</code></pre>`,
 
@@ -232,14 +231,15 @@ const BLOCKS = {
  * One block as a <section>. `uid` keeps SVG ids unique when several diagrams
  * share a document. Used by answer pages and by inspector panels in the viewer.
  * `pageMeta` gives fixed strings and number formats their language (meta.lang,
- * meta.strings); diagram blocks inherit its lang and dir.
+ * meta.strings); diagram blocks inherit its lang and dir. `width` (px): the
+ * container's measured width, so charts fit it (inspector panels).
  */
-export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null, pageMeta = null, locale = null } = {}) {
+export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null, pageMeta = null, locale = null, width = null } = {}) {
   const render = BLOCKS[b?.type];
   if (!render) return '';
   const L = locale || localeOf(pageMeta);
   // Charts draw their words and numbers in the page language too
-  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L }));
+  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L, width }));
   return `<section class="p-block p-block--${b.type}${b.span === 'half' ? ' is-half' : ''}"${anchor ? ` id="${h(anchor)}"` : ''}>${b.title ? `<h3>${inline(b.title)}</h3>` : ''}${body}</section>`;
 }
 
@@ -323,6 +323,7 @@ ${blocks}
 (function(){var r=document.documentElement,prev,shut=[];addEventListener('beforeprint',function(){prev=r.getAttribute('data-theme');r.setAttribute('data-theme','light');shut=[].filter.call(document.querySelectorAll('.p-faq details'),function(d){return !d.open});shut.forEach(function(d){d.open=true})});addEventListener('afterprint',function(){if(prev)r.setAttribute('data-theme',prev);shut.forEach(function(d){d.open=false});shut=[]})})();
 ${FRAME_SCRIPT}
 ${SCROLL_SCRIPT}
+${CHART_SCRIPT}
 </script>
 </body>
 </html>
@@ -432,6 +433,9 @@ function pageMarkdown(page) {
   }
   return `${out.join('\n').replace(/\n{3,}/g, '\n\n')}\n`;
 }
+
+/** Legend toggles on charts (charts.js enhanceCharts, inlined as source). */
+const CHART_SCRIPT = `(${enhanceCharts.toString()})(document);`;
 
 /** Keep embedded viewers (sandboxed, opaque origin) on the page's theme via postMessage. */
 const FRAME_SCRIPT = `(function(){var r=document.documentElement,fs=document.querySelectorAll('iframe.p-frame');if(!fs.length)return;

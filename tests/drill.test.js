@@ -11,9 +11,10 @@ import { computeScene } from '../src/core/scene.js';
 import { collectDiagrams, levelPath, safeUrl, getLevel, replaceLevel, levelOrder, DRILL_MAX_DEPTH } from '../src/core/drill.js';
 import { Levels } from '../src/app/levels.js';
 import { buildPage, resolveLevels, resolvePage, ROOT } from '../lib/build.js';
+import { startMcp, removeDir } from './support.js';
 
 const CLI = path.join(ROOT, 'bin', 'yantra.js');
-const example = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'platform-overview.json'), 'utf-8'));
+const example = () => resolveLevels(JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'platform-overview.json'), 'utf-8')), path.join(ROOT, 'examples'));
 const codes = (r) => [...r.errors, ...r.warnings].map((f) => f.code);
 const tmpdir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-drill-'));
 
@@ -206,28 +207,19 @@ test('MCP: $ref levels resolve inside the input root and level is a tool input',
   const dir = tmpdir();
   fs.writeFileSync(path.join(dir, 'x.json'), JSON.stringify(level('X')));
   fs.writeFileSync(path.join(dir, 'top.json'), JSON.stringify({ ...level('Top', { a: 'x' }), diagrams: { x: { $ref: 'x.json' } } }));
-  const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js')], { cwd: dir, env: { ...process.env, YANTRA_INPUT_ROOT: dir, YANTRA_OUTPUT_ROOT: dir }, stdio: ['pipe', 'pipe', 'inherit'] });
-  const replies = new Map();
-  let buf = '';
-  proc.stdout.on('data', (d) => {
-    buf += d;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const msg = JSON.parse(buf.slice(0, i));
-      buf = buf.slice(i + 1);
-      replies.set(msg.id, msg);
-    }
-  });
-  const send = (msg) => proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...msg })}\n`);
+  const s = startMcp({ cwd: dir, env: { YANTRA_INPUT_ROOT: dir, YANTRA_OUTPUT_ROOT: dir } });
+  const send = s.send;
   send({ id: 1, method: 'tools/list' });
   send({ id: 2, method: 'tools/call', params: { name: 'yantra_validate', arguments: { filePath: 'top.json' } } });
   send({ id: 3, method: 'tools/call', params: { name: 'yantra_export', arguments: { filePath: 'top.json', format: 'md', allLevels: true } } });
   send({ id: 4, method: 'tools/call', params: { name: 'yantra_export', arguments: { filePath: 'top.json', format: 'svg', level: 'x' } } });
-  const deadline = Date.now() + 20000;
-  while (replies.size < 4 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
-  const exited = proc.exitCode === null ? new Promise((r) => proc.once('exit', r)) : null;
-  proc.kill();
-  await exited;
+  let replies;
+  try {
+    replies = await s.waitFor(4);
+  } finally {
+    await s.close();
+    removeDir(dir);
+  }
   const text = (id) => replies.get(id).result.content[0].text;
   const tools = replies.get(1).result.tools;
   assert.ok(tools.find((t) => t.name === 'yantra_export').inputSchema.properties.level);
@@ -235,4 +227,46 @@ test('MCP: $ref levels resolve inside the input root and level is a tool input',
   assert.equal(JSON.parse(text(2)).valid, true, text(2));
   assert.match(JSON.parse(text(3)).content, /^## Top › X$/m);
   assert.match(JSON.parse(text(4)).content, /^<svg/);
+});
+
+test('mode overrides of data.drill are validated, followed and exported', () => {
+  const p = {
+    ...level('Root', { a: 'x' }),
+    modes: [{ id: 'prod', name: 'Production' }, { id: 'local', name: 'Local' }],
+    diagrams: { x: level('X'), y: level('Y local') }
+  };
+  p.nodes[0].data.modes = { local: { drill: 'y' } };
+  p.nodes[1].data.modes = { prod: { drill: null } };
+  assert.deepEqual(codes(lint(p)), [], 'y is reached through the local mode, so it is not unused');
+  assert.deepEqual(levelOrder(p).map((l) => l.id), ['x', 'y']);
+  assert.deepEqual(levelPath(p, ['y']), ['y']);
+  const md = toMarkdown(p, { levels: true });
+  assert.match(md, /\| \*\*A\*\* \(detail: X; Local: detail: Y local\) \|/);
+  assert.match(md, /^## Root › Y local$/m);
+
+  const bad = structuredClone(p);
+  bad.nodes[0].data.modes = { local: { drill: 'nope' }, staging: { drill: 'x' }, prod: { drill: 3 } };
+  const r = lint(bad);
+  const msgs = r.errors.filter((e) => e.code === 'drill/unknown-target').map((e) => e.message);
+  assert.ok(msgs.some((m) => /data\.modes\.local\.drill drills into "nope"/.test(m)), msgs.join(' / '));
+  assert.ok(msgs.some((m) => /data\.modes\.prod\.drill must be a diagram id/.test(m)));
+  assert.ok(r.warnings.some((w) => w.code === 'drill/unknown-mode' && /"staging"/.test(w.message)));
+});
+
+test('the dev server inlines $ref levels of imported examples, inside the project only', async () => {
+  const config = (await import('../vite.config.js')).default;
+  const plugin = config.plugins.find((x) => x.name === 'yantra-drill-refs');
+  const watched = [];
+  const run = (code, id) => plugin.transform.call({ addWatchFile: (f) => watched.push(f) }, code, id);
+  const file = path.join(ROOT, 'examples', 'platform-overview.json');
+  const out = JSON.parse(run(fs.readFileSync(file, 'utf-8'), `${file}?import`).code);
+  assert.equal(out.diagrams.search.meta.title, 'Search service');
+  assert.deepEqual(codes(lint(out)), []);
+  assert.ok(watched.some((f) => f.endsWith('platform-search.json')), 'the level file is watched');
+  // Outside the project, absolute or not JSON: left as a $ref with $error for lint
+  const unsafe = JSON.parse(run(JSON.stringify({ ...level('R', { a: 'x', b: 'y' }), diagrams: { x: { $ref: '../../../outside.json' }, y: { $ref: '/etc/passwd.json' } } }), file).code);
+  assert.equal(unsafe.diagrams.x.$error, 'unsafe');
+  assert.equal(unsafe.diagrams.y.$error, 'unsafe');
+  assert.equal(run('{"nodes": []}', file), null, 'files without refs are left to Vite');
+  assert.equal(run('{"$ref": 1', path.join(ROOT, 'package.json')), null, 'invalid JSON is left to Vite');
 });

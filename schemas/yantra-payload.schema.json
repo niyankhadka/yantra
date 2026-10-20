@@ -88,7 +88,19 @@
             "sequence"
           ],
           "default": "flow",
-          "description": "Initial view. sequence draws the active scenario as a sequence diagram: participants are the nodes its steps message, each highlightEdges id becomes an arrow in step order. The viewer offers a Flow / Sequence toggle (key V) whenever a step has highlightEdges."
+          "description": "Initial view. sequence draws the active scenario as a sequence diagram: participants are the nodes its steps message, each highlightEdges id becomes an arrow in step order. The viewer offers a Flow / Sequence toggle (key V) whenever a step has highlightEdges and both views are offered (see views)."
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "flow",
+              "sequence"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Views the reader may switch between. [\"flow\"] hides the Flow / Sequence toggle (e.g. an ERD or class diagram whose steps highlight relationships); [\"sequence\"] shows only the sequence view. Default: both, except that a diagram made only of table / class cards (fields or methods) offers no sequence view."
         },
         "sequence": {
           "type": "object",

@@ -41,7 +41,8 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   row appears for longer pages.
 - **Charts and plans**: bar, column, line, area, pie and donut charts (grouped or stacked
   series, nice axes, legends, hidden data tables for screen readers), metric sparklines,
-  `gantt` plans (dates or relative days, groups, milestones, dependencies, today line) and
+  `gantt` plans (dates or relative days, working days and holidays, groups, milestones,
+  dependencies, today line), legends that toggle series and slices, and
   `matrix` blocks (2x2 quadrants, 3x3-5x5 risk heat maps); inline SVG, both themes, no libraries. See [`docs/pages.md`](docs/pages.md).
 - **Data models and class diagrams**: cards with field rows (PK / FK / UK, types) or attributes
   and methods (visibility, «stereotype»), growing with their rows; crow's foot cardinality and

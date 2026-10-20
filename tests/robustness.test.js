@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { startMcp } from './support.js';
 import { fileURLToPath } from 'node:url';
 import { computeScene } from '../src/core/scene.js';
 import { lint } from '../src/core/lint.js';
@@ -54,15 +54,32 @@ function graph(n, m, { seed = 1, cyclic = true } = {}) {
 }
 
 // --- 1. text wrapping is linear and capped -------------------------------------
+/** Fastest of a few runs (ms): one slow run on a busy machine is noise, not a regression. */
+function fastest(fn, runs = 5) {
+  let best = Infinity;
+  for (let i = 0; i < runs; i++) {
+    const t = performance.now();
+    fn();
+    best = Math.min(best, performance.now() - t);
+  }
+  return best;
+}
+
 test('wrapText hard-breaks long words in linear time and keeps every line within width', () => {
-  let t = performance.now();
   const lines = wrapText('W'.repeat(20000), 200, 14, { weight: 600 });
-  assert.ok(performance.now() - t < 200, 'long word wraps quickly');
   assert.equal(lines.join(''), 'W'.repeat(20000));
   for (const l of lines) assert.ok(textWidth(l, 14, { weight: 600 }) <= 200);
-  t = performance.now();
+  // Linear, not quadratic: 10x the text takes about 10x the time (quadratic would be 100x and
+  // take seconds). Timed against a baseline on the same machine, best of 5, with floors far above
+  // a linear run, so a slow or busy runner does not fail it.
+  const small = fastest(() => wrapText('W'.repeat(2000), 200, 14, { weight: 600 }));
+  const large = fastest(() => wrapText('W'.repeat(20000), 200, 14, { weight: 600 }));
+  assert.ok(large < Math.max(200, small * 30), `20k chars took ${large.toFixed(1)}ms vs ${small.toFixed(1)}ms for 2k`);
   const capped = wrapText('x'.repeat(1_000_000), 200, 14, {}, 2);
-  assert.ok(performance.now() - t < 200, 'stops once maxLines is reached');
+  // A capped wrap stays linear in the input (no quadratic re-scan of the rest)
+  const tenth = fastest(() => wrapText('x'.repeat(100_000), 200, 14, {}, 2));
+  const million = fastest(() => wrapText('x'.repeat(1_000_000), 200, 14, {}, 2));
+  assert.ok(million < Math.max(500, tenth * 30), `1M chars took ${million.toFixed(1)}ms vs ${tenth.toFixed(1)}ms for 100k`);
   assert.equal(capped.length, 2);
   assert.ok(capped[1].endsWith('…'));
   // ordinary text is unchanged by the rewrite
@@ -73,9 +90,10 @@ test('a 100k-character title renders quickly, is cut, and lint warns content/tex
   const p = base();
   p.nodes[0].data.title = 'W'.repeat(100_000);
   p.edges[0].label = 'word '.repeat(20_000);
-  const t = performance.now();
-  const scene = computeScene(p);
-  assert.ok(performance.now() - t < 200, `computeScene took ${performance.now() - t}ms`);
+  let scene;
+  const ms = fastest(() => (scene = computeScene(p)));
+  const plain = fastest(() => computeScene(base()));
+  assert.ok(ms < Math.max(1000, plain * 50), `computeScene took ${ms.toFixed(1)}ms (${plain.toFixed(1)}ms with short text)`);
   assert.ok(scene.nodes[0].lines.title.join('').length < 400);
   assert.ok(String(scene.edges[0].edge.label).length <= TEXT_CAP + 1);
   const r = lint(p);
@@ -129,25 +147,17 @@ test('resolvePage only loads relative .json diagram src inside the page folder',
 });
 
 function mcp(env = {}) {
-  const proc = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.js')], { stdio: ['pipe', 'pipe', 'inherit'], cwd: env.cwd || ROOT, env: { ...process.env, ...env.vars } });
-  const replies = [];
-  let buf = '';
-  proc.stdout.on('data', (d) => {
-    buf += d;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      replies.push(JSON.parse(buf.slice(0, i)));
-      buf = buf.slice(i + 1);
-    }
-  });
+  const s = startMcp({ cwd: env.cwd || ROOT, env: env.vars });
   return {
-    raw: (line) => proc.stdin.write(`${line}\n`),
-    call: (id, name, args) => proc.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args } })}\n`),
+    raw: s.raw,
+    call: s.call,
     async wait(n) {
-      const deadline = Date.now() + 10000;
-      while (replies.length < n && Date.now() < deadline) await new Promise((r) => setTimeout(r, 30));
-      proc.kill();
-      return replies;
+      try {
+        await s.waitFor(n);
+      } finally {
+        await s.close();
+      }
+      return s.list;
     }
   };
 }

@@ -233,6 +233,12 @@ step with `highlightEdges`, the viewer shows a Flow / Sequence toggle (key `V`, 
 that sends something, and keep the flow view readable too: both views come from one payload.
 See `examples/oauth-login.json`.
 
+`meta.views` lists the views a reader may switch between. `["flow"]` hides the toggle (a
+diagram whose steps highlight relationships rather than messages); `["sequence"]` shows only the
+sequence view. Without it both are offered, except that a diagram made **only of table or class
+cards** (an ERD or a class diagram: every node has `fields` or `methods`) has no sequence view and
+no toggle; list `["flow", "sequence"]` to offer it anyway.
+
 ## Drill-down: an overview plus detail diagrams
 
 A big system does not fit in 14 cards, and should not. Draw the **overview** with one card per
@@ -261,8 +267,13 @@ Each level is a full diagram: its own steps, inspector tabs, modes and sequence 
 - `{ "$ref": "./search.json" }` keeps a level in its own file. The CLI and MCP server load it
   relative to the file that contains it; it must be a relative `.json` path that stays inside
   the input folder (the input file's folder for the CLI, `YANTRA_INPUT_ROOT` for MCP). The
-  built HTML always contains every level, so it still works offline. The browser dev server
-  and the gallery cannot load files: inline those levels.
+  built HTML always contains every level, so it still works offline. The dev server
+  (`npm run dev`) inlines them too when a gallery example is imported (relative to the
+  example, inside the project only), and the Python SDK loads them for a page's diagram `src`
+  (relative to that file, inside `base_dir`).
+- `data.modes.<mode id>.drill` opens another level while that mode is shown (`null`: no detail
+  in that mode). Lint checks these targets like `data.drill`, and the Markdown export lists
+  them as `Mode: detail: Title` after the card.
 - `meta.startLevel: "payments"` opens the viewer on a detail diagram.
 - Exports follow the level on screen (SVG, PNG, Markdown); **Export → Markdown, all levels**
   (CLI `export -f md --all-levels`) appends every level under its breadcrumb. CLI and MCP take
@@ -756,7 +767,8 @@ Fix in this order; each fix can clear later errors.
 | `story/edge-endpoint-dimmed` (warning) | Add the edge's source and target to that step's `highlightNodes`. |
 | `story/no-steps` (warning) | Add a scenario with an overview step and 2+ focused steps. |
 | `sequence/no-messages` (warning) | `meta.view` is `sequence` but no step lists `highlightEdges`: add them, or drop `meta.view`. |
-| `schema/unknown-view` | `meta.view` must be `flow` or `sequence`. |
+| `schema/unknown-view` | `meta.view` must be `flow` or `sequence`; `meta.views` a non-empty list of them. |
+| `sequence/not-offered` (warning) | `meta.view` names a view the payload does not offer (`meta.views`, or `sequence` on a diagram of only table / class cards): change one of them. |
 | `schema/unknown-layout-algorithm`, `schema/layout-collapsed-invalid` | `meta.layout.algorithm` is `layered`, `tree` or `mindmap`; `collapsed` is an array of ids. |
 | `ref/collapsed-unknown` | List only node or group ids in `meta.layout.collapsed`. |
 | `layout/collapse-ignored` (warning) | Tree layouts fold cards that have children (not groups); the layered layout folds groups only. |
@@ -782,7 +794,8 @@ Fix in this order; each fix can clear later errors.
 | `drill/ref-unsafe` | Use a relative `.json` path inside the input folder: no absolute paths, URLs or `..` that leaves it. |
 | `drill/invalid-diagram`, `drill/diagrams-invalid`, `drill/duplicate-id` | `diagrams` is an object of diagram payloads (or `$ref`s) with ids unique across all levels. |
 | `drill/unknown-start-level` | `meta.startLevel` must be a key of `diagrams`. |
-| `drill/unused-diagram` (warning) | No card drills into this level: add `data.drill` or remove it. |
+| `drill/unused-diagram` (warning) | No card drills into this level (in any mode): add `data.drill` or remove it. |
+| `drill/unknown-mode` (warning) | `data.modes.<id>.drill` names a mode the diagram does not have. |
 | `diagrams.<id>: …` | A finding inside a detail diagram; fix it there like any other code. |
 | `link/unsafe-url` | `url` must start with `http://`, `https://` or `mailto:`. |
 | `budget/*` (warning) | Split the diagram or merge nodes. |

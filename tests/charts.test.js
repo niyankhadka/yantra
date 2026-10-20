@@ -32,7 +32,8 @@ test('plain bar charts keep the HTML bar list; other kinds draw accessible SVG',
     const html = renderBlock({ type: 'chart', kind, title: 'Sales', ...series });
     assert.match(html, new RegExp(`<figure class="p-chart p-chart--${kind}">`), kind);
     assert.match(html, /<svg class="p-chart-svg" viewBox="0 0 \d+ \d+" role="img" aria-label="[^"]+Sales"/, kind);
-    assert.match(html, /<ul class="p-legend" aria-hidden="true"><li data-hue="blue">.*North<\/li><li data-hue="orange">/, kind);
+    assert.match(html, /<ul class="p-legend" aria-hidden="true"><li data-hue="blue" data-i="0">.*North<\/li><li data-hue="orange" data-i="1">/, kind);
+    assert.match(html, /data-s="1"/, `${kind}: series marks are tagged for legend toggles`);
     assert.match(html, /<table class="p-sr"><caption>[^<]*Sales<\/caption>.*<th scope="row">Q2<\/th><td>5<\/td><td>−1<\/td>/, kind);
     assert.doesNotMatch(html, /NaN|undefined|Infinity/, kind);
   }
@@ -63,9 +64,9 @@ test('pie and donut show shares; a donut shows its total in the centre', () => {
   const data = [{ label: 'A', value: 75 }, { label: 'B', value: 25 }];
   const donut = renderBlock({ type: 'chart', kind: 'donut', prefix: '£', data });
   assert.match(donut, /class="c-total">£100<\/text>/);
-  assert.match(donut, /<li data-hue="blue"><i><\/i><span>A<\/span><b>£75<\/b><em>75%<\/em><\/li>/);
+  assert.match(donut, /<li data-hue="blue" data-i="0" data-v="75"><i><\/i><span>A<\/span><b>£75<\/b><em>75%<\/em><\/li>/);
   const pie = renderBlock({ type: 'chart', kind: 'pie', data: [{ label: 'Only', value: 5 }] });
-  assert.match(pie, /<circle data-hue="blue" fill="currentColor" cx="120" cy="120" r="112">/);
+  assert.match(pie, /<circle data-hue="blue" data-i="0" fill="currentColor" cx="120" cy="120" r="112">/);
 });
 
 test('chart lint: kinds, lengths, limits and negative slices', () => {
@@ -169,4 +170,73 @@ test('metric trends draw sparklines; markdown has text equivalents for every new
   assert.match(md, /\| Task \| Start \| End \|\n\|---\|---\|---\|\n\| Build \| 02\/11\/2026 \| 03\/11\/2026 \|\n\| Go live \| 04\/11\/2026 \| Milestone \|/);
   assert.match(md, /- \*\*Quick wins:\*\* Alerts/);
   assert.match(md, /\| 3 \|  \|  \| Outage \|/);
+});
+
+test('gantt workdays skip weekends and holidays in durations and dependencies', () => {
+  // 16/10/2026 is a Friday; Monday 26/10/2026 is a holiday
+  const b = {
+    type: 'gantt', start: '16/10/2026', workdays: true, holidays: ['2026-10-26'], today: 2,
+    items: [
+      { id: 'a', title: 'Design', days: 3 },
+      { id: 'b', title: 'Build', after: 'a', days: 2 },
+      { id: 'm', title: 'Ready', milestone: true, after: 'b' },
+      { id: 'c', title: 'Test', after: 'b', days: 2 },
+      { title: 'Deploy', after: 'c', days: 1 },
+      { title: 'Fixed', start: 1, days: 1 }
+    ]
+  };
+  const g = resolveGantt(b);
+  const at = (t) => [fmtDay(t.s), fmtDay(t.e - 1), t.len];
+  assert.deepEqual(g.tasks.map(at), [
+    ['16/10/2026', '20/10/2026', 3], // Fri, Mon, Tue
+    ['21/10/2026', '22/10/2026', 2],
+    ['23/10/2026', '22/10/2026', 0], // the milestone marks the moment Build ends
+    ['23/10/2026', '27/10/2026', 2], // Fri, (weekend, holiday), Tue
+    ['28/10/2026', '28/10/2026', 1],
+    ['19/10/2026', '19/10/2026', 1] // numeric start: working day 1 after the first
+  ]);
+  assert.deepEqual(g.problems, []);
+  const html = renderBlock(b);
+  assert.match(html, /<title>Test: 23\/10\/2026 – 27\/10\/2026 \(2 days\)<\/title>/, 'tooltips count working days');
+  assert.match(html, /c-today-l/);
+  assert.deepEqual(codes(lint(page([b]))), []);
+  // A task that would start on a weekend moves to Monday; calendar days without workdays
+  const plain = resolveGantt({ ...b, workdays: undefined, holidays: undefined });
+  assert.equal(fmtDay(plain.tasks[0].e - 1), '18/10/2026');
+
+  const bad = codes(lint(page([
+    { type: 'gantt', workdays: true, holidays: ['31/02/2026'], items: [{ title: 'A', start: '2026-10-16', days: 1 }] },
+    { type: 'gantt', holidays: ['2026-10-26'], items: [{ title: 'A', start: '2026-10-16', days: 1 }] },
+    { type: 'gantt', workdays: true, items: [{ title: 'A', start: 0, days: 1 }] }
+  ])));
+  assert.equal(bad.filter((c) => c === 'page/gantt-date').length, 3, 'bad holiday, holidays without workdays, workdays without dates');
+});
+
+test('charts fit a measured container width (inspector panels) instead of scrolling', () => {
+  const minWidth = (html) => +/min-width:(\d+)px/.exec(html)[1];
+  const viewW = (html) => +/viewBox="0 0 (\d+) /.exec(html)[1];
+  const blocks = [
+    { type: 'chart', kind: 'column', ...series },
+    { type: 'chart', kind: 'bar', ...series },
+    { type: 'chart', kind: 'line', ...series },
+    { type: 'gantt', items: [{ title: 'Design the new onboarding', start: '02/11/2026', days: 5 }, { title: 'Build', days: 10 }] },
+    { type: 'matrix', x: 'Effort', y: 'Impact', items: [{ label: 'Alerts', x: 2, y: 8 }] },
+    { type: 'matrix', grid: 3, items: [{ label: 'Outage', x: 3, y: 3 }] }
+  ];
+  for (const b of blocks) {
+    const html = renderBlock(b, 'x', { width: 300 });
+    assert.ok(viewW(html) <= 300 && minWidth(html) <= 300, `${b.type} ${b.kind || ''}: drawn at ${viewW(html)}px, min ${minWidth(html)}px`);
+    assert.doesNotMatch(html, /NaN|undefined|Infinity/);
+    assert.ok(viewW(renderBlock(b)) > 400, 'without a width the design width is kept');
+  }
+  assert.match(renderBlock(blocks[0], 'x', { width: 5000 }), /viewBox="0 0 760 /, 'never wider than the design width');
+});
+
+test('pages inline the legend toggle script; series and slices are linked to legend items', () => {
+  const html = renderPage(page([{ type: 'chart', kind: 'donut', data: [{ label: 'A', value: 3 }, { label: 'B', value: 1 }] }]));
+  assert.match(html, /\(function enhanceCharts\(root\)[\s\S]*\)\(document\);/);
+  assert.match(html, /data-fmt="\{&quot;p&quot;:&quot;&quot;,&quot;u&quot;:&quot;&quot;,&quot;l&quot;:&quot;en-GB&quot;\}"/);
+  // The inlined source must not depend on module scope: it runs on its own
+  const src = /\(function enhanceCharts[\s\S]*?\)\(document\);/.exec(html)[0];
+  assert.doesNotThrow(() => new Function('document', src)({ querySelectorAll: () => [] }));
 });

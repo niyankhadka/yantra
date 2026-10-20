@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildPage, buildHtml, ROOT } from '../lib/build.js';
+import { buildPage, buildHtml, ensureAppBuilt, sourceHash, ROOT } from '../lib/build.js';
 
 const example = (name) => JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', `${name}.json`), 'utf-8'));
 const scriptText = (html, id) => {
@@ -59,4 +59,11 @@ test('closed inspector is hidden and inert', () => {
   const closed = /\.y-inspector \{[^}]*\}/.exec(css)[0];
   assert.match(closed, /visibility: hidden/);
   assert.match(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf-8'), /<aside id="inspector"[^>]*\binert\b/);
+});
+
+test('the inlined viewer is built from the current sources, never a stale dist/', () => {
+  ensureAppBuilt();
+  const stamp = fs.readFileSync(path.join(ROOT, 'dist', '.yantra-sources'), 'utf-8').trim();
+  assert.equal(stamp, sourceHash(), 'dist/ carries the fingerprint of the sources it was built from');
+  assert.match(sourceHash(), /^[0-9a-f]{64}$/);
 });

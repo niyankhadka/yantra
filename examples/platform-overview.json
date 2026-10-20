@@ -142,39 +142,6 @@
         }
       ]
     },
-    "search": {
-      "meta": {
-        "title": "Search service",
-        "description": "How queries are answered and the index is kept fresh.",
-        "layout": { "direction": "LR" }
-      },
-      "roles": {
-        "service": { "label": "Service", "color": "teal" },
-        "data": { "label": "Data", "color": "violet" }
-      },
-      "nodes": [
-        { "id": "query", "type": "service", "data": { "title": "Query API", "subtitle": "Parses and ranks", "tech": "Kotlin", "icon": "zap" } },
-        { "id": "index", "type": "data", "data": { "title": "Product index", "subtitle": "Full-text and facets", "tech": "OpenSearch", "icon": "database", "url": "https://opensearch.org/docs/latest/" } },
-        { "id": "indexer", "type": "service", "data": { "title": "Indexer", "subtitle": "Applies catalogue events", "tech": "Kotlin worker", "icon": "activity" } },
-        { "id": "events", "type": "data", "data": { "title": "Catalogue events", "subtitle": "From the event bus", "tech": "Kafka topic", "icon": "layers" } }
-      ],
-      "edges": [
-        { "id": "query-index", "source": "query", "target": "index", "label": "Search" },
-        { "id": "events-indexer", "source": "events", "target": "indexer", "label": "Consume", "type": "event" },
-        { "id": "indexer-index", "source": "indexer", "target": "index", "label": "Upsert" }
-      ],
-      "scenarios": [
-        {
-          "id": "main",
-          "name": "Query and reindex",
-          "steps": [
-            { "id": "overview", "title": "Inside Search", "description": "Reads go to the index; writes arrive only as events." },
-            { "id": "query", "title": "Answer a query", "description": "The Query API searches the product index and ranks the hits.", "highlightNodes": ["query", "index"], "highlightEdges": ["query-index"] },
-            { "id": "consume", "title": "Consume an event", "description": "The indexer reads the next catalogue event from the bus.", "highlightNodes": ["events", "indexer"], "highlightEdges": ["events-indexer"] },
-            { "id": "upsert", "title": "Update the index", "description": "The indexer upserts the changed product, so the next query sees it.", "highlightNodes": ["indexer", "index"], "highlightEdges": ["indexer-index"] }
-          ]
-        }
-      ]
-    }
+    "search": { "$ref": "./levels/platform-search.json" }
   }
 }

@@ -5,13 +5,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lint, computeScene, renderSvg, toMarkdown } from '../src/core/index.js';
 import { renderPage, pageToMarkdown, md } from '../src/core/page.js';
-import { resolvePage } from '../lib/build.js';
+import { resolvePage, resolveAny } from '../lib/build.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const examples = fs.readdirSync(path.join(ROOT, 'examples')).filter((f) => f.endsWith('.json'));
+// Every .json under examples/, subfolders included (detail levels kept in their own files)
+const examples = fs.readdirSync(path.join(ROOT, 'examples'), { recursive: true }).map((f) => f.split(path.sep).join('/')).filter((f) => f.endsWith('.json')).sort();
 const load = (f) => {
-  const payload = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', f), 'utf-8'));
-  return payload.kind === 'page' ? resolvePage(payload, path.join(ROOT, 'examples')) : payload;
+  const file = path.join(ROOT, 'examples', f);
+  return resolveAny(JSON.parse(fs.readFileSync(file, 'utf-8')), path.dirname(file), { root: path.join(ROOT, 'examples') });
 };
 
 for (const file of examples) {

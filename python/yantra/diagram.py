@@ -29,6 +29,7 @@ END_LABEL_CHARS = 16
 #: Edge arrow heads: at the target (default), at both ends, or none (an undirected link).
 ARROWS = ("forward", "both", "none")
 ALGORITHMS = ("layered", "tree", "mindmap")
+VIEWS = ("flow", "sequence")
 COMPACT = (True, False, "auto")
 #: UML relationship kinds (edge ``relation``). Triangles and diamonds sit on the source.
 RELATIONS = ("inheritance", "realization", "composition", "aggregation", "association", "dependency")
@@ -132,8 +133,13 @@ class Node:
         connector instead of a level below (``data.assistant: true``). Returns the assistant."""
         return self.child(child_id, title, type, label=label, width=width, assistant=True, **data)
 
-    def drill(self, diagram_id: str) -> "Node":
-        """Open the detail diagram `diagram_id` (see :meth:`Diagram.detail`) from this card."""
+    def drill(self, diagram_id: Optional[str], mode: Optional[str] = None) -> "Node":
+        """Open the detail diagram `diagram_id` (see :meth:`Diagram.detail`) from this card.
+        With `mode`, only while that mode is shown (``data.modes.<mode>.drill``; None: no detail there)."""
+        if mode is not None:
+            return self.mode_override(mode, drill=None if diagram_id is None else _id(diagram_id))
+        if diagram_id is None:
+            raise YantraError("drill needs a diagram id (None is only allowed with mode=)")
         self.data["drill"] = _id(diagram_id)
         return self
 
@@ -309,6 +315,15 @@ class Diagram:
     def mindmap(self, collapsed: Optional[Iterable[Any]] = None) -> "Diagram":
         """Mind-map layout: the first root in the centre, branches left and right, one colour per branch."""
         return self.layout("LR", algorithm="mindmap", collapsed=collapsed)
+
+    def views(self, *views: str) -> "Diagram":
+        """Views the reader may switch between: ``views("flow")`` hides the Flow / Sequence toggle,
+        ``views("sequence")`` shows only the sequence view. Default: both (no sequence view when
+        every card is a table or class card)."""
+        if not views or any(v not in VIEWS for v in views) or len(set(views)) != len(views):
+            raise YantraError(f"views must be one or more of {VIEWS}, each once, not {views!r}")
+        self.meta["views"] = list(views)
+        return self
 
     def collapse(self, *ids: Any) -> "Diagram":
         """Fold these subtrees (tree, mindmap) or groups (layered) when the viewer opens."""

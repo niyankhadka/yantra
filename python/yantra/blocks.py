@@ -200,9 +200,13 @@ def chart(data: Union[Iterable[Item], Mapping[str, float], None] = None, unit: O
 
 def gantt(items: Iterable[Item], start: Optional[str] = None, today: Optional[Union[str, int]] = None,
           title: Optional[str] = None, span: Optional[str] = None, nodes: Optional[Iterable[Any]] = None,
-          caption: Optional[str] = None) -> Block:
+          caption: Optional[str] = None, workdays: Optional[bool] = None,
+          holidays: Optional[Iterable[str]] = None) -> Block:
     """A project plan: items ``{title, id?, group?, start?, end? | days?, after?, milestone?, progress?, tone?}``
-    or ``(title, start, days)``. Dates are ``YYYY-MM-DD`` or ``DD/MM/YYYY``; numbers count days from ``start``."""
+    or ``(title, start, days)``. Dates are ``YYYY-MM-DD`` or ``DD/MM/YYYY``; numbers count days from ``start``.
+    ``workdays=True`` counts working days (no Saturdays, Sundays or ``holidays``); it needs dates."""
+    if holidays is not None and not workdays:
+        raise ValueError("holidays only count with workdays=True")
     rows = _items(items, ("title", "start", "days"))
     for r in rows:
         if not r.get("title"):
@@ -211,7 +215,8 @@ def gantt(items: Iterable[Item], start: Optional[str] = None, today: Optional[Un
             raise ValueError(f"gantt task {r['title']!r} needs days or end (or milestone=True)")
         if isinstance(r.get("after"), tuple):
             r["after"] = list(r["after"])
-    return _block("gantt", title, span, nodes, start=start, today=today, caption=caption, items=rows)
+    return _block("gantt", title, span, nodes, start=start, today=today, workdays=workdays,
+                  holidays=list(holidays) if holidays is not None else None, caption=caption, items=rows)
 
 
 def matrix(items: Iterable[Item], x: Optional[Union[str, Mapping[str, Any]]] = None,
