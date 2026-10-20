@@ -10,7 +10,7 @@ Follow `.claude/skills/yantra/SKILL.md` (same file in `.agents/skills/yantra/`).
 
 ```bash
 node bin/yantra.js new diagram.json          # starter payload (--page for an answer page)
-node bin/yantra.js import sketch.mmd         # or start from a Mermaid flowchart / sequence diagram
+node bin/yantra.js import sketch.mmd         # or start from a Mermaid flowchart / sequence / ER / class diagram
 node bin/yantra.js validate diagram.json     # schema, references, story, geometry
 node bin/yantra.js build diagram.json        # -> diagram.html
 node bin/yantra.js screenshot diagram.json   # -> diagram-light.png, then look at it

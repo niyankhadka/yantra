@@ -77,7 +77,7 @@ const TOOLS = [
   },
   {
     name: 'yantra_import_mermaid',
-    description: 'Convert Mermaid text (flowchart/graph, sequenceDiagram or stateDiagram) into a Yantra diagram payload with roles, groups (from subgraphs) and a walkthrough, then validate it. Writes outputPath when given, otherwise returns the payload.',
+    description: 'Convert Mermaid text (flowchart/graph, sequenceDiagram, stateDiagram, erDiagram or classDiagram) into a Yantra diagram payload with roles, groups (from subgraphs / namespaces), state shapes and self-loops, entity and class cards with fields and methods, relationship markers and a walkthrough, then validate it. Writes outputPath when given, otherwise returns the payload.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -9,6 +9,8 @@ import mlPipeline from '../../examples/ml-training-pipeline.json';
 import supportEscalation from '../../examples/customer-support-escalation.json';
 import manufacturing from '../../examples/manufacturing-quality.json';
 import researchPaper from '../../examples/research-paper-lifecycle.json';
+import ecommerceSchema from '../../examples/ecommerce-schema.json';
+import paymentClasses from '../../examples/payment-classes.json';
 import platform from '../../examples/platform-overview.json';
 import ticketLifecycle from '../../examples/ticket-lifecycle.json';
 
@@ -17,6 +19,8 @@ export const EXAMPLES = [
   { id: 'cloud-architecture', name: 'Cloud architecture', data: cloud },
   { id: 'aws-serverless', name: 'AWS serverless (groups)', data: awsServerless },
   { id: 'oauth-login', name: 'OAuth sign-in (sequence)', data: oauthLogin },
+  { id: 'ecommerce-schema', name: 'E-commerce schema (ERD)', data: ecommerceSchema },
+  { id: 'payment-classes', name: 'Order classes (UML)', data: paymentClasses },
   { id: 'platform-overview', name: 'Shop platform (drill-down)', data: platform },
   { id: 'sales-pipeline', name: 'B2B sales pipeline', data: sales },
   { id: 'supply-chain', name: 'Supply chain', data: supplyChain },

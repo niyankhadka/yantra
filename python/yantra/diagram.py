@@ -14,13 +14,20 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from ._cli import YantraError, build_payload, validate_payload
 
-__all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO"]
+__all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO",
+           "RELATIONS", "END_KINDS", "VISIBILITY", "field", "method"]
 
 COLORS = ("blue", "teal", "green", "amber", "rose", "violet", "orange", "slate")
 #: Node shapes: cards ("card", "state") and state-machine pseudo-states ("initial", "final", "choice").
 SHAPES = ("card", "state", "initial", "final", "choice")
 #: Edge arrow heads: at the target (default), at both ends, or none (an undirected link).
 ARROWS = ("forward", "both", "none")
+#: UML relationship kinds (edge ``relation``). Triangles and diamonds sit on the source.
+RELATIONS = ("inheritance", "realization", "composition", "aggregation", "association", "dependency")
+#: Markers for ``source_end`` / ``target_end``: UML heads and ER cardinality (crow's foot).
+END_KINDS = ("none", "arrow", "open-arrow", "triangle", "diamond", "open-diamond",
+             "one", "zero-or-one", "many", "one-or-many", "zero-or-many")
+VISIBILITY = ("+", "-", "#", "~")
 DEFAULT_SCENARIO = "main"
 NodeRef = Union["Node", str]
 
@@ -43,6 +50,44 @@ def _url(url: Optional[str]) -> Optional[str]:
     if not isinstance(url, str) or not _SAFE_URL.match(url.strip()):
         raise YantraError(f"url must be an http(s) or mailto: link, not {url!r}")
     return url.strip()
+
+
+def _member(name: str, visibility: Optional[str], **flags: Any) -> Dict[str, Any]:
+    if not name:
+        raise YantraError("a field or method needs a name")
+    if visibility is not None and visibility not in VISIBILITY:
+        raise YantraError(f"visibility must be one of {VISIBILITY}, not {visibility!r}")
+    m: Dict[str, Any] = {"name": name}
+    if visibility is not None:
+        m["visibility"] = visibility
+    m.update({k: v for k, v in flags.items() if v not in (None, False, "")})
+    return m
+
+
+def field(name: str, type: Optional[str] = None, pk: bool = False, fk: bool = False, unique: bool = False,
+          nullable: bool = False, ref: Optional[str] = None, visibility: Optional[str] = None,
+          static: bool = False, note: Optional[str] = None) -> Dict[str, Any]:
+    """A table column or class attribute. `ref` names what a foreign key points at ("node" or "node.field")."""
+    return _member(name, visibility, type=type, pk=pk, fk=fk, unique=unique, nullable=nullable, ref=ref,
+                   static=static, note=note)
+
+
+def method(name: str, params: Optional[str] = None, type: Optional[str] = None, visibility: Optional[str] = None,
+           static: bool = False, abstract: bool = False, note: Optional[str] = None) -> Dict[str, Any]:
+    """A class operation, shown as ``name(params)`` with the return `type` on the right."""
+    return _member(name, visibility, params=params, type=type, static=static, abstract=abstract, note=note)
+
+
+def _members(items: Optional[Iterable[Any]]) -> List[Dict[str, Any]]:
+    """Accept dicts from :func:`field` / :func:`method` or bare names."""
+    out = []
+    for m in items or []:
+        if isinstance(m, str):
+            m = {"name": m}
+        if not isinstance(m, dict) or not m.get("name"):
+            raise YantraError(f"fields and methods need a name, got {m!r}")
+        out.append(dict(m))
+    return out
 
 
 class Node:
@@ -293,12 +338,29 @@ class Diagram:
         self.nodes[node_id] = node
         return node
 
+    def add_entity(self, node_id: str, title: str, fields: Iterable[Any], type: str = "entity",
+                   **data: Any) -> Node:
+        """Add a table card (ER diagrams): `fields` from :func:`field`, drawn as rows (PK / FK / UK, type)."""
+        return self.add_node(node_id, title, type, fields=_members(fields), **data)
+
+    def add_class(self, node_id: str, title: str, fields: Optional[Iterable[Any]] = None,
+                  methods: Optional[Iterable[Any]] = None, stereotype: Optional[str] = None,
+                  type: str = "class", **data: Any) -> Node:
+        """Add a class card: attributes (:func:`field`) and operations (:func:`method`) as two row
+        sections; `stereotype` ("interface", "abstract", ...) shows as «stereotype»."""
+        return self.add_node(node_id, title, type, fields=_members(fields), methods=_members(methods) or None,
+                             stereotype=stereotype, **data)
+
     def add_edge(self, source: NodeRef, target: NodeRef, label: str = "", edge_id: Optional[str] = None,
                  type: Optional[str] = None, style: Optional[str] = None, arrow: Optional[str] = None,
+                 relation: Optional[str] = None, source_end: Optional[str] = None, target_end: Optional[str] = None,
                  **extra: Any) -> Edge:
         """Connect two nodes. `type`: sync | async | event | stream | data; `style`: solid | dashed | dotted;
         `arrow`: forward (default) | both | none. `source == target` draws a self-loop.
-        `url=` adds an http(s) or mailto link shown in the inspector."""
+        `url=` adds an http(s) or mailto link shown in the inspector.
+        `relation`: a UML kind (see RELATIONS; triangles and diamonds sit on the source, so point edges
+        parent -> child and whole -> part). `source_end` / `target_end`: ER cardinality or UML heads
+        (see END_KINDS), e.g. source_end="one", target_end="zero-or-many". Notation replaces `arrow`."""
         source, target = _id(source), _id(target)
         if style not in (None, "solid", "dashed", "dotted"):
             raise YantraError(f"edge style must be solid, dashed or dotted, not {style!r}")
@@ -306,6 +368,13 @@ class Diagram:
             raise YantraError(f"edge arrow must be one of {ARROWS}, not {arrow!r}")
         if extra.get("url") is not None:
             extra["url"] = _url(extra["url"])
+        if relation is not None and relation not in RELATIONS:
+            raise YantraError(f"edge relation must be one of {RELATIONS}, not {relation!r}")
+        for end in (source_end, target_end):
+            if end is not None and end not in END_KINDS:
+                raise YantraError(f"edge end must be one of {END_KINDS}, not {end!r}")
+        extra.update({k: v for k, v in (("relation", relation), ("sourceEnd", source_end),
+                                        ("targetEnd", target_end)) if v is not None})
         edge_id = edge_id or f"{source}-{target}"
         base, n = edge_id, 2
         while edge_id in self.edges:

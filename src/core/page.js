@@ -96,8 +96,8 @@ function staticFigure(b, ctx) {
       <div class="p-scroll p-only-light">${renderSvg(scene, { ...opts, theme: 'light' })}</div>
       <div class="p-scroll p-only-dark">${renderSvg(scene, { ...opts, theme: 'dark' })}</div>
       ${b.caption ? `<figcaption>${inline(b.caption)}</figcaption>` : ''}
-    </figure>`.replace(/id="(y-title|y-desc|arrow[\w-]*|g\d+)"/g, (_, id) => `id="${id}-${ctx.uid}"`)
-    .replace(/url\(#(arrow[\w-]*|g\d+)\)/g, (_, id) => `url(#${id}-${ctx.uid})`)
+    </figure>`.replace(/id="(y-title|y-desc|arrow[\w-]*|end-[\w-]+|g\d+)"/g, (_, id) => `id="${id}-${ctx.uid}"`)
+    .replace(/url\(#(arrow[\w-]*|end-[\w-]+|g\d+)\)/g, (_, id) => `url(#${id}-${ctx.uid})`)
     .replace(/aria-labelledby="y-title y-desc"/g, `aria-labelledby="y-title-${ctx.uid} y-desc-${ctx.uid}"`);
 }
 

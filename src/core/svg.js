@@ -9,6 +9,8 @@ import { ICONS, DRILL_ICON } from './icons.js';
 import { sequenceLive } from './sequence.js';
 import { POINT_SHAPES } from './model.js';
 import { escapeXml as x, textWidth } from './text.js';
+import { ROWS } from './entity.js';
+import { markerDef } from './notation.js';
 
 const PAD = 40;
 const HEADER = 64;
@@ -46,6 +48,14 @@ export function renderSvg(scene, options = {}) {
   const hueOf = new Map(scene.nodes.map((n) => [n.id, n.hue]));
   const usedHues = new Set();
   const gradients = [];
+  // Notation markers (UML heads, ER cardinality): one <marker> per kind and colour used
+  const notation = new Map();
+  const endMarker = (kind, hueName) => {
+    if (!kind) return '';
+    const id = `end-${theme}-${kind}${hueName ? `-${hueName}` : ''}`;
+    if (!notation.has(id)) notation.set(id, markerDef(id, kind, hueName ? hue(hueName) : t.edge, t.bg));
+    return `url(#${id})`;
+  };
 
   // Active edges run from the source role colour to the target role colour
   const edges = scene.edges
@@ -53,22 +63,26 @@ export function renderSvg(scene, options = {}) {
       const on = focus && active('edges', e.id);
       const dash = e.dotted ? ' stroke-dasharray="2 4"' : e.dashed ? ' stroke-dasharray="6 5"' : '';
       let stroke = t.edge;
-      let marker = 'arrow';
-      let startMarker = 'arrow';
+      // Markers at both ends come from the scene: arrowheads (edge `arrow`) or notation
+      const start = e.start !== undefined ? e.start : e.arrow === 'both' ? 'arrow' : null;
+      const end = e.end !== undefined ? e.end : e.arrow === 'none' ? null : 'arrow';
+      const from = on ? hueOf.get(e.edge.source) || 'slate' : null;
+      const to = on ? hueOf.get(e.edge.target) || 'slate' : null;
       if (on) {
-        const from = hueOf.get(e.edge.source) || 'slate';
-        const to = hueOf.get(e.edge.target) || 'slate';
         const a = e.points[0];
         const b = e.points[e.points.length - 1];
         const x2 = b.x === a.x && b.y === a.y ? b.x + 1 : b.x;
         gradients.push(`<linearGradient id="g${i}" gradientUnits="userSpaceOnUse" x1="${a.x}" y1="${a.y}" x2="${x2}" y2="${b.y}"><stop offset="0" stop-color="${hue(from)}"/><stop offset="1" stop-color="${hue(to)}"/></linearGradient>`);
-        usedHues.add(to);
-        if (e.arrow === 'both') usedHues.add(from);
         stroke = `url(#g${i})`;
-        marker = `arrow-${to}`;
-        startMarker = `arrow-${from}`;
       }
-      return `<path d="${e.d}" fill="none" stroke="${stroke}" stroke-width="${on ? 2.25 : 1.5}"${dash}${arrowHeads(e.arrow, startMarker, marker)} opacity="${focus && !on ? 0.2 : 1}"/>`;
+      const head = (kind, hueName) => {
+        if (kind !== 'arrow') return endMarker(kind, hueName);
+        if (hueName) usedHues.add(hueName);
+        return `url(#${hueName ? `arrow-${hueName}` : 'arrow'})`;
+      };
+      const ms = head(start, from);
+      const me = head(end, to);
+      return `<path d="${e.d}" fill="none" stroke="${stroke}" stroke-width="${on ? 2.25 : 1.5}"${dash}${ms ? ` marker-start="${ms}"` : ''}${me ? ` marker-end="${me}"` : ''} opacity="${focus && !on ? 0.2 : 1}"/>`;
     })
     .join('\n    ');
 
@@ -96,7 +110,7 @@ export function renderSvg(scene, options = {}) {
 
   const nodes = scene.nodes.map((n) => nodeSvg(n, t, hue(n.hue), focus ? active('nodes', n.id) : null)).join('\n    ');
 
-  const defs = `${[...usedHues].map((h) => arrowMarker(`arrow-${h}`, hue(h))).join('')}
+  const defs = `${[...usedHues].map((h) => arrowMarker(`arrow-${h}`, hue(h))).join('')}${[...notation.values()].join('')}
     ${gradients.join('')}`;
   return frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body: [groups, edges, nodes, labels], ox, oy });
 }
@@ -288,6 +302,7 @@ function nodeSvg(n, t, hueColor, isActive) {
     y += C.techGap;
     lines.push(`<text x="${C.padX}" y="${baseline(y, C.techLine, C.techSize)}" font-size="${C.techSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(n.lines.tech)}</text>`);
   }
+  if (n.lines.rows) lines.push(rowsSvg(n, t, hueColor));
   // Cards that open a detail diagram carry the drill mark top-right, as in the viewer
   const drill = typeof n.node?.data?.drill === 'string' && n.node.data.drill
     ? `<g transform="translate(${n.w - C.padX - 14} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><title>Has a detail diagram</title>${DRILL_ICON}</g>`
@@ -296,9 +311,32 @@ function nodeSvg(n, t, hueColor, isActive) {
   return `<g transform="translate(${n.x} ${n.y})" opacity="${dim ? 0.25 : 1}">
       ${ring}<rect width="${n.w}" height="${n.h}" rx="${rx}" fill="${t.surface}" stroke="${isActive ? hueColor : t.border}" stroke-width="${isActive ? 1.5 : 1}"/>
       <g transform="translate(${C.padX} ${C.padY + 1}) scale(0.5833)" fill="none" stroke="${hueColor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${(typeof n.icon === 'string' && Object.hasOwn(ICONS, n.icon) ? ICONS[n.icon] : ICONS.cpu)}</g>
-      <text x="${C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600" letter-spacing="0.06em" fill="${hueColor}">${x(String(n.kicker).toUpperCase())}</text>${drill}
+      <text x="${C.padX + 21}" y="${C.padY + 12}" font-size="10.5" font-weight="600"${n.stereotype ? ' font-style="italic"' : ' letter-spacing="0.06em"'} fill="${hueColor}">${x(n.stereotype ? n.kicker : String(n.kicker).toUpperCase())}</text>${drill}
       ${lines.join('\n      ')}
     </g>`;
+}
+
+/** Field / method rows of an entity or class card: a divider per section, key column, name, type on the right. */
+function rowsSvg(n, t, hueColor) {
+  const C = CARD;
+  const R = ROWS;
+  const { nameX, sections } = n.lines.rows;
+  const out = [];
+  for (const sec of sections) {
+    out.push(`<line x1="0" y1="${sec.rule}" x2="${n.w}" y2="${sec.rule}" stroke="${t.border}"/>`);
+    for (const r of sec.rows) {
+      const by = baseline(r.y, R.line, R.nameSize);
+      if (r.more) {
+        out.push(`<text x="${C.padX + nameX}" y="${by}" font-size="${R.nameSize}" font-style="italic" fill="${t.ink3}">+ ${r.more} more</text>`);
+        continue;
+      }
+      if (r.key) out.push(`<text x="${C.padX}" y="${by}" font-size="${R.keySize}" font-weight="700" font-family="${x(FONT_MONO)}" fill="${hueColor}">${x(r.key)}</text>`);
+      const style = `${r.pk ? ' font-weight="600"' : ''}${r.abstract ? ' font-style="italic"' : ''}${r.static ? ' text-decoration="underline"' : ''}`;
+      out.push(`<text x="${C.padX + nameX}" y="${by}" font-size="${R.nameSize}"${style} fill="${t.ink}">${x(r.name)}</text>`);
+      if (r.type) out.push(`<text x="${n.w - C.padX}" y="${by}" text-anchor="end" font-size="${R.typeSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(r.type)}</text>`);
+    }
+  }
+  return out.join('\n      ');
 }
 
 const baseline = (top, lineHeight, size) => Math.round((top + (lineHeight - size) / 2 + size * 0.8) * 10) / 10;

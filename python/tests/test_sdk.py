@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "python"))
 
-from yantra import Diagram, Page, YantraError, blocks  # noqa: E402
+from yantra import Diagram, Page, YantraError, blocks, field, method  # noqa: E402
 
 SCHEMAS = {p.name: json.loads(p.read_text(encoding="utf-8")) for p in (ROOT / "schemas").glob("*.json")}
 HAS_NODE = shutil.which("node") is not None and (ROOT / "node_modules").exists()
@@ -108,6 +108,32 @@ def full_diagram() -> Diagram:
         blocks.callout("Payments are idempotent.", label="Note", tone="good"),
     ])
     d.inspector(tabs=["summary", "node", "risks"], labels={"node": "Component"}, on_node_click="risks")
+    return d
+
+
+def data_model() -> Diagram:
+    """A small ERD plus class cards: entity fields, methods, stereotypes and end markers."""
+    d = Diagram("Shop schema", "Customers and orders.", direction="LR")
+    d.role("table", "Table", "blue").role("class", "Class", "violet")
+    d.add_entity("customers", "customers", [
+        field("id", "uuid", pk=True),
+        field("email", "varchar(255)", unique=True),
+        "full_name",
+    ], type="table", icon="user")
+    d.add_entity("orders", "orders", [
+        field("id", "uuid", pk=True),
+        field("customer_id", "uuid", fk=True, ref="customers.id"),
+        field("shipped_at", "timestamptz", nullable=True, note="Empty until shipped"),
+    ], type="table")
+    d.add_edge("customers", "orders", "places", source_end="one", target_end="zero-or-many")
+    d.add_class("base", "Entity", fields=[field("id", "UUID", visibility="#")],
+                methods=[method("validate", type="void", visibility="#", abstract=True)], stereotype="abstract")
+    d.add_class("order", "Order", methods=[method("total", type="Money", visibility="+"),
+                                           method("zero", "currency", "Money", "+", static=True)])
+    d.add_edge("base", "order", relation="inheritance")
+    d.add_step("Overview")
+    d.add_step("Orders", nodes=["customers", "orders"], edges=["customers-orders"])
+    d.add_step("Classes", nodes=["base", "order"], edges=["base-order"])
     return d
 
 
@@ -219,6 +245,40 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertNotIn("groups", p)
         self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
 
+    def test_data_model_payload(self) -> None:
+        p = data_model().to_dict()
+        self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
+        customers, orders, base, order = p["nodes"]
+        self.assertEqual(customers["data"]["fields"], [
+            {"name": "id", "type": "uuid", "pk": True},
+            {"name": "email", "type": "varchar(255)", "unique": True},
+            {"name": "full_name"}])
+        self.assertEqual(orders["data"]["fields"][1], {"name": "customer_id", "type": "uuid", "fk": True,
+                                                       "ref": "customers.id"})
+        self.assertEqual(orders["data"]["fields"][2]["nullable"], True)
+        self.assertEqual(base["data"]["stereotype"], "abstract")
+        self.assertEqual(base["data"]["methods"], [{"name": "validate", "visibility": "#", "type": "void",
+                                                   "abstract": True}])
+        self.assertEqual(order["data"]["fields"], [])
+        self.assertEqual(order["data"]["methods"][1], {"name": "zero", "visibility": "+", "params": "currency",
+                                                      "type": "Money", "static": True})
+        er, uml = p["edges"]
+        self.assertEqual((er["sourceEnd"], er["targetEnd"], er["label"]), ("one", "zero-or-many", "places"))
+        self.assertEqual(uml, {"id": "base-order", "source": "base", "target": "order", "relation": "inheritance"})
+
+    def test_data_model_bad_input(self) -> None:
+        d = Diagram("X")
+        with self.assertRaises(YantraError):
+            d.add_edge("a", "b", relation="friendship")
+        with self.assertRaises(YantraError):
+            d.add_edge("a", "b", target_end="lots")
+        with self.assertRaises(YantraError):
+            field("x", visibility="!")
+        with self.assertRaises(YantraError):
+            d.add_entity("t", "T", [{"type": "int"}])
+        with self.assertRaises(YantraError):
+            method("")
+
     def test_bad_input_rejected(self) -> None:
         d = Diagram("X")
         with self.assertRaises(YantraError):
@@ -325,6 +385,18 @@ class CliTests(unittest.TestCase):
         out = full_diagram().build_html(os.path.join(self.tmp, "d.html"))
         html = Path(out).read_text(encoding="utf-8")
         self.assertIn("Orders API", html)
+
+    def test_data_model_validates_and_builds(self) -> None:
+        d = data_model()
+        report = d.validate()
+        self.assertClean(report)
+        self.assertEqual(report["warnings"], [])
+        html = Path(d.build_html(os.path.join(self.tmp, "schema.html"))).read_text(encoding="utf-8")
+        self.assertIn("customer_id", html)
+        bad = data_model()
+        bad.nodes["orders"].data["fields"][1]["ref"] = "nowhere.id"
+        codes = [e["code"] for e in bad.validate()["errors"]]
+        self.assertIn("ref/field-unknown-ref", codes)
 
     def test_invalid_diagram_reports_errors(self) -> None:
         d = Diagram("Broken")

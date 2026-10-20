@@ -181,6 +181,72 @@
   text-overflow: ellipsis;
 }
 
+/* --- Entity / class cards: rows from src/core/entity.js (ROWS) --------------
+ * Row tops come from the core; -1px offsets the card border (the core measures
+ * from the outer edge). Row 20px, name 12px, type 11px mono, key 9.5px mono. */
+.y-node.is-stereotype .y-node-kicker {
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.y-row-rule {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  height: 1px;
+  margin-top: -1px;
+  background: var(--y-border);
+}
+
+.y-row {
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  height: 20px;
+  margin-top: -1px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.y-row > span {
+  position: absolute;
+  top: 0;
+}
+
+.y-row-key {
+  left: 0;
+  color: var(--y-hue, var(--y-ink-3));
+  font: 700 9.5px/20px var(--y-font-mono);
+}
+
+.y-row-name {
+  font-size: 12px;
+}
+
+.y-row.is-pk .y-row-name {
+  font-weight: 600;
+}
+
+.y-row.is-abstract .y-row-name {
+  font-style: italic;
+}
+
+.y-row.is-static .y-row-name {
+  text-decoration: underline;
+}
+
+.y-row.is-more .y-row-name {
+  color: var(--y-ink-3);
+  font-style: italic;
+}
+
+.y-row-type {
+  right: 0;
+  color: var(--y-ink-3);
+  font: 11px/20px var(--y-font-mono);
+}
+
 /* --- State shapes: rounder state cards and textless pseudo-states ---------
  * Sizes come from POINT_SIZE in src/core/layout.js (dots 20px, diamond 40px). */
 .y-node.is-state {

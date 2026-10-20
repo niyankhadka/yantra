@@ -12,13 +12,15 @@ Every output is a single offline HTML file. Pick one:
 | to see how parts connect or how a flow runs | **diagram** | `docs/authoring.md`, `schemas/yantra-payload.schema.json` |
 | who calls whom, in order (protocol, API call, handshake) | **diagram** with `meta.view: "sequence"` | `docs/authoring.md` (Sequence view) |
 | the states something goes through (lifecycle, state machine) | **diagram** with `shape: "state"` / `"initial"` / `"final"` / `"choice"` nodes | `docs/authoring.md` (State machines) |
+| a database schema (ERD) or class diagram | **diagram** with node `fields` / `methods`, edge `sourceEnd` / `targetEnd` or `relation` | `docs/authoring.md` (Data models) |
 | an answer, explanation, comparison or decision on one page | **answer page** (`"kind": "page"`) | `docs/pages.md`, `schemas/yantra-page.schema.json` |
-| their Mermaid flowchart / sequence / state diagram as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
+| their Mermaid flowchart / sequence / state / ER / class diagram as Yantra | `node bin/yantra.js import sketch.mmd` then review | `docs/mermaid.md` |
 
 For "explain how X works", make the diagram first, then the page around it
 (`{ "type": "diagram", "src": "flow.json" }`). References: `examples/*.json`
 (`answer-*.json` are pages; `oauth-login.json` is a sequence; `aws-serverless.json` has groups;
-`platform-overview.json` drills into detail diagrams; `ticket-lifecycle.json` is a state machine).
+`platform-overview.json` drills into detail diagrams; `ticket-lifecycle.json` is a state machine;
+`ecommerce-schema.json` is an ERD; `payment-classes.json` is a class diagram).
 
 ## Diagram
 
@@ -43,6 +45,12 @@ For "explain how X works", make the diagram first, then the page around it
      **Details**; anything else (risks, costs, glossary) → a `panels` entry built from page
      blocks. Set `meta.inspector.onNodeClick` (a panel id, or `"stay"`) only when needed.
    - For code-backed diagrams, read the code first and cite it in `data.sourceFile`.
+   - Tables and classes: `data.fields` (`{ name, type, pk, fk, unique, nullable, ref }`) and
+     `data.methods` (`{ name, params, type, visibility }`), at most 12 rows per card;
+     `data.stereotype: "interface"`. ER edges: `sourceEnd` / `targetEnd` (`one`, `zero-or-one`,
+     `many`, `one-or-many`, `zero-or-many`) plus a verb label. UML edges: `relation`
+     (`inheritance`, `realization`, `composition`, `aggregation`, `association`, `dependency`)
+     pointing parent → child and whole → part; structural relations need no label.
    - Runbooks, dashboards, specs: `url` on a node (`data.url`), edge or step (http, https or
      mailto only); the inspector opens them in a new tab.
 

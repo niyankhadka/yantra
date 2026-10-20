@@ -11,6 +11,7 @@ import { iconSvg, DRILL_ICON } from '../core/icons.js';
 import { DRILL_TEXT } from './levels.js';
 import { escapeHtml as h } from '../core/text.js';
 import { sequenceLive } from '../core/sequence.js';
+import { END_KINDS, markerDef } from '../core/notation.js';
 import { POINT_SHAPES } from '../core/model.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -22,12 +23,19 @@ export class Renderer {
     const markers = Object.keys(HUES)
       .map((hue) => `<marker id="y-arrow-${hue}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1 10 5 0 9z" style="fill:${hueVar(hue)}"/></marker>`)
       .join('');
+    // Notation markers (UML heads, ER cardinality) in the edge colour and every hue
+    const ends = END_KINDS.filter((k) => k !== 'none' && k !== 'arrow')
+      .flatMap((kind) => [
+        markerDef(`y-end-${kind}`, kind, 'var(--y-edge)', 'var(--y-bg)', true),
+        ...Object.keys(HUES).map((hue) => markerDef(`y-end-${kind}-${hue}`, kind, hueVar(hue), 'var(--y-bg)', true))
+      ])
+      .join('');
     world.innerHTML = `
       <div class="y-group-layer" aria-hidden="true"></div>
       <svg class="y-edges" xmlns="${SVG_NS}" aria-hidden="true">
         <defs>
           <marker id="y-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1 10 5 0 9z" class="y-arrow"/></marker>
-          ${markers}
+          ${markers}${ends}
         </defs>
         <defs class="y-gradients"></defs>
         <g class="y-edge-layer"></g>
@@ -73,9 +81,10 @@ export class Renderer {
       path.setAttribute('class', 'y-edge-line');
       g.appendChild(path);
       this.edgeLayer.appendChild(g);
-      const rec = { g, path, gradient, gradId, from, to, arrow: e.arrow };
+      // start / end: arrowheads (edge `arrow`) or notation markers, resolved in the core
+      const rec = { g, path, gradient, gradId, from, to, arrow: e.arrow, start: e.start ?? null, end: e.end === undefined ? 'arrow' : e.end };
       this.edges.set(e.id, rec);
-      setHeads(rec, false);
+      this.setMarkers(rec, false);
 
       if (e.edge.label) {
         const lab = document.createElement('div');
@@ -141,7 +150,10 @@ export class Renderer {
       `<div class="y-node-kicker">${iconSvg(n.icon, 14)}<span>${h(n.kicker)}</span></div>` +
       `<div class="y-node-title">${n.lines.title.map((l) => `<span>${h(l)}</span>`).join('')}</div>` +
       (n.lines.subtitle.length ? `<div class="y-node-sub">${n.lines.subtitle.map((l) => `<span>${h(l)}</span>`).join('')}</div>` : '') +
-      (n.lines.tech ? `<div class="y-node-tech">${h(n.lines.tech)}</div>` : '');
+      (n.lines.tech ? `<div class="y-node-tech">${h(n.lines.tech)}</div>` : '') +
+      (n.lines.rows ? rowsHtml(n.lines.rows) : '');
+    if (n.stereotype) el.classList.add('is-stereotype');
+    if (n.lines.rows) el.classList.add('is-entity');
     this.nodeLayer.appendChild(el);
     this.nodes.set(n.id, el);
     return el;
@@ -353,7 +365,7 @@ export class Renderer {
       rec.g.classList.toggle('is-active', on);
       rec.g.classList.toggle('is-dim', focused && !on);
       rec.path.style.stroke = on ? `url(#${rec.gradId})` : '';
-      setHeads(rec, on);
+      this.setMarkers(rec, on);
     });
     this.labels.forEach((el, id) => {
       el.classList.toggle('is-active', focused && activeEdges.has(id));
@@ -365,6 +377,20 @@ export class Renderer {
     const key = flowing.map((e) => e.id).join('|');
     if (force || key !== this.packetKey) this.renderPackets(flowing);
     this.packetKey = key;
+  }
+
+  /** marker-start / marker-end for an edge record: grey, or the end node's hue when active. */
+  setMarkers(rec, on) {
+    const id = (kind, hue) => {
+      if (!kind) return null;
+      const h = HUES[hue] ? hue : 'slate';
+      if (kind === 'arrow') return on ? `url(#y-arrow-${h})` : 'url(#y-arrow)';
+      return on ? `url(#y-end-${kind}-${h})` : `url(#y-end-${kind})`;
+    };
+    for (const [attr, value] of [['marker-start', id(rec.start, rec.from)], ['marker-end', id(rec.end, rec.to)]]) {
+      if (value) rec.path.setAttribute(attr, value);
+      else rec.path.removeAttribute(attr);
+    }
   }
 
   renderPackets(edges) {
@@ -404,4 +430,27 @@ function pointMarkup(n) {
     n.shape === 'final' ? `<circle class="y-pt-ring" cx="${r}" cy="${r}" r="${r - 1}"/><circle class="y-pt-fill" cx="${r}" cy="${r}" r="${r - 5}"/>` :
     `<polygon class="y-pt-ring" points="${r},0.75 ${n.w - 0.75},${r} ${r},${n.h - 0.75} 0.75,${r}"/>`;
   return `<svg width="${n.w}" height="${n.h}" viewBox="0 0 ${n.w} ${n.h}" aria-hidden="true">${body}</svg>`;
+}
+
+/**
+ * Field / method rows, positioned from the core measurement (entity.js), so the
+ * card matches the SVG export and the validated height exactly.
+ */
+function rowsHtml(rows) {
+  return rows.sections
+    .map((sec) => {
+      const items = sec.rows
+        .map((r) =>
+          r.more
+            ? `<div class="y-row is-more" style="top:${r.y}px"><span class="y-row-name" style="left:${rows.nameX}px">+ ${r.more} more</span></div>`
+            : `<div class="y-row${r.pk ? ' is-pk' : ''}${r.static ? ' is-static' : ''}${r.abstract ? ' is-abstract' : ''}" style="top:${r.y}px">` +
+              (r.key ? `<span class="y-row-key">${h(r.key)}</span>` : '') +
+              `<span class="y-row-name" style="left:${rows.nameX}px">${h(r.name)}</span>` +
+              (r.type ? `<span class="y-row-type">${h(r.type)}</span>` : '') +
+              '</div>'
+        )
+        .join('');
+      return `<div class="y-row-rule" style="top:${sec.rule}px" data-kind="${sec.kind}"></div>${items}`;
+    })
+    .join('');
 }

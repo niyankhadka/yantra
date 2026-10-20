@@ -11,12 +11,13 @@ from __future__ import annotations
 
 from . import blocks
 from ._cli import YantraError, cli_command
-from .diagram import ARROWS, COLORS, SHAPES, Diagram, Edge, Group, Node, Scenario, Step
+from .diagram import ARROWS, COLORS, END_KINDS, RELATIONS, SHAPES, Diagram, Edge, Group, Node, Scenario, Step, field, method
 from .page import Page
 
 __version__ = "2.0.0"
 
 __all__ = [
     "Diagram", "Node", "Edge", "Step", "Scenario", "Group", "Page", "blocks",
-    "YantraError", "COLORS", "SHAPES", "ARROWS", "cli_command", "__version__",
+    "YantraError", "COLORS", "SHAPES", "ARROWS", "RELATIONS", "END_KINDS", "field", "method", "cli_command",
+    "__version__",
 ]

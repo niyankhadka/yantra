@@ -12,6 +12,8 @@ import { computeScene } from './scene.js';
 import { computeSequenceScene, hasSequence } from './sequence.js';
 import { overlaps, segmentsOf, segmentHitsBox } from './route.js';
 import { ICONS } from './icons.js';
+import { ROWS, members } from './entity.js';
+import { END_KINDS, RELATIONS } from './notation.js';
 import { collectDiagrams, drillEdges, drillOf, isUnsafeRefPath, safeUrl, DRILL_MAX_DEPTH } from './drill.js';
 
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -22,6 +24,9 @@ import { CHART_NEEDS, CHART_SHAPES, checkChartBlock } from './charts.js';
 export const BUILTIN_TABS = ['summary', 'step', 'node'];
 
 export const BUDGET = { nodes: 14, edges: 20, labelChars: 28, titleChars: 42 };
+
+/** UML relations whose symbol already says what the edge means: no label needed. */
+const SELF_EXPLAINING = new Set(['inheritance', 'realization', 'composition', 'aggregation']);
 
 export function lint(payload) {
   const findings = [];
@@ -123,10 +128,13 @@ function diagramFindings(payload, add) {
       add('error', 'schema/edge-arrow-invalid', `Edge "${e.id}" arrow "${e.arrow}" is not one of ${EDGE_ARROWS.join(', ')}.`, { edge: e.id });
     if (e.label !== undefined && typeof e.label !== 'string') add('error', 'schema/edge-label-invalid', `Edge "${e.id}" label must be a string.`, { edge: e.id });
     else if (!e.label) {
-      if (!pseudoEnd(e)) add('warning', 'content/edge-missing-label', `Edge "${e.id}" has no label; say what flows along it.`, { edge: e.id });
+      if (!pseudoEnd(e) && !SELF_EXPLAINING.has(e.relation)) add('warning', 'content/edge-missing-label', `Edge "${e.id}" has no label; say what flows along it.`, { edge: e.id });
     } else if (e.label.length > BUDGET.labelChars && e.label.length <= TEXT_CAP)
       add('warning', 'content/label-too-long', `Edge "${e.id}" label is ${e.label.length} chars; keep labels under ${BUDGET.labelChars}.`, { edge: e.id });
   });
+
+  // --- entity / class cards and relationship notation -----------------------
+  checkMembers(model, nodeIds, add);
 
   // --- state machines: pseudo-states used the way their shape promises ------
   for (const n of model.nodes) {
@@ -455,6 +463,55 @@ function checkGroups(payload, model, nodeIds, add) {
     if (!reported.size && !hasNodes(g.id)) add('warning', 'group/empty', `Group "${g.id}" has no nodes; remove it or list its members.`, { group: g.id });
   }
   if (byId.size > 6) add('warning', 'budget/too-many-groups', `${byId.size} groups; keep to 2-5 so the boxes stay readable.`);
+}
+
+/** Fields / methods of entity and class cards, FK refs, and edge notation values. */
+function checkMembers(model, nodeIds, add) {
+  const fieldsOf = new Map();
+  for (const n of model.nodes) {
+    const d = n.data;
+    if (!d || typeof d !== 'object' || typeof n.id !== 'string') continue;
+    for (const kind of ['fields', 'methods']) {
+      if (d[kind] === undefined) continue;
+      if (!Array.isArray(d[kind])) {
+        add('error', 'schema/members-invalid', `Node "${n.id}" data.${kind} must be an array of { name, type?, ... }.`, { node: n.id });
+        continue;
+      }
+      d[kind].forEach((m, i) => {
+        if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.name !== 'string' || !m.name.trim())
+          add('error', 'schema/members-invalid', `Node "${n.id}" data.${kind}[${i}] needs a name (string).`, { node: n.id });
+      });
+    }
+    if (d.stereotype !== undefined && typeof d.stereotype !== 'string')
+      add('error', 'schema/members-invalid', `Node "${n.id}" data.stereotype must be a string, e.g. "interface".`, { node: n.id });
+    const fields = members(d.fields);
+    const rows = fields.length + members(d.methods).length;
+    if (rows > ROWS.max)
+      add('warning', 'content/too-many-fields', `Node "${n.id}" has ${rows} fields and methods; the card shows ${ROWS.max} and "+ N more". Keep the columns that explain the relationships and list the rest in description.`, { node: n.id });
+    const seen = new Set();
+    for (const f of fields) {
+      if (seen.has(f.name)) add('warning', 'content/duplicate-field', `Node "${n.id}" lists field "${f.name}" twice.`, { node: n.id });
+      seen.add(f.name);
+    }
+    fieldsOf.set(n.id, seen);
+  }
+  // A foreign key's ref names "node" or "node.field"
+  for (const n of model.nodes)
+    for (const f of members(n.data?.fields)) {
+      if (f.ref === undefined) continue;
+      const [node, ...rest] = String(f.ref).split('.');
+      const field = rest.join('.');
+      if (!nodeIds.has(node) || (field && !fieldsOf.get(node)?.has(field)))
+        add('error', 'ref/field-unknown-ref', `Node "${n.id}" field "${f.name}" refers to "${f.ref}", which is not a ${nodeIds.has(node) ? 'field of that node' : 'node'}; use "nodeId" or "nodeId.field".`, { node: n.id });
+    }
+  for (const e of model.edges) {
+    if (!e || typeof e.id !== 'string') continue;
+    if (e.relation !== undefined && !(typeof e.relation === 'string' && Object.hasOwn(RELATIONS, e.relation)))
+      add('error', 'schema/unknown-relation', `Edge "${e.id}" relation "${e.relation}" is not one of ${Object.keys(RELATIONS).join(', ')}.`, { edge: e.id });
+    for (const key of ['sourceEnd', 'targetEnd'])
+      if (e[key] !== undefined && !END_KINDS.includes(e[key]))
+        add('error', 'schema/unknown-end', `Edge "${e.id}" ${key} "${e[key]}" is not one of ${END_KINDS.join(', ')}.`, { edge: e.id });
+  }
 }
 
 function collinearOverlap(a, b) {

@@ -1,8 +1,9 @@
 # Importing Mermaid
 
 Yantra can turn a Mermaid **flowchart** (`graph` / `flowchart`), **sequence diagram**
-(`sequenceDiagram`) or **state diagram** (`stateDiagram` / `stateDiagram-v2`) into a diagram
-payload with roles, groups and a walkthrough. The
+(`sequenceDiagram`), **state diagram** (`stateDiagram` / `stateDiagram-v2`), **ER diagram**
+(`erDiagram`) or **class diagram** (`classDiagram`) into a diagram payload with roles, groups
+and a walkthrough. The
 parser is small and dependency-free (`src/core/mermaid.js`); it is not a full Mermaid
 implementation, so check the warnings it prints.
 
@@ -102,11 +103,54 @@ The walkthrough is built as for flowcharts (overview, then states in topological
 self-loops are mentioned on their state's step. Transitions out of a start or into an end
 need no label; the validator does not ask for one.
 
+## ER diagrams
+
+| Mermaid | Yantra |
+|---|---|
+| `CUSTOMER {` ... `string id PK "comment"` ... `}` | entity card (type `entity`, icon `database`) with `fields`: `{ name, type, pk/fk/unique, note }` (`PK, FK` lists both) |
+| `CUSTOMER \|\|--o{ ORDER : places` | edge `places` with `sourceEnd: "one"`, `targetEnd: "zero-or-many"` |
+| `\|\|`, `\|o` / `o\|`, `}o` / `o{`, `}\|` / `\|{` | `one`, `zero-or-one`, `zero-or-many`, `one-or-many` |
+| `only one to zero or more`, `1+`, `many(0)`, ... | the same cardinalities from the word forms (`optionally to` is dashed) |
+| `A }\|..\|{ B` (non-identifying) | edge with `style: "dashed"` |
+| `p[Person]`, `"quoted name"` | id `p`, title `Person` |
+| `direction LR` / `TB` | `meta.layout.direction` (default `LR`: tall cards read best side by side) |
+| `style`, `classDef`, `class` | ignored with one warning per kind |
+
+Entities with more than 12 attributes import whole but show 12 rows (warning). The
+walkthrough has an overview, then one step per relationship (per source entity when there are
+more than seven) describing both cardinalities.
+
+## Class diagrams
+
+| Mermaid | Yantra |
+|---|---|
+| `class Duck {` ... `+String beak` ... `+swim()` ... `}`, `Duck : +int age` | class card: attributes in `fields`, operations in `methods` |
+| `+ - # ~` | `visibility`; `$` → `static`, `*` → `abstract` (methods: after `()` or the return type) |
+| `+area(w: int) double`, `-name: String`, `String name` | `{ name, params, type }`; generics `List~T~` become `List<T>` |
+| `<<interface>>` (in the block or `<<interface>> Name`) | `data.stereotype`; type `interface`, `abstract`, `enumeration` or `class` (one role each) |
+| `A <\|-- B`, `B --\|> A` | `relation: "inheritance"`, source = the parent (`A`) |
+| `A <\|.. B`, `B ..\|> A` | `realization`, source = the interface |
+| `A *-- B`, `B --* A` | `composition`, source = the whole |
+| `A o-- B`, `B --o A` | `aggregation`, source = the whole |
+| `A --> B`, `B <-- A` | `association` (open arrow at the target) |
+| `A ..> B`, `B <.. A` | `dependency` (dashed) |
+| `A -- B`, `A .. B` | `association` / `dependency` with `targetEnd: "none"` |
+| `A "1" *-- "many" B : label` | label kept; multiplicities go into the step text (and the label when there is none) |
+| `namespace Shop { ... }` | `groups[]` |
+| `note for Duck "text"`, `note "text"` | the class description, or the overview step |
+| `class A["Label"]`, `direction`, `title` | title, `meta.layout.direction` (default `TB`), `meta.title` |
+| `style`, `cssClass`, `classDef`, `:::`, `click`, `link`, `callback` | ignored with one warning per kind |
+
+The walkthrough reads the way UML is spoken: "Duck inherits from Animal", "Wheel is part of
+Car", "Order depends on PaymentMethod".
+
 ## Limitations
 
-- Only flowcharts, sequence diagrams and state diagrams; other types (`classDiagram`, `erDiagram`, ...) are rejected with an error.
-- Circle and cross heads (`--o`, `--x`, `o--o`) are drawn as plain arrows.
+- Flowcharts, sequence, state, ER and class diagrams; other types (`gantt`, `pie`, ...) are rejected with an error.
+- Flowcharts: circle and cross heads (`--o`, `--x`, `o--o`) are drawn as plain arrows.
 - State diagrams: notes, concurrent regions (`--`) and fork/join bars are not drawn; composite states are groups, so a transition to the composite itself lands on its entry state.
+- ER and class diagrams: relationships attach to card sides, not to individual attribute rows;
+  self-relationships (`A ||--o{ A`) are dropped with a warning; lollipop interfaces (`()--`) are not parsed.
 - Mermaid styling (`style`, `linkStyle`, colours other than `classDef` fill) and interactions (`click`) are dropped.
 - Per-subgraph `direction` is ignored (layout is automatic).
 - Node ids with hyphens before `-`, `.`, `o` or `x` (e.g. `a--ob`) can be ambiguous; add spaces around links.

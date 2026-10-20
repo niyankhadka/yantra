@@ -7,6 +7,7 @@ import { normalize, visibleGraph, groupIndex, roleKey, shapeOf, arrowOf, POINT_S
 import { measureNode, autoLayout, labelSize, groupBoxes, groupTitle, GRID } from './layout.js';
 import { routeEdges, placeLabels, roundedPath, loopGeometry } from './route.js';
 import { iconFor, knownIcon } from './icons.js';
+import { edgeEnds } from './notation.js';
 
 /**
  * @param payload   Yantra payload (raw or already normalised)
@@ -72,7 +73,7 @@ export function computeScene(payload, options = {}) {
     });
 
   const routes = routeEdges(rects, routeInput, { groups: sceneGroups });
-  const labels = placeLabels(routes, rects, edges, labelSize, sceneGroups.map((g) => g.titleBox));
+  const labels = placeLabels(routes, rects, edges, labelSize, [...sceneGroups.map((g) => g.titleBox), ...markerZones(edges, routes)]);
 
   const sceneNodes = sized.map((s) => {
     const r = rects.get(s.node.id);
@@ -87,13 +88,15 @@ export function computeScene(payload, options = {}) {
       lines: s.lines,
       shape: shapeOf(s.node),
       hue: role.hue,
-      kicker: s.node.data?.badge || role.label || '',
+      kicker: stereotypeOf(s.node) || s.node.data?.badge || role.label || '',
+      stereotype: !!stereotypeOf(s.node),
       icon: knownIcon(s.node.data?.icon) || knownIcon(role.icon) || iconFor(s.node)
     };
   });
 
   const sceneEdges = edges.map((e) => {
     const route = routes.get(e.id);
+    const ends = edgeEnds(e);
     return {
       id: e.id,
       edge: e,
@@ -103,12 +106,42 @@ export function computeScene(payload, options = {}) {
       label: e.label ? labels.get(e.id) || null : null,
       arrow: arrowOf(e),
       self: e.source === e.target,
-      dashed: e.style === 'dashed' || (!e.style && /async|event|stream/.test(e.type || '')),
-      dotted: e.style === 'dotted'
+      dashed: e.style === 'dashed' || (!e.style && (ends.dashed || /async|event|stream/.test(e.type || ''))),
+      dotted: e.style === 'dotted',
+      // Markers at the source / target end (null = none): arrowheads, UML heads, ER cardinality
+      start: ends.start,
+      end: ends.end
     };
   });
 
   return { model, mode, nodes: sceneNodes, edges: sceneEdges, groups: sceneGroups, bounds: boundsOf(sceneNodes, sceneEdges, sceneGroups) };
+}
+
+/** Boxes over the notation markers at edge ends (UML heads, crow's feet), kept clear of labels. */
+function markerZones(edges, routes) {
+  const zones = [];
+  const zone = (tip, next) => {
+    // the marker runs from the card border back along the first leg
+    const dx = Math.sign(next.x - tip.x);
+    const dy = Math.sign(next.y - tip.y);
+    const far = { x: tip.x + dx * MARKER_LEN, y: tip.y + dy * MARKER_LEN };
+    zones.push({ x: Math.min(tip.x, far.x) - 8, y: Math.min(tip.y, far.y) - 8, w: Math.abs(far.x - tip.x) + 16, h: Math.abs(far.y - tip.y) + 16 });
+  };
+  for (const e of edges) {
+    const p = routes.get(e.id)?.points;
+    if (!p || p.length < 2) continue;
+    const ends = edgeEnds(e);
+    if (ends.start && ends.start !== 'arrow') zone(p[0], p[1]);
+    if (ends.end && ends.end !== 'arrow') zone(p[p.length - 1], p[p.length - 2]);
+  }
+  return zones;
+}
+const MARKER_LEN = 20;
+
+/** «stereotype» shown in place of the kicker on class cards (an empty string when none). */
+function stereotypeOf(node) {
+  const st = node.data?.stereotype;
+  return typeof st === 'string' && st.trim() ? `«${st.trim().replace(/^<<|>>$|^«|»$/g, '')}»` : '';
 }
 
 function boundsOf(nodes, edges, groups = []) {

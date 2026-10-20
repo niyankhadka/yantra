@@ -5,6 +5,7 @@
  * reserves room for edge labels.
  */
 import { textWidth, wrapText, truncate } from './text.js';
+import { isEntity, entityWidth, measureMembers } from './entity.js';
 import { shapeOf, POINT_SHAPES } from './model.js';
 
 /** Card metrics. src/css/diagram.css mirrors these numbers exactly. */
@@ -146,7 +147,10 @@ export function measureNode(node) {
   const shape = shapeOf(node);
   if (POINT_SHAPES.has(shape)) return { w: POINT_SIZE[shape], h: POINT_SIZE[shape], lines: { title: [], subtitle: [], tech: '' } };
   const d = node.data || {};
-  const w = ceilTo(Math.min(CARD.maxWidth, Math.max(CARD.minWidth, node.width || CARD.width)), 20);
+  const entity = isEntity(d);
+  // Entity / class cards widen (up to maxWidth) to fit their rows unless a width is given
+  const want = node.width || (entity ? Math.max(CARD.width, entityWidth(d, CARD.padX)) : CARD.width);
+  const w = ceilTo(Math.min(CARD.maxWidth, Math.max(CARD.minWidth, want)), 20);
   const inner = w - CARD.padX * 2;
 
   const title = wrapText(d.title || node.id, inner, CARD.titleSize, { weight: 600 }, CARD.titleMax);
@@ -156,11 +160,14 @@ export function measureNode(node) {
   let h = CARD.padY + CARD.kicker + CARD.kickerGap + title.length * CARD.titleLine;
   if (subtitle.length) h += CARD.subGap + subtitle.length * CARD.subLine;
   if (tech) h += CARD.techGap + CARD.techLine;
+  // Field / method rows below the header (see entity.js)
+  const rows = entity ? measureMembers(d, inner, h) : null;
+  if (rows) h += rows.height;
   h += CARD.padY;
 
   // Even multiples of the grid keep centres on the grid, so aligned
   // neighbours produce perfectly straight edges after snapping.
-  return { w, h: Math.max(ceilTo(h, 20), 80), lines: { title, subtitle, tech } };
+  return { w, h: Math.max(ceilTo(h, 20), 80), lines: { title, subtitle, tech, ...(rows ? { rows } : {}) } };
 }
 
 /**

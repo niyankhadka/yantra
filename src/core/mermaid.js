@@ -1,11 +1,12 @@
 /**
- * Mermaid import: turns a Mermaid flowchart, sequence diagram or state diagram
+ * Mermaid import: turns a Mermaid flowchart, sequence, state, ER or class diagram
  * into a Yantra payload. Pure (no DOM, no Node APIs) and dependency-free.
  *
  *   fromMermaid(text, { title? }) -> { payload, warnings: string[] }
  *   mermaidBlocks(markdown)       -> string[]   (```mermaid fenced blocks)
  */
 import { humanize } from './model.js';
+import { RELATIONS, END_LABELS } from './notation.js';
 
 const MAX_TITLE = 42;
 const MAX_LABEL = 28;
@@ -61,7 +62,10 @@ export function fromMermaid(text, opts = {}) {
   const ctx = { warnings, title: opts.title || frontTitle };
   const parse = /^(graph|flowchart)\b/i.test(header) ? parseFlowchart
     : /^sequenceDiagram\b/.test(header) ? parseSequence
-    : /^stateDiagram(-v2)?\b/.test(header) ? parseState : null;
+    : /^stateDiagram(-v2)?\b/.test(header) ? parseState
+    : /^erDiagram\b/.test(header) ? parseErDiagram
+    : /^classDiagram(-v2)?\b/.test(header) ? parseClassDiagram
+    : null;
   if (parse) {
     try {
       return parse(lines, ctx);
@@ -71,7 +75,7 @@ export function fromMermaid(text, opts = {}) {
     }
   }
   const kind = header.split(/\s+/)[0];
-  throw new Error(`Unsupported Mermaid diagram type "${kind}". Supported: flowchart / graph, sequenceDiagram, stateDiagram.`);
+  throw new Error(`Unsupported Mermaid diagram type "${kind}". Supported: flowchart / graph, sequenceDiagram, stateDiagram, erDiagram, classDiagram.`);
 }
 
 // --- shared helpers ------------------------------------------------------------
@@ -969,5 +973,383 @@ function parseState(lines, ctx) {
   if (outGroups.length) payload.groups = outGroups;
   if (!outNodes.length) warnings.push('No states were found; check the syntax (e.g. "[*] --> Idle").');
   payload.scenarios = [{ id: 'main', name: 'Lifecycle', steps: outNodes.length ? flowSteps(outNodes, outEdges, outGroups) : [] }];
+  return { payload, warnings };
+}
+
+// --- ER diagrams ---------------------------------------------------------------
+
+/** Crow's foot symbols, read from either side of the link. */
+const ER_SYMBOLS = { '||': 'one', '|o': 'zero-or-one', 'o|': 'zero-or-one', '}o': 'zero-or-many', 'o{': 'zero-or-many', '}|': 'one-or-many', '|{': 'one-or-many' };
+const ER_WORDS = [
+  [/^(only one|exactly one|1)$/i, 'one'],
+  [/^(zero or one|one or zero)$/i, 'zero-or-one'],
+  [/^(zero or more|zero or many|many\(0\)|0\+)$/i, 'zero-or-many'],
+  [/^(one or more|one or many|many\(1\)|1\+)$/i, 'one-or-many']
+];
+const ER_ENTITY = String.raw`("[^"]+"|[\w$-]+(?:\[[^\]]*\])?)`;
+const ER_REL = new RegExp(String.raw`^${ER_ENTITY}\s*(\|\||\|o|\}o|\}\|)(--|\.\.)(\|\||o\||o\{|\|\{)\s*${ER_ENTITY}\s*:\s*(.+)$`);
+const ER_WORD = String.raw`only one|exactly one|zero or one|one or zero|zero or more|zero or many|one or more|one or many|many\(0\)|many\(1\)|0\+|1\+|1`;
+const ER_REL_WORDS = new RegExp(String.raw`^${ER_ENTITY}\s+(${ER_WORD})\s+(to|optionally to)\s+(${ER_WORD})\s+${ER_ENTITY}\s*:\s*(.+)$`, 'i');
+const ER_BLOCK = new RegExp(String.raw`^${ER_ENTITY}\s*\{\s*(\})?$`);
+const ER_BARE = new RegExp(String.raw`^${ER_ENTITY}$`);
+const ER_ATTR = /^(\S+)\s+(\S+)(?:\s+((?:PK|FK|UK)(?:\s*,\s*(?:PK|FK|UK))*))?(?:\s+"([^"]*)")?\s*$/i;
+
+/** "id", "id[Alias]" or "\"quoted name\"" -> { raw, label } */
+function erName(token) {
+  const t = token.trim();
+  if (/^"[\s\S]*"$/.test(t)) return { raw: t.slice(1, -1), label: t.slice(1, -1) };
+  const m = /^([\w$-]+)\[\s*"?([^"\]]*)"?\s*\]$/.exec(t);
+  return m ? { raw: m[1], label: m[2] || m[1] } : { raw: t, label: t };
+}
+
+function parseErDiagram(lines, ctx) {
+  const { warnings } = ctx;
+  const ignored = ignoredCollector(warnings);
+  const entities = new Map(); // raw -> { raw, label, fields[] }
+  const rels = []; // { a, b, from, to, dashed, label, no }
+  let dir = 'LR'; // tall cards read best side by side
+  let open = null; // entity whose { block is open
+  let title;
+
+  const touch = ({ raw, label }) => {
+    let e = entities.get(raw);
+    if (!e) entities.set(raw, (e = { raw, label, fields: [] }));
+    else if (label !== raw) e.label = label;
+    return e;
+  };
+  const word = (w) => ER_WORDS.find(([re]) => re.test(w.trim()))?.[1];
+
+  for (const { text: line, no } of lines.slice(1)) {
+    let m;
+    if (open) {
+      if (line === '}') open = null;
+      else if ((m = ER_ATTR.exec(line))) {
+        const keys = (m[3] || '').toUpperCase().split(/\s*,\s*/);
+        const f = { name: m[2].replace(/^\*/, ''), type: m[1].replace(/~([^~]*)~/g, '<$1>') };
+        if (keys.includes('PK') || m[2].startsWith('*')) f.pk = true;
+        if (keys.includes('FK')) f.fk = true;
+        if (keys.includes('UK')) f.unique = true;
+        if (m[4]) f.note = m[4];
+        open.fields.push(f);
+      } else warnings.push(`Line ${no}: could not parse attribute "${line}".`);
+    } else if ((m = ER_REL.exec(line))) {
+      rels.push({ a: touch(erName(m[1])), b: touch(erName(m[5])), from: ER_SYMBOLS[m[2]], to: ER_SYMBOLS[m[4]], dashed: m[3] === '..', label: unquote(m[6].trim()), no });
+    } else if ((m = ER_REL_WORDS.exec(line))) {
+      rels.push({ a: touch(erName(m[1])), b: touch(erName(m[5])), from: word(m[2]), to: word(m[4]), dashed: /optionally/i.test(m[3]), label: unquote(m[6].trim()), no });
+    } else if ((m = ER_BLOCK.exec(line))) {
+      const e = touch(erName(m[1]));
+      if (!m[2]) open = e;
+    } else if ((m = /^direction\s+(TB|TD|BT|LR|RL)$/i.exec(line))) {
+      dir = /^(LR|RL)$/i.test(m[1]) ? 'LR' : 'TB';
+    } else if ((m = /^title\s+(.+)$/.exec(line))) {
+      title = unquote(m[1].trim());
+    } else if ((m = /^(style|classDef|class|accTitle|accDescr|click)\b/.exec(line))) {
+      ignored.add(m[1]);
+    } else if ((m = ER_BARE.exec(line))) {
+      touch(erName(m[1]));
+    } else warnings.push(`Line ${no}: could not parse "${line}".`);
+  }
+  if (open) warnings.push(`Entity "${open.raw}" has no closing "}".`);
+  ignored.flush({ ...IGNORED_WHY, classDef: 'colours come from roles', class: 'colours come from roles', accTitle: 'accessibility text is not imported', accDescr: 'accessibility text is not imported' });
+
+  const nid = idFactory();
+  const outNodes = [...entities.values()].map((e) => {
+    const data = labelData(e.label, e.raw);
+    data.icon = 'database';
+    data.fields = e.fields;
+    if (e.fields.length > 12) warnings.push(`Entity "${e.raw}" has ${e.fields.length} attributes; the card shows 12 rows (the rest as "+ N more").`);
+    return { id: (e.id = nid(e.raw)), type: 'entity', data };
+  });
+  const eid = edgeIdFactory();
+  const longLabels = [];
+  const outEdges = [];
+  for (const r of rels) {
+    if (r.a === r.b) {
+      warnings.push(`Line ${r.no}: self-relationship on "${r.a.raw}" is not drawn.`);
+      continue;
+    }
+    const edge = { id: eid(r.a.id, r.b.id), source: r.a.id, target: r.b.id };
+    const label = edgeLabel(r.label, (l) => longLabels.push(l));
+    if (label) edge.label = label;
+    edge.sourceEnd = r.from;
+    edge.targetEnd = r.to;
+    if (r.dashed) edge.style = 'dashed';
+    outEdges.push(edge);
+  }
+  if (longLabels.length) warnings.push(`Shortened ${longLabels.length} relationship label${longLabels.length > 1 ? 's' : ''} to ${MAX_LABEL} characters.`);
+  if (!outNodes.length) warnings.push('No entities were found; check the erDiagram syntax (e.g. "CUSTOMER ||--o{ ORDER : places").');
+
+  const titleOf = new Map(outNodes.map((n) => [n.id, n.data.title]));
+  const sentence = (e) =>
+    `${titleOf.get(e.source)} ${e.label || 'relates to'} ${titleOf.get(e.target)}: ${END_LABELS[e.sourceEnd]} ${titleOf.get(e.source)} to ${END_LABELS[e.targetEnd]} ${titleOf.get(e.target)}${e.style ? ' (non-identifying)' : ''}.`;
+  const payload = {
+    meta: {
+      title: ctx.title || title || 'Imported data model',
+      description: `Imported from a Mermaid ER diagram: ${outNodes.length} entities, ${outEdges.length} relationships.`,
+      layout: { direction: dir }
+    },
+    roles: { entity: { label: 'Entity', color: 'blue', icon: 'database' } },
+    nodes: outNodes,
+    edges: outEdges,
+    scenarios: [{ id: 'main', name: 'Relationships', steps: relationSteps(outNodes, outEdges, { title: (e) => `${titleOf.get(e.source)} ${e.label || 'and'} ${titleOf.get(e.target)}`, sentence }, 'entities') }]
+  };
+  return { payload, warnings };
+}
+
+/**
+ * Overview + one step per relationship, or per source node when there are more
+ * than fit; each step lights both ends and its edges.
+ */
+function relationSteps(nodes, edges, { title: titleFor, sentence }, noun) {
+  const titleOf = new Map(nodes.map((n) => [n.id, n.data.title]));
+  const linked = new Set(edges.flatMap((e) => [e.source, e.target]));
+  const lone = nodes.filter((n) => !linked.has(n.id)).map((n) => n.data.title);
+  const steps = [
+    {
+      id: 'overview',
+      title: 'Overview',
+      description: `${nodes.length} ${noun}, ${edges.length} relationship${edges.length === 1 ? '' : 's'}.${lone.length ? ` Not linked: ${list(lone)}.` : ''}`
+    }
+  ];
+  const budget = MAX_FLOW_STEPS - 1;
+  let buckets;
+  if (edges.length <= budget) buckets = edges.map((e) => [e]);
+  else {
+    const bySource = new Map();
+    for (const e of edges) {
+      if (!bySource.has(e.source)) bySource.set(e.source, []);
+      bySource.get(e.source).push(e);
+    }
+    const groups = [...bySource.values()];
+    const per = Math.ceil(groups.length / budget);
+    buckets = [];
+    for (let i = 0; i < groups.length; i += per) buckets.push(groups.slice(i, i + per).flat());
+  }
+  buckets.forEach((es, i) => {
+    const title = es.length === 1 ? titleFor(es[0]) : list([...new Set(es.map((e) => titleOf.get(e.source)))]);
+    steps.push({
+      id: `step-${i + 1}`,
+      title: shorten(title, 60),
+      description: es.map(sentence).join(' '),
+      highlightNodes: [...new Set(es.flatMap((e) => [e.source, e.target]))],
+      highlightEdges: es.map((e) => e.id)
+    });
+  });
+  return steps;
+}
+
+// --- class diagrams --------------------------------------------------------------
+
+const CLASS_NAME = String.raw`([\w$-]+(?:~[^~]*~)?)`;
+const CLASS_REL = new RegExp(String.raw`^${CLASS_NAME}\s*(?:"([^"]*)"\s*)?(<\||\*|o|<)?(--|\.\.)(\|>|\*|o|>)?\s*(?:"([^"]*)"\s*)?${CLASS_NAME}\s*(?::\s*(.*))?$`);
+const CLASS_DECL = new RegExp(String.raw`^class\s+${CLASS_NAME}(?:\s*\[\s*"?([^"\]]*)"?\s*\])?(?::::([\w-]+))?\s*(\{)?\s*(\})?$`);
+const CLASS_HEADS = { '<|': 'triangle', '|>': 'triangle', '*': 'diamond', o: 'open-diamond', '<': 'open-arrow', '>': 'open-arrow' };
+const CLASS_ROLES = {
+  class: { label: 'Class', color: 'blue' },
+  interface: { label: 'Interface', color: 'teal' },
+  abstract: { label: 'Abstract class', color: 'violet' },
+  enumeration: { label: 'Enumeration', color: 'amber' }
+};
+/** [verb, reads target-first]: UML is spoken child -> parent and part -> whole. */
+const CLASS_VERBS = {
+  inheritance: ['inherits from', true],
+  realization: ['implements', true],
+  composition: ['is part of', true],
+  aggregation: ['belongs to', true],
+  association: ['uses', false],
+  dependency: ['depends on', false]
+};
+const generic = (t) => String(t || '').replace(/~([^~]*)~/g, '<$1>');
+
+/** One class member: "+String name", "-name: String", "+area() double", "draw()*", "count$". */
+export function classMember(raw) {
+  let s = String(raw || '').trim();
+  const m = {};
+  const flag = (c) => (c === '$' ? (m.static = true) : (m.abstract = true));
+  if (/[$*]$/.test(s)) {
+    flag(s.slice(-1));
+    s = s.slice(0, -1).trim();
+  }
+  if (/^[+\-#~]/.test(s)) {
+    m.visibility = s[0];
+    s = s.slice(1).trim();
+  }
+  const open = s.indexOf('(');
+  if (open >= 0) {
+    const close = s.lastIndexOf(')');
+    m.name = s.slice(0, open).trim();
+    const params = generic(s.slice(open + 1, close > open ? close : undefined).trim());
+    if (params) m.params = params;
+    let rest = close > open ? s.slice(close + 1).trim() : '';
+    if (/^[$*]/.test(rest)) {
+      flag(rest[0]);
+      rest = rest.slice(1).trim();
+    }
+    rest = generic(rest.replace(/^:\s*/, ''));
+    if (rest) m.type = rest;
+    return { kind: 'methods', member: m };
+  }
+  const colon = s.indexOf(':');
+  if (colon > 0) {
+    m.name = s.slice(0, colon).trim();
+    const type = generic(s.slice(colon + 1).trim());
+    if (type) m.type = type;
+  } else {
+    const parts = s.split(/\s+/);
+    m.name = parts.pop();
+    if (parts.length) m.type = generic(parts.join(' '));
+  }
+  return { kind: 'fields', member: m };
+}
+
+function parseClassDiagram(lines, ctx) {
+  const { warnings } = ctx;
+  const ignored = ignoredCollector(warnings);
+  const classes = new Map(); // raw -> { raw, label, fields[], methods[], stereotype, notes[] }
+  const rels = [];
+  const namespaces = []; // { title, members: raw[] }
+  const notes = [];
+  let ns = null;
+  let open = null;
+  let dir = 'TB'; // parents above children
+  let title;
+
+  const touch = (name) => {
+    const raw = name.replace(/~[^~]*~$/, '');
+    let c = classes.get(raw);
+    if (!c) {
+      classes.set(raw, (c = { raw, label: generic(name), fields: [], methods: [], notes: [] }));
+      if (ns) ns.members.push(raw);
+    } else if (name.includes('~')) c.label = generic(name);
+    return c;
+  };
+  const addMember = (c, text) => {
+    const { kind, member } = classMember(text);
+    if (member.name) c[kind].push(member);
+  };
+
+  for (const { text: line, no } of lines.slice(1)) {
+    let m;
+    if (open) {
+      if (line === '}') open = null;
+      else if ((m = /^<<\s*(.+?)\s*>>$/.exec(line))) open.stereotype = m[1];
+      else addMember(open, line);
+    } else if ((m = CLASS_DECL.exec(line))) {
+      const c = touch(m[1]);
+      if (m[2]) c.label = cleanLabel(m[2]).replace(/\n/g, ' ') || c.label;
+      if (m[4] && !m[5]) open = c;
+      if (m[3]) ignored.add(':::');
+    } else if ((m = /^<<\s*(.+?)\s*>>\s*([\w$-]+)$/.exec(line))) {
+      touch(m[2]).stereotype = m[1];
+    } else if ((m = /^namespace\s+([\w$.-]+)\s*\{$/.exec(line))) {
+      ns = { title: m[1], members: [] };
+      namespaces.push(ns);
+    } else if (line === '}' && ns) {
+      ns = null;
+    } else if ((m = CLASS_REL.exec(line))) {
+      rels.push({ a: touch(m[1]), b: touch(m[7]), lm: m[2], lh: m[3], line: m[4], rh: m[5], rm: m[6], label: unquote((m[8] || '').trim()), no });
+    } else if ((m = /^([\w$-]+)\s*:\s*(.+)$/.exec(line))) {
+      addMember(touch(m[1]), m[2]);
+    } else if ((m = /^note\s+for\s+([\w$-]+)\s+"([\s\S]*)"$/.exec(line))) {
+      touch(m[1]).notes.push(cleanLabel(m[2]).replace(/\n/g, ' '));
+    } else if ((m = /^note\s+"([\s\S]*)"$/.exec(line))) {
+      notes.push(cleanLabel(m[1]).replace(/\n/g, ' '));
+    } else if ((m = /^direction\s+(TB|TD|BT|LR|RL)$/i.exec(line))) {
+      dir = /^(LR|RL)$/i.test(m[1]) ? 'LR' : 'TB';
+    } else if ((m = /^title\s+(.+)$/.exec(line))) {
+      title = unquote(m[1].trim());
+    } else if ((m = /^(style|cssClass|classDef|click|link|callback|accTitle|accDescr)\b/.exec(line))) {
+      ignored.add(m[1]);
+    } else warnings.push(`Line ${no}: could not parse "${line}".`);
+  }
+  if (open) warnings.push(`Class "${open.raw}" has no closing "}".`);
+  ignored.flush({
+    ...IGNORED_WHY,
+    ':::': 'colours come from roles',
+    cssClass: 'colours come from roles',
+    classDef: 'colours come from roles',
+    link: 'links are not imported',
+    callback: 'callbacks are not imported',
+    accTitle: 'accessibility text is not imported',
+    accDescr: 'accessibility text is not imported'
+  });
+
+  const roleOf = (st) => {
+    const s = String(st || '').toLowerCase();
+    return s === 'interface' ? 'interface' : s === 'abstract' ? 'abstract' : /^enum/.test(s) ? 'enumeration' : 'class';
+  };
+  const nid = idFactory();
+  const outNodes = [...classes.values()].map((c) => {
+    // Not labelData: generics such as List<T> would be stripped as HTML
+    const data = { title: shorten(c.label, MAX_TITLE) };
+    if (data.title !== c.label) data.description = c.label;
+    if (c.stereotype) data.stereotype = c.stereotype;
+    data.fields = c.fields; // enumeration values are plain names: kept as fields
+    if (c.methods.length) data.methods = c.methods;
+    if (c.notes.length) data.description = [data.description, ...c.notes].filter(Boolean).join(' ');
+    return { id: (c.id = nid(c.raw)), type: roleOf(c.stereotype), data };
+  });
+
+  const eid = edgeIdFactory();
+  const longLabels = [];
+  const outEdges = [];
+  const mult = new Map(); // edge id -> [source multiplicity, target multiplicity]
+  const structural = (k) => k === 'triangle' || k === 'diamond' || k === 'open-diamond';
+  for (const r of rels) {
+    if (r.a === r.b) {
+      warnings.push(`Line ${r.no}: self-relationship on "${r.a.raw}" is not drawn.`);
+      continue;
+    }
+    let [src, tgt, sh, th, sm, tm] = [r.a, r.b, CLASS_HEADS[r.lh], CLASS_HEADS[r.rh], r.lm, r.rm];
+    // Triangles and diamonds go on the source (parent / whole), plain arrows on the target
+    if ((structural(th) && !structural(sh)) || (sh && !th && !structural(sh))) [src, tgt, sh, th, sm, tm] = [tgt, src, th, sh, tm, sm];
+    const dashed = r.line === '..';
+    const relation =
+      sh === 'triangle' ? (dashed ? 'realization' : 'inheritance')
+      : sh === 'diamond' ? 'composition'
+      : sh === 'open-diamond' ? 'aggregation'
+      : dashed ? 'dependency' : 'association';
+    const edge = { id: eid(src.id, tgt.id), source: src.id, target: tgt.id, relation };
+    // Heads the relation does not imply (a plain link, a two-headed arrow) are set explicitly
+    if (RELATIONS[relation].source !== (sh || 'none')) edge.sourceEnd = sh || 'none';
+    if (RELATIONS[relation].target !== (th || 'none')) edge.targetEnd = th || 'none';
+    const label = edgeLabel(r.label || (sm || tm ? `${sm || '*'} to ${tm || '*'}` : ''), (l) => longLabels.push(l));
+    if (label) edge.label = label;
+    if (sm || tm) mult.set(edge.id, [sm, tm]);
+    outEdges.push(edge);
+  }
+  if (longLabels.length) warnings.push(`Shortened ${longLabels.length} relationship label${longLabels.length > 1 ? 's' : ''} to ${MAX_LABEL} characters.`);
+  if (mult.size) warnings.push(`Multiplicities ("1", "*", ...) on ${mult.size} relationship${mult.size > 1 ? 's' : ''} are kept in the walkthrough text (and as the label when there is none), not drawn at the ends.`);
+  const unlabeled = outEdges.filter((e) => !e.label && (e.relation === 'association' || e.relation === 'dependency')).length;
+  if (unlabeled) warnings.push(`${unlabeled} association${unlabeled > 1 ? 's have' : ' has'} no label; add ": label" in Mermaid or label them in the JSON.`);
+  if (!outNodes.length) warnings.push('No classes were found; check the classDiagram syntax (e.g. "Animal <|-- Duck").');
+
+  const titleOf = new Map(outNodes.map((n) => [n.id, n.data.title]));
+  const phrase = (e) => {
+    const [verb, back] = CLASS_VERBS[e.relation];
+    const [a, b] = [titleOf.get(e.source), titleOf.get(e.target)];
+    return back ? `${b} ${verb} ${a}` : `${a} ${verb} ${b}`;
+  };
+  const sentence = (e) => {
+    const [sm, tm] = mult.get(e.id) || [];
+    const many = sm || tm ? ` (${sm || '*'} ${titleOf.get(e.source)} to ${tm || '*'} ${titleOf.get(e.target)})` : '';
+    return `${phrase(e)}${many || (e.label ? ` (${e.label})` : '')}.`;
+  };
+  const steps = relationSteps(outNodes, outEdges, { title: phrase, sentence }, 'classes');
+  if (notes.length) steps[0].description += ` ${notes.join(' ')}`;
+  const payload = {
+    meta: {
+      title: ctx.title || title || 'Imported class diagram',
+      description: `Imported from a Mermaid class diagram: ${outNodes.length} classes, ${outEdges.length} relationships.`,
+      layout: { direction: dir }
+    },
+    roles: Object.fromEntries([...new Set(outNodes.map((n) => n.type))].map((t) => [t, CLASS_ROLES[t]])),
+    nodes: outNodes,
+    edges: outEdges
+  };
+  const gid = idFactory(new Set(outNodes.map((n) => n.id)));
+  const groups = namespaces.filter((g) => g.members.length).map((g) => ({ id: gid(g.title), title: g.title, nodes: g.members.map((r) => classes.get(r).id) }));
+  if (groups.length) payload.groups = groups;
+  payload.scenarios = [{ id: 'main', name: 'Relationships', steps }];
   return { payload, warnings };
 }

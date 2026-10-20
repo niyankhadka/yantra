@@ -234,6 +234,58 @@ transitions labelled with their event:
 
 See `examples/ticket-lifecycle.json`; Mermaid `stateDiagram` imports to the same shapes.
 
+## Data models and class diagrams
+
+A card becomes an **entity card** when its `data` has `fields` and/or `methods`: the rows
+appear under the title and the card grows to fit them (and widens, up to 320px, for long
+types). Use it for database schemas (ERDs) and UML class diagrams.
+
+```json
+{ "id": "orders", "type": "table", "data": { "title": "orders", "fields": [
+  { "name": "id", "type": "uuid", "pk": true },
+  { "name": "customer_id", "type": "uuid", "fk": true, "ref": "customers.id" },
+  { "name": "shipped_at", "type": "timestamptz", "nullable": true }
+] } }
+```
+
+- **Fields**: `name` (required), `type`, flags `pk` / `fk` / `unique` (shown as PK / FK / UK in
+  a key column, PK names in bold), `nullable` (type ends in `?`), `ref` (`"node"` or
+  `"node.field"`, validated), `note` (inspector and Markdown only).
+- **Class cards**: `fields` are attributes and `methods` are operations
+  (`{ name, params?, type?, visibility?, static?, abstract? }`, drawn as `name(params)` with the
+  return type on the right). `visibility` is `+ - # ~`; static members are underlined,
+  abstract ones italic. `data.stereotype: "interface"` shows `«interface»` in place of the kicker.
+- **Keep cards small**: a card shows 12 rows (fields + methods); the rest become `+ N more`
+  and lint warns `content/too-many-fields`. Show the keys and the columns the story needs;
+  list the rest in `description`.
+- **Layout**: `LR` suits ERDs (tall cards side by side), `TB` suits class hierarchies.
+
+### Relationship notation
+
+Edges take a marker at each end, independent of `style`:
+
+| Field | Values |
+|---|---|
+| `sourceEnd`, `targetEnd` | ER cardinality: `one` (two bars, exactly one), `zero-or-one`, `many`, `one-or-many`, `zero-or-many`; UML heads: `triangle`, `diamond`, `open-diamond`, `open-arrow`, `arrow`; `none` |
+| `relation` | `inheritance`, `realization` (dashed), `composition`, `aggregation`, `association`, `dependency` (dashed) |
+
+```json
+{ "id": "places", "source": "customers", "target": "orders", "label": "places", "sourceEnd": "one", "targetEnd": "zero-or-many" },
+{ "id": "is-a", "source": "entity", "target": "order", "relation": "inheritance" }
+```
+
+- `relation` puts triangles and diamonds on the **source** (the parent, interface or whole) and
+  open arrows on the **target**. Point edges parent → child and whole → part, so the layout
+  draws parents first; `sourceEnd` / `targetEnd` override either end.
+- An edge with any notation drops the default arrowhead (and ignores `arrow`); an end without
+  a marker is plain. Use `arrow` for plain flows and state transitions, notation for data models.
+- Inheritance, realization, composition and aggregation need no label (the symbol says it);
+  ER relationships still want a verb (`places`, `contains`). Markers fit in the straight stub at
+  each port, and labels are kept clear of them.
+- Edges attach to card sides, not to individual rows.
+
+See `examples/ecommerce-schema.json` and `examples/payment-classes.json`.
+
 ## Limits
 
 - Card titles, subtitles and edge labels over 200 characters are cut with an ellipsis;
@@ -273,6 +325,11 @@ Fix in this order; each fix can clear later errors.
 | `sequence/no-messages` (warning) | `meta.view` is `sequence` but no step lists `highlightEdges`: add them, or drop `meta.view`. |
 | `schema/unknown-view` | `meta.view` must be `flow` or `sequence`. |
 | `geometry/sequence-label-*` | Should not occur (gaps widen to fit); report it, and shorten the label meanwhile. |
+| `schema/members-invalid` | `data.fields` / `data.methods` must be arrays of objects with a `name`; `stereotype` a string. |
+| `ref/field-unknown-ref` | A field's `ref` must name a node (`"orders"`) or one of its fields (`"orders.id"`). |
+| `schema/unknown-relation`, `schema/unknown-end` | Use a listed `relation` or `sourceEnd` / `targetEnd` value. |
+| `content/too-many-fields` (warning) | Over 12 rows on one card: keep the keys and the columns the story needs. |
+| `content/duplicate-field` (warning) | Remove or rename the repeated field. |
 | `drill/unknown-target` | `data.drill` must name a key of `diagrams` (ids are case-sensitive). |
 | `drill/cycle` | Levels drill into each other (A > B > A), or `$ref` files load each other: remove one `data.drill` or ref so levels form a tree. |
 | `drill/too-deep` | More than 3 levels below the overview: merge a level, or link the deepest one as a separate diagram (`url`). |

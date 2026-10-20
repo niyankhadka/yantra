@@ -1115,6 +1115,47 @@ kbd {
   word-break: break-word;
 }
 
+/* Fields / methods of an entity or class card */
+.y-members {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.y-members td {
+  padding: 5px 6px;
+  border-top: 1px solid var(--y-border);
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.y-members tr:first-child td {
+  border-top: 0;
+}
+
+.y-members small {
+  display: block;
+  color: var(--y-ink-3);
+  font-size: 11.5px;
+}
+
+.y-member-key,
+.y-member-type {
+  color: var(--y-ink-3);
+  font: 11px/18px var(--y-font-mono);
+  white-space: nowrap;
+}
+
+.y-member-key {
+  width: 1%;
+  padding-left: 0;
+  font-weight: 700;
+}
+
+.y-member-type {
+  text-align: right;
+}
+
 .y-conns {
   margin: 0;
   padding: 0;

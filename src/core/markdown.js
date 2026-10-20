@@ -2,6 +2,8 @@
 import { normalize, groupIndex, roleKey, arrowOf } from './model.js';
 import { pageToMarkdown } from './page.js';
 import { mdInline as md, mdBlock } from './text.js';
+import { isEntity, members, memberKey, memberName, memberType, VISIBILITY_NAMES } from './entity.js';
+import { hasNotation, notationText } from './notation.js';
 import { collectDiagrams, drillOf, levelOrder, safeUrl } from './drill.js';
 
 const cell = (v) => md(v ?? '—').replace(/\|/g, '\\|') || '—';
@@ -68,14 +70,46 @@ function levelMarkdown(payload, root) {
     }
   }
 
-  // A Direction column appears only when some edge is not a plain one-way arrow
+  // Entity / class cards: one table of columns or members each
+  const entities = model.nodes.filter((n) => isEntity(n.data));
+  if (entities.length) {
+    out.push('', '## Fields', '');
+    for (const n of entities) {
+      const d = n.data;
+      out.push(`### ${md(d.stereotype ? `«${d.stereotype}» ` : '')}${md(d.title || n.id)}`, '');
+      const fields = members(d.fields);
+      if (fields.length) {
+        const keyed = fields.some((f) => f.pk || f.fk || f.unique);
+        out.push(`| Field | Type | ${keyed ? 'Key' : 'Visibility'} | Notes |`, '|---|---|---|---|');
+        for (const f of fields) {
+          const notes = [f.ref && `→ ${f.ref}`, f.nullable && 'nullable', f.note].filter(Boolean).join('; ');
+          const key = memberKey(f, 'fields');
+          out.push(`| ${cell(memberName(f, 'fields'))} | ${cell(f.type)} | ${cell(keyed ? key : VISIBILITY_NAMES[key])} | ${cell(notes)} |`);
+        }
+      }
+      const methods = members(d.methods);
+      if (methods.length) {
+        if (fields.length) out.push('');
+        out.push('| Method | Returns | Visibility |', '|---|---|---|');
+        for (const m of methods) {
+          const flags = [m.static && 'static', m.abstract && 'abstract'].filter(Boolean).join(', ');
+          out.push(`| ${cell(memberName(m, 'methods'))}${flags ? ` (${md(flags)})` : ''} | ${cell(memberType(m))} | ${cell(VISIBILITY_NAMES[memberKey(m, 'methods')])} |`);
+        }
+      }
+      out.push('');
+    }
+    out.pop();
+  }
+
+  // Extra columns appear only when needed: Direction when some edge is not a
+  // plain one-way arrow, Relationship when some edge carries notation
   const ARROW_TEXT = { forward: '→', both: '↔ both ways', none: '— undirected' };
-  const directed = model.edges.some((e) => arrowOf(e) !== 'forward' || e.source === e.target);
-  if (directed) out.push('', '## Connections', '', '| From | To | Direction | Label |', '|---|---|---|---|');
-  else out.push('', '## Connections', '', '| From | To | Label |', '|---|---|---|');
+  const directed = model.edges.some((e) => !hasNotation(e) && (arrowOf(e) !== 'forward' || e.source === e.target));
+  const notation = model.edges.some(hasNotation);
+  out.push('', '## Connections', '', `| From | To |${directed ? ' Direction |' : ''} Label |${notation ? ' Relationship |' : ''}`, `|---|---|${directed ? '---|' : ''}---|${notation ? '---|' : ''}`);
   for (const e of model.edges) {
-    const dir = e.source === e.target ? `↻ self-loop${arrowOf(e) === 'forward' ? '' : ` (${ARROW_TEXT[arrowOf(e)].slice(2)})`}` : ARROW_TEXT[arrowOf(e)];
-    out.push(`| ${cell(title(e.source))} | ${cell(title(e.target))} |${directed ? ` ${cell(dir)} |` : ''} ${href(e.url) ? `[${cell(e.label || 'link')}](${href(e.url)})` : cell(e.label)} |`);
+    const dir = hasNotation(e) ? '' : e.source === e.target ? `↻ self-loop${arrowOf(e) === 'forward' ? '' : ` (${ARROW_TEXT[arrowOf(e)].slice(2)})`}` : ARROW_TEXT[arrowOf(e)];
+    out.push(`| ${cell(title(e.source))} | ${cell(title(e.target))} |${directed ? ` ${cell(dir)} |` : ''} ${href(e.url) ? `[${cell(e.label || 'link')}](${href(e.url)})` : cell(e.label)} |${notation ? ` ${cell(notationText(e))} |` : ''}`);
   }
 
   if (model.modes.length > 1) {

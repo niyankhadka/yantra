@@ -1,0 +1,35 @@
+---
+title: Animals
+---
+classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Zoo "1" o-- "*" Animal : houses
+    Duck ..|> Swimmer
+    Fish ..|> Swimmer
+    Zoo ..> Ticket : sells
+    class Animal {
+        <<abstract>>
+        +int age
+        +String gender
+        +isMammal() bool
+        +mate()*
+    }
+    class Duck {
+        +String beakColor
+        +quack()
+    }
+    class Fish {
+        -int sizeInFeet
+        -canEat() bool
+    }
+    class Swimmer {
+        <<interface>>
+        +swim()
+    }
+    class Zoo {
+        -List~Animal~ animals
+        +admit(a: Animal) void
+        +count()$ int
+    }
+    Ticket : +Money price

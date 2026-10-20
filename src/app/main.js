@@ -13,6 +13,8 @@ import { safeUrl } from '../core/drill.js';
 import { LINK_ICON, DRILL_ICON } from '../core/icons.js';
 import { YantraEngine } from './engine.js';
 import { getMode } from '../core/model.js';
+import { isEntity, members, memberKey, memberName, memberType } from '../core/entity.js';
+import { notationText } from '../core/notation.js';
 import { REPO_URL, GITHUB_MARK } from '../core/icons.js';
 import { hscroll, menu, tooltips } from './ui.js';
 import { hashParams } from './hash.js';
@@ -512,7 +514,7 @@ class App {
       step: scenarios.some((s) => (s.steps || []).some((st) => (st.payload && typeof st.payload === 'object') || safeUrl(st.url))),
       node: nodes.some((n) => {
         const d = n.data || {};
-        return d.description || d.tech || d.runtime || d.ports || d.status || d.sourceFile || Object.keys(d.metadata || {}).length || this.levels.target(n) || safeUrl(d.url);
+        return d.description || d.tech || d.runtime || d.ports || d.status || d.sourceFile || Object.keys(d.metadata || {}).length || this.levels.target(n) || safeUrl(d.url) || isEntity(d);
       })
     };
     const labels = { ...BUILTIN_TABS, ...(inspector.labels || {}) };
@@ -672,8 +674,20 @@ class App {
       const link = url ? `<a class="y-conn-link" href="${h(url)}" target="_blank" rel="noopener noreferrer" data-tip="${h(DRILL_TEXT.link)}" aria-label="${h(`${DRILL_TEXT.edgeLink(e.edge.label || e.id)} ${DRILL_TEXT.newTab}`)}">${icon(LINK_ICON, 13)}</a>` : '';
       // ↻ self-loop, ↔ both ways, — undirected, else → out / ← in
       const glyph = e.edge.source === e.edge.target ? '↻' : e.arrow === 'both' ? '↔' : e.arrow === 'none' ? '—' : out ? '→' : '←';
-      return `<li${url ? ' class="has-link"' : ''}><button class="y-conn" data-node="${h(other)}"><span>${glyph}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || '')}</em></button>${link}</li>`;
+      return `<li${url ? ' class="has-link"' : ''}><button class="y-conn" data-node="${h(other)}"><span>${glyph}</span>${h(this.engine.nodeTitle(other))}<em>${h(e.edge.label || notationText(e.edge))}</em></button>${link}</li>`;
     });
+    // Columns (ER) or attributes and methods (class): key / visibility, name, type, notes
+    const memberRows = (kind) =>
+      members(d[kind])
+        .map((m) => {
+          const notes = [m.ref && `→ ${m.ref}`, m.nullable && 'nullable', m.static && 'static', m.abstract && 'abstract', m.note].filter(Boolean).join(' · ');
+          return `<tr><td class="y-member-key">${h(memberKey(m, kind))}</td><td>${h(memberName(m, kind))}${notes ? `<small>${h(notes)}</small>` : ''}</td><td class="y-member-type">${h(memberType(m))}</td></tr>`;
+        })
+        .join('');
+    const tables = ['fields', 'methods']
+      .filter((kind) => members(d[kind]).length)
+      .map((kind) => `<h4>${kind === 'fields' ? 'Fields' : 'Methods'}</h4><table class="y-members"><tbody>${memberRows(kind)}</tbody></table>`)
+      .join('');
     return `
       <div class="y-kicker" data-hue="${sel.hue}">${h(sel.kicker || role?.label || '')}</div>
       <h3>${h(d.title || sel.id)}</h3>
@@ -681,6 +695,7 @@ class App {
       ${d.description ? `<p>${h(d.description)}</p>` : ''}
       ${this.drillButton(sel.node)}${linkHtml(d.url)}
       ${fields.length ? `<dl class="y-fields">${fields.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
+      ${tables}
       <h4>Connections</h4>
       ${conns.length ? `<ul class="y-conns">${conns.join('')}</ul>` : '<p class="y-empty">No connections.</p>'}`;
   }

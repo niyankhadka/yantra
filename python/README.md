@@ -64,6 +64,27 @@ d.add_edge(open_, open_, "add note")                      # self-loop
 d.add_edge(open_, "waiting", "ask / reply", arrow="both") # one two-way edge
 ```
 
+## Data models and class diagrams
+
+```python
+from yantra import Diagram, field, method
+
+d = Diagram("Shop schema", direction="LR")
+d.add_entity("customers", "customers", [field("id", "uuid", pk=True), field("email", "text", unique=True)])
+d.add_entity("orders", "orders", [field("id", "uuid", pk=True),
+                                  field("customer_id", "uuid", fk=True, ref="customers.id")])
+d.add_edge("customers", "orders", "places", source_end="one", target_end="zero-or-many")
+
+d.add_class("method", "PaymentMethod", methods=[method("authorize", "amount: Money", "Auth", "+")],
+            stereotype="interface")
+d.add_class("card", "CardPayment", fields=[field("token", "String", visibility="-")])
+d.add_edge("method", "card", relation="realization")   # triangle on the source (the interface)
+```
+
+`field(name, type, pk=, fk=, unique=, nullable=, ref=, visibility=, static=, note=)` and
+`method(name, params, type, visibility, static=, abstract=)` build rows; `RELATIONS` and
+`END_KINDS` list the accepted `relation` and `source_end` / `target_end` values.
+
 ## Answer page
 
 ```python

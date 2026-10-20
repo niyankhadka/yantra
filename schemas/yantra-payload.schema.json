@@ -329,6 +329,24 @@
                   ]
                 }
               },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/field"
+                },
+                "description": "Entity / class card: table columns (ER diagrams) or class attributes, drawn as rows under the title. The card grows with the rows; more than 12 rows (fields + methods) show as \"+ N more\"."
+              },
+              "methods": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/method"
+                },
+                "description": "Class card: operations, drawn as a second section of rows below the fields."
+              },
+              "stereotype": {
+                "type": "string",
+                "description": "UML stereotype shown as «stereotype» in place of the kicker, e.g. \"interface\", \"abstract\", \"enumeration\"."
+              },
               "modes": {
                 "type": "object",
                 "description": "Per-mode overrides of these data fields, keyed by mode id.",
@@ -388,6 +406,25 @@
             ],
             "default": "forward",
             "description": "Arrow heads: forward (at the target), both (a two-way link) or none (an undirected link). Layout still ranks by source -> target. source == target draws a self-loop on the card's side."
+          },
+          "relation": {
+            "enum": [
+              "inheritance",
+              "realization",
+              "composition",
+              "aggregation",
+              "association",
+              "dependency"
+            ],
+            "description": "UML relationship. Triangles (inheritance, realization) and diamonds (composition, aggregation) sit on the SOURCE, so point edges from parent / interface / whole to child / implementation / part; association and dependency draw an open arrow at the target. realization and dependency are dashed. sourceEnd / targetEnd override either end."
+          },
+          "sourceEnd": {
+            "$ref": "#/definitions/end",
+            "description": "Marker at the source end: ER cardinality (one, zero-or-one, many, one-or-many, zero-or-many) or a UML head. Once an edge has any end or relation, ends without one are plain (no default arrowhead)."
+          },
+          "targetEnd": {
+            "$ref": "#/definitions/end",
+            "description": "Marker at the target end, e.g. \"zero-or-many\" for the many side of a one-to-many relationship."
           }
         }
       }
@@ -586,6 +623,113 @@
           "description": "External link (http, https or mailto) opened in a new tab from the inspector."
         }
       }
+    },
+    "field": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column or attribute name."
+        },
+        "type": {
+          "type": "string",
+          "description": "Data type, shown right-aligned in monospace, e.g. uuid, varchar(255), List<Order>."
+        },
+        "pk": {
+          "type": "boolean",
+          "description": "Primary key (PK, name in bold)."
+        },
+        "fk": {
+          "type": "boolean",
+          "description": "Foreign key (FK)."
+        },
+        "unique": {
+          "type": "boolean",
+          "description": "Unique constraint (UK)."
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "May be null: the type is shown with a trailing ?."
+        },
+        "ref": {
+          "type": "string",
+          "description": "What a foreign key points at: \"nodeId\" or \"nodeId.field\" (validated)."
+        },
+        "visibility": {
+          "enum": [
+            "+",
+            "-",
+            "#",
+            "~"
+          ],
+          "description": "UML visibility: public, private, protected, package."
+        },
+        "static": {
+          "type": "boolean",
+          "description": "Class-level member (underlined)."
+        },
+        "note": {
+          "type": "string",
+          "description": "Shown in the inspector and the Markdown export."
+        }
+      }
+    },
+    "method": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Operation name; shown as name(params)."
+        },
+        "params": {
+          "type": "string",
+          "description": "Parameter list without parentheses, e.g. \"amount: Money\"."
+        },
+        "type": {
+          "type": "string",
+          "description": "Return type."
+        },
+        "visibility": {
+          "enum": [
+            "+",
+            "-",
+            "#",
+            "~"
+          ]
+        },
+        "static": {
+          "type": "boolean",
+          "description": "Underlined."
+        },
+        "abstract": {
+          "type": "boolean",
+          "description": "Italic."
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "end": {
+      "enum": [
+        "none",
+        "arrow",
+        "open-arrow",
+        "triangle",
+        "diamond",
+        "open-diamond",
+        "one",
+        "zero-or-one",
+        "many",
+        "one-or-many",
+        "zero-or-many"
+      ]
     },
     "icon": {
       "enum": [

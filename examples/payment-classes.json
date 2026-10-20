@@ -1,0 +1,187 @@
+{
+  "meta": {
+    "title": "Order and payment classes",
+    "description": "The domain model of a checkout service: an order, its lines, money, and pluggable payment methods.",
+    "layout": { "direction": "TB" },
+    "summary": {
+      "headline": "Order owns its lines and depends only on the PaymentMethod interface, so new ways to pay need no change to Order.",
+      "points": [
+        "Order extends the abstract Entity base, which supplies identity and equality.",
+        "OrderLine objects live and die with their Order (composition); a Customer only refers to orders (aggregation).",
+        "CardPayment and WalletPayment realise PaymentMethod; Order.pay() accepts either."
+      ]
+    }
+  },
+  "roles": {
+    "abstract": { "label": "Abstract type", "color": "violet" },
+    "class": { "label": "Class", "color": "blue" },
+    "value": { "label": "Value object", "color": "teal" },
+    "adapter": { "label": "Payment adapter", "color": "amber" }
+  },
+  "nodes": [
+    {
+      "id": "entity",
+      "type": "abstract",
+      "data": {
+        "title": "Entity",
+        "stereotype": "abstract",
+        "icon": "layers",
+        "description": "Base class for everything with an identity that outlives its attribute values.",
+        "fields": [{ "name": "id", "type": "UUID", "visibility": "#" }],
+        "methods": [
+          { "name": "equals", "params": "other: Object", "type": "boolean", "visibility": "+" },
+          { "name": "validate", "type": "void", "visibility": "#", "abstract": true }
+        ]
+      }
+    },
+    {
+      "id": "customer",
+      "type": "class",
+      "data": {
+        "title": "Customer",
+        "icon": "user",
+        "fields": [
+          { "name": "name", "type": "String", "visibility": "-" },
+          { "name": "email", "type": "Email", "visibility": "-" }
+        ],
+        "methods": [{ "name": "orders", "type": "List<Order>", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "order",
+      "type": "class",
+      "data": {
+        "title": "Order",
+        "icon": "file-text",
+        "description": "Aggregate root of the checkout: lines are only added or removed through the order.",
+        "sourceFile": "src/domain/Order.java",
+        "fields": [
+          { "name": "status", "type": "OrderStatus", "visibility": "-" },
+          { "name": "lines", "type": "List<OrderLine>", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "addLine", "params": "sku, qty", "type": "void", "visibility": "+" },
+          { "name": "total", "type": "Money", "visibility": "+" },
+          { "name": "pay", "params": "method", "type": "Receipt", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "line",
+      "type": "class",
+      "data": {
+        "title": "OrderLine",
+        "icon": "layers",
+        "fields": [
+          { "name": "sku", "type": "String", "visibility": "-" },
+          { "name": "quantity", "type": "int", "visibility": "-" },
+          { "name": "unitPrice", "type": "Money", "visibility": "-" }
+        ],
+        "methods": [{ "name": "subtotal", "type": "Money", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "money",
+      "type": "value",
+      "data": {
+        "title": "Money",
+        "icon": "credit-card",
+        "description": "Immutable amount in minor units plus an ISO 4217 currency code.",
+        "fields": [
+          { "name": "amount", "type": "long", "visibility": "-" },
+          { "name": "currency", "type": "String", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "plus", "params": "other: Money", "type": "Money", "visibility": "+" },
+          { "name": "zero", "params": "currency", "type": "Money", "visibility": "+", "static": true }
+        ]
+      }
+    },
+    {
+      "id": "method",
+      "type": "abstract",
+      "data": {
+        "title": "PaymentMethod",
+        "stereotype": "interface",
+        "icon": "key",
+        "methods": [
+          { "name": "authorize", "params": "amount: Money", "type": "Auth", "visibility": "+" },
+          { "name": "refund", "params": "auth: Auth", "type": "void", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "card",
+      "type": "adapter",
+      "data": {
+        "title": "CardPayment",
+        "icon": "credit-card",
+        "fields": [
+          { "name": "token", "type": "String", "visibility": "-" },
+          { "name": "last4", "type": "String", "visibility": "-" }
+        ],
+        "methods": [{ "name": "authorize", "params": "amount: Money", "type": "Auth", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "wallet",
+      "type": "adapter",
+      "data": {
+        "title": "WalletPayment",
+        "icon": "monitor",
+        "fields": [{ "name": "walletId", "type": "String", "visibility": "-" }],
+        "methods": [{ "name": "authorize", "params": "amount: Money", "type": "Auth", "visibility": "+" }]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "entity-order", "source": "entity", "target": "order", "relation": "inheritance" },
+    { "id": "customer-order", "source": "customer", "target": "order", "relation": "aggregation", "label": "places" },
+    { "id": "order-line", "source": "order", "target": "line", "relation": "composition", "label": "1..* lines" },
+    { "id": "line-money", "source": "line", "target": "money", "relation": "association", "label": "unitPrice" },
+    { "id": "order-method", "source": "order", "target": "method", "relation": "dependency", "label": "pays with" },
+    { "id": "method-card", "source": "method", "target": "card", "relation": "realization" },
+    { "id": "method-wallet", "source": "method", "target": "wallet", "relation": "realization" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the model",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Eight types. Hollow triangles point at a parent or interface; diamonds sit on the owning side of a whole-part link."
+        },
+        {
+          "id": "identity",
+          "title": "Identity",
+          "description": "Order inherits id and equals() from the abstract Entity, and must implement validate().",
+          "highlightNodes": ["entity", "order"],
+          "highlightEdges": ["entity-order"]
+        },
+        {
+          "id": "ownership",
+          "title": "Who owns what",
+          "description": "A filled diamond: lines are created and deleted with their order. A hollow diamond: a customer refers to orders it does not own.",
+          "highlightNodes": ["customer", "order", "line"],
+          "highlightEdges": ["customer-order", "order-line"]
+        },
+        {
+          "id": "money",
+          "title": "Prices",
+          "description": "Each line holds its unit price as a Money value; Money.zero() is static (underlined).",
+          "highlightNodes": ["line", "money"],
+          "highlightEdges": ["line-money"]
+        },
+        {
+          "id": "paying",
+          "title": "Paying",
+          "description": "Order.pay() depends on the PaymentMethod interface only (dashed arrow); card and wallet adapters realise it.",
+          "highlightNodes": ["order", "method", "card", "wallet"],
+          "highlightEdges": ["order-method", "method-card", "method-wallet"]
+        }
+      ]
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { fromMermaid, mermaidBlocks, cleanLabel, hueOf } from '../src/core/mermaid.js';
+import { fromMermaid, mermaidBlocks, cleanLabel, hueOf, classMember } from '../src/core/mermaid.js';
 import { lint } from '../src/core/lint.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -145,7 +145,124 @@ test('sequence diagrams: participants, deduped edges, one step per message, note
 test('sequence boxes become groups; unsupported diagrams throw', () => {
   const { payload } = fromMermaid('sequenceDiagram\n  box Aqua Frontend\n    participant W\n  end\n  W->>S: call');
   assert.deepEqual(payload.groups, [{ id: 'box-1', title: 'Frontend', nodes: ['W'] }]);
-  assert.throws(() => fromMermaid('classDiagram\n  A <|-- B'), /Unsupported Mermaid diagram type "classDiagram"/);
+  assert.throws(() => fromMermaid('gantt\n  title T'), /Unsupported Mermaid diagram type "gantt"/);
+});
+
+test('ER diagrams: entities, attributes with keys, cardinalities and labels', () => {
+  const { payload, warnings } = fromMermaid(
+    'erDiagram\n' +
+      '  CUSTOMER ||--o{ ORDER : places\n' +
+      '  ORDER ||--|{ LINE-ITEM : contains\n' +
+      '  ORDER |o..o| SHIPMENT : "ships in"\n' +
+      '  CUSTOMER {\n    uuid id PK\n    string email UK "login"\n    string name\n  }\n' +
+      '  LINE-ITEM {\n    uuid order_id PK, FK\n    int qty\n  }\n' +
+      '  p[Person] {\n    string name\n  }\n' +
+      '  p }|--|| CUSTOMER : "is"\n' +
+      '  style CUSTOMER fill:#f00'
+  );
+  assert.equal(payload.meta.layout.direction, 'LR');
+  assert.deepEqual(node(payload, 'CUSTOMER').data.fields, [
+    { name: 'id', type: 'uuid', pk: true },
+    { name: 'email', type: 'string', unique: true, note: 'login' },
+    { name: 'name', type: 'string' }
+  ]);
+  assert.deepEqual(node(payload, 'LINE-ITEM').data.fields[0], { name: 'order_id', type: 'uuid', pk: true, fk: true });
+  assert.equal(node(payload, 'p').data.title, 'Person');
+  assert.deepEqual(node(payload, 'ORDER').data.fields, [], 'entities from relationships only get an empty field list');
+  const e = edge(payload, 'CUSTOMER', 'ORDER');
+  assert.deepEqual([e.label, e.sourceEnd, e.targetEnd], ['places', 'one', 'zero-or-many']);
+  assert.equal(edge(payload, 'ORDER', 'LINE-ITEM').targetEnd, 'one-or-many');
+  const ship = edge(payload, 'ORDER', 'SHIPMENT');
+  assert.deepEqual([ship.sourceEnd, ship.targetEnd, ship.style, ship.label], ['zero-or-one', 'zero-or-one', 'dashed', 'ships in']);
+  assert.deepEqual([edge(payload, 'p', 'CUSTOMER').sourceEnd, edge(payload, 'p', 'CUSTOMER').targetEnd], ['one-or-many', 'one']);
+  assert.ok(warnings.some((w) => /Ignored 1 `style` line/.test(w)));
+  const steps = payload.scenarios[0].steps;
+  assert.equal(steps[0].title, 'Overview');
+  assert.equal(steps[1].title, 'CUSTOMER places ORDER');
+  assert.match(steps[1].description, /exactly one CUSTOMER to zero or more ORDER/);
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('ER diagrams: word cardinalities, direction and parse warnings', () => {
+  const { payload, warnings } = fromMermaid('erDiagram\n  direction TB\n  A only one to zero or more B : has\n  B one or more optionally to 1 C : uses\n  A ||--|| A : self\n  ???');
+  assert.equal(payload.meta.layout.direction, 'TB');
+  assert.deepEqual([edge(payload, 'A', 'B').sourceEnd, edge(payload, 'A', 'B').targetEnd], ['one', 'zero-or-many']);
+  const bc = edge(payload, 'B', 'C');
+  assert.deepEqual([bc.sourceEnd, bc.targetEnd, bc.style], ['one-or-many', 'one', 'dashed']);
+  assert.ok(warnings.some((w) => /self-relationship/.test(w)));
+  assert.ok(warnings.some((w) => /could not parse "\?\?\?"/.test(w)));
+});
+
+test('class members: visibility, types, parameters, generics and classifiers', () => {
+  assert.deepEqual(classMember('+String beakColor'), { kind: 'fields', member: { visibility: '+', name: 'beakColor', type: 'String' } });
+  assert.deepEqual(classMember('-name: List~int~'), { kind: 'fields', member: { visibility: '-', name: 'name', type: 'List<int>' } });
+  assert.deepEqual(classMember('count$'), { kind: 'fields', member: { static: true, name: 'count' } });
+  assert.deepEqual(classMember('+isMammal() bool'), { kind: 'methods', member: { visibility: '+', name: 'isMammal', type: 'bool' } });
+  assert.deepEqual(classMember('#area(w: int, h: int)* double'), { kind: 'methods', member: { visibility: '#', name: 'area', params: 'w: int, h: int', abstract: true, type: 'double' } });
+  assert.deepEqual(classMember('make(List~T~ xs) Box~T~$'), { kind: 'methods', member: { static: true, name: 'make', params: 'List<T> xs', type: 'Box<T>' } });
+});
+
+test('class diagrams: classes, annotations, relationship kinds and orientation', () => {
+  const { payload, warnings } = fromMermaid(
+    'classDiagram\n' +
+      '  Animal <|-- Duck\n' +
+      '  Fish --|> Animal\n' +
+      '  Car *-- Wheel : has\n' +
+      '  Duck --o Pond : lives in\n' +
+      '  Duck ..|> Swimmer\n' +
+      '  Duck --> Food : eats\n' +
+      '  Food <.. Fish : needs\n' +
+      '  Zoo "1" -- "*" Animal\n' +
+      '  class Swimmer {\n    <<interface>>\n    +swim()\n  }\n' +
+      '  class Box~T~ {\n    -T item\n  }\n' +
+      '  <<abstract>> Animal\n' +
+      '  Animal : +int age\n' +
+      '  Animal : +mate()*\n' +
+      '  note for Duck "Can fly a little"\n' +
+      '  cssClass "Duck" warm'
+  );
+  const rel = (s, t) => {
+    const e = edge(payload, s, t);
+    return e && [e.relation, e.sourceEnd, e.targetEnd, e.label].filter((x) => x !== undefined);
+  };
+  assert.deepEqual(rel('Animal', 'Duck'), ['inheritance']);
+  assert.deepEqual(rel('Animal', 'Fish'), ['inheritance'], '--|> is turned around so the parent is the source');
+  assert.deepEqual(rel('Car', 'Wheel'), ['composition', 'has']);
+  assert.equal(rel('Duck', 'Pond'), undefined);
+  assert.deepEqual(rel('Pond', 'Duck'), ['aggregation', 'lives in'], 'the whole is the source');
+  assert.deepEqual(rel('Swimmer', 'Duck'), ['realization']);
+  assert.deepEqual(rel('Duck', 'Food'), ['association', 'eats']);
+  assert.deepEqual(rel('Fish', 'Food'), ['dependency', 'needs'], '<.. points at the left class');
+  assert.deepEqual(rel('Zoo', 'Animal'), ['association', 'none', '1 to *'], 'a plain link has no head; multiplicities become the label');
+  assert.equal(node(payload, 'Swimmer').type, 'interface');
+  assert.equal(node(payload, 'Swimmer').data.stereotype, 'interface');
+  assert.deepEqual(node(payload, 'Swimmer').data.methods, [{ visibility: '+', name: 'swim' }]);
+  assert.equal(node(payload, 'Animal').type, 'abstract');
+  assert.deepEqual(node(payload, 'Animal').data.fields, [{ visibility: '+', name: 'age', type: 'int' }]);
+  assert.deepEqual(node(payload, 'Animal').data.methods, [{ abstract: true, visibility: '+', name: 'mate' }]);
+  assert.equal(node(payload, 'Box').data.title, 'Box<T>');
+  assert.equal(node(payload, 'Duck').data.description, 'Can fly a little');
+  assert.deepEqual(payload.roles.interface, { label: 'Interface', color: 'teal' });
+  assert.ok(warnings.some((w) => /Multiplicities/.test(w)));
+  assert.ok(warnings.some((w) => /Ignored 1 `cssClass` line/.test(w)));
+  const steps = payload.scenarios[0].steps;
+  assert.ok(steps.length <= 8, 'walkthrough stays short');
+  for (const s of steps.slice(1)) {
+    assert.ok(s.highlightEdges.length);
+    for (const id of s.highlightEdges) {
+      const e = payload.edges.find((x) => x.id === id);
+      assert.ok(s.highlightNodes.includes(e.source) && s.highlightNodes.includes(e.target));
+    }
+  }
+  assert.deepEqual(lint(payload).errors, []);
+});
+
+test('class diagrams: namespaces become groups; direction is kept', () => {
+  const { payload } = fromMermaid('classDiagram\n  direction LR\n  namespace Shapes {\n    class Square\n    class Circle\n  }\n  Shape <|-- Square\n  Shape <|-- Circle');
+  assert.equal(payload.meta.layout.direction, 'LR');
+  assert.deepEqual(payload.groups, [{ id: 'Shapes', title: 'Shapes', nodes: ['Square', 'Circle'] }]);
+  assert.equal(payload.scenarios[0].steps[1].title, 'Square inherits from Shape');
+  assert.deepEqual(lint(payload).errors, []);
 });
 
 test('every sample imports and lints with zero errors', () => {
