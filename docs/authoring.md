@@ -503,7 +503,7 @@ See `examples/ecommerce-schema.json` and `examples/payment-classes.json`.
 - `meta.lang` is the BCP 47 tag of the content (`es`, `pt-BR`, `ne`, `zh`, `ja`, `ar` …).
   It sets `<html lang>` (built HTML) and `xml:lang` (SVG), the number format of metrics,
   charts, counters and zoom (`Intl.NumberFormat`), and the language of every fixed label:
-  toolbar, tooltips, walkthrough, inspector, help dialog, toasts, export menu, the badge,
+  toolbar, tooltips, walkthrough, inspector, shortcuts panel, toasts, export menu, the badge,
   and the SVG and Markdown exports. Built-in tables: `en es fr de pt it hi bn ne zh zh-Hant
   ja ko id ar he fa ur`. A region tag uses its language (`pt-BR` → `pt`); Chinese uses
   Traditional (`zh-Hant`) for `zh-Hant*`, `zh-TW`, `zh-HK` and `zh-MO` (unless `Hans` is
@@ -611,7 +611,6 @@ Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-ara
 | `help.theme` | Light / dark |
 | `help.fullscreen` | Fullscreen |
 | `help.clear` | Clear selection, then back up a level |
-| `help.hint` | Drag cards to rearrange; edges re-route live. Scroll or pinch to zoom. |
 | `help.drill` | Open the card's detail diagram |
 | `help.fold` | Fold / unfold selected branch |
 | `common.close` | Close |
@@ -811,6 +810,26 @@ Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-ara
 | `focus.hint` | Double-click to zoom to {title} |
 | `focus.focused` | Zoomed to {title} |
 | `help.focus` | Zoom to the selected card's group (Esc zooms out) |
+| `help.gWalk` | Walkthrough |
+| `help.gNav` | Navigate |
+| `help.gView` | View |
+| `help.gFold` | Fold & depth |
+| `help.gDrill` | Drill-down & focus |
+| `help.gPointer` | Mouse & touch |
+| `help.panel` | Show or hide this panel |
+| `help.footer` | Press ? to show or hide this panel. Toolbar buttons show their key in the tooltip. |
+| `help.click` | Click a card |
+| `help.clickDo` | Select it |
+| `help.dragCard` | Drag a card |
+| `help.dragCardDo` | Move it; edges re-route live |
+| `help.dragBg` | Drag the background |
+| `help.dragBgDo` | Pan |
+| `help.wheel` | Scroll or pinch |
+| `help.wheelDo` | Zoom |
+| `help.dblGroup` | Double-click a group title |
+| `help.dblGroupDo` | Zoom to the group |
+| `help.dblCard` | Double-click a card |
+| `help.dblCardDo` | Open its detail diagram |
 | `drill.more` | Show {n} hidden levels |
 <!-- string-keys:end -->
 

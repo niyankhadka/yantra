@@ -49,7 +49,9 @@ validator checks is exactly what the viewer draws.
   scenario, role, inspector tab, theme, folded ids), print handling (light theme, chrome hidden), exports.
   The inspector shows Summary / Step / Details tabs and custom `panels`; `meta.inspector.onNodeClick`
   picks what a card click opens. Closed panels are `inert` / `hidden`, so they are neither
-  visible nor focusable.
+  visible nor focusable. The keyboard shortcuts panel (`?`) is a sibling aside in the inspector's
+  dock that replaces it while open; its rows come from `src/app/shortcuts.js` (a pure table, each
+  row with a condition so keys that do not apply to the open diagram are left out).
 - Group focus and fold to depth (`main.js`): double-click a group title or press `G` to zoom to a
   group (its ancestors' path under the toolbar, `focus=` hash key, `Esc` zooms out); keys `0`-`6`
   and the toolbar menu fold to a depth (`depth=` hash key); `step.focusGroup` does the same per step.

@@ -42,9 +42,14 @@ button {
 }
 
 /* Menu items and dialogs sit inside a panel: draw the ring inside */
-:is(.y-menu-list, .y-legend-list) button:focus-visible,
-.y-help:focus-visible {
+:is(.y-menu-list, .y-legend-list) button:focus-visible {
   outline-offset: -2px;
+}
+
+/* The shortcuts panel takes focus when it opens (so Tab continues inside it);
+   the panel itself needs no ring, its controls draw their own */
+.y-shortcuts:focus-visible {
+  outline: none;
 }
 
 .y-menu-list button:focus-visible,
@@ -115,7 +120,6 @@ kbd {
 .y-bar,
 .y-story,
 .y-inspector,
-.y-help,
 .y-menu-list {
   border: 1px solid var(--y-border);
   border-radius: 10px;
@@ -1094,6 +1098,82 @@ kbd {
   margin: 0 0 10px;
 }
 
+/* --- Keyboard shortcuts: a sibling of the inspector (.y-inspector), same dock -- */
+.y-panel-title {
+  margin: 0;
+  padding: 4px 2px;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.y-keys dl {
+  margin: 0;
+}
+
+.y-keys-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-top: 1px solid var(--y-border);
+}
+
+.y-keys-row.is-gesture {
+  grid-template-columns: 1fr 1fr;
+}
+
+.y-keys-row:first-child {
+  border-top: 0;
+}
+
+.y-keys-row dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.y-keys-row dd {
+  margin: 0;
+  color: var(--y-ink-2);
+}
+
+.y-keys-sep {
+  margin: 0 -1px;
+  color: var(--y-ink-3);
+  font-size: 11px;
+}
+
+.y-gesture {
+  color: var(--y-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.y-keys-group h4:not(.p-block h4) {
+  margin-bottom: 2px;
+}
+
+.y-keys-group:first-child h4:not(.p-block h4) {
+  margin-top: 2px;
+}
+
+.y-panel-foot {
+  margin: 0;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--y-border);
+  color: var(--y-ink-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.y-panel-foot kbd {
+  margin: 0 1px;
+}
+
 .y-muted {
   color: var(--y-ink-2);
 }
@@ -1515,50 +1595,7 @@ kbd {
   font-style: normal;
 }
 
-/* --- Help & toast ----------------------------------------------------------- */
-.y-help {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 40;
-  width: min(360px, calc(100vw - 32px));
-  padding: 16px 18px;
-  background: var(--y-surface);
-  transform: translate(-50%, -50%);
-}
-
-.y-help-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: -4px 0 8px;
-  margin-inline-end: -6px;
-}
-
-.y-help h3 {
-  margin: 0;
-  font-size: 14px;
-}
-
-.y-help dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 6px 14px;
-  margin: 0;
-  font-size: 13px;
-}
-
-.y-help dd {
-  margin: 0;
-  color: var(--y-ink-2);
-}
-
-.y-help p {
-  margin: 12px 0 0;
-  color: var(--y-ink-3);
-  font-size: 12px;
-}
-
+/* --- Toast ------------------------------------------------------------------ */
 .y-toast {
   position: absolute;
   top: 76px;
@@ -1696,7 +1733,6 @@ kbd {
   .y-story,
   .y-legend,
   .y-inspector,
-  .y-help,
   .y-toast,
   .y-tooltip,
   .y-hscroll-btn {

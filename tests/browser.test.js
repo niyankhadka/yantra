@@ -100,3 +100,44 @@ test('chart legends toggle series and slices on answer pages', { skip }, async (
   await page.eval(`${series}.querySelector('.p-legend li[data-i="1"]').click()`);
   assert.equal(await page.eval(`${series}.querySelector('.p-chart-svg [data-s="1"]').style.display`), 'none');
 });
+
+test('? opens the shortcuts side panel; Esc closes it and focus returns', { skip }, async () => {
+  const page = await open('platform-overview');
+  const key = (k) => page.eval(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true }))`);
+  await page.eval(`document.getElementById('btn-fit').focus()`);
+  await key('?');
+  await page.waitFor(`document.getElementById('help').classList.contains('is-open')`);
+  const state = await page.eval(`(() => {
+    const help = document.getElementById('help');
+    return {
+      tag: help.tagName, inert: help.inert, label: help.getAttribute('aria-labelledby'),
+      focused: help.contains(document.activeElement),
+      pressed: document.getElementById('btn-help').getAttribute('aria-pressed'),
+      groups: [...help.querySelectorAll('[data-group]')].map((g) => g.dataset.group),
+      kbd: help.querySelectorAll('kbd').length,
+      dock: getComputedStyle(help).position, visible: getComputedStyle(help).visibility
+    };
+  })()`);
+  assert.equal(state.tag, 'ASIDE');
+  assert.equal(state.inert, false);
+  assert.equal(state.label, 'help-title');
+  assert.equal(state.focused, true, 'focus moves into the panel');
+  assert.equal(state.pressed, 'true');
+  assert.deepEqual(state.groups, ['walk', 'nav', 'view', 'drill', 'pointer'], 'no fold keys on a diagram without nested groups');
+  assert.ok(state.kbd > 15);
+  assert.equal(state.dock, 'absolute');
+
+  // The inspector replaces it, and back
+  await key('i');
+  await page.waitFor(`document.getElementById('inspector').classList.contains('is-open')`);
+  assert.equal(await page.eval(`document.getElementById('help').classList.contains('is-open')`), false);
+  await key('?');
+  await page.waitFor(`document.getElementById('help').classList.contains('is-open')`);
+  assert.equal(await page.eval(`document.getElementById('inspector').classList.contains('is-open')`), false);
+
+  await key('Escape');
+  await page.waitFor(`!document.getElementById('help').classList.contains('is-open')`);
+  assert.equal(await page.eval('document.getElementById("help").inert'), true);
+  assert.equal(await page.eval('window.yantra.levels.depth'), 0, 'Esc only closed the panel');
+  assert.equal(await page.eval('document.activeElement.id'), 'btn-fit', 'focus returns to where it was');
+});

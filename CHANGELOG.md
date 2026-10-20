@@ -47,6 +47,12 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Changed
 
+- Keyboard shortcuts open in a side panel (`?` or the help button) in the inspector's place:
+  same dock, theming and slide-in, on the left in right-to-left languages, a bottom sheet on
+  phones. Grouped (walkthrough, navigate, view, fold and depth, drill-down and focus, mouse and
+  touch), it lists only what applies to the open diagram; opening it closes the inspector and
+  back. Mode buttons show their key (`M`) in the tooltip. String key `help.hint` is replaced by
+  `help.footer` and the panel's group and gesture keys, translated in every built-in language.
 - Limits: `group/too-deep` above 8 levels (was 3), `drill/too-deep` above 8 levels below the
   overview (was 3), `budget/too-many-groups` above 24 groups (was 6). A layered diagram whose
   groups open folded counts its cards as they show at first (budget 14, and 48 in all).

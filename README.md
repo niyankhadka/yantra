@@ -204,7 +204,11 @@ live diagram embeds.
 | `X` | fold / unfold the selected branch | `1`-`6`, `0` | fold to depth, open all (`Shift` with several scenarios) |
 | `G` | zoom to the selected card's group | double-click a group title | zoom to that group (`Esc` zooms out) |
 | `R` / `+` / `-` | fit / zoom | `T` | theme |
-| `?` | all shortcuts | `Esc` | close / clear focus |
+| `?` | shortcuts panel | `Esc` | close / clear focus |
+
+`?` (or the toolbar's help button) opens the shortcuts in a side panel where the inspector
+docks (a bottom sheet on phones). It lists only the keys and gestures that do something in
+the open diagram, and each toolbar button's tooltip shows its key.
 
 Drag cards to rearrange (edges re-route live); **Export → Copy JSON with positions** writes
 the arrangement back as a manual layout. The state is mirrored in the URL hash, so links

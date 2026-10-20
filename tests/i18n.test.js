@@ -235,7 +235,7 @@ test('counted words follow Intl.PluralRules, with optional zero/two/few/many for
 
 // --- built files carry only the languages they use --------------------------------
 test('built HTML embeds English plus only the payload languages', () => {
-  const marker = (lang) => STRINGS[lang]['help.hint'];
+  const marker = (lang) => STRINGS[lang]['help.footer'];
   const en = buildHtml(diagram());
   assert.ok(!en.includes('<script type="application/json" id="yantra-strings">'), 'no table script for English');
   for (const l of ['ar', 'he', 'ja', 'zh-Hant', 'de']) assert.ok(!en.includes(marker(l)), `English build has no ${l} table`);
@@ -256,9 +256,9 @@ test('answer pages embed the languages of their interactive diagrams', () => {
   const page = (lang) => ({ kind: 'page', meta: { title: 'x', lang }, answer: { headline: 'h' }, blocks: [{ type: 'diagram', interactive: true, diagram: diagram() }] });
   const inJson = (html, s) => html.includes(JSON.stringify(s).slice(1, -1));
   const fa = buildPage(page('fa'), ROOT);
-  assert.ok(inJson(fa, STRINGS.fa['help.hint']), 'the embed inherits the page language');
+  assert.ok(inJson(fa, STRINGS.fa['help.footer']), 'the embed inherits the page language');
   const en = buildPage(page('en'), ROOT);
-  assert.ok(!inJson(en, STRINGS.fa['help.hint']) && !inJson(en, STRINGS.ur['help.hint']), 'English page: no tables');
+  assert.ok(!inJson(en, STRINGS.fa['help.footer']) && !inJson(en, STRINGS.ur['help.footer']), 'English page: no tables');
 });
 
 test('registerStrings adds known languages only', () => {

@@ -24,6 +24,7 @@ import { Renderer } from './renderer.js';
 import { InteractionManager } from './interact.js';
 import { Levels, DRILL_TEXT, setDrillLocale, crumbListHtml } from './levels.js';
 import { DEPTH_KEYS, groupTrail } from '../core/nesting.js';
+import { shortcutsHtml } from './shortcuts.js';
 // The example gallery is loaded only when no payload is embedded, so built
 // files (always embedded) do not carry it: `vite build` puts it in its own chunk.
 // GALLERY holds the dropdown sections; EXAMPLES is every entry, diagrams first.
@@ -218,6 +219,7 @@ class App {
     this.renderInspectorTabs();
     if (this.inspectorOpen && !this.inspectorTabs().length) this.setInspector(false);
     this.renderInspector();
+    this.renderHelp();
     requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
   }
 
@@ -552,6 +554,7 @@ class App {
         this.redraw();
         requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
       }
+      this.renderHelp();
       this.syncHash();
     });
     e.on('viewChanged', (view) => {
@@ -561,6 +564,7 @@ class App {
       this.redraw();
       if (this.hashReady) this.toast(this.L.t(view === 'sequence' ? 'view.sequenceToast' : 'view.flowToast'));
       requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
+      this.renderHelp();
       this.syncHash();
     });
     e.on('modeChanged', (mode) => {
@@ -574,6 +578,7 @@ class App {
       this.renderInspector();
       this.toast(`${mode.name}`);
       requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
+      this.renderHelp();
       this.syncHash();
     });
     e.on('selectionChanged', (id) => {
@@ -607,6 +612,7 @@ class App {
       this.renderDepth();
       this.checkFocus();
       this.renderLegend();
+      this.renderHelp();
       this.syncHash();
     });
     e.on('layoutReset', () => {
@@ -747,7 +753,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     const modes = this.engine.getModes();
     box.hidden = modes.length < 2;
     box.innerHTML = modes
-      .map((m) => `<button role="radio" aria-checked="${m.id === this.engine.modeId}" data-mode="${h(m.id)}" title="${h(m.description || m.name)}">${h(m.badge || m.name)}</button>`)
+      .map((m) => `<button role="radio" aria-checked="${m.id === this.engine.modeId}" data-mode="${h(m.id)}" title="${h(m.description || m.name)} (M)">${h(m.badge || m.name)}</button>`)
       .join('');
   }
 
@@ -902,6 +908,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
   setInspector(open, tab) {
     if (open && !this.inspectorTabs().length) open = false;
     if (tab) this.inspectorTab = tab;
+    if (open) this.setHelp(false);
     this.inspectorOpen = open;
     $('inspector').classList.toggle('is-open', open);
     $('inspector').inert = !open;
@@ -1179,7 +1186,6 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     }
     this.legendMenu.close();
     this.exportMenu.close();
-    this.setHelp(false);
   }
 
   toggleRole(type) {
@@ -1190,18 +1196,59 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     this.syncHash();
   }
 
-  /** Shortcuts dialog: focus moves in on open and back to where it was on close. */
-  setHelp(open) {
+  /**
+   * Keyboard shortcuts side panel: docks where the inspector does and replaces
+   * it while open. Focus moves in on open and back to the trigger on close.
+   */
+  setHelp(open, { refocus = true } = {}) {
     const help = $('help');
-    if (open === !help.hidden) return;
-    help.hidden = !open;
+    if (open === !!this.helpOpen) return;
+    if (open && this.page) return;
+    this.helpOpen = open;
     if (open) {
+      if (this.inspectorOpen) this.setInspector(false);
       this.helpReturn = document.activeElement;
-      help.focus();
-    } else if (help.contains(document.activeElement) || document.activeElement === document.body) {
-      this.helpReturn?.focus?.();
-      this.helpReturn = null;
+      this.renderHelp();
     }
+    help.classList.toggle('is-open', open);
+    help.inert = !open;
+    $('btn-help').setAttribute('aria-pressed', String(open));
+    if (open) help.focus({ preventScroll: true });
+    else {
+      const back = this.helpReturn;
+      this.helpReturn = null;
+      if (refocus && (help.contains(document.activeElement) || document.activeElement === document.body)) (back?.isConnected ? back : $('btn-help')).focus?.();
+    }
+  }
+
+  /** What the open diagram offers, so the panel lists only the keys that do something here. */
+  shortcutContext() {
+    const e = this.engine;
+    const scene = e.getScene();
+    const sequence = scene.kind === 'sequence';
+    const info = e.foldLevels();
+    return {
+      steps: e.getSteps().length > 0,
+      scenarios: e.getScenarios().length,
+      modes: e.getModes().length > 1,
+      views: e.canSwitchView(),
+      inspector: this.inspectorTabs().length > 0,
+      legend: !$('legend').hidden,
+      fold: !sequence && scene.nodes.some((n) => n.toggle),
+      depth: $('depth').hidden ? 0 : Math.min(info.levels - 1, DEPTH_KEYS),
+      drill: this.levels.depth > 0 || e.model.nodes.some((n) => this.levels.target(n)),
+      groups: !sequence && (scene.groups || []).some((g) => !g.region),
+      drag: !sequence
+    };
+  }
+
+  renderHelp() {
+    const L = this.L;
+    const foot = h(L.t('help.footer')).replace('?', '<kbd>?</kbd>');
+    $('help-foot').innerHTML = foot;
+    if (!this.helpOpen) return;
+    const mac = /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform || navigator.platform || '');
+    $('help-body').innerHTML = shortcutsHtml(L, this.shortcutContext(), { mac, rtl: isRtl() });
   }
 
   /** Space covered by floating chrome, so fit-to-view keeps cards visible. */
@@ -1213,7 +1260,8 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     if (!story.hidden) bottom = Math.max(bottom, vp.bottom - story.getBoundingClientRect().top + 8);
     const fab = $('btn-legend').getBoundingClientRect();
     if (!$('legend').hidden && fab.top > vp.top + vp.height / 2) bottom = Math.max(bottom, vp.bottom - fab.top + 8);
-    const side = this.inspectorOpen && window.innerWidth > 720 ? $('inspector').getBoundingClientRect().width + 16 : 16;
+    const panel = this.inspectorOpen ? $('inspector') : this.helpOpen ? $('help') : null;
+    const side = panel && window.innerWidth > 720 ? panel.getBoundingClientRect().width + 16 : 16;
     // the group path sits under the toolbar while zoomed to a group
     const crumbs = $('focus-crumbs');
     const top = crumbs.hidden ? bar.bottom : Math.max(bar.bottom, crumbs.getBoundingClientRect().bottom);
@@ -1284,16 +1332,8 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     $('btn-zoom-out').onclick = () => this.interact.zoomBy(1 / 1.2);
     $('btn-fit').onclick = () => this.interact.fit();
     $('btn-theme').onclick = () => this.toggleTheme();
-    $('btn-help').onclick = () => this.setHelp($('help').hidden);
+    $('btn-help').onclick = () => this.setHelp(!this.helpOpen);
     $('btn-close-help').onclick = () => this.setHelp(false);
-    $('help').onkeydown = (ev) => {
-      if (ev.key !== 'Escape') return;
-      ev.stopPropagation();
-      this.setHelp(false);
-    };
-    document.addEventListener('click', (ev) => {
-      if (!$('help').hidden && !ev.target.closest?.('#help, #btn-help')) this.setHelp(false);
-    });
     $('btn-inspector').onclick = () => this.toggleInspector();
     $('btn-close-inspector').onclick = () => this.setInspector(false);
     $('inspector-tabs').onclick = (ev) => {
@@ -1418,11 +1458,10 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
         '+': () => this.interact.zoomBy(1.2),
         '=': () => this.interact.zoomBy(1.2),
         '-': () => this.interact.zoomBy(1 / 1.2),
-        '?': () => this.setHelp($('help').hidden),
-        // Esc closes help, then clears the selection or filter, then goes up a level
-        // Esc closes help and menus, then clears the selection or filter, then zooms out of a group, then goes up a level
+        '?': () => this.setHelp(!this.helpOpen),
+        // Esc closes the shortcuts panel and menus, then clears the selection or filter, then zooms out of a group, then goes up a level
         Escape: () => {
-          if (!$('help').hidden) return this.setHelp(false);
+          if (this.helpOpen) return this.setHelp(false);
           if (this.closeCrumbMenu(true)) return;
           if (this.engine.selectedNodeId || this.roleFilter) return this.clearFocus();
           if (this.focusId) return this.focusOut();
