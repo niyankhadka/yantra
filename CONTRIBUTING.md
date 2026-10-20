@@ -2,6 +2,8 @@
 
 Thanks for helping. Bug reports, examples, importer fixes and documentation are all welcome.
 Please open an issue before a large change so we can agree on the approach first.
+Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md); for questions, see
+[SUPPORT.md](SUPPORT.md).
 
 ## Setup
 

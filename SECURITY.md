@@ -6,8 +6,8 @@ Security fixes go into the latest release. Older major versions are not patched.
 
 | Version | Supported |
 |---|---|
-| 2.x | Yes |
-| < 2.0 | No |
+| 1.x | Yes |
+| < 1.0 | No |
 
 ## Reporting a vulnerability
 

@@ -1,128 +1,163 @@
-# Yantra
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/assets/logo-dark.svg">
+    <img src="src/assets/logo-light.svg" alt="Yantra logo" width="104" height="104">
+  </picture>
+</p>
 
-Interactive, step-by-step diagrams for systems and processes, and one-page answers to
-questions. Describe the parts, the connections and the story in JSON (or import Mermaid,
-draw.io or PlantUML);
-Yantra lays it out, routes the edges, checks the result and ships it as **one offline HTML file**.
+<h1 align="center">Yantra</h1>
+
+<p align="center">
+  Interactive, step-by-step diagrams and one-page answers, shipped as one offline HTML file.
+</p>
+
+<p align="center">
+  <a href="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml"><img src="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue.svg" alt="Licence: MIT"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-339933.svg" alt="Node.js 18 or later">
+  <!-- Once published:
+  <a href="https://www.npmjs.com/package/@niyankhadka/yantra"><img src="https://img.shields.io/npm/v/@niyankhadka/yantra.svg" alt="npm"></a>
+  <a href="https://pypi.org/project/yantra-diagrams/"><img src="https://img.shields.io/pypi/v/yantra-diagrams.svg" alt="PyPI"></a>
+  -->
+</p>
+
+Describe the parts of a system or process, how they connect and the story you want to tell,
+in JSON (or start from a Mermaid, PlantUML, draw.io or Visio sketch). Yantra lays it out,
+routes the edges, checks the rendered geometry and writes a single HTML file that works
+offline, with a walkthrough readers can step through.
+
+It is for engineers, analysts and teams who explain systems and decisions: architecture
+reviews, request flows, incident reviews, onboarding, runbooks, data models, plans and
+reports. You never place a card by hand, a validator catches overlaps and broken references
+before anyone sees them, and the output is one file you can email, attach to a ticket or
+open from a USB stick. The CLI, an MCP server, an agent skill and a Python SDK make it easy
+to generate diagrams from scripts and coding agents.
+
+<p align="center">
+  <img src="docs/images/walkthrough.png" alt="A cloud architecture diagram at step 3 of its walkthrough: two cards are highlighted, the rest are dimmed, and the storyboard below describes the step" width="900">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/chart-cards-dark.png" alt="Live operations dashboard in the dark theme: service cards with mini charts, grouped chart cards and alert rules"></td>
+    <td width="50%"><img src="docs/images/sequence-view.png" alt="OAuth sign-in in sequence view, step 4 highlighted"></td>
+  </tr>
+  <tr>
+    <td align="center">Chart cards and mini charts, dark theme</td>
+    <td align="center">The same payload as a sequence diagram</td>
+  </tr>
+</table>
+
+## Contents
+
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Pick your output](#pick-your-output)
+- [A diagram in 20 lines](#a-diagram-in-20-lines)
+- [Diagram kinds](#diagram-kinds)
+- [Answer pages and charts](#answer-pages-and-charts)
+- [Import](#import)
+- [CLI](#cli)
+- [MCP server](#mcp-server)
+- [Python SDK](#python-sdk)
+- [Viewer keyboard shortcuts](#viewer-keyboard-shortcuts)
+- [Languages](#languages)
+- [Examples gallery](#examples-gallery)
+- [Project layout](#project-layout)
+- [Development](#development)
+- [Contributing, support and security](#contributing-support-and-security)
 
 ## Features
 
-- **Automatic layout and orthogonal routing**: layered placement, edges that avoid cards,
-  spread their ports and carry their labels. No coordinates to hand-tune.
-- **Validator with stable codes**: schema, references, story *and* rendered geometry
-  (overlaps, edges through cards, label collisions) for every mode and view.
-- **Walkthroughs**: scenarios with steps that focus nodes and animate the active path;
-  storyboard with autoplay, camera follow and a full-screen present mode.
-- **Groups**: labelled boundaries (VPC, team, phase) drawn behind their cards, nested up to six
-  levels in one frame (city > district > service > system > site > sensors) with padding and
-  tints that calm down at each depth; titles never collide and edges cross borders cleanly.
-- **Trees and mind maps**: `meta.layout.algorithm: "tree"` (org charts, decision trees,
-  breakdowns; tidy layout with comb connectors, TB or LR) or `"mindmap"` (central topic,
-  balanced branches, one colour per branch). Wide org charts list leaf teams in compact
-  columns (`meta.layout.compact`), assistants (`data.assistant`) sit beside their manager, and
-  dragging a card takes its subtree and tidy connectors along.
-- **Big diagrams**: fold subtrees or groups into one card and back (`+N`, key `X`,
-  `meta.layout.collapsed`, `#collapsed=` in the link); a folded box shows how many cards and
-  boxes it holds. **Fold to depth** with keys `1`-`6` (`0` opens everything), the toolbar menu
-  or `--depth n`; **zoom to a group** by double-clicking its title (or `G`), with a breadcrumb
-  of the boxes around it, and let steps do it with `focusGroup`. Trees get a larger node budget.
-- **State machines and lifecycles**: state cards, initial / final dots and choice diamonds,
-  fork / join bars and concurrent regions, self-loops drawn on the card, two-way and
-  undirected edges (`edge.arrow`), back-edges routed cleanly. See
-  `examples/ticket-lifecycle.json` and `examples/parallel-checkout-states.json`.
-- **Sequence view**: the same payload as a lifeline diagram (`meta.view: "sequence"`, key `V`,
-  `--view sequence`), one message per step.
-- **Modes**: alternative views (production vs local) that hide nodes or swap details.
-- **Drill-down**: an overview whose cards open detail diagrams (`data.drill`, a `diagrams` map
-  or `$ref` files), with a breadcrumb, Back/`Esc`, deep links (`#level=`) and up to 8 levels
-  (deep breadcrumbs keep the first, parent and current level, with a menu for the rest); a
-  level can use nested groups too, and big systems stay under the card budget at every level.
-- **Links**: `url` on nodes, edges and steps opens runbooks, dashboards or specs from the
-  inspector (http, https and mailto only).
-- **Inspector**: tabs built from content (Summary, Step, Details) plus custom `panels`;
-  `meta.inspector.onNodeClick` decides what a card click opens.
-- **Answer pages** (`"kind": "page"`): the answer first, then blocks - points, steps, metrics,
-  chart, compare, table, timeline, faq, checklist, quote, image, kv, callout, code, sources and
-  diagrams (static, or `interactive: true` for the live viewer, max 2 per page). A contents
-  row appears for longer pages.
-- **Charts and plans**: bar, column, line, area, pie and donut charts (grouped or stacked
-  series, nice axes, legends, a dashed `target` line, hidden data tables for screen readers), metric sparklines,
-  `gantt` plans (dates or relative days, working days and holidays, groups, milestones,
-  dependencies, today line), legends that toggle series and slices, and
-  `matrix` blocks (2x2 quadrants, 3x3-5x5 risk heat maps); inline SVG, both themes, no libraries. See [`docs/pages.md`](docs/pages.md).
-- **Charts in diagrams**: `data.chart` puts a mini chart on any card (sparkline, mini columns,
-  labelled bars, share donut, progress ring, bullet against a target) and `"shape": "chart"`
-  makes a chart card (any page chart kind, with axes and legend) that connects and highlights
-  like any card. Both export to SVG / PNG, open full size in the inspector and list their
-  numbers in Markdown. See [`docs/authoring.md`](docs/authoring.md#charts-in-diagrams).
-- **Data models and class diagrams**: cards with field rows (PK / FK / UK, types) or attributes
-  and methods (visibility, «stereotype»), growing with their rows; crow's foot cardinality and
-  UML heads (inheritance, realization, composition, aggregation, dependency) at edge ends,
-  edges attached to field rows (foreign key → key), multiplicity labels at either end.
-- **Import**: `yantra import` turns Mermaid flowcharts, sequence, state, ER and class diagrams,
-  mind maps and journeys, draw.io / diagrams.net files (and PNG exports), Visio `.vsdx` files
-  and PlantUML sequence, component, use-case, activity, state, class, object, ER and
-  mind-map / WBS diagrams into payloads, and Mermaid gantt / pie / timeline / quadrant charts
-  and PlantUML Gantt charts into answer pages. See
-  [`docs/mermaid.md`](docs/mermaid.md) and [`docs/import.md`](docs/import.md).
-- **Accessible and shareable**: full keyboard control, state mirrored in the URL hash,
-  print stylesheet, light and dark themes with WCAG contrast tests on the design tokens.
-- **Exports**: standalone HTML, SVG, PNG and Markdown; a "Made with Yantra" badge
-  (`meta.watermark: false` hides it, a string renames it).
-- **Agent-ready**: CLI, MCP server, a Claude Code / Antigravity skill and a Python SDK.
+**Diagrams and layouts**
+- Automatic layered layout with orthogonal edge routing: edges avoid cards, spread their
+  ports and carry their labels. No coordinates to write (a manual layout is available).
+- Groups (VPC, team, phase) nested up to six levels in one frame, with titles that never
+  collide and edges that cross borders cleanly.
+- Trees, org charts, decision trees and mind maps; state machines with fork / join and
+  concurrent regions; ER and UML class diagrams with crow's foot and UML end markers.
+- A sequence (lifeline) view of the same payload, and modes (for example production against
+  local) that hide nodes or swap details.
 
-## Installation
+**Walkthroughs and navigation**
+- Scenarios with steps that focus cards and animate the active path; autoplay, camera follow
+  and a full-screen present mode.
+- Folding for big diagrams: fold a subtree or group into one card, fold to a depth, or zoom
+  to a group with a breadcrumb of the boxes around it.
+- Drill-down: overview cards open detail diagrams, up to eight levels, with Back, `Esc` and
+  deep links.
+- An inspector with Summary, Step and Details tabs plus custom panels; links on cards, edges
+  and steps (http, https and mailto only).
 
-Yantra needs **Node.js 18 or later** for everything that validates or produces HTML.
+**Answer pages and charts**
+- Answer pages (`"kind": "page"`) put the conclusion first, then blocks: points, steps,
+  metrics, charts, compare, table, timeline, FAQ, checklist, gantt, matrix, code, sources and
+  embedded diagrams (static, or up to two live viewers per page).
+- Bar, column, line, area, pie and donut charts, sparklines, gantt plans and 2x2 or risk
+  heat-map matrices, drawn as inline SVG with no chart library.
+- Charts inside diagrams: a mini chart on any card, or a chart card that connects like any
+  other card.
 
-```bash
-npm i -g @niyankhadka/yantra    # once published: puts `yantra` on PATH
-yantra build diagram.json
+**Import**
+- Mermaid, PlantUML, draw.io / diagrams.net (including PNG exports with the diagram embedded)
+  and Visio `.vsdx`. Every import is validated straight away.
 
-pip install yantra-diagrams     # once published: Python SDK (import yantra)
-```
+**Output and sharing**
+- A single offline HTML file that makes no external requests; also SVG, PNG and Markdown.
+- View state lives in the URL hash, so a link reopens the same step, mode, level and theme.
+- Light and dark themes, a print stylesheet, and your own logo (see [Branding](#branding)).
 
-The npm package ships a prebuilt viewer, so an installed copy needs no build step. The
-Python SDK writes payloads in pure Python and calls the CLI to validate and build HTML; it
-finds the CLI via `YANTRA_CLI`, a Yantra checkout it is installed from, `yantra` on PATH, or
-`npx` (see [`python/README.md`](python/README.md)). Until the packages are published, work
-from a clone as below.
+**Languages and accessibility**
+- 18 interface languages, right-to-left layout for Arabic, Hebrew, Persian and Urdu, and
+  locale number formats.
+- Full keyboard control, a shortcuts panel, hidden data tables for charts, and WCAG contrast
+  tests on the theme tokens.
 
-## Import from
-
-| Source | Command | Supported | Guide |
-|---|---|---|---|
-| Mermaid (`.mmd`, ```mermaid in `.md`) | `yantra import flow.mmd` | flowchart, sequence, state, ER, class, mind map, journey; gantt, pie, timeline, quadrant → pages | [`docs/mermaid.md`](docs/mermaid.md) |
-| draw.io / diagrams.net (`.drawio`, `.xml`, `.drawio.svg`, `.drawio.png`, compressed or not) | `yantra import model.drawio [--page n]` | shapes, colours, icons, containers / swimlanes → groups, edge labels, ER and UML ends | [`docs/import.md`](docs/import.md) |
-| Visio (`.vsdx`) | `yantra import process.vsdx [--page n]` | shapes, glued connectors, groups | [`docs/import.md`](docs/import.md) |
-| PlantUML (`.puml`, ```plantuml in `.md`) | `yantra import login.puml` | sequence, component / deployment / use case, activity, state, class, object, ER, mind map, WBS, Gantt (page); `!include` inside the folder | [`docs/import.md`](docs/import.md) |
-
-The format is detected from the extension or the content; `--from mermaid|drawio|plantuml|visio`
-forces it. Every import is validated straight away.
+**Validation and tooling for agents**
+- A validator with stable codes for schema, references, story and rendered geometry
+  (overlaps, edges through cards, label collisions) in every mode and view.
+- CLI, MCP server, an agent skill for coding agents, and a Python SDK.
 
 ## Quick start
 
+Yantra needs **Node.js 18 or later**. Until the packages are published, run it from a clone:
+
 ```bash
+git clone https://github.com/niyankhadka/yantra.git
+cd yantra
 npm install
-npm run dev                                    # viewer with the built-in examples
-node bin/yantra.js new diagram.json            # starter payload (--page for an answer page)
-node bin/yantra.js validate diagram.json
-node bin/yantra.js build diagram.json          # -> diagram.html (works offline)
-node bin/yantra.js screenshot diagram.json     # -> diagram-light.png
+npm link                     # optional: puts `yantra` on your PATH
 ```
 
-`npm link` makes the `yantra` command available globally.
+Then:
+
+```bash
+node bin/yantra.js new diagram.json            # starter diagram (--page for an answer page)
+node bin/yantra.js validate diagram.json       # schema, references, story, geometry
+node bin/yantra.js build diagram.json          # -> diagram.html (works offline)
+node bin/yantra.js screenshot diagram.json     # -> diagram-light.png (uses local Chrome or Edge)
+npm run dev                                    # viewer with every example at http://localhost:3000
+```
+
+Once published, the packages install with:
+
+```bash
+npm i -g @niyankhadka/yantra      # the `yantra` command; ships a prebuilt viewer
+pip install yantra-diagrams       # Python SDK (import yantra)
+```
 
 ## Pick your output
 
 | The question | Output | Start from |
 |---|---|---|
-| What states can it be in, and what moves it? | **Diagram** with `shape: "state"` and `initial` / `final` dots | `examples/ticket-lifecycle.json` |
-| How do the parts connect / how does the flow run? | **Diagram** (flow view) | `yantra new x.json`, `examples/cloud-architecture.json` |
-| Who calls whom, in what order? (protocols, APIs) | **Diagram** with `meta.view: "sequence"` | `examples/oauth-login.json` |
-| What tables or classes exist and how do they relate? | **Diagram** with `fields` / `methods` and edge `relation` / `sourceEnd` / `targetEnd` | `examples/ecommerce-schema.json`, `examples/payment-classes.json` |
-| What is the answer / which option / what happened? | **Answer page** (`"kind": "page"`) | `yantra new x.json --page`, `examples/answer-*.json` |
-| I already have a Mermaid, draw.io, PlantUML or Visio sketch | `yantra import sketch.mmd` (or `.drawio`, `.puml`, `.vsdx`) | `examples/mermaid/`, `examples/drawio/`, `examples/plantuml/`, `examples/visio/` |
+| How do the parts connect, how does the flow run? | Diagram (flow view) | `yantra new x.json`, [`cloud-architecture`](examples/cloud-architecture.json) |
+| Who calls whom, in what order? | Diagram with `meta.view: "sequence"` | [`oauth-login`](examples/oauth-login.json) |
+| What states can it be in, and what moves it? | Diagram with `shape: "state"` | [`ticket-lifecycle`](examples/ticket-lifecycle.json) |
+| What tables or classes exist and how do they relate? | Diagram with `fields` / `methods` | [`ecommerce-schema`](examples/ecommerce-schema.json), [`payment-classes`](examples/payment-classes.json) |
+| Who reports to whom, how does it break down? | Diagram with `meta.layout.algorithm: "tree"` or `"mindmap"` | [`org-chart`](examples/org-chart.json), [`study-plan-mindmap`](examples/study-plan-mindmap.json) |
+| What is the answer, which option, what happened? | Answer page (`"kind": "page"`) | `yantra new x.json --page`, [`answer-checkout-saga`](examples/answer-checkout-saga.json) |
+| How are the numbers doing? | Answer page with charts | [`chart-sales-dashboard`](examples/chart-sales-dashboard.json) |
+| I already have a Mermaid, PlantUML, draw.io or Visio sketch | `yantra import` | [`examples/mermaid/`](examples/mermaid), [`examples/plantuml/`](examples/plantuml), [`examples/drawio/`](examples/drawio), [`examples/visio/`](examples/visio) |
 
 ## A diagram in 20 lines
 
@@ -146,170 +181,287 @@ node bin/yantra.js screenshot diagram.json     # -> diagram-light.png
 }
 ```
 
-Full rules, budgets, groups, sequence view and validation codes: [`docs/authoring.md`](docs/authoring.md).
+Save it as `checkout.json`, then `yantra validate checkout.json` and `yantra build checkout.json`.
+Layout is automatic: there are no coordinates. Highlighted edges need both of their endpoints
+highlighted. The full rules, budgets and validation codes are in
+[`docs/authoring.md`](docs/authoring.md); the schema is
+[`schemas/yantra-payload.schema.json`](schemas/yantra-payload.schema.json).
+
+## Diagram kinds
+
+| Kind | How | Example |
+|---|---|---|
+| Flow / architecture | Default layered layout; `groups` for boundaries | [`cloud-architecture`](examples/cloud-architecture.json), [`aws-serverless`](examples/aws-serverless.json) |
+| Sequence | `meta.view: "sequence"` (or key `V`); one message per step | [`oauth-login`](examples/oauth-login.json) |
+| State machine / lifecycle | `shape: "state"`, `"initial"`, `"final"`, `"choice"`; fork, join and regions | [`ticket-lifecycle`](examples/ticket-lifecycle.json), [`parallel-checkout-states`](examples/parallel-checkout-states.json) |
+| ERD / class diagram | `fields` and `methods` rows; edge `relation`, `sourceEnd`, `targetEnd` | [`ecommerce-schema`](examples/ecommerce-schema.json), [`payment-classes`](examples/payment-classes.json) |
+| Tree / org chart / decision tree | `meta.layout.algorithm: "tree"` (TB or LR) | [`org-chart`](examples/org-chart.json), [`incident-triage-decision-tree`](examples/incident-triage-decision-tree.json) |
+| Mind map | `meta.layout.algorithm: "mindmap"` | [`study-plan-mindmap`](examples/study-plan-mindmap.json) |
+| Deep nesting | Groups with `parent`, up to six levels; fold to depth, zoom to a group | [`smart-city-operations`](examples/smart-city-operations.json) |
+| Drill-down | `data.drill` opens a level from the `diagrams` map or a `$ref` file | [`platform-overview`](examples/platform-overview.json), [`global-retail-group`](examples/global-retail-group.json) |
+| Chart cards | `data.chart` (mini chart) or `"shape": "chart"` (chart card) | [`live-operations-dashboard`](examples/live-operations-dashboard.json) |
+
+Details for each kind are in [`docs/authoring.md`](docs/authoring.md): for example
+[groups](docs/authoring.md#groups), [deep hierarchies](docs/authoring.md#deep-hierarchies),
+[drill-down](docs/authoring.md#drill-down-an-overview-plus-detail-diagrams) and
+[charts in diagrams](docs/authoring.md#charts-in-diagrams).
+
+## Answer pages and charts
+
+<img src="docs/images/answer-page.png" alt="A quarterly review answer page: the question, the answer headline with three supporting points, a contents row and metric cards with sparklines" width="720">
+
+An answer page answers one question on one printable page: the headline answer first, then
+3 to 8 blocks of evidence. Use it for explainers, decisions, comparisons, how-tos, incident
+reviews, plans and reports.
+
+```json
+{
+  "kind": "page",
+  "meta": { "question": "Why a saga?", "title": "Saga", "kicker": "Decision" },
+  "answer": { "headline": "Because no single transaction spans the payment provider and our services." },
+  "blocks": [{ "type": "points", "title": "Reasons", "items": [{ "title": "Separate systems" }] }]
+}
+```
+
+- Blocks: `points`, `steps`, `metrics`, `chart`, `gantt`, `matrix`, `compare`, `table`,
+  `diagram`, `callout`, `text`, `code`, `sources`, `timeline`, `faq`, `checklist`, `quote`,
+  `image`, `kv`. `span: "half"` puts two blocks side by side.
+- Charts: bar, column, line, area, pie and donut, with grouped or stacked series, legends that
+  toggle series, a dashed `target` line and a hidden data table for screen readers.
+- Plans: `gantt` with dates or relative days, working days and holidays, milestones,
+  dependencies and a today line. `matrix` draws 2x2 quadrants or 3x3 to 5x5 risk heat maps.
+- A contents row appears on longer pages; `yantra export page.json -f md` gives a Markdown copy.
+
+Rules and every block's fields: [`docs/pages.md`](docs/pages.md). Schema:
+[`schemas/yantra-page.schema.json`](schemas/yantra-page.schema.json).
+
+## Import
+
+```bash
+yantra import flow.mmd                    # -> flow.json, then validated
+yantra import model.drawio --page 2       # one page of a multi-page file
+yantra import notes.md --all              # every ```mermaid block -> notes-1.json, notes-2.json...
+```
+
+| Source | Becomes a diagram | Becomes an answer page | Guide |
+|---|---|---|---|
+| Mermaid (`.mmd`, ```` ```mermaid ```` in `.md`) | flowchart, sequence, state, ER, class, mind map, journey | gantt, pie, timeline, quadrant chart | [`docs/mermaid.md`](docs/mermaid.md) |
+| PlantUML (`.puml`, ```` ```plantuml ```` in `.md`) | sequence, component, deployment, use case, activity, state, class, object, ER, mind map, WBS | Gantt | [`docs/import.md`](docs/import.md#plantuml) |
+| draw.io / diagrams.net (`.drawio`, `.xml`, `.drawio.svg`, `.drawio.png`) | shapes, colours, icons, containers and swimlanes as groups, edge labels, ER and UML ends | | [`docs/import.md`](docs/import.md#drawio--diagramsnet) |
+| Visio (`.vsdx`) | shapes, glued connectors, groups | | [`docs/import.md`](docs/import.md#visio-vsdx) |
+
+The format is detected from the extension or the content; `--from mermaid|drawio|plantuml|visio`
+forces it. Importers keep up to six levels of nested groups.
 
 ## CLI
 
-| Command | |
+| Command | What it does |
 |---|---|
-| `yantra validate <file> [--json]` | Check schema, references, story and geometry. Exit code 1 on errors. |
-| `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
-| `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
-| `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). `--width 390` shows a page at phone width. |
-| `--collapsed id,id` / `--expand-all` / `--depth n` | With `build`, `export` and `screenshot`: open with these subtrees or groups folded, nothing folded, or folded to depth `n` (n levels of boxes or tree levels open), instead of `meta.layout.collapsed`. |
-| `--focus group` | With `screenshot`: zoom the camera to a group, unfolding it and the boxes around it. |
-| `yantra import <file> [-o out.json] [--from mermaid\|drawio\|plantuml] [--page n\|name] [--title "..."] [--all]` | Convert Mermaid (flowchart, sequence, state, ER, class, mind map), draw.io or PlantUML, then validate. |
-| `yantra new <file> [--page]` | Starter diagram or answer page. |
-| `yantra examples [name] [-o file]` | List the examples or copy one. |
-| `yantra mcp` / `yantra dev` | MCP server on stdio / live viewer. |
+| `yantra validate <file.json> [--json] [--lang xx]` | Check schema, references, story and rendered geometry. Exits with code 1 on errors. |
+| `yantra build <file.json> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
+| `yantra export <file.json> -f svg\|md [-o file]` | Static SVG (diagrams) or Markdown (diagrams and pages). |
+| `yantra screenshot <file.json\|page.html> [-o out.png]` | PNG through the local Chrome or Edge (`YANTRA_BROWSER` overrides). |
+| `yantra new <file.json> [--page]` | Write a starter diagram or answer page. |
+| `yantra import <file> [-o out.json]` | Convert Mermaid, PlantUML, draw.io or Visio, then validate. |
+| `yantra examples [name] [-o file]` | List the built-in examples, or copy one. |
+| `yantra mcp` | Start the MCP server on stdio. |
+| `yantra dev` | Start the live viewer at http://localhost:3000 (from a clone, after `npm install`). |
 
-## Examples
+<details>
+<summary>All options</summary>
 
-25 diagrams, 13 answer pages and 7 chart pages in [`examples/`](examples) (`yantra examples`
-lists them). In the dev viewer (`npm run dev`) the example menu has three sections: Diagrams,
-Answer pages (Q&A) and Charts & dashboards; a page opens in the viewer with its own theme and
-live diagram embeds.
+| Option | Commands | Meaning |
+|---|---|---|
+| `--json` | validate | Machine-readable output. |
+| `--lang xx` | validate | Messages in a built-in language (`es`, `ja`, `ar`...); `auto` uses `meta.lang`. Codes stay the same. |
+| `--force` | build | Build even when validation reports errors. |
+| `--theme light\|dark` | export, screenshot | Theme to draw. |
+| `--mode id` | export | One of the diagram's modes. |
+| `--view flow\|sequence` | export, screenshot | Flow graph or sequence diagram. |
+| `--step n` | export, screenshot | Highlight walkthrough step `n` (1-based). |
+| `--level id` | export, screenshot | A detail diagram (drill-down level) instead of the overview. |
+| `--all-levels` | export (`-f md`) | Append every detail diagram after the overview. |
+| `--collapsed a,b` | build, export, screenshot | Open with these subtrees or groups folded, instead of `meta.layout.collapsed`. |
+| `--expand-all` | build, export, screenshot | Open with nothing folded. |
+| `--depth n` | build, export, screenshot | Fold to depth `n`: `n` levels of boxes or tree levels stay open. |
+| `--focus group` | screenshot | Zoom the camera to a group, unfolding it and the boxes around it. |
+| `--width`, `--height` | screenshot | Viewport size; `--width 390` shows a page at phone width. |
+| `--from mermaid\|drawio\|plantuml\|visio` | import | Force the source format. |
+| `--page n\|name` | import | draw.io or Visio page to import (default: the first). |
+| `--title "..."` | import | Title of the imported diagram. |
+| `--all` | import | Import every page or diagram block. |
 
-- Diagrams: `live-operations-dashboard` (chart cards and mini charts on cards),
-  `cloud-architecture` (modes, mini charts), `aws-serverless` (groups), `oauth-login` (sequence),
-  `platform-overview` (drill-down into two detail diagrams, links),
-  `smart-city-operations` (six nested levels in one frame, opens partly folded, live readings),
-  `global-retail-group` (six-level drill-down, nested groups inside levels),
-  `hospital-trust-monitoring` (six nested levels plus two detail levels),
-  `ecommerce-schema` (ERD), `payment-classes` (UML class diagram),
-  `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
-  (panels), `research-paper-lifecycle`, `sales-pipeline` (mini charts), `supply-chain`, `academic-faculty`,
-  `healthcare-clinical`, `ticket-lifecycle` (state machine), `parallel-checkout-states` (fork,
-  join and concurrent regions), `org-chart` (tree),
-  `study-plan-mindmap` (mind map), `incident-triage-decision-tree` (decision tree, opens folded),
-  `health-referral-nepali` (Nepali), `order-fulfilment-arabic` (Arabic, right to left).
-- Pages: `answer-checkout-saga`, `answer-how-to-choose-database` (interactive diagram),
-  `answer-incident-review`, `answer-project-kickoff`, `answer-explain-photosynthesis`,
-  `answer-quarterly-review` (line, area, column, bar and donut charts, sparklines),
-  `answer-launch-plan` (gantt, 2x2 matrix, risk heat map),
-  `answer-order-fulfilment-arabic` (Arabic, right to left), `answer-card-payment-journey`
-  (interactive diagram), `answer-what-happens-url` (interactive sequence), `answer-safe-feature-rollout`
-  (how-to), `answer-build-or-buy-crm` (decision with a cost chart), `answer-black-friday-slowdown`
-  (incident explainer).
-- Chart pages: `chart-sales-dashboard`, `chart-marketing-analytics` (donut, funnel, campaign
-  return), `chart-budget-vs-actual` (variance with negative values, pie), `chart-survey-results`
-  (NPS, agree/disagree bars, 2x2 matrix, quotes), `chart-portfolio-status` (working-day gantt,
-  5x5 risk heat map), `chart-sla-monitoring` (incidents, restore time against target, timeline),
-  `chart-hr-headcount` (stacked area, joiners and leavers). Companies and data are fictional.
+</details>
 
-## Viewer
+From a clone without `npm link`, use `node bin/yantra.js` in place of `yantra`.
 
-| Key | | Key | |
+## MCP server
+
+The MCP server (`node mcp/server.js`, or `yantra mcp`) speaks MCP over stdio. This
+repository registers it in [`.mcp.json`](.mcp.json) and
+[`.agents/mcp_config.json`](.agents/mcp_config.json); for another MCP client, add:
+
+```json
+{
+  "mcpServers": {
+    "yantra": { "command": "node", "args": ["/path/to/yantra/mcp/server.js"] }
+  }
+}
+```
+
+| Tool | Purpose |
+|---|---|
+| `yantra_get_schema` | JSON Schemas and authoring rules (`kind`: `diagram` or `page`). |
+| `yantra_list_examples` / `yantra_get_example` | Built-in examples to use as references. |
+| `yantra_validate` | Errors and warnings with stable codes; `lang` translates the messages. |
+| `yantra_build` | Validate and write a single offline HTML file. |
+| `yantra_export` | SVG or Markdown, written to a file or returned. |
+| `yantra_import` | Mermaid, PlantUML, draw.io or Visio to a payload, then validate. |
+| `yantra_import_mermaid` | Mermaid text to a payload. |
+| `yantra_screenshot` | PNG of a diagram or page for visual review. |
+
+File access is sandboxed: tools read `filePath` only inside `YANTRA_INPUT_ROOT` and write
+`outputPath` only inside `YANTRA_OUTPUT_ROOT` (both default to the server's working
+directory), with fixed extensions.
+
+**Agent skill.** The authoring workflow for coding agents is in
+[`.claude/skills/yantra/SKILL.md`](.claude/skills/yantra/SKILL.md), with an identical copy in
+[`.agents/skills/yantra/SKILL.md`](.agents/skills/yantra/SKILL.md) and repository guidance in
+[`AGENTS.md`](AGENTS.md). Architecture notes: [`docs/architecture.md`](docs/architecture.md).
+
+## Python SDK
+
+The SDK (Python 3.9 or later, no third-party dependencies) writes payloads in Python and calls
+the CLI to validate and build, so Node.js is still needed for those steps.
+
+```bash
+pip install -e python/          # from a clone today; `pip install yantra-diagrams` once published
+```
+
+```python
+from yantra import Diagram
+
+d = Diagram("Checkout", "How an order is paid and stored.")
+web = d.add_node("web", "Web app", "client", subtitle="Customer checkout")
+api = d.add_node("api", "Orders API", "service", tech="Go")
+db = d.add_node("db", "Orders DB", "data", tech="PostgreSQL")
+web.connect(api, "POST /orders")
+api.connect(db, "INSERT order")
+d.add_step("Overview")
+d.add_step("Submit", nodes=[web, api])
+d.add_step("Persist", nodes=[api, db])
+
+print(d.validate())             # {'valid': True, 'errors': [], 'warnings': []}
+d.build_html("checkout.html")
+```
+
+Pages (`from yantra import Page`), trees, data models, charts, deep hierarchies and import are
+covered in [`python/README.md`](python/README.md).
+
+## Viewer keyboard shortcuts
+
+Press `?` (or the toolbar's help button) to open the shortcuts panel. It lists only the keys
+that do something in the open diagram, and each toolbar button's tooltip shows its key.
+
+| Key | Action | Key | Action |
 |---|---|---|---|
-| `→` / Space, `←` | next / previous step | `Home` / `End` | first / last step |
-| `P` | play | `C` | camera follow |
-| `1`-`9` | scenario | `M` / `V` | cycle mode / flow-sequence view |
-| `I` | inspector | `L` | legend |
-| `D` | open the card's detail diagram | `Esc` again | back up a drill-down level |
-| `S` | collapse storyboard | `F` | present (full screen) |
-| `X` | fold / unfold the selected branch | `1`-`6`, `0` | fold to depth, open all (`Shift` with several scenarios) |
-| `G` | zoom to the selected card's group | double-click a group title | zoom to that group (`Esc` zooms out) |
-| `R` / `+` / `-` | fit / zoom | `T` | theme |
-| `?` | shortcuts panel | `Esc` | close / clear focus |
+| `→` / `Space`, `←` | Next / previous step | `Home` / `End` | First / last step |
+| `P` | Play / pause | `C` | Camera follows steps |
+| `S` | Collapse the walkthrough | `1`-`9` | Switch scenario |
+| `V` | Flow / sequence view | `M` | Next mode |
+| `I` | Inspector | `L` | Roles legend |
+| `T` | Light / dark | `F` | Full screen |
+| `X` | Fold / unfold the selected branch | `1`-`6`, `0` | Fold to depth, open everything (`Shift` with several scenarios) |
+| `D` | Open the card's detail diagram | `G` | Zoom to the selected card's group |
+| `+` / `-`, `R` | Zoom, fit to screen | `Esc` | Clear selection, then back up a level |
 
-`?` (or the toolbar's help button) opens the shortcuts in a side panel where the inspector
-docks (a bottom sheet on phones). It lists only the keys and gestures that do something in
-the open diagram, and each toolbar button's tooltip shows its key. On phones (below 560 px)
-the toolbar's **More** (⋯) menu holds the example gallery (diagrams, answer pages, charts) and
-**Keyboard shortcuts**; in a built file it holds the shortcuts only.
+Drag a card to move it (edges re-route live), drag the background to pan, and double-click a
+group title to zoom to it. **Export → Copy JSON with positions** saves an arrangement as a
+manual layout.
 
-Drag cards to rearrange (edges re-route live); **Export → Copy JSON with positions** writes
-the arrangement back as a manual layout. The state is mirrored in the URL hash, so links
-reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&collapsed=<id,id>&depth=2&focus=<group>&theme=dark`
-(dev server also `#example=<name>`). Printing switches to the light theme and hides the chrome.
+<details>
+<summary>Links that reopen a view</summary>
 
-## Languages and right to left
+The view state is mirrored in the URL hash, for example
+`#level=payments&step=3&mode=dev&view=sequence&scenario=2&collapsed=a,b&depth=2&focus=<group>&theme=dark`.
+The dev server also takes `#example=<name>`. Printing switches to the light theme and hides
+the controls.
 
-Set `meta.lang` (BCP 47) on a diagram or page: the viewer chrome, answer-page labels, the
-badge and the SVG / Markdown exports switch language, `<html lang>` and `xml:lang` are set,
-and numbers in metrics and charts use that language's format. Built in: English, Spanish,
-French, German, Portuguese, Italian, Hindi, Bengali, Nepali, Chinese (Simplified, and
-Traditional for `zh-Hant`, `zh-TW`, `zh-HK`), Japanese, Korean, Indonesian, Arabic, Hebrew,
-Persian and Urdu; other languages keep English labels (the validator warns) and
-`meta.strings` overrides any label by key. A built file carries only English plus the
-languages it uses. `yantra validate --lang ja` (MCP: `lang`) translates the common
-validation messages; codes stay the same.
-Arabic, Hebrew, Persian and Urdu (or `meta.dir: "rtl"`) mirror the toolbar, walkthrough,
-inspector, legend and badge; the diagram itself keeps its layout direction. Card text is
-measured per script (full-width CJK, Devanagari, Arabic) and CJK wraps without spaces.
-See [`docs/authoring.md`](docs/authoring.md#languages-and-right-to-left).
+</details>
+
+## Languages
+
+Set `meta.lang` (a BCP 47 tag) on a diagram or page and the viewer controls, page labels,
+badge and exports switch language; numbers use that language's format. 18 languages are built
+in: English, Spanish, French, German, Portuguese, Italian, Hindi, Bengali, Nepali, Chinese
+(Simplified and Traditional), Japanese, Korean, Indonesian, Arabic, Hebrew, Persian and Urdu.
+Arabic, Hebrew, Persian and Urdu (or `meta.dir: "rtl"`) mirror the interface. Other languages
+keep English labels, and `meta.strings` overrides any label. See
+[Languages and right to left](docs/authoring.md#languages-and-right-to-left).
+
+## Examples gallery
+
+[`examples/`](examples) holds 25 diagrams, 13 answer pages and 7 chart pages, plus import
+samples for Mermaid, PlantUML, draw.io and Visio. Every example validates with no warnings.
+Run `npm run dev` and pick one from the example menu, which has three sections:
+
+| Section | Count | Includes |
+|---|---|---|
+| Diagrams | 25 | cloud architecture, chart cards, sequence, ERD, UML, drill-down, six-level nesting, states, trees, mind map, Nepali and Arabic |
+| Answer pages (Q&A) | 11 | decisions, incident reviews, explainers, a how-to, a kickoff and an Arabic page |
+| Charts & dashboards | 9 | sales, marketing, budget, survey, portfolio, service levels, headcount, quarterly review, launch plan |
+
+`yantra examples` lists them all and `yantra examples oauth-login -o oauth.json` copies one.
+Companies and data in the examples are fictional.
 
 ## Branding
 
-Put your logo in `src/assets/`: `logo-light.svg` (dark mark for the light theme) and
-`logo-dark.svg` (light mark for the dark theme). They replace the default mark in the toolbar,
-the badge and the tab icon, and are embedded into built HTML, SVG exports and answer pages
-(once per file). If only one exists it is used for both. Use a square `viewBox` without
-fixed `width`/`height`.
-
-## Agents and integrations
-
-- **Claude Code**: the `yantra` skill in `.claude/skills/yantra/`; `.mcp.json` registers the
-  MCP server; guidance in `CLAUDE.md`.
-- **Antigravity / Codex / others**: `AGENTS.md`, `.agents/skills/yantra/`, `.agents/rules/`,
-  `.agents/mcp_config.json`.
-- **MCP tools**: `yantra_get_schema`, `yantra_list_examples`, `yantra_get_example`,
-  `yantra_validate`, `yantra_build`, `yantra_export`, `yantra_import` (Mermaid, draw.io,
-  PlantUML), `yantra_import_mermaid`, `yantra_screenshot`.
-- **Python**: `pip install -e python/`, then `from yantra import Diagram, Page`; see
-  [`python/README.md`](python/README.md).
-- **Embedding**: put the built HTML in an `<iframe>`; it makes no external requests.
-
-Details: [`docs/architecture.md`](docs/architecture.md).
-
-MCP file access is sandboxed: tools read `filePath` only inside `YANTRA_INPUT_ROOT` and write
-`outputPath` only inside `YANTRA_OUTPUT_ROOT` (both default to the server's working
-directory; relative paths resolve against the matching root), with fixed extensions
-(`.html`, `.svg`/`.md`, `.png`, `.json`).
-
-## Development
-
-- `npm test` runs the Node suite (layout, routing, lint, pages, groups, sequence, Mermaid,
-  contrast, CLI/MCP, builder); every example must validate with zero warnings.
-- CI (`.github/workflows/ci.yml`): Node 18/20/22 on Linux plus Windows, validates and builds
-  every example, and runs the Python SDK tests on Python 3.9 and 3.12.
+Put your logo in `src/assets/`: `logo-light.svg` (a dark mark for the light theme) and
+`logo-dark.svg` (a light mark for the dark theme). They replace the default mark in the
+toolbar, the badge and the tab icon, and are embedded in built HTML, SVG exports and answer
+pages. Use a square `viewBox` without a fixed `width` or `height`. `meta.watermark: false`
+hides the "Made with Yantra" badge; a string renames it.
 
 ## Project layout
 
 ```
-bin/yantra.js          CLI
-mcp/server.js          MCP server (stdio)
-lib/                   Node-only: standalone HTML builder, headless screenshots
-src/core/              Shared engine: model, layout, routing, scene, lint, SVG/Markdown, theme
-  sequence.js          Sequence (lifeline) view
-  tree.js              Tree and mind-map layouts, folding
-  entity.js            Field / method rows of entity and class cards
-  notation.js          Edge end markers: crow's foot cardinality, UML heads
-  mermaid.js           Mermaid flowchart / sequence / state / ER / class / mind-map importer
-  drawio.js            draw.io / diagrams.net importer (inflate.js: compressed pages)
-  plantuml.js          PlantUML sequence / component / activity / state / class / mind-map importer
-  import.js            Format detection and dispatch for `yantra import`
-  page.js              Answer pages
-  charts.js            Page charts, gantt plans, matrices (inline SVG)
-  drill.js             Drill-down levels and link sanitising
-  i18n.js              Interface strings (English; locales/: 17 more languages), RTL, plurals, number formats
-  lintmessages.js      Translated validation messages (`validate --lang`)
-src/app/               Browser viewer (engine state, renderer, interactions, UI)
-src/styles/            Viewer CSS
-src/assets/            Brand logos
-schemas/               JSON Schemas: diagrams and answer pages
-examples/              24 diagrams, 20 answer and chart pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
-docs/                  Authoring (diagrams, pages, imports, languages) and architecture
-python/                Python SDK (package yantra-diagrams)
-tests/                 node --test suite
-.github/workflows/     CI
+bin/yantra.js        CLI
+mcp/server.js        MCP server (stdio)
+lib/                 Node only: standalone HTML builder, headless screenshots
+src/core/            Shared engine: model, layout, routing, lint, pages, charts, importers, i18n
+src/app/             Browser viewer
+src/styles/          Viewer CSS
+src/assets/          Logos
+schemas/             JSON Schemas for diagrams and answer pages
+examples/            Example diagrams and pages, and import samples
+docs/                Authoring, pages, import and architecture guides
+python/              Python SDK (yantra-diagrams)
+tests/               Node test suite
 ```
 
-## Contributing
+## Development
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md); changes are listed in [`CHANGELOG.md`](CHANGELOG.md)
-and security reports go through [`SECURITY.md`](SECURITY.md).
+```bash
+npm install
+npm test                                          # Node suite (node --test)
+npm run build                                     # viewer bundle into dist/
+pip install -e python/
+python -m unittest discover -s python/tests -v    # Python SDK
+```
 
-## License
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the tests on Node 18, 20
+and 22 on Linux and Node 22 on Windows, validates and builds every example, and runs the
+Python SDK tests on Python 3.9 and 3.12. Geometry logic lives only in `src/core/`; the
+viewer, CLI and MCP server all call it.
 
-MIT
+## Contributing, support and security
+
+- [Contributing guide](CONTRIBUTING.md): setup, tests and the rules they enforce.
+- [Support](SUPPORT.md): where to ask questions and report bugs.
+- [Code of conduct](CODE_OF_CONDUCT.md).
+- [Security policy](SECURITY.md): report vulnerabilities privately.
+- [Changelog](CHANGELOG.md): what changed in each release.
+
+## Licence
+
+[MIT](LICENSE) © niyankhadka

@@ -39,7 +39,7 @@
     "mcp/",
     "src/",
     "schemas/",
-    "docs/",
+    "docs/*.md",
     "examples/",
     "dist/",
     "index.html",

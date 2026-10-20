@@ -9,8 +9,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf-8');
 
+/** `files` entry as a matcher: a folder, a file or a one-level glob (`docs/*.md`). */
+const glob = (f) => new RegExp(`^${f.replace(/\./g, '\\.').replace(/\*/g, '[^/]*')}$`);
 /** True when `files` ships this repo-relative path. */
-const shipped = (rel) => pkg.files.some((f) => rel === f.replace(/\/$/, '') || rel.startsWith(f.endsWith('/') ? f : `${f}/`));
+const shipped = (rel) =>
+  pkg.files.some((f) => (f.includes('*') ? glob(f).test(rel) : rel === f.replace(/\/$/, '') || rel.startsWith(f.endsWith('/') ? f : `${f}/`)));
 
 test('package.json is publishable', () => {
   assert.equal(pkg.private, undefined, 'private packages cannot be published');
@@ -35,7 +38,8 @@ test('files covers everything the builder, CLI and MCP server read at run time',
   ];
   assert.match(build, /path\.join\(ROOT, 'dist'\)/);
   for (const rel of needed) assert.ok(shipped(rel), `${rel} is not in package.json files`);
-  for (const rel of ['tests/core.test.js', 'python/pyproject.toml', 'node_modules/vite/package.json']) assert.ok(!shipped(rel), `${rel} should not ship`);
+  for (const rel of ['tests/core.test.js', 'python/pyproject.toml', 'node_modules/vite/package.json', 'docs/images/walkthrough.png'])
+    assert.ok(!shipped(rel), `${rel} should not ship`);
   // Every relative module imported by shipped code is shipped too
   for (const entry of ['bin/yantra.js', 'mcp/server.js', 'lib/build.js']) {
     for (const m of read(entry).matchAll(/from '(\.\.?\/[^']+)'/g)) {
@@ -51,7 +55,7 @@ test('npm pack lists the expected files', { timeout: 120000 }, () => {
   const files = JSON.parse(res.stdout)[0].files.map((f) => f.path.replace(/\\/g, '/'));
   for (const f of ['bin/yantra.js', 'lib/build.js', 'mcp/server.js', 'src/core/lint.js', 'schemas/yantra-payload.schema.json', 'README.md', 'LICENSE', 'CHANGELOG.md'])
     assert.ok(files.includes(f), f);
-  assert.ok(!files.some((f) => /^(tests|python|\.github|\.claude|\.agents|node_modules)\//.test(f)), 'dev-only folders are not packed');
+  assert.ok(!files.some((f) => /^(tests|python|\.github|\.claude|\.agents|node_modules|docs\/images)\//.test(f)), 'dev-only folders are not packed');
 });
 
 test('release workflow runs only on version tags and publishes after the tests', () => {
