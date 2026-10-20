@@ -1,0 +1,22 @@
+---
+title: Checkout flow
+---
+%% A web checkout with a payment decision, grouped by tier.
+flowchart LR
+  subgraph client [Customer side]
+    shopper([Shopper]) -->|submits cart| web[Web app]
+  end
+  subgraph backend [Order platform]
+    api[Orders API<br>validates the cart]
+    pay{Payment ok?}
+    subgraph data [Storage]
+      db[(Orders DB)]
+    end
+  end
+  web -->|POST /orders| api
+  api -->|charge card| pay
+  pay -->|yes| db
+  pay -. no .-> fail>Payment failed]
+  classDef svc fill:#dbeafe,stroke:#2563eb
+  class api svc
+  style web fill:#fff

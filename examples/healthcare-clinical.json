@@ -1,0 +1,332 @@
+{
+  "meta": {
+    "title": "Hospital Emergency Care & Clinical Treatment Pathway",
+    "description": "Critical acute care workflow: emergency triage intake, EHR biometric matching, AI diagnostic imaging, operating surgical intervention, ICU telemetry, and discharge.",
+    "summary": {
+      "headline": "Triage routes each patient through diagnostics and theatre to intensive care and discharge.",
+      "points": [
+        "Triage and the EHR match the patient before treatment starts",
+        "Imaging and records reach the surgical team together",
+        "Discharge writes the summary back to the patient record"
+      ],
+      "facts": {
+        "Door to theatre target": "under 60 minutes"
+      }
+    },
+    "version": "2.0.0",
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "clinical": {
+      "label": "Clinical",
+      "color": "blue"
+    },
+    "system": {
+      "label": "System",
+      "color": "teal"
+    },
+    "milestone": {
+      "label": "Milestone",
+      "color": "green"
+    }
+  },
+  "nodes": [
+    {
+      "id": "node-triage",
+      "type": "clinical",
+      "data": {
+        "title": "Emergency Triage & Ingestion",
+        "subtitle": "Acuity score & vital telemetry (ESI 1-5)",
+        "badge": "Triage",
+        "icon": "activity",
+        "tech": "Automated Vitals Monitor, Epic Rover",
+        "runtime": "Hospital Ingress Ward Enclave",
+        "ports": "HL7 v2 / FHIR R4 (Port 8080)",
+        "sourceFile": "clinical/triage/acuity_classifier.py:44",
+        "description": "Perimeter clinical intake calculating Manchester / Emergency Severity Index (ESI) triage categories and immediate trauma routing."
+      }
+    },
+    {
+      "id": "node-ehr",
+      "type": "system",
+      "data": {
+        "title": "Core Electronic Health Record (EHR)",
+        "subtitle": "Master Patient Index (MPI) & allergy ledger",
+        "badge": "Clinical EHR",
+        "icon": "file-text",
+        "tech": "Epic Systems / Cerner, SMART on FHIR",
+        "runtime": "Protected Health Cloud (HIPAA Compliant)",
+        "ports": "HTTPS / mTLS (Port 8443)",
+        "sourceFile": "ehr/patient/mpi_lookup.rs:78",
+        "description": "Central clinical record aggregating medical history, active contraindications, anticoagulant flags, and genomic blood markers."
+      }
+    },
+    {
+      "id": "node-radiology",
+      "type": "clinical",
+      "data": {
+        "title": "Diagnostic Imaging & AI Pathology",
+        "subtitle": "CT scan, MRI & trauma AI detection",
+        "badge": "Diagnostics",
+        "icon": "crosshair",
+        "tech": "PACS / DICOM Router, MONAI Deep Learning",
+        "runtime": "Hospital On-Premise GPU Node",
+        "ports": "DICOM C-STORE (Port 104)",
+        "sourceFile": "imaging/ai/hemorrhage_detector.py:102",
+        "description": "High-throughput imaging suite running rapid non-contrast head/torso CT scans with real-time intracranial hemorrhage detection."
+      }
+    },
+    {
+      "id": "node-surgical",
+      "type": "clinical",
+      "data": {
+        "title": "Trauma Surgical Suite / OR-1",
+        "subtitle": "Robotic laparoscopy & acute intervention",
+        "badge": "Surgical OR",
+        "icon": "heart",
+        "tech": "Intuitive Surgical Da Vinci, Anesthesia Telemetry",
+        "runtime": "Operating Theater Controller Unit",
+        "ports": "Isolated Medical CAN Bus",
+        "sourceFile": "surgical/telemetry/anesthesia_monitor.c:51",
+        "description": "Sterile trauma operating suite equipped for emergency laparotomy, hemodynamic stabilization, and robotic arterial repair."
+      }
+    },
+    {
+      "id": "node-icu",
+      "type": "clinical",
+      "data": {
+        "title": "Intensive Care Unit (ICU)",
+        "subtitle": "Continuous arterial telemetry & ventilator",
+        "badge": "Intensive Care",
+        "icon": "activity",
+        "tech": "Philips IntelliVue, Hamilton Medical Ventilators",
+        "runtime": "Critical Care Microgrid",
+        "ports": "RS-232 / Ethernet Gateway",
+        "sourceFile": "icu/telemetry/arterial_wave.go:88",
+        "description": "High-dependency critical care pod delivering continuous cardiovascular monitoring, automated sedation, and arterial blood gas tracking."
+      }
+    },
+    {
+      "id": "node-discharge",
+      "type": "milestone",
+      "data": {
+        "title": "Clinical Pharmacy & Post-Care",
+        "subtitle": "Reconciliation, e-prescribing & rehabilitation",
+        "badge": "Discharge",
+        "icon": "check-circle",
+        "tech": "ScriptPro Automated Dispenser, Surescripts",
+        "runtime": "Hospital Outpatient Network",
+        "ports": "FHIR / REST (Port 443)",
+        "sourceFile": "pharmacy/rx/med_reconciliation.ts:62",
+        "description": "Post-stabilization discharge unit ensuring multi-drug interaction safety, automated robotic medication dispensing, and outpatient scheduling."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-triage-ehr",
+      "source": "node-triage",
+      "target": "node-ehr",
+      "label": "FHIR Patient Match"
+    },
+    {
+      "id": "edge-triage-radio",
+      "source": "node-triage",
+      "target": "node-radiology",
+      "label": "Stat Trauma CT Order"
+    },
+    {
+      "id": "edge-radio-surgical",
+      "source": "node-radiology",
+      "target": "node-surgical",
+      "label": "DICOM Imaging Report"
+    },
+    {
+      "id": "edge-ehr-surgical",
+      "source": "node-ehr",
+      "target": "node-surgical",
+      "label": "Allergy & Blood Cross-Match",
+      "style": "dashed"
+    },
+    {
+      "id": "edge-surgical-icu",
+      "source": "node-surgical",
+      "target": "node-icu",
+      "label": "Post-Op Transfer"
+    },
+    {
+      "id": "edge-icu-discharge",
+      "source": "node-icu",
+      "target": "node-discharge",
+      "label": "Medication Reconciliation"
+    },
+    {
+      "id": "edge-discharge-ehr",
+      "source": "node-discharge",
+      "target": "node-ehr",
+      "label": "Discharge Summary Sync",
+      "style": "dashed"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "acute-trauma",
+      "name": "Acute Trauma Triage & Emergency Surgery",
+      "badge": "Flow 1",
+      "description": "Time-critical clinical trajectory: ESI Level 1 ambulance intake, rapid dual-energy CT diagnostic scan, emergency trauma surgery, and ICU telemetry.",
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Hospital Clinical Care Pathway",
+          "description": "Interconnected acute clinical network linking intake triage, EHR clinical records, diagnostic imaging, robotic surgery, ICU, and clinical pharmacy.",
+          "highlightNodes": [
+            "node-triage",
+            "node-ehr",
+            "node-radiology",
+            "node-surgical",
+            "node-icu",
+            "node-discharge"
+          ],
+          "highlightEdges": [
+            "edge-triage-ehr",
+            "edge-triage-radio",
+            "edge-radio-surgical",
+            "edge-ehr-surgical",
+            "edge-surgical-icu",
+            "edge-icu-discharge",
+            "edge-discharge-ehr"
+          ],
+          "payload": {
+            "method": "INFO",
+            "endpoint": "/clinical/v1/emergency/status",
+            "status": "TRAUMA_CENTER_LEVEL_1_READY",
+            "latency": "1ms",
+            "protocol": "FHIR / HL7",
+            "body": {
+              "open_trauma_bays": 4,
+              "ct_scanner_availability": "IMMEDIATE",
+              "blood_bank_units_o_neg": 64,
+              "on_call_surgeons": [
+                "Dr. K. Vance (Trauma)",
+                "Dr. M. Chen (Vascular)"
+              ]
+            }
+          }
+        },
+        {
+          "id": "step-2",
+          "title": "Emergency Intake & Automated Vitals Acuity Triage",
+          "description": "Vitals monitor detects acute hypotension (BP 82/50, HR 128). Triage protocol triggers automated trauma code and rapid CT imaging order.",
+          "highlightNodes": [
+            "node-triage",
+            "node-ehr",
+            "node-radiology"
+          ],
+          "highlightEdges": [
+            "edge-triage-ehr",
+            "edge-triage-radio"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/fhir/Observation/vitals-acuity",
+            "status": "201 Created",
+            "latency": "4ms",
+            "protocol": "HL7 FHIR R4",
+            "body": {
+              "encounter_id": "ENC-EMERG-2026-9912",
+              "esi_acuity_level": 1,
+              "blood_pressure": "82/50 mmHg",
+              "heart_rate_bpm": 128,
+              "priority": "STAT_CODE_TRAUMA"
+            }
+          }
+        },
+        {
+          "id": "step-3",
+          "title": "Dual-Energy Diagnostic CT & AI Hemorrhage Flag",
+          "description": "Patient completes rapid torso CT scan. AI computer-vision classifier detects internal bleed in under 45 seconds and automatically routes 3D volume to OR-1.",
+          "highlightNodes": [
+            "node-radiology",
+            "node-surgical"
+          ],
+          "highlightEdges": [
+            "edge-radio-surgical"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/dicom/v2/imaging/pacs/alert",
+            "status": "200 Alert Dispatched",
+            "latency": "7ms",
+            "protocol": "DICOM Web (WADO-RS)",
+            "body": {
+              "study_instance_uid": "1.2.840.113619.2.55.2026.918",
+              "finding": "ACTIVE_RETROPERITONEAL_HEMORRHAGE",
+              "ai_confidence": "98.4%",
+              "suggested_action": "EMERGENCY_LAPAROTOMY"
+            }
+          }
+        },
+        {
+          "id": "step-4",
+          "title": "Surgical OR Hemostasis & Cross-Match Transfusion",
+          "description": "Trauma surgeon accesses EHR cross-matched blood supplies and executes targeted hemostasis using the robotic surgical platform.",
+          "highlightNodes": [
+            "node-ehr",
+            "node-surgical",
+            "node-icu"
+          ],
+          "highlightEdges": [
+            "edge-ehr-surgical",
+            "edge-surgical-icu"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/clinical/v1/surgical/report",
+            "status": "200 Hemostasis Achieved",
+            "latency": "12ms",
+            "protocol": "FHIR / REST",
+            "body": {
+              "procedure": "EMERGENCY_LAPAROSCOPIC_HEMOSTASIS",
+              "estimated_blood_loss_ml": 450,
+              "transfusion_units": 2,
+              "vital_stability": "STABILIZING",
+              "transfer_target": "ICU_BED_04"
+            }
+          }
+        },
+        {
+          "id": "step-5",
+          "title": "Post-Operative Recovery & Pharmacological Discharge",
+          "description": "After 48h of ICU telemetry, patient stabilizes. Clinical pharmacy runs electronic drug-interaction checks and prepares recovery medication.",
+          "highlightNodes": [
+            "node-icu",
+            "node-discharge",
+            "node-ehr"
+          ],
+          "highlightEdges": [
+            "edge-icu-discharge",
+            "edge-discharge-ehr"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/pharmacy/v2/discharge/reconcile",
+            "status": "200 Cleared For Discharge",
+            "latency": "10ms",
+            "protocol": "FHIR MedicationRequest",
+            "body": {
+              "patient_status": "AMBULATORY_RECOVERED",
+              "discharge_prescriptions": [
+                "Cefazolin 1g",
+                "Enoxaparin 40mg SC"
+              ],
+              "contraindication_check": "ZERO_INTERACTIONS_CONFIRMED",
+              "follow_up_clinic": "Outpatient Trauma Review (7 Days)"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

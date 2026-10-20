@@ -1,0 +1,17 @@
+sequenceDiagram
+  title Sign-in with a token
+  actor U as User
+  participant W as Web app
+  participant A as Auth service
+  participant D as User DB
+  U->>W: Enter email and password
+  W->>A: POST /login
+  A->>D: Look up user
+  D-->>A: User record
+  Note over A: Compares the password hash
+  alt credentials valid
+    A-->>W: Session token
+    W-->>U: Show dashboard
+  else invalid
+    A-->>W: 401 Unauthorised
+  end

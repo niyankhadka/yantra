@@ -1,0 +1,522 @@
+{
+  "meta": {
+    "title": "Autonomous Order & Payment Pipeline",
+    "description": "High-throughput, event-driven transaction processing architecture with zero-trust validation.",
+    "summary": {
+      "headline": "Checkout is an event-driven saga: every step is authorised, recorded and can be compensated.",
+      "points": [
+        "Zero-trust ingress: every request is authenticated before it reaches a service",
+        "Temporal orchestrates the order saga, so failures roll back instead of half-completing",
+        "Kafka decouples the ledger from the payment path",
+        "CockroachDB is the multi-region source of truth"
+      ],
+      "facts": {
+        "Peak load": "45k req/s",
+        "p99 latency": "8 ms at the edge",
+        "Availability target": "99.999%"
+      }
+    },
+    "version": "1.4.0",
+    "defaultMode": "prod",
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "edge": {
+      "label": "Edge & security",
+      "color": "blue"
+    },
+    "service": {
+      "label": "Service",
+      "color": "teal"
+    },
+    "data": {
+      "label": "Data",
+      "color": "violet"
+    },
+    "external": {
+      "label": "External",
+      "color": "slate"
+    }
+  },
+  "modes": [
+    {
+      "id": "prod",
+      "name": "Production",
+      "badge": "PROD"
+    },
+    {
+      "id": "dev",
+      "name": "Local development",
+      "badge": "LOCAL",
+      "description": "Docker Compose stack with a sandboxed payment provider."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node-client",
+      "type": "edge",
+      "data": {
+        "title": "API Gateway / Edge CDN",
+        "subtitle": "Cloudflare & Envoy Proxy",
+        "badge": "Ingress",
+        "icon": "shield",
+        "tech": "Envoy v1.30, Cloudflare Workers",
+        "runtime": "Edge V8 Isolates",
+        "ports": "443 (HTTPS), 8443 (mTLS)",
+        "sourceFile": "deploy/envoy/envoy.yaml:14",
+        "uptime": "99.999%",
+        "description": "Perimeter ingress controller enforcing rate-limiting, geo-routing, DDoS mitigation, and cryptographically verified mTLS handshakes."
+      }
+    },
+    {
+      "id": "node-auth",
+      "type": "edge",
+      "data": {
+        "title": "Auth0 / JWT Token Broker",
+        "subtitle": "Zero-trust session verification",
+        "badge": "Security",
+        "icon": "key",
+        "tech": "Auth0, Go OpenFGA, Ory Hydra",
+        "runtime": "Kubernetes Pods (3 replicas)",
+        "ports": "9000 (gRPC), 8080 (REST)",
+        "sourceFile": "services/auth/broker.go:68",
+        "uptime": "99.99%",
+        "description": "Identity provider issuing bounded ephemeral JWT bearer tokens with fine-grained role claims and real-time revocation caches."
+      }
+    },
+    {
+      "id": "node-order",
+      "type": "service",
+      "data": {
+        "title": "Order Orchestration Engine",
+        "subtitle": "Temporal saga workflow controller",
+        "badge": "Core Svc",
+        "icon": "cpu",
+        "tech": "Go 1.22, Temporal.io, Echo",
+        "runtime": "AWS EKS (c6i.2xlarge)",
+        "ports": "8080 (REST), 7233 (Temporal)",
+        "sourceFile": "services/order/workflow.go:120",
+        "uptime": "99.95%",
+        "description": "Stateful orchestrator driving distributed two-phase order fulfillment workflows with automated compensation logic on settlement failure."
+      }
+    },
+    {
+      "id": "node-queue",
+      "type": "data",
+      "data": {
+        "title": "Apache Kafka Event Mesh",
+        "subtitle": "Persistent partitioned event fabric",
+        "badge": "Event Broker",
+        "icon": "zap",
+        "tech": "Kafka 3.7 (KRaft), Schema Registry",
+        "runtime": "Confluent Managed / MSK",
+        "ports": "9092 (PLAINTEXT), 9094 (SSL)",
+        "sourceFile": "infra/kafka/topics.yaml:32",
+        "uptime": "99.999%",
+        "description": "Durable distributed log pub/sub bus buffering order events, inventory reservations, notification triggers, and analytical CDC feeds."
+      }
+    },
+    {
+      "id": "node-payment",
+      "type": "external",
+      "data": {
+        "title": "Stripe Settlement Gateway",
+        "subtitle": "PCI-DSS Level 1 payment processor",
+        "badge": "Payment",
+        "icon": "credit-card",
+        "tech": "Stripe API v2024-04, Adyen Fallback",
+        "runtime": "External Cloud Gateway",
+        "ports": "443 (Outbound HTTPS)",
+        "sourceFile": "services/payment/gateway.go:45",
+        "uptime": "99.99%",
+        "description": "External payment integration issuing 2-phase authorizations, tokenized vaults, 3D Secure challenges, and automated fraud score evaluations.",
+        "modes": {
+          "dev": {
+            "subtitle": "Sandbox (test keys)",
+            "tech": "Stripe test mode"
+          }
+        }
+      }
+    },
+    {
+      "id": "node-db",
+      "type": "data",
+      "data": {
+        "title": "CockroachDB Distributed Ledger",
+        "subtitle": "Multi-region distributed SQL",
+        "badge": "Ledger DB",
+        "icon": "database",
+        "tech": "CockroachDB v23.2, Raft",
+        "runtime": "Dedicated Multi-Region GCE",
+        "ports": "26257 (SQL), 8080 (Admin UI)",
+        "sourceFile": "migrations/001_orders_schema.sql:1",
+        "uptime": "99.999%",
+        "description": "Globally ACID-compliant distributed SQL store guaranteeing linearizable serializability across all order and settlement ledger entries."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-client-auth",
+      "source": "node-client",
+      "target": "node-auth",
+      "label": "mTLS / Token Auth"
+    },
+    {
+      "id": "edge-client-order",
+      "source": "node-client",
+      "target": "node-order",
+      "label": "Ingress Dispatch"
+    },
+    {
+      "id": "edge-order-payment",
+      "source": "node-order",
+      "target": "node-payment",
+      "label": "2-Phase Capture"
+    },
+    {
+      "id": "edge-order-queue",
+      "source": "node-order",
+      "target": "node-queue",
+      "label": "Emit OrderCreated",
+      "style": "dashed"
+    },
+    {
+      "id": "edge-order-db",
+      "source": "node-order",
+      "target": "node-db",
+      "label": "Commit Ledger Row"
+    },
+    {
+      "id": "edge-queue-db",
+      "source": "node-queue",
+      "target": "node-db",
+      "label": "Async Sink",
+      "style": "dashed"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "happy-path",
+      "name": "Order Fulfillment Saga",
+      "badge": "Flow 1",
+      "description": "Standard checkout trajectory through zero-trust auth, internal saga coordination, payment authorization, and ledger commit.",
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "System Architecture Overview",
+          "description": "Distributed checkout architecture operating across zero-trust API ingress, Temporal saga coordination, Kafka event mesh, and CockroachDB distributed ledger.",
+          "highlightNodes": [
+            "node-client",
+            "node-auth",
+            "node-order",
+            "node-queue",
+            "node-payment",
+            "node-db"
+          ],
+          "highlightEdges": [
+            "edge-client-auth",
+            "edge-client-order",
+            "edge-order-payment",
+            "edge-order-queue",
+            "edge-order-db",
+            "edge-queue-db"
+          ],
+          "payload": {
+            "method": "INFO",
+            "endpoint": "/v1/healthz",
+            "status": "200 OK",
+            "latency": "2ms",
+            "protocol": "HTTP/2",
+            "body": {
+              "status": "HEALTHY",
+              "region": "us-east-1",
+              "active_nodes": 6,
+              "throughput_rps": 45280
+            }
+          }
+        },
+        {
+          "id": "step-2",
+          "title": "Edge Ingress & Zero-Trust Authentication",
+          "description": "Client request reaches API Gateway. The gateway queries the Auth Broker to validate the cryptographic Ed25519 signature and tenant scopes.",
+          "highlightNodes": [
+            "node-client",
+            "node-auth"
+          ],
+          "highlightEdges": [
+            "edge-client-auth"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/auth/v1/introspect",
+            "status": "200 Active",
+            "latency": "6ms",
+            "protocol": "gRPC (mTLS)",
+            "body": {
+              "token_id": "tok_99bf21a7",
+              "subject": "usr_c8419f20e8b2",
+              "roles": [
+                "customer:checkout",
+                "tenant:us_east"
+              ],
+              "algorithm": "Ed25519",
+              "expires_in": 3540
+            }
+          }
+        },
+        {
+          "id": "step-3",
+          "title": "Order Ingestion & Saga Coordination",
+          "description": "With authorization confirmed, the request enters the Order Orchestrator which starts an idempotent saga workflow to coordinate downstream settlement.",
+          "highlightNodes": [
+            "node-client",
+            "node-order"
+          ],
+          "highlightEdges": [
+            "edge-client-order"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/v1/orders",
+            "status": "202 Accepted",
+            "latency": "14ms",
+            "protocol": "HTTP/2 (mTLS)",
+            "body": {
+              "order_id": "ord_88194412",
+              "customer_id": "usr_c8419f20e8b2",
+              "items": [
+                {
+                  "sku": "SKU-PRO-4K",
+                  "qty": 1,
+                  "price": 1499
+                }
+              ],
+              "saga_id": "saga_984bfa10"
+            }
+          }
+        },
+        {
+          "id": "step-4",
+          "title": "Synchronous Payment Capture",
+          "description": "The saga calls the payment service with an idempotency key to capture card payment and secure authorization holds.",
+          "highlightNodes": [
+            "node-order",
+            "node-payment"
+          ],
+          "highlightEdges": [
+            "edge-order-payment"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/v1/charges/capture",
+            "status": "200 Authorized",
+            "latency": "112ms",
+            "protocol": "HTTPS",
+            "body": {
+              "charge_id": "ch_3PzQ8jLkdIw9",
+              "amount_cents": 149900,
+              "currency": "USD",
+              "status": "succeeded"
+            }
+          }
+        },
+        {
+          "id": "step-5",
+          "title": "Event Mesh Publication",
+          "description": "With funds secured, the saga asynchronously publishes an immutable OrderCreated event into the partitioned Kafka cluster.",
+          "highlightNodes": [
+            "node-order",
+            "node-queue"
+          ],
+          "highlightEdges": [
+            "edge-order-queue"
+          ],
+          "payload": {
+            "method": "EVENT",
+            "endpoint": "kafka://orders.v1.created#partition-4",
+            "status": "Committed offset 849201",
+            "latency": "3ms",
+            "protocol": "Kafka Binary (TCP)",
+            "body": {
+              "event_type": "ORDER_CREATED",
+              "order_id": "ord_88194412",
+              "timestamp": "2026-10-19T18:00:00Z"
+            }
+          }
+        },
+        {
+          "id": "step-6",
+          "title": "Distributed Ledger State Commit",
+          "description": "The transaction completes with serializable isolation, writing the order state and audit log to CockroachDB.",
+          "highlightNodes": [
+            "node-order",
+            "node-db",
+            "node-queue"
+          ],
+          "highlightEdges": [
+            "edge-order-db",
+            "edge-queue-db"
+          ],
+          "payload": {
+            "method": "SQL",
+            "endpoint": "crdb://orders-cluster:26257/production",
+            "status": "1 row inserted (linearizable)",
+            "latency": "18ms",
+            "protocol": "PostgreSQL v14 Wire",
+            "body": {
+              "query": "INSERT INTO orders (id, status, total) VALUES ($1, $2, $3) RETURNING *;",
+              "rows_affected": 1
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "panels": [
+    {
+      "id": "operations",
+      "title": "Operations",
+      "blocks": [
+        {
+          "type": "metrics",
+          "title": "Service levels",
+          "items": [
+            {
+              "label": "Availability",
+              "value": "99.999%",
+              "tone": "good"
+            },
+            {
+              "label": "Edge p99",
+              "value": "8 ms"
+            },
+            {
+              "label": "Peak load",
+              "value": "45k/s"
+            },
+            {
+              "label": "Recovery",
+              "value": "< 30 s",
+              "note": "regional failover"
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "warn",
+          "label": "On-call note",
+          "body": "If the saga backlog grows, check Kafka consumer lag **before** scaling the orchestrator."
+        }
+      ]
+    },
+    {
+      "id": "risks",
+      "title": "Risks",
+      "blocks": [
+        {
+          "type": "points",
+          "title": "System-wide",
+          "items": [
+            {
+              "title": "Event replay",
+              "text": "Consumers must be idempotent; duplicate `OrderCreated` events are expected.",
+              "tone": "bad"
+            }
+          ]
+        },
+        {
+          "type": "points",
+          "title": "Payment gateway",
+          "nodes": [
+            "node-payment"
+          ],
+          "items": [
+            {
+              "title": "Provider outage",
+              "text": "Captures queue in the saga and retry for up to 24 hours.",
+              "tone": "warn"
+            },
+            {
+              "title": "Double charge",
+              "text": "Idempotency keys on every capture request.",
+              "tone": "good"
+            }
+          ]
+        },
+        {
+          "type": "points",
+          "title": "Ledger",
+          "nodes": [
+            "node-db"
+          ],
+          "items": [
+            {
+              "title": "Region loss",
+              "text": "CockroachDB keeps quorum across three regions.",
+              "tone": "good"
+            }
+          ]
+        },
+        {
+          "type": "points",
+          "title": "Event mesh",
+          "nodes": [
+            "node-queue"
+          ],
+          "items": [
+            {
+              "title": "Consumer lag",
+              "text": "Alert at 10k messages behind; scale consumers before the orchestrator.",
+              "tone": "warn"
+            }
+          ]
+        },
+        {
+          "type": "points",
+          "title": "Edge",
+          "nodes": [
+            "node-client",
+            "node-auth"
+          ],
+          "items": [
+            {
+              "title": "Token broker down",
+              "text": "Gateway serves cached JWKS for 5 minutes, then fails closed.",
+              "tone": "warn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "glossary",
+      "title": "Glossary",
+      "blocks": [
+        {
+          "type": "table",
+          "columns": [
+            "Term",
+            "Meaning"
+          ],
+          "rows": [
+            [
+              "Saga",
+              "A sequence of local steps, each with a compensating step"
+            ],
+            [
+              "Compensation",
+              "The action that undoes a completed step"
+            ],
+            [
+              "mTLS",
+              "Mutual TLS: both sides present certificates"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

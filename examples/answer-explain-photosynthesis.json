@@ -1,0 +1,83 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "How does photosynthesis work?",
+    "title": "Photosynthesis in one page",
+    "kicker": "Study notes",
+    "author": "Biology revision notes",
+    "date": "20/10/2026"
+  },
+  "answer": {
+    "headline": "Plants use light energy to turn carbon dioxide and water into glucose, releasing oxygen as a by-product.",
+    "text": "It happens in chloroplasts, in two linked stages: the light-dependent reactions capture energy, and the Calvin cycle uses that energy to build sugar.",
+    "points": [
+      "Overall: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂",
+      "Chlorophyll absorbs mainly red and blue light and reflects green",
+      "The oxygen released comes from splitting water, not from carbon dioxide"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "steps",
+      "title": "The two stages",
+      "items": [
+        { "title": "Light is absorbed", "text": "Chlorophyll in the thylakoid membranes absorbs light and excites electrons." },
+        { "title": "Water is split", "text": "Replacing those electrons splits water into hydrogen ions, electrons and oxygen gas." },
+        { "title": "Energy carriers are made", "text": "The electron flow produces **ATP** and **NADPH**, the short-term energy carriers." },
+        { "title": "Carbon is fixed", "text": "In the stroma, the enzyme **RuBisCO** attaches CO₂ to a five-carbon sugar (the Calvin cycle)." },
+        { "title": "Sugar is built", "text": "ATP and NADPH turn the fixed carbon into a three-carbon sugar, used to make glucose, starch and sucrose." }
+      ]
+    },
+    {
+      "type": "kv",
+      "title": "Key facts",
+      "span": "half",
+      "items": [
+        { "k": "Where", "v": "Chloroplasts, mostly in leaf mesophyll cells" },
+        { "k": "Stage 1", "v": "Light-dependent reactions (thylakoid membranes)" },
+        { "k": "Stage 2", "v": "Calvin cycle (stroma)" },
+        { "k": "Inputs", "v": "Carbon dioxide, water, light" },
+        { "k": "Outputs", "v": "Glucose, oxygen" }
+      ]
+    },
+    {
+      "type": "points",
+      "title": "Limiting factors",
+      "span": "half",
+      "items": [
+        { "title": "Light intensity", "text": "More light speeds the reaction until another factor limits it." },
+        { "title": "Carbon dioxide", "text": "Often limiting in bright light; greenhouses sometimes add CO₂." },
+        { "title": "Temperature", "text": "Enzymes work faster when warmer, but too much heat slows or stops them.", "tone": "warn" }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warn",
+      "label": "Common exam mistake",
+      "body": "Plants **also respire**, day and night. Photosynthesis does not replace respiration; in light, photosynthesis is usually faster, so there is a net release of oxygen."
+    },
+    {
+      "type": "faq",
+      "title": "Questions students often ask",
+      "items": [
+        { "q": "Why are leaves green?", "a": "Chlorophyll absorbs red and blue light strongly and reflects much of the green, so green light reaches our eyes." },
+        { "q": "Does the Calvin cycle need light?", "a": "Not directly, which is why it was once called the 'dark reactions'. It does depend on ATP and NADPH from the light stage, so in practice it slows down in the dark." },
+        { "q": "Where does the plant's mass come from?", "a": "Mostly from carbon dioxide in the air, fixed into sugars. Water and soil minerals contribute much less of the dry mass." }
+      ]
+    },
+    {
+      "type": "quote",
+      "text": "Light energy in, chemical energy out: photosynthesis stores sunlight in the bonds of sugar.",
+      "by": "One line to remember"
+    },
+    {
+      "type": "sources",
+      "title": "Further reading",
+      "items": [
+        { "title": "Campbell Biology (Urry et al., Pearson)", "note": "Chapter on photosynthesis; standard first-year textbook." },
+        { "title": "Raven Biology of Plants (Evert and Eichhorn, W. H. Freeman)", "note": "Plant-focused detail on chloroplasts and leaf structure." },
+        { "title": "Lehninger Principles of Biochemistry (Nelson and Cox)", "note": "The biochemistry of the light reactions and carbon fixation." }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "Why does our checkout use an event-driven saga instead of one database transaction?",
+    "title": "Checkout architecture: saga vs single transaction",
+    "kicker": "Architecture decision",
+    "author": "Platform team",
+    "date": "20/10/2026"
+  },
+  "answer": {
+    "headline": "Because payment, inventory and the ledger live in different systems, no single transaction can span them; a saga keeps each step reliable and undoable instead.",
+    "text": "A checkout touches an external payment provider, our own services and a distributed ledger. A **saga** runs these as a sequence of local steps, each with a *compensating* step that reverses it if a later step fails.",
+    "points": [
+      "No two-phase commit across Stripe, Kafka and CockroachDB",
+      "A failure rolls back cleanly instead of leaving half an order",
+      "Each service scales and deploys on its own"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "diagram",
+      "title": "Where the saga runs",
+      "src": "cloud-architecture.json",
+      "step": 3,
+      "caption": "The Order Orchestration Engine (Temporal) coordinates every step of the checkout."
+    },
+    {
+      "type": "steps",
+      "title": "What happens on checkout",
+      "span": "half",
+      "items": [
+        { "title": "Authorise", "text": "The gateway validates the token with the auth broker." },
+        { "title": "Start the saga", "text": "The orchestrator records the order and starts the workflow." },
+        { "title": "Capture payment", "text": "Two-phase capture with the payment provider." },
+        { "title": "Commit", "text": "The ledger row is written and `OrderCreated` is published." }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warn",
+      "label": "When a step fails",
+      "span": "half",
+      "body": "The orchestrator runs the compensations in reverse order:\n\n- release the payment hold\n- mark the order as cancelled\n- publish `OrderCancelled` so downstream systems catch up"
+    },
+    {
+      "type": "compare",
+      "title": "Options we considered",
+      "options": [
+        {
+          "name": "Single database transaction",
+          "summary": "Wrap everything in one ACID transaction.",
+          "pros": ["Simple to reason about", "Strong consistency"],
+          "cons": ["Impossible across an external payment API", "Locks rows for the whole checkout"],
+          "verdict": "Not possible with an external provider."
+        },
+        {
+          "name": "Two-phase commit",
+          "summary": "A coordinator asks every system to prepare, then commit.",
+          "pros": ["Atomic across systems that support it"],
+          "cons": ["Stripe and Kafka do not take part in 2PC", "A stuck coordinator blocks everyone"],
+          "verdict": "Fragile and unsupported."
+        },
+        {
+          "name": "Orchestrated saga",
+          "summary": "Local steps with compensations, run by Temporal.",
+          "pros": ["Works with any system", "Failures are visible and retried", "Services stay independent"],
+          "cons": ["Eventually consistent for a few hundred milliseconds", "Compensations must be designed"],
+          "verdict": "Chosen.",
+          "recommended": true
+        }
+      ]
+    },
+    {
+      "type": "metrics",
+      "title": "Since the switch",
+      "items": [
+        { "label": "Orphaned orders", "value": "0", "note": "previously ~40 per month", "tone": "good" },
+        { "label": "Checkout p99", "value": "180 ms", "note": "end to end" },
+        { "label": "Payment failures recovered", "value": "100%", "note": "automatic compensation", "tone": "good" }
+      ]
+    },
+    {
+      "type": "chart",
+      "title": "Where checkout time goes (p50)",
+      "unit": " ms",
+      "data": [
+        { "label": "Payment capture", "value": 94, "tone": "warn" },
+        { "label": "Ledger commit", "value": 22 },
+        { "label": "Token validation", "value": 6 },
+        { "label": "Event publish", "value": 4 }
+      ]
+    },
+    {
+      "type": "sources",
+      "title": "Further reading",
+      "items": [
+        { "title": "Sagas (Garcia-Molina & Salem, 1987)", "note": "the original paper" },
+        { "title": "Temporal: saga pattern", "url": "https://docs.temporal.io/" }
+      ]
+    }
+  ]
+}

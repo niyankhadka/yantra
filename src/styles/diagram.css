@@ -1,0 +1,377 @@
+/*
+ * Diagram layer: cards, edges, labels, packets.
+ * Card metrics mirror CARD in src/core/layout.js - change both together.
+ */
+
+.y-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+/* camera moves between walkthrough steps */
+.y-world.is-gliding {
+  transition: transform 450ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.y-edges,
+.y-group-layer,
+.y-label-layer,
+.y-node-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.y-edges {
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* --- Groups (containers) ---------------------------------------------------
+ * Metrics mirror GROUP in src/core/layout.js: radius 12, title at 12/8, 11px. */
+.y-group-layer {
+  pointer-events: none;
+}
+
+.y-group-layer .y-group {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  border: 1px dashed color-mix(in srgb, var(--y-hue) 55%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--y-hue) 4.5%, transparent);
+  transition: opacity 180ms ease, border-color 180ms ease;
+}
+
+:root[data-theme="dark"] .y-group-layer .y-group {
+  background: color-mix(in srgb, var(--y-hue) 7%, transparent);
+}
+
+.y-group-layer .y-group.is-solid {
+  border-style: solid;
+}
+
+.y-group-layer .y-group.is-active {
+  border-color: color-mix(in srgb, var(--y-hue) 80%, transparent);
+}
+
+.y-group-layer .y-group.is-dim {
+  opacity: 0.35;
+}
+
+.y-group-title {
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  height: 16px;
+  line-height: 16px;
+  color: var(--y-hue);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* --- Cards ---------------------------------------------------------------- */
+.y-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--y-border);
+  border-radius: 8px;
+  background: var(--y-surface);
+  box-shadow: var(--y-shadow);
+  color: var(--y-ink);
+  cursor: grab;
+  user-select: none;
+  transition: opacity 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.y-node:hover {
+  border-color: var(--y-border-strong);
+}
+
+.y-node:focus-visible {
+  outline: 2px solid var(--y-accent);
+  outline-offset: 2px;
+}
+
+.y-node.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  z-index: 2;
+}
+
+.y-node.is-active {
+  border-color: var(--y-hue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--y-hue) 20%, transparent);
+}
+
+.y-node.is-selected {
+  border-color: var(--y-hue);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--y-hue) 30%, transparent), 0 8px 24px color-mix(in srgb, var(--y-hue) 18%, transparent);
+}
+
+.y-node.is-dim {
+  opacity: 0.22;
+}
+
+.y-node-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 16px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  color: var(--y-hue, var(--y-ink-3));
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.y-node-kicker svg {
+  flex: none;
+}
+
+.y-node-kicker span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.y-node-title,
+.y-node-sub {
+  overflow: hidden;
+}
+
+.y-node-title span,
+.y-node-sub span {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.y-node-title {
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.y-node-sub {
+  margin-top: 3px;
+  color: var(--y-ink-2);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.y-node-tech {
+  margin-top: 8px;
+  overflow: hidden;
+  color: var(--y-ink-3);
+  font: 11px/15px var(--y-font-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* --- Edges ---------------------------------------------------------------- */
+.y-edge-line {
+  fill: none;
+  stroke: var(--y-edge);
+  stroke-width: 1.5;
+  transition: stroke 180ms ease, opacity 180ms ease;
+}
+
+.y-edge.is-dashed .y-edge-line {
+  stroke-dasharray: 6 5;
+}
+
+.y-edge.is-dotted .y-edge-line {
+  stroke-dasharray: 2 4;
+}
+
+.y-edge.is-active .y-edge-line {
+  stroke-width: 2.25;
+}
+
+.y-edge.is-dim {
+  opacity: 0.15;
+}
+
+.y-arrow {
+  fill: var(--y-edge);
+}
+
+/* --- Signal dots: follow the edge path, colour shifts source -> target --- */
+.y-packet-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.y-packet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--from);
+  box-shadow: 0 0 0 2px var(--y-bg), 0 0 10px var(--from);
+  offset-rotate: 0deg;
+  animation: y-signal linear infinite;
+}
+
+@keyframes y-signal {
+  0% {
+    offset-distance: 0%;
+    background: var(--from);
+    opacity: 0;
+  }
+  8%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    background: var(--to);
+    box-shadow: 0 0 0 2px var(--y-bg), 0 0 10px var(--to);
+    opacity: 0;
+  }
+}
+
+/* --- Edge labels: opaque so the line underneath is masked ------------------ */
+.y-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--y-border);
+  border-radius: 10px;
+  background: var(--y-bg);
+  color: var(--y-ink-2);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.y-label.is-active {
+  border-color: var(--y-hue);
+  color: var(--y-ink);
+}
+
+.y-label.is-dim {
+  opacity: 0.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .y-node,
+  .y-edge-line,
+  .y-label {
+    transition: none;
+  }
+}
+
+/* --- Sequence view: step rows, lifelines, notes ----------------------------
+ * Geometry comes from src/core/sequence.js (SEQ); the badge sits in the gutter. */
+.y-seq-row {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  border-left: 3px solid transparent;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.y-seq-row.is-alt {
+  background: color-mix(in srgb, var(--y-surface-2) 60%, transparent);
+}
+
+.y-seq-row.is-current {
+  border-left-color: var(--y-accent);
+  background: var(--y-accent-soft);
+}
+
+.y-seq-badge {
+  position: absolute;
+  left: 10px;
+  top: 15px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 1px solid var(--y-border);
+  border-radius: 50%;
+  background: var(--y-surface);
+  color: var(--y-ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+
+.y-seq-row.is-current .y-seq-badge {
+  border-color: var(--y-accent);
+  background: var(--y-accent);
+  color: var(--y-accent-ink);
+}
+
+.y-lifeline {
+  stroke: var(--y-hue);
+  stroke-opacity: 0.55;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  transition: stroke-opacity 180ms ease;
+}
+
+.y-lifeline.is-dim {
+  stroke-opacity: 0.22;
+}
+
+.y-message .y-edge-line {
+  stroke-width: 1.75;
+}
+
+.y-message.is-active .y-edge-line {
+  stroke-width: 2.25;
+}
+
+.y-message.is-dim {
+  opacity: 0.3;
+}
+
+.y-note {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px dashed var(--y-border-strong);
+  border-radius: 6px;
+  background: var(--y-surface);
+  color: var(--y-ink-2);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.y-note.is-dim {
+  opacity: 0.4;
+}

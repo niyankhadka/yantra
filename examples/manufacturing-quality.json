@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "title": "Machined parts: quality flow",
+    "description": "How a machined part moves from supplier intake to dispatch, where it is inspected and what happens to defects. Defect rates in the Defects tab are illustrative.",
+    "summary": {
+      "headline": "Quality is checked at intake, after machining and before dispatch; failed parts are reworked once or scrapped, never shipped.",
+      "points": [
+        "Incoming material is checked against its certificate before it enters production",
+        "Every batch is measured after machining against the drawing tolerances",
+        "Reworked parts are re-inspected like new parts",
+        "Packaging includes a final visual check and batch labels for traceability"
+      ],
+      "facts": {
+        "Inspection points": "3",
+        "Rework limit": "One attempt per part",
+        "Traceability": "Batch number from raw material to customer"
+      }
+    },
+    "inspector": { "onNodeClick": "defects" },
+    "layout": { "direction": "LR" }
+  },
+  "roles": {
+    "logistics": { "label": "Logistics", "color": "slate" },
+    "production": { "label": "Production", "color": "blue" },
+    "quality": { "label": "Quality check", "color": "green" },
+    "rework": { "label": "Rework / scrap", "color": "rose" }
+  },
+  "nodes": [
+    { "id": "intake", "type": "logistics", "data": { "title": "Supplier intake", "subtitle": "Bar stock and certificates", "icon": "truck", "badge": "Goods in", "description": "Raw material arrives with a material certificate. A sample is checked for dimensions and grade before release to production." } },
+    { "id": "machining", "type": "production", "data": { "title": "CNC machining", "subtitle": "Turning and milling", "icon": "settings", "badge": "Station 1", "description": "Parts are cut to the drawing. The operator checks the first part of each batch before running the rest." } },
+    { "id": "inspection", "type": "quality", "data": { "title": "Inspection", "subtitle": "Measure against drawing", "icon": "crosshair", "badge": "QC", "description": "Critical dimensions are measured on a coordinate measuring machine (CMM); surface finish is checked by gauge and eye." } },
+    { "id": "rework", "type": "rework", "data": { "title": "Rework", "subtitle": "One correction attempt", "icon": "activity", "badge": "Loop", "description": "Parts with oversize features or burrs are corrected and sent back for full re-inspection. Undersize parts cannot be reworked." } },
+    { "id": "scrap", "type": "rework", "data": { "title": "Scrap and root cause", "subtitle": "Quarantine and record", "icon": "flag", "badge": "Out", "description": "Scrapped parts are quarantined, logged with the defect type and reviewed weekly for root causes." } },
+    { "id": "packaging", "type": "production", "data": { "title": "Packaging", "subtitle": "Final check and labels", "icon": "package", "badge": "Station 2", "description": "Parts are cleaned, protected against corrosion, packed and labelled with the batch number." } },
+    { "id": "dispatch", "type": "logistics", "data": { "title": "Dispatch", "subtitle": "With conformity certificate", "icon": "warehouse", "badge": "Goods out", "description": "Shipped with a certificate of conformity and the inspection report for the batch." } }
+  ],
+  "edges": [
+    { "id": "e-in-mach", "source": "intake", "target": "machining", "label": "Released stock" },
+    { "id": "e-mach-insp", "source": "machining", "target": "inspection", "label": "Batch" },
+    { "id": "e-insp-pack", "source": "inspection", "target": "packaging", "label": "Pass" },
+    { "id": "e-insp-rework", "source": "inspection", "target": "rework", "label": "Fixable" },
+    { "id": "e-rework-insp", "source": "rework", "target": "inspection", "label": "Re-inspect", "style": "dashed" },
+    { "id": "e-insp-scrap", "source": "inspection", "target": "scrap", "label": "Not fixable" },
+    { "id": "e-pack-disp", "source": "packaging", "target": "dispatch", "label": "Sealed cartons" }
+  ],
+  "scenarios": [
+    {
+      "id": "batch",
+      "name": "One batch through the line",
+      "steps": [
+        { "id": "s1", "title": "Overview", "description": "Material flows left to right. Inspection splits each batch into pass, rework and scrap. Click a station to see its typical defects." },
+        { "id": "s2", "title": "Intake and machining", "description": "Certified material is released to the CNC cell, where the first part of each batch is checked before the run continues.", "highlightNodes": ["intake", "machining"], "highlightEdges": ["e-in-mach"] },
+        { "id": "s3", "title": "Inspection", "description": "Every batch is measured. Passing parts go on to packaging.", "highlightNodes": ["machining", "inspection", "packaging"], "highlightEdges": ["e-mach-insp", "e-insp-pack"] },
+        { "id": "s4", "title": "Rework loop", "description": "Fixable parts are corrected once and fully re-inspected. A part that fails again is scrapped.", "highlightNodes": ["inspection", "rework"], "highlightEdges": ["e-insp-rework", "e-rework-insp"] },
+        { "id": "s5", "title": "Scrap and learn", "description": "Unfixable parts are quarantined and their defect type recorded for the weekly root-cause review.", "highlightNodes": ["inspection", "scrap"], "highlightEdges": ["e-insp-scrap"] },
+        { "id": "s6", "title": "Pack and dispatch", "description": "Packed, labelled parts ship with a certificate of conformity, keeping the batch traceable.", "highlightNodes": ["packaging", "dispatch"], "highlightEdges": ["e-pack-disp"] }
+      ]
+    }
+  ],
+  "panels": [
+    {
+      "id": "defects",
+      "title": "Defects",
+      "blocks": [
+        { "type": "callout", "tone": "info", "label": "Illustrative figures", "body": "Rates below are example values for a training diagram, not measurements from a real line." },
+        { "type": "chart", "title": "Share of rejects by cause", "unit": "%", "data": [
+          { "label": "Dimension out of tolerance", "value": 45, "tone": "bad" },
+          { "label": "Surface finish", "value": 25, "tone": "warn" },
+          { "label": "Burrs", "value": 20, "tone": "warn" },
+          { "label": "Material", "value": 10 }
+        ] },
+        { "type": "points", "title": "Supplier intake", "nodes": ["intake"], "items": [
+          { "title": "Wrong material grade", "text": "Caught by checking the certificate and a hardness test on a sample.", "tone": "bad" },
+          { "title": "Bar diameter out of tolerance", "text": "Measured on a sample before release.", "tone": "warn" }
+        ] },
+        { "type": "points", "title": "CNC machining", "nodes": ["machining"], "items": [
+          { "title": "Tool wear drift", "text": "Dimensions creep as the tool wears; prevented by scheduled tool changes.", "tone": "warn" },
+          { "title": "Set-up error", "text": "Caught by first-part inspection before the batch runs.", "tone": "bad" }
+        ] },
+        { "type": "points", "title": "Inspection", "nodes": ["inspection"], "items": [
+          { "title": "Measurement error", "text": "Gauges are calibrated on a schedule and checked against a reference part daily.", "tone": "warn" }
+        ] },
+        { "type": "points", "title": "Rework", "nodes": ["rework", "scrap"], "items": [
+          { "title": "Undersize features", "text": "Material cannot be added back, so these parts are scrapped.", "tone": "bad" },
+          { "title": "Burrs and oversize features", "text": "Can be corrected once, then re-inspected.", "tone": "good" }
+        ] },
+        { "type": "points", "title": "Packaging and dispatch", "nodes": ["packaging", "dispatch"], "items": [
+          { "title": "Corrosion in transit", "text": "Prevented by cleaning and a protective coating before packing.", "tone": "warn" },
+          { "title": "Mixed batches", "text": "One batch per carton, labelled before sealing.", "tone": "warn" }
+        ] }
+      ]
+    }
+  ]
+}

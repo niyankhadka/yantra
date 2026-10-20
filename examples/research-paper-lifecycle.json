@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "title": "Research paper lifecycle",
+    "description": "The typical path of an empirical study from first idea to publication, including ethics approval and the peer-review revision loop. Durations are illustrative and vary widely by field.",
+    "summary": {
+      "headline": "A paper is planned before data is collected: the proposal and ethics approval come first, and peer review usually means at least one round of revision.",
+      "points": [
+        "Studies involving people need ethics approval before any data is collected",
+        "Analysis follows the plan in the proposal; changes should be reported",
+        "Peer review often returns the paper for revision, sometimes more than once",
+        "Rejected papers are commonly revised and submitted to another journal"
+      ],
+      "facts": {
+        "Typical review rounds": "1-3 (illustrative)",
+        "Decision types": "Accept, minor or major revision, reject",
+        "Who reviews": "Usually 2-3 independent experts"
+      }
+    },
+    "layout": { "direction": "TB" }
+  },
+  "roles": {
+    "planning": { "label": "Planning", "color": "amber" },
+    "research": { "label": "Research work", "color": "blue" },
+    "oversight": { "label": "External review", "color": "rose" },
+    "output": { "label": "Output", "color": "green" }
+  },
+  "nodes": [
+    { "id": "idea", "type": "planning", "data": { "title": "Research question", "subtitle": "Gap found in the literature", "icon": "book-open", "description": "A literature review shows what is already known and where a useful, answerable question remains." } },
+    { "id": "proposal", "type": "planning", "data": { "title": "Proposal", "subtitle": "Methods, sample, analysis plan", "icon": "file-text", "description": "Sets out hypotheses, design, sample size and the planned analysis. Some fields pre-register this plan publicly." } },
+    { "id": "ethics", "type": "oversight", "data": { "title": "Ethics approval", "subtitle": "Research ethics committee", "icon": "shield", "badge": "Gate", "description": "A committee checks consent, risk, data protection and fairness to participants. Data collection cannot start without approval." } },
+    { "id": "collect", "type": "research", "data": { "title": "Data collection", "subtitle": "Experiments, surveys, records", "icon": "users", "description": "Collected under the approved protocol, with consent records and secure storage." } },
+    { "id": "analysis", "type": "research", "data": { "title": "Analysis", "subtitle": "Follow the planned methods", "icon": "activity", "description": "Runs the planned analysis first; any exploratory analysis is labelled as such." } },
+    { "id": "writing", "type": "research", "data": { "title": "Writing", "subtitle": "Draft and co-author review", "icon": "file-text", "description": "Introduction, methods, results and discussion, checked by all co-authors before submission." } },
+    { "id": "review", "type": "oversight", "data": { "title": "Peer review", "subtitle": "Editor and expert referees", "icon": "users", "badge": "Gate", "description": "The editor sends the manuscript to independent experts and decides: accept, revise or reject." } },
+    { "id": "publish", "type": "output", "data": { "title": "Publication", "subtitle": "Journal article with DOI", "icon": "award", "description": "The accepted paper is typeset, published and given a DOI. Data and code may be shared alongside it." } }
+  ],
+  "edges": [
+    { "id": "e-idea-prop", "source": "idea", "target": "proposal", "label": "Plan" },
+    { "id": "e-prop-eth", "source": "proposal", "target": "ethics", "label": "Submit protocol" },
+    { "id": "e-eth-coll", "source": "ethics", "target": "collect", "label": "Approved" },
+    { "id": "e-coll-ana", "source": "collect", "target": "analysis", "label": "Dataset" },
+    { "id": "e-ana-write", "source": "analysis", "target": "writing", "label": "Results" },
+    { "id": "e-write-rev", "source": "writing", "target": "review", "label": "Submit" },
+    { "id": "e-rev-write", "source": "review", "target": "writing", "label": "Revise", "style": "dashed" },
+    { "id": "e-rev-pub", "source": "review", "target": "publish", "label": "Accepted" }
+  ],
+  "scenarios": [
+    {
+      "id": "lifecycle",
+      "name": "From idea to publication",
+      "steps": [
+        { "id": "s1", "title": "Overview", "description": "Eight stages from top to bottom. Two are external gates: ethics approval and peer review." },
+        { "id": "s2", "title": "Question and proposal", "description": "The literature review defines the question; the proposal fixes methods and the analysis plan.", "highlightNodes": ["idea", "proposal"], "highlightEdges": ["e-idea-prop"] },
+        { "id": "s3", "title": "Ethics approval", "description": "Work with people or their data goes to an ethics committee. Collection starts only after approval.", "highlightNodes": ["proposal", "ethics", "collect"], "highlightEdges": ["e-prop-eth", "e-eth-coll"] },
+        { "id": "s4", "title": "Collect and analyse", "description": "Data is gathered under the approved protocol and analysed as planned.", "highlightNodes": ["collect", "analysis"], "highlightEdges": ["e-coll-ana"] },
+        { "id": "s5", "title": "Write and submit", "description": "The team drafts the paper and submits it to a journal.", "highlightNodes": ["analysis", "writing", "review"], "highlightEdges": ["e-ana-write", "e-write-rev"] },
+        { "id": "s6", "title": "Revise", "description": "Reviewers ask for changes; the authors reply point by point and resubmit.", "highlightNodes": ["review", "writing"], "highlightEdges": ["e-rev-write"] },
+        { "id": "s7", "title": "Publication", "description": "Once accepted, the paper is published with a DOI.", "highlightNodes": ["review", "publish"], "highlightEdges": ["e-rev-pub"] }
+      ]
+    }
+  ]
+}

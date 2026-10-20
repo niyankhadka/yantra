@@ -1,0 +1,92 @@
+{
+  "kind": "page",
+  "meta": {
+    "question": "What are we building, by when, and how will we deliver it?",
+    "title": "Kickoff: customer self-service portal",
+    "kicker": "Project kickoff",
+    "author": "Project lead",
+    "date": "20/10/2026",
+    "footer": "Example kickoff one-pager. Names, dates and figures are illustrative."
+  },
+  "answer": {
+    "headline": "We will launch a self-service portal for invoices and account changes by 26/02/2027, delivered in two phased releases rather than one big launch.",
+    "text": "Customers currently email or phone for routine requests. The portal lets them do these themselves, freeing the support team for harder cases.",
+    "points": [
+      "Scope: view and download invoices, update contact details, raise a request",
+      "Delivery: phased, with a pilot group before full launch",
+      "Decision needed by 31/10/2026: confirm the phased option and pilot customers"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "points",
+      "title": "Goals",
+      "items": [
+        { "title": "Fewer routine contacts", "text": "Move invoice copies and address changes to self-service.", "tone": "good" },
+        { "title": "Faster answers for customers", "text": "Available at any time, not only in office hours.", "tone": "good" },
+        { "title": "No loss of security", "text": "Same sign-in and access checks as existing systems.", "tone": "info" }
+      ]
+    },
+    {
+      "type": "timeline",
+      "title": "Milestones",
+      "items": [
+        { "date": "03/11/2026", "title": "Kickoff and discovery", "text": "Interview support staff and five customers." },
+        { "date": "04/12/2026", "title": "Design sign-off", "text": "Screens and data access agreed." },
+        { "date": "15/01/2027", "title": "Release 1: pilot", "text": "Invoices only, for a pilot group of customers.", "tone": "info" },
+        { "date": "26/02/2027", "title": "Release 2: full launch", "text": "All customers; contact details and requests added.", "tone": "good" }
+      ]
+    },
+    {
+      "type": "compare",
+      "title": "Delivery options",
+      "options": [
+        {
+          "name": "Phased (pilot, then full)",
+          "summary": "Ship invoices to a pilot group first, then add features.",
+          "pros": ["Real feedback before full launch", "Lower risk if something goes wrong"],
+          "cons": ["Two releases to plan and communicate"],
+          "verdict": "Lower risk; worth the extra release.",
+          "recommended": true
+        },
+        {
+          "name": "Single launch",
+          "summary": "Build everything, then launch to all customers at once.",
+          "pros": ["One release and one announcement"],
+          "cons": ["Problems found late affect every customer", "No value delivered until the end"]
+        }
+      ]
+    },
+    {
+      "type": "kv",
+      "title": "Owners",
+      "span": "half",
+      "items": [
+        { "k": "Sponsor", "v": "Head of Customer Operations" },
+        { "k": "Project lead", "v": "Product manager" },
+        { "k": "Delivery", "v": "Web team (3 developers, 1 designer)" },
+        { "k": "Support input", "v": "Support team lead" },
+        { "k": "Security review", "v": "IT security" }
+      ]
+    },
+    {
+      "type": "callout",
+      "title": "Top risks",
+      "span": "half",
+      "tone": "warn",
+      "label": "Risks",
+      "body": "- **Billing data access** may need work from the finance systems team; confirm by 04/12/2026.\n- **Pilot customers** must be chosen early to keep the 15/01/2027 date.\n- **Holiday period** reduces capacity in late December."
+    },
+    {
+      "type": "checklist",
+      "title": "Before work starts",
+      "items": [
+        { "text": "Sponsor approves scope and phased delivery", "note": "Due 31/10/2026" },
+        { "text": "Team and budget confirmed", "done": true },
+        { "text": "Pilot customer list agreed with account managers", "note": "Due 14/11/2026" },
+        { "text": "Success measures agreed (contact volume, portal use)" },
+        { "text": "Weekly update slot booked with stakeholders", "done": true }
+      ]
+    }
+  ]
+}

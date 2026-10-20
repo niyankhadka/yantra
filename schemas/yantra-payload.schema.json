@@ -1,0 +1,556 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/niyankhadka/yantra/schemas/yantra-payload.schema.json",
+  "title": "Yantra diagram payload",
+  "description": "A diagram is nodes + edges + a walkthrough. Layout is automatic: do not write coordinates unless meta.layout.mode is \"manual\".",
+  "type": "object",
+  "required": [
+    "meta",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Diagram title (shown in the toolbar and exports)."
+        },
+        "description": {
+          "type": "string",
+          "description": "One-sentence summary."
+        },
+        "version": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "defaultMode": {
+          "type": "string",
+          "description": "Id of the mode shown first."
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "enum": [
+                "LR",
+                "TB"
+              ],
+              "default": "LR",
+              "description": "Main flow left-to-right or top-to-bottom."
+            },
+            "mode": {
+              "enum": [
+                "auto",
+                "manual"
+              ],
+              "default": "auto",
+              "description": "manual uses each node's x/y instead of the automatic layout."
+            }
+          },
+          "additionalProperties": false
+        },
+        "view": {
+          "enum": [
+            "flow",
+            "sequence"
+          ],
+          "default": "flow",
+          "description": "Initial view. sequence draws the active scenario as a sequence diagram: participants are the nodes its steps message, each highlightEdges id becomes an arrow in step order. The viewer offers a Flow / Sequence toggle (key V) whenever a step has highlightEdges."
+        },
+        "sequence": {
+          "type": "object",
+          "description": "Sequence view options.",
+          "properties": {
+            "allParticipants": {
+              "type": "boolean",
+              "default": false,
+              "description": "Show every node as a participant, not only those that send or receive a message."
+            }
+          },
+          "additionalProperties": false
+        },
+        "summary": {
+          "type": "object",
+          "description": "Summary card shown first in the inspector and in the Markdown export.",
+          "properties": {
+            "headline": {
+              "type": "string",
+              "description": "The one-sentence takeaway."
+            },
+            "points": {
+              "type": "array",
+              "maxItems": 6,
+              "items": {
+                "type": "string"
+              },
+              "description": "3-5 key points."
+            },
+            "facts": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "description": "Key/value facts, e.g. Owner, SLA."
+            }
+          },
+          "additionalProperties": false
+        },
+        "watermark": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "false hides the \"Made with Yantra\" badge; a string replaces its text."
+        },
+        "inspector": {
+          "type": "object",
+          "description": "Which inspector tabs appear. By default a tab appears only when it has content: summary (meta.summary), step (a step has a payload), node/Details (a node has description, tech, metadata, ...), plus every panel.",
+          "properties": {
+            "tabs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Explicit tab ids in display order: summary, step, node, or panel ids."
+            },
+            "labels": {
+              "type": "object",
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "step": {
+                  "type": "string"
+                },
+                "node": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "description": "Rename built-in tabs, e.g. { \"node\": \"Component\" }."
+            },
+            "onNodeClick": {
+              "type": "string",
+              "default": "node",
+              "description": "What clicking a card opens: \"node\" (its Details tab, default), \"stay\" (highlight only; the panel keeps its tab), or a panel id (that panel, showing blocks whose `nodes` include the card)."
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "description": "Optional legend: maps node.type to a label, colour and default icon. Group types into 3-5 roles.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "color": {
+            "enum": [
+              "blue",
+              "teal",
+              "green",
+              "amber",
+              "rose",
+              "violet",
+              "orange",
+              "slate"
+            ]
+          },
+          "icon": {
+            "$ref": "#/definitions/icon"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "modes": {
+      "type": "array",
+      "description": "Alternative views of the same system (e.g. production vs local). Only add modes that change something.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "badge": {
+            "type": "string",
+            "description": "Short label for the mode switch."
+          },
+          "description": {
+            "type": "string"
+          },
+          "hideNodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hideEdges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "data"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Role key; nodes sharing a type share a colour. See roles."
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional: force the column (LR) or row (TB)."
+          },
+          "width": {
+            "type": "number",
+            "minimum": 160,
+            "maximum": 320,
+            "description": "Card width; default 220."
+          },
+          "x": {
+            "type": "number",
+            "description": "Manual layout only. Multiple of 10."
+          },
+          "y": {
+            "type": "number",
+            "description": "Manual layout only. Multiple of 10."
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "title"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Card title, ideally under 42 characters."
+              },
+              "subtitle": {
+                "type": "string",
+                "description": "One short line shown on the card."
+              },
+              "badge": {
+                "type": "string",
+                "description": "Small caps label above the title; defaults to the role label."
+              },
+              "icon": {
+                "$ref": "#/definitions/icon"
+              },
+              "tech": {
+                "type": "string",
+                "description": "Technology line (monospace) on the card."
+              },
+              "description": {
+                "type": "string",
+                "description": "Longer text, shown in the inspector only."
+              },
+              "runtime": {
+                "type": "string"
+              },
+              "ports": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "sourceFile": {
+                "type": "string",
+                "description": "Code reference, e.g. src/api/server.ts:42"
+              },
+              "metadata": {
+                "type": "object",
+                "description": "Key/value facts shown in the inspector.",
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "modes": {
+                "type": "object",
+                "description": "Per-mode overrides of these data fields, keyed by mode id.",
+                "additionalProperties": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "What flows along the edge, ideally under 28 characters."
+          },
+          "type": {
+            "type": "string",
+            "description": "sync | async | event | stream | data (async/event/stream draw dashed)."
+          },
+          "style": {
+            "enum": [
+              "solid",
+              "dashed",
+              "dotted"
+            ]
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "Containers drawn as labelled boxes around nodes: trust boundaries, cloud accounts/regions/VPCs, teams, swimlanes, subsystems. List each node only in its innermost group; a group's members are its nodes plus everything in its child groups. Keep to 2-5 groups.",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "nodes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique; must not equal any node id."
+          },
+          "title": {
+            "type": "string",
+            "description": "Shown top-left of the box in small caps, e.g. \"AWS VPC (eu-west-2)\"."
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true,
+            "description": "Node ids directly in this group (not those of child groups). A node belongs to at most one group."
+          },
+          "parent": {
+            "type": "string",
+            "description": "Id of the enclosing group. Nesting is at most 3 deep and must not form a cycle."
+          },
+          "color": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "teal",
+              "green",
+              "amber",
+              "rose",
+              "violet",
+              "orange",
+              "slate"
+            ],
+            "description": "Box tint and title colour. Default slate."
+          },
+          "description": {
+            "type": "string",
+            "description": "Longer text for the inspector and the Markdown export."
+          },
+          "style": {
+            "type": "string",
+            "enum": [
+              "solid",
+              "dashed"
+            ],
+            "default": "dashed",
+            "description": "Border style. Solid suits hard boundaries (an account), dashed softer ones (a team, a subsystem)."
+          }
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "Named walkthroughs. Each has ordered steps.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "steps"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/step"
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Shorthand for a single scenario.",
+      "items": {
+        "$ref": "#/definitions/step"
+      }
+    },
+    "panels": {
+      "type": "array",
+      "description": "Custom inspector tabs. Each panel is a titled list of the same blocks answer pages use (points, steps, metrics, table, compare, callout, chart, code, sources, text). Add one only when the user asked for that kind of information. A block may list `nodes: [ids]` to show only while one of those cards is selected.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "blocks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "Tab label: one or two words."
+          },
+          "blocks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "yantra-page.schema.json#/properties/blocks/items"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "step": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "highlightNodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Empty or omitted = overview (nothing dimmed)."
+        },
+        "highlightEdges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Edges that animate; include both endpoints in highlightNodes."
+        },
+        "payload": {
+          "type": "object",
+          "description": "Shown in the inspector. method/endpoint/status/latency/protocol render as chips; everything else as JSON.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "icon": {
+      "enum": [
+        "cpu",
+        "server",
+        "database",
+        "layers",
+        "shield",
+        "key",
+        "globe",
+        "zap",
+        "credit-card",
+        "user",
+        "users",
+        "building",
+        "truck",
+        "warehouse",
+        "package",
+        "book-open",
+        "graduation-cap",
+        "award",
+        "activity",
+        "heart",
+        "file-text",
+        "crosshair",
+        "check-circle",
+        "flag",
+        "mail",
+        "cloud",
+        "monitor",
+        "settings"
+      ]
+    }
+  }
+}

@@ -1,0 +1,323 @@
+{
+  "meta": {
+    "title": "University Academic Faculty & Student Lifecycle Hub",
+    "description": "Cross-faculty academic workflow: student admissions, departmental syllabus review, course scheduling, examination council, and degree graduation conferral.",
+    "version": "2.0.0",
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "office": {
+      "label": "Office",
+      "color": "blue"
+    },
+    "people": {
+      "label": "People",
+      "color": "amber"
+    },
+    "system": {
+      "label": "System",
+      "color": "teal"
+    },
+    "milestone": {
+      "label": "Milestone",
+      "color": "green"
+    }
+  },
+  "nodes": [
+    {
+      "id": "node-admissions",
+      "type": "office",
+      "data": {
+        "title": "Central Admissions & Registrar",
+        "subtitle": "Student enrollment & identity matriculation",
+        "badge": "Admissions",
+        "icon": "book-open",
+        "tech": "Ellucian Banner SIS, CommonApp API",
+        "runtime": "University Sovereign Cloud",
+        "ports": "HTTPS / SAML 2.0 (Port 443)",
+        "sourceFile": "academic/registrar/matriculation.rb:55",
+        "description": "Perimeter administrative registrar validating secondary credentials, student bursaries, and issuing digital student IDs."
+      }
+    },
+    {
+      "id": "node-faculty",
+      "type": "people",
+      "data": {
+        "title": "Academic Faculty Board & Deans",
+        "subtitle": "Faculty Senate & departmental governance",
+        "badge": "Faculty Board",
+        "icon": "award",
+        "tech": "Faculty Information System, Canvas LMS",
+        "runtime": "Academic Enterprise Cluster",
+        "ports": "LTI 1.3, GraphQL (Port 8443)",
+        "sourceFile": "governance/faculty/senate_resolutions.py:90",
+        "description": "Collegiate governing council approving curriculum accreditations, teaching allocations, and research grant tenures."
+      }
+    },
+    {
+      "id": "node-portal",
+      "type": "system",
+      "data": {
+        "title": "Student Self-Service Portal",
+        "subtitle": "Course selection, timetable & degree audit",
+        "badge": "Student Portal",
+        "icon": "users",
+        "tech": "Next.js Web Client, GraphQL, Redis Cache",
+        "runtime": "Campus V8 Edge Network",
+        "ports": "OAuth 2.0 / OpenID Connect",
+        "sourceFile": "portal/students/enrollment_flow.tsx:45",
+        "description": "Unified student touchpoint for modular course enrollment, tuition invoice payments, and faculty advisor office hours."
+      }
+    },
+    {
+      "id": "node-curriculum",
+      "type": "office",
+      "data": {
+        "title": "Curriculum & Syllabus Commission",
+        "subtitle": "Credit hour standards & prerequisites",
+        "badge": "Curriculum",
+        "icon": "layers",
+        "tech": "Knowledge Graph DB (Neo4j), CourseDog",
+        "runtime": "Registrar Backend Services",
+        "ports": "gRPC / Protobuf (Port 9090)",
+        "sourceFile": "curriculum/prereq_graph/validator.rs:112",
+        "description": "Autonomous dependency engine verifying prerequisites, corequisites, modular credits, and ABET engineering criteria."
+      }
+    },
+    {
+      "id": "node-exam",
+      "type": "office",
+      "data": {
+        "title": "Examination Council & Evaluation",
+        "subtitle": "Grading verification & transcript ledger",
+        "badge": "Examinations",
+        "icon": "check-circle",
+        "tech": "PostgreSQL Immutable Ledger, Python SciPy",
+        "runtime": "Secure On-Premise Audit Enclave",
+        "ports": "mTLS / gRPC (Port 8000)",
+        "sourceFile": "eval/grading/grade_distribution.py:165",
+        "description": "Central examination board moderating grade distributions, academic integrity audits, and official transcript generation."
+      }
+    },
+    {
+      "id": "node-grad",
+      "type": "milestone",
+      "data": {
+        "title": "Senate Degree Conferral Bureau",
+        "subtitle": "Commencement, honors & digital credentials",
+        "badge": "Graduation",
+        "icon": "graduation-cap",
+        "tech": "Ethereum L2 Decentralized Identifiers (DID)",
+        "runtime": "University Blockchain Registry",
+        "ports": "JSON-LD / REST (Port 443)",
+        "sourceFile": "conferral/credentials/issue_diploma.ts:80",
+        "description": "Final authority issuing tamper-proof verifiable digital degrees, Latin honors certifications, and alumni affiliations."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-adm-portal",
+      "source": "node-admissions",
+      "target": "node-portal",
+      "label": "Issue Matriculation Key"
+    },
+    {
+      "id": "edge-fac-curr",
+      "source": "node-faculty",
+      "target": "node-curriculum",
+      "label": "Syllabus Revisions"
+    },
+    {
+      "id": "edge-curr-portal",
+      "source": "node-curriculum",
+      "target": "node-portal",
+      "label": "Published Catalog",
+      "style": "dashed"
+    },
+    {
+      "id": "edge-portal-exam",
+      "source": "node-portal",
+      "target": "node-exam",
+      "label": "Roster & Assessments"
+    },
+    {
+      "id": "edge-fac-exam",
+      "source": "node-faculty",
+      "target": "node-exam",
+      "label": "Faculty Grade Submissions"
+    },
+    {
+      "id": "edge-exam-grad",
+      "source": "node-exam",
+      "target": "node-grad",
+      "label": "Final Credit Audit"
+    },
+    {
+      "id": "edge-grad-admissions",
+      "source": "node-grad",
+      "target": "node-admissions",
+      "label": "Alumni Roster Sync",
+      "style": "dashed"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "academic-conferral",
+      "name": "Degree Progression & Graduation Conferral",
+      "badge": "Flow 1",
+      "description": "Institutional workflow tracking student progression from admissions onboarding, course registration, faculty evaluation, to graduation conferral.",
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "University Academic Ecosystem",
+          "description": "Unified administrative topology connecting admissions, academic deans, student portals, curriculum commissions, and degree registries.",
+          "highlightNodes": [
+            "node-admissions",
+            "node-faculty",
+            "node-portal",
+            "node-curriculum",
+            "node-exam",
+            "node-grad"
+          ],
+          "highlightEdges": [
+            "edge-adm-portal",
+            "edge-fac-curr",
+            "edge-curr-portal",
+            "edge-portal-exam",
+            "edge-fac-exam",
+            "edge-exam-grad",
+            "edge-grad-admissions"
+          ],
+          "payload": {
+            "method": "INFO",
+            "endpoint": "/academic/v1/session/status",
+            "status": "ACADEMIC_YEAR_2026_ACTIVE",
+            "latency": "2ms",
+            "protocol": "HTTPS",
+            "body": {
+              "enrolled_students": 42180,
+              "active_colleges": 14,
+              "faculty_senate_quorum": true,
+              "semester_term": "Fall 2026"
+            }
+          }
+        },
+        {
+          "id": "step-2",
+          "title": "Student Matriculation & Key Issuance",
+          "description": "Admissions registers student in the Student Information System, issuing biometric single-sign-on credentials for portal access.",
+          "highlightNodes": [
+            "node-admissions",
+            "node-portal"
+          ],
+          "highlightEdges": [
+            "edge-adm-portal"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/registrar/v2/matriculate",
+            "status": "201 Created",
+            "latency": "14ms",
+            "protocol": "OAuth 2.0 / SAML",
+            "body": {
+              "student_id": "STU-2026-88019",
+              "full_name": "Elena Rostova",
+              "degree_program": "B.S. Computer Science & AI",
+              "advisor": "Prof. Alistair Finch",
+              "cleared_bursary": true
+            }
+          }
+        },
+        {
+          "id": "step-3",
+          "title": "Curriculum Verification & Catalog Publication",
+          "description": "The Faculty Board submits updated course offerings to the Curriculum Commission. Automated graph validation checks all modular prerequisite paths.",
+          "highlightNodes": [
+            "node-faculty",
+            "node-curriculum",
+            "node-portal"
+          ],
+          "highlightEdges": [
+            "edge-fac-curr",
+            "edge-curr-portal"
+          ],
+          "payload": {
+            "method": "PUT",
+            "endpoint": "/curriculum/v3/catalog/publish",
+            "status": "200 Approved",
+            "latency": "8ms",
+            "protocol": "gRPC",
+            "body": {
+              "term": "FA-2026",
+              "new_modules": [
+                "CS-482 Advanced Neural Architectures",
+                "ENG-310 Quantum Computing"
+              ],
+              "prerequisite_conflicts": 0,
+              "ects_credits_total": 180
+            }
+          }
+        },
+        {
+          "id": "step-4",
+          "title": "Semester Assessment & Examination Evaluation",
+          "description": "Students complete term examinations. The Examination Board aggregates raw scores, normalizes GPA percentiles, and locks grades in the immutable transcript ledger.",
+          "highlightNodes": [
+            "node-portal",
+            "node-faculty",
+            "node-exam"
+          ],
+          "highlightEdges": [
+            "edge-portal-exam",
+            "edge-fac-exam"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/exams/v1/ledger/commit",
+            "status": "200 Verified",
+            "latency": "16ms",
+            "protocol": "mTLS / gRPC",
+            "body": {
+              "examination_period": "FALL-2026-FINALS",
+              "courses_audited": 1420,
+              "cumulative_gpa_average": 3.48,
+              "academic_integrity_flags": 0,
+              "transcript_hash": "0x44fa71e289c0"
+            }
+          }
+        },
+        {
+          "id": "step-5",
+          "title": "Senate Audit & Digital Degree Conferral",
+          "description": "Examination council forwards verified graduation candidates to the Senate. Verifiable W3C digital diplomas with cryptographic seals are issued to graduates.",
+          "highlightNodes": [
+            "node-exam",
+            "node-grad",
+            "node-admissions"
+          ],
+          "highlightEdges": [
+            "edge-exam-grad",
+            "edge-grad-admissions"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/conferral/v1/diploma/issue",
+            "status": "200 Conferred",
+            "latency": "22ms",
+            "protocol": "JSON-LD (W3C DID)",
+            "body": {
+              "graduate_name": "Elena Rostova",
+              "degree_conferred": "Bachelor of Science in Computer Science",
+              "honors": "Summa Cum Laude",
+              "senate_seal_signature": "SIG_ED25519_SENATE_DEAN",
+              "credential_url": "https://credentials.university.edu/verify/stu-88019"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

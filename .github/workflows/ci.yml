@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Node ${{ matrix.node }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node: [18, 20, 22]
+        include:
+          - os: windows-latest
+            node: 22
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Validate examples
+        run: |
+          for f in examples/*.json; do
+            echo "::group::validate $f"
+            node bin/yantra.js validate "$f"
+            echo "::endgroup::"
+          done
+      - name: Build examples to HTML
+        run: |
+          out="${RUNNER_TEMP}/yantra-html"
+          mkdir -p "$out"
+          for f in examples/*.json; do
+            node bin/yantra.js build "$f" -o "$out/$(basename "$f" .json).html"
+          done
+          ls -l "$out"
+
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install the SDK (editable)
+        run: python -m pip install -e python/
+      - name: Unit tests
+        run: python -B -m unittest discover -s python/tests -v
+      - name: Examples
+        run: |
+          python -B python/example.py "${RUNNER_TEMP}/py-out"
+          python -B python/example_page.py "${RUNNER_TEMP}/py-out"
