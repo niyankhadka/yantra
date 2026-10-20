@@ -23,6 +23,7 @@ const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => (typeof v === 'string' ? v : '');
 import { BLOCK_TYPES, isSafeImageSrc } from './page.js';
 import { CHART_NEEDS, CHART_SHAPES, checkChartBlock } from './charts.js';
+import { checkCardChart, hasChart, isChartCard, CHART_BUDGET } from './cardchart.js';
 
 export const BUILTIN_TABS = ['summary', 'step', 'node'];
 
@@ -176,10 +177,19 @@ function diagramFindings(payload, add) {
   // --- entity / class cards and relationship notation -----------------------
   checkMembers(model, nodeIds, add);
 
+  // --- charts in cards (data.chart) and chart cards (shape "chart") ----------
+  for (const n of model.nodes) for (const f of checkCardChart(n)) add(f.level, f.code, f.message, { node: n.id });
+  const chartCards = model.nodes.filter(isChartCard).length;
+  const minis = model.nodes.filter((n) => hasChart(n) && !isChartCard(n)).length;
+  if (chartCards > CHART_BUDGET.chartCards)
+    add('warning', 'budget/too-many-chart-cards', `${chartCards} chart cards (budget ${CHART_BUDGET.chartCards}); keep the charts that carry the story and move the rest to a panel.`);
+  if (minis > CHART_BUDGET.miniCharts)
+    add('warning', 'budget/too-many-mini-charts', `${minis} cards carry a mini chart (budget ${CHART_BUDGET.miniCharts}); charts on every card stop standing out.`);
+
   // --- state machines: pseudo-states used the way their shape promises ------
   for (const n of model.nodes) {
     const shape = shapeOf(n);
-    if (shape === 'card' || shape === 'state') continue;
+    if (shape === 'card' || shape === 'state' || shape === 'chart') continue;
     const into = model.edges.filter((e) => e.target === n.id || (e.source === n.id && arrowOf(e) === 'both')).length;
     const out = model.edges.filter((e) => e.source === n.id || (e.target === n.id && arrowOf(e) === 'both')).length;
     if (shape === 'initial' && into)

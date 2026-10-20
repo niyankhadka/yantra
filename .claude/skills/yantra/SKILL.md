@@ -74,6 +74,13 @@ For "explain how X works", make the diagram first, then the page around it
      with `"kind": "region"` under the composite state's group.
      A diagram of only table / class cards has no sequence view; `meta.views: ["flow"]` hides
      the Flow / Sequence toggle on any other diagram whose steps are not messages.
+   - Numbers that belong to a component (latency, uptime, conversion, a reading) →
+     `data.chart` draws a mini chart on its card: `{ "kind": "line", "label": "p95 latency",
+     "values": [..], "target": 160, "unit": " ms" }`; kinds `line`, `area`, `column`, `bar`
+     (`data`, up to 5), `donut`, `ring` (`value` of `max`), `bullet` (`value` against `target`).
+     A dashboard number the diagram is about → a chart card: `"shape": "chart"` with a page
+     chart block in `data.chart` (column, bar, line, area, pie, donut). At most 6 chart cards
+     and 12 mini charts; see Charts in diagrams in `docs/authoring.md`.
    - Runbooks, dashboards, specs: `url` on a node (`data.url`), edge or step (http, https or
      mailto only); the inspector opens them in a new tab.
 

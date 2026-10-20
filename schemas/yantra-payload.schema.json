@@ -300,10 +300,11 @@
               "initial",
               "final",
               "choice",
-              "fork"
+              "fork",
+              "chart"
             ],
             "default": "card",
-            "description": "card: the usual card. state: a rounder card for a state in a state machine. initial (filled dot), final (ringed dot) and choice (diamond) are small, textless pseudo-states; data.title still names them in tooltips, the inspector and exports. fork: a thick bar for a fork or join (vertical in LR, horizontal in TB) that edges attach along; it grows with its edges, width sets its length."
+            "description": "card: the usual card. state: a rounder card for a state in a state machine. initial (filled dot), final (ringed dot) and choice (diamond) are small, textless pseudo-states; data.title still names them in tooltips, the inspector and exports. fork: a thick bar for a fork or join (vertical in LR, horizontal in TB) that edges attach along; it grows with its edges, width sets its length. chart: a wider card (360px, width 240-480) that draws data.chart as a full chart (column, bar, line, area, pie, donut) under its title."
           },
           "rank": {
             "type": "integer",
@@ -314,7 +315,7 @@
             "type": "number",
             "minimum": 40,
             "maximum": 480,
-            "description": "Card width, 160-320; default 220. For a fork bar: its length (40-480)."
+            "description": "Card width, 160-320; default 220. Chart cards: 240-480, default 360. For a fork bar: its length (40-480)."
           },
           "x": {
             "type": "number",
@@ -408,6 +409,9 @@
               "stereotype": {
                 "type": "string",
                 "description": "UML stereotype shown as «stereotype» in place of the kicker, e.g. \"interface\", \"abstract\", \"enumeration\"."
+              },
+              "chart": {
+                "$ref": "#/definitions/cardChart"
               },
               "modes": {
                 "type": "object",
@@ -852,6 +856,139 @@
         "monitor",
         "settings"
       ]
+    },
+    "cardChart": {
+      "type": "object",
+      "description": "A chart drawn inside the card, under the subtitle (see docs/authoring.md, Charts in diagrams). On an ordinary card it is a mini chart: kind line or area (sparkline), column, bar (labelled bars, up to 5), donut (shares, up to 5), ring (progress: value of max) or bullet (value against target). On a chart card (shape \"chart\") it is a page chart block: kind column, bar, line, area, pie or donut with data or categories + series. The inspector shows it full size with its data table; the Markdown export lists the numbers.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "line",
+            "area",
+            "column",
+            "bar",
+            "donut",
+            "ring",
+            "bullet",
+            "pie"
+          ],
+          "description": "Mini charts: line (default with values), area, column, bar, donut, ring (default with only value), bullet. Chart cards: column, bar (default), line, area, pie, donut."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "description": "Mini chart: the numbers in order (null leaves a gap). The last one is shown as the current value."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Mini chart: a label per value (tooltips, inspector, Markdown)."
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "label": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              },
+              "value": {
+                "type": "number"
+              },
+              "tone": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Labelled values: bars, donut slices, or a chart card's single series."
+        },
+        "value": {
+          "type": "number",
+          "description": "Ring and bullet: the current value."
+        },
+        "max": {
+          "type": "number",
+          "description": "Ring: the full circle (default 100). Bullet: the end of the bar (default: a round number above value and target)."
+        },
+        "target": {
+          "type": "number",
+          "description": "A target: a dashed line on line, area and column charts, a tick on rings and bullets."
+        },
+        "label": {
+          "type": "string",
+          "description": "Mini chart: a short caption drawn on the card, e.g. \"p95 latency\"."
+        },
+        "title": {
+          "type": "string",
+          "description": "Chart card: the chart's own name, for screen readers (the card title is drawn)."
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "description": "Chart card: x-axis labels, one per value of every series."
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "values"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "tone": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "stacked": {
+          "type": "boolean",
+          "description": "Chart card: stack the series (column, bar, area)."
+        },
+        "unit": {
+          "type": "string",
+          "description": "After each number: \"%\", \" ms\", \"k\"."
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Before each number: \"£\"."
+        },
+        "tone": {
+          "type": "string",
+          "description": "Colour of a mini chart (good, warn, bad, info, neutral or a hue); default the card's colour."
+        }
+      }
     }
   }
 }

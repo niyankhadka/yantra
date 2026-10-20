@@ -16,12 +16,17 @@ from ._cli import YantraError, build_payload, export_payload, validate_payload
 from .i18n import language_meta
 
 __all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO",
-           "RELATIONS", "END_KINDS", "VISIBILITY", "ALGORITHMS", "GROUP_KINDS", "field", "method"]
+           "RELATIONS", "END_KINDS", "VISIBILITY", "ALGORITHMS", "GROUP_KINDS", "MINI_KINDS", "field", "method",
+           "mini_chart"]
 
 COLORS = ("blue", "teal", "green", "amber", "rose", "violet", "orange", "slate")
 #: Node shapes: cards ("card", "state"), state-machine pseudo-states ("initial", "final", "choice")
-#: and the fork / join bar ("fork").
-SHAPES = ("card", "state", "initial", "final", "choice", "fork")
+#: the fork / join bar ("fork") and the chart card ("chart", see :meth:`Diagram.add_chart_card`).
+SHAPES = ("card", "state", "initial", "final", "choice", "fork", "chart")
+#: Mini chart kinds for ``data.chart`` on an ordinary card (see :func:`mini_chart`).
+MINI_KINDS = ("line", "area", "column", "bar", "donut", "ring", "bullet")
+#: Chart card kinds (a page chart block, see :func:`yantra.blocks.chart`).
+CHART_CARD_KINDS = ("bar", "column", "line", "area", "pie", "donut")
 #: Group kinds: "region" is a concurrent region of its parent group (a composite state).
 GROUP_KINDS = ("region",)
 #: End labels (``source_label`` / ``target_label``) are multiplicities or short role names.
@@ -85,6 +90,81 @@ def method(name: str, params: Optional[str] = None, type: Optional[str] = None, 
            static: bool = False, abstract: bool = False, note: Optional[str] = None) -> Dict[str, Any]:
     """A class operation, shown as ``name(params)`` with the return `type` on the right."""
     return _member(name, visibility, params=params, type=type, static=static, abstract=abstract, note=note)
+
+
+def _is_num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def mini_chart(values: Optional[Iterable[Optional[float]]] = None, kind: Optional[str] = None,
+               label: Optional[str] = None, *, labels: Optional[Iterable[Any]] = None,
+               data: Optional[Union[Mapping[str, float], Iterable[Any]]] = None, value: Optional[float] = None,
+               max: Optional[float] = None, target: Optional[float] = None, unit: Optional[str] = None,
+               prefix: Optional[str] = None, tone: Optional[str] = None) -> Dict[str, Any]:
+    """A mini chart for a card's ``chart=`` (``data.chart``), drawn under the subtitle.
+
+    ``kind``: "line" (default with `values`), "area", "column" (`values`, optional `labels`), "bar" and
+    "donut" (`data`: ``{label: value}``, ``(label, value[, tone])`` or ``{label, value, tone}``, up to 5),
+    "ring" (default with only `value`: `value` of `max`, default 100) and "bullet" (`value` against
+    `target`). `label` is the caption drawn on the card; `unit` / `prefix` format the numbers ("%", "£");
+    `target` adds a dashed line or a tick; `tone` (good, warn, bad, info, neutral or a colour) recolours it."""
+    if kind is not None and kind not in MINI_KINDS:
+        raise YantraError(f"mini chart kind must be one of {MINI_KINDS}, not {kind!r}")
+    c: Dict[str, Any] = {}
+    if kind is not None:
+        c["kind"] = kind
+    if label is not None:
+        c["label"] = label
+    if values is not None:
+        vals = list(values)
+        if not all(v is None or _is_num(v) for v in vals):
+            raise YantraError("mini chart values must be numbers or None")
+        c["values"] = vals
+        if labels is not None:
+            labs = [str(x) for x in labels]
+            if len(labs) != len(vals):
+                raise YantraError(f"mini chart has {len(labs)} labels for {len(vals)} values")
+            c["labels"] = labs
+    if data is not None:
+        rows: List[Dict[str, Any]] = []
+        if isinstance(data, Mapping):
+            rows = [{"label": str(k), "value": v} for k, v in data.items()]
+        else:
+            for d in data:
+                if isinstance(d, Mapping):
+                    rows.append(dict(d))
+                else:
+                    t = list(d)
+                    rows.append({"label": str(t[0]), "value": t[1], **({"tone": t[2]} if len(t) > 2 else {})})
+        if not all(_is_num(r.get("value")) for r in rows):
+            raise YantraError("mini chart data values must be numbers")
+        c["data"] = rows
+    for key, v in (("value", value), ("max", max), ("target", target)):
+        if v is not None:
+            if not _is_num(v):
+                raise YantraError(f"mini chart {key} must be a number, not {v!r}")
+            c[key] = v
+    for key, v in (("unit", unit), ("prefix", prefix), ("tone", tone)):
+        if v is not None:
+            c[key] = v
+    k = kind or ("ring" if value is not None and values is None and data is None else "line")
+    if k in ("ring", "bullet") and value is None:
+        raise YantraError(f"a {k} mini chart needs value=")
+    if k in ("line", "area", "column") and values is None:
+        raise YantraError(f"a {k} mini chart needs values=")
+    if k in ("bar", "donut") and data is None:
+        raise YantraError(f"a {k} mini chart needs data=")
+    return c
+
+
+def _chart_block(chart: Mapping[str, Any]) -> Dict[str, Any]:
+    """A page chart block (:func:`yantra.blocks.chart`) as a chart card's ``data.chart``."""
+    c = {k: v for k, v in dict(chart).items() if k not in ("type", "span", "nodes", "caption") and v is not None}
+    if not (isinstance(c.get("data"), list) or (isinstance(c.get("categories"), list) and isinstance(c.get("series"), list))):
+        raise YantraError("a chart card needs data, or categories + series (see yantra.blocks.chart)")
+    if c.get("kind") is not None and c["kind"] not in CHART_CARD_KINDS:
+        raise YantraError(f"chart card kind must be one of {CHART_CARD_KINDS}, not {c['kind']!r}")
+    return c
 
 
 def _members(items: Optional[Iterable[Any]]) -> List[Dict[str, Any]]:
@@ -413,15 +493,31 @@ class Diagram:
         `rank` forces the column (LR) or row (TB); `width` is 160-320 (default 220).
         `shape`: "card" (default), "state" (rounder card), or the textless pseudo-states
         "initial" (filled dot), "final" (ringed dot), "choice" (diamond) and "fork" (a fork / join
-        bar across the flow; its `width` is the bar's length, 40-480)."""
+        bar across the flow; its `width` is the bar's length, 40-480), or "chart" (see add_chart_card).
+        `chart=` draws a mini chart on the card, from :func:`mini_chart`."""
         if node_id in self.nodes:
             raise YantraError(f"Duplicate node id: {node_id}")
         if shape is not None and shape not in SHAPES:
             raise YantraError(f"node shape must be one of {SHAPES}, not {shape!r}")
         if width is not None and shape == "fork" and not 40 <= width <= 480:
             raise YantraError(f"fork bar length (width) must be 40-480, not {width}")
-        if width is not None and shape != "fork" and not 160 <= width <= 320:
+        if width is not None and shape == "chart" and not 240 <= width <= 480:
+            raise YantraError(f"chart card width must be 240-480, not {width}")
+        if width is not None and shape not in ("fork", "chart") and not 160 <= width <= 320:
             raise YantraError(f"node width must be 160-320, not {width}")
+        chart = data.get("chart")
+        if shape == "chart":
+            if chart is None:
+                raise YantraError("a chart card (shape='chart') needs chart= (a yantra.blocks.chart(...) block)")
+            data["chart"] = _chart_block(chart)
+        elif chart is not None:
+            if not isinstance(chart, Mapping):
+                raise YantraError("chart= must be a dict from mini_chart(...)")
+            if chart.get("type") == "chart":
+                raise YantraError("full charts (yantra.blocks.chart) go on chart cards: use add_chart_card(...)")
+            if chart.get("kind") is not None and chart["kind"] not in MINI_KINDS:
+                raise YantraError(f"mini chart kind must be one of {MINI_KINDS}, not {chart['kind']!r}")
+            data["chart"] = dict(chart)
         if rank is not None and (not isinstance(rank, int) or rank < 0):
             raise YantraError(f"node rank must be a non-negative integer, not {rank!r}")
         if data.get("url") is not None:
@@ -431,6 +527,13 @@ class Diagram:
         node = Node(self, node_id, title, type, rank=rank, width=width, shape=shape, **data)
         self.nodes[node_id] = node
         return node
+
+    def add_chart_card(self, node_id: str, title: str, chart: Mapping[str, Any], type: str = "chart",
+                       width: Optional[float] = None, **data: Any) -> Node:
+        """Add a chart card: a wider card (360px; `width` 240-480) that draws `chart`, a page chart block
+        from :func:`yantra.blocks.chart` (column, bar, line, area, pie, donut), under its title. It
+        connects and highlights like any card."""
+        return self.add_node(node_id, title, type, width=width, shape="chart", chart=chart, **data)
 
     def add_entity(self, node_id: str, title: str, fields: Iterable[Any], type: str = "entity",
                    **data: Any) -> Node:

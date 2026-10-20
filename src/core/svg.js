@@ -14,6 +14,7 @@ import { escapeXml as x, textWidth } from './text.js';
 import { localeOf } from './i18n.js';
 import { ROWS } from './entity.js';
 import { markerDef } from './notation.js';
+import { inlineChart, MINI } from './cardchart.js';
 
 const PAD = 40;
 const HEADER = 64;
@@ -164,7 +165,7 @@ function flowSvg(scene, options) {
     })
     .join('\n    ');
 
-  const nodes = scene.nodes.map((n) => nodeSvg(n, t, hue(n.hue), focus ? active('nodes', n.id) : null, rtl, L)).join('\n    ');
+  const nodes = scene.nodes.map((n) => nodeSvg(n, t, hue(n.hue), focus ? active('nodes', n.id) : null, rtl, L, hue)).join('\n    ');
 
   const defs = `${[...usedHues].map((h) => arrowMarker(`arrow-${h}`, hue(h))).join('')}${[...notation.values()].join('')}
     ${gradients.join('')}`;
@@ -374,7 +375,7 @@ function foldChip(n, t, hueColor, rtl, L, off = 0) {
  * the right padding, text anchored at "start" of the rtl root); the wrapped
  * lines and so the card height are the same in both directions.
  */
-function nodeSvg(n, t, hueColor, isActive, rtl = false, L = localeOf()) {
+function nodeSvg(n, t, hueColor, isActive, rtl = false, L = localeOf(), hue = () => hueColor) {
   if (POINT_SHAPES.has(n.shape) || n.shape === 'fork') return pointSvg(n, t, hueColor, isActive, L);
   const C = CARD;
   const dim = isActive === false;
@@ -392,6 +393,13 @@ function nodeSvg(n, t, hueColor, isActive, rtl = false, L = localeOf()) {
       lines.push(`<text x="${tx}" y="${baseline(y, C.subLine, C.subSize)}" font-size="${C.subSize}" fill="${t.ink2}">${x(line)}</text>`);
       y += C.subLine;
     });
+  }
+  if (n.lines.chart) {
+    // The card's chart, its styles written out for this theme
+    y += MINI.gap;
+    const ch = n.lines.chart;
+    lines.push(`<g transform="translate(${C.padX} ${y})">${inlineChart(ch.svg, t, hue, hueColor)}</g>`);
+    y += ch.h;
   }
   if (n.lines.tech) {
     y += C.techGap;

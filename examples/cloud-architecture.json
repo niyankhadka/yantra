@@ -67,7 +67,41 @@
         "ports": "443 (HTTPS), 8443 (mTLS)",
         "sourceFile": "deploy/envoy/envoy.yaml:14",
         "uptime": "99.999%",
-        "description": "Perimeter ingress controller enforcing rate-limiting, geo-routing, DDoS mitigation, and cryptographically verified mTLS handshakes."
+        "description": "Perimeter ingress controller enforcing rate-limiting, geo-routing, DDoS mitigation, and cryptographically verified mTLS handshakes.",
+        "chart": {
+          "kind": "line",
+          "label": "p95 latency",
+          "unit": " ms",
+          "labels": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00",
+            "17:00",
+            "18:00",
+            "19:00",
+            "20:00"
+          ],
+          "values": [
+            48,
+            52,
+            61,
+            74,
+            69,
+            58,
+            55,
+            63,
+            71,
+            66,
+            54,
+            49
+          ],
+          "target": 80
+        }
       }
     },
     {
@@ -83,7 +117,15 @@
         "ports": "9000 (gRPC), 8080 (REST)",
         "sourceFile": "services/auth/broker.go:68",
         "uptime": "99.99%",
-        "description": "Identity provider issuing bounded ephemeral JWT bearer tokens with fine-grained role claims and real-time revocation caches."
+        "description": "Identity provider issuing bounded ephemeral JWT bearer tokens with fine-grained role claims and real-time revocation caches.",
+        "chart": {
+          "kind": "ring",
+          "label": "Uptime",
+          "value": 99.97,
+          "max": 100,
+          "unit": "%",
+          "target": 99.9
+        }
       }
     },
     {
@@ -99,7 +141,35 @@
         "ports": "8080 (REST), 7233 (Temporal)",
         "sourceFile": "services/order/workflow.go:120",
         "uptime": "99.95%",
-        "description": "Stateful orchestrator driving distributed two-phase order fulfillment workflows with automated compensation logic on settlement failure."
+        "description": "Stateful orchestrator driving distributed two-phase order fulfillment workflows with automated compensation logic on settlement failure.",
+        "chart": {
+          "kind": "column",
+          "label": "Sagas per minute",
+          "labels": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00",
+            "17:00",
+            "18:00"
+          ],
+          "values": [
+            310,
+            420,
+            515,
+            640,
+            590,
+            480,
+            455,
+            560,
+            610,
+            520
+          ]
+        }
       }
     },
     {
@@ -115,7 +185,32 @@
         "ports": "9092 (PLAINTEXT), 9094 (SSL)",
         "sourceFile": "infra/kafka/topics.yaml:32",
         "uptime": "99.999%",
-        "description": "Durable distributed log pub/sub bus buffering order events, inventory reservations, notification triggers, and analytical CDC feeds."
+        "description": "Durable distributed log pub/sub bus buffering order events, inventory reservations, notification triggers, and analytical CDC feeds.",
+        "chart": {
+          "kind": "area",
+          "label": "Consumer lag",
+          "unit": " msgs",
+          "labels": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00"
+          ],
+          "values": [
+            120,
+            180,
+            240,
+            1450,
+            620,
+            210,
+            160,
+            140
+          ]
+        }
       }
     },
     {
@@ -137,6 +232,14 @@
             "subtitle": "Sandbox (test keys)",
             "tech": "Stripe test mode"
           }
+        },
+        "chart": {
+          "kind": "bullet",
+          "label": "Authorisation rate",
+          "value": 96.4,
+          "target": 97,
+          "max": 100,
+          "unit": "%"
         }
       }
     },
@@ -153,7 +256,15 @@
         "ports": "26257 (SQL), 8080 (Admin UI)",
         "sourceFile": "migrations/001_orders_schema.sql:1",
         "uptime": "99.999%",
-        "description": "Globally ACID-compliant distributed SQL store guaranteeing linearizable serializability across all order and settlement ledger entries."
+        "description": "Globally ACID-compliant distributed SQL store guaranteeing linearizable serializability across all order and settlement ledger entries.",
+        "chart": {
+          "kind": "ring",
+          "label": "Storage used",
+          "value": 62,
+          "max": 100,
+          "unit": "%",
+          "tone": "amber"
+        }
       }
     }
   ],

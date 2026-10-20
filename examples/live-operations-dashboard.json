@@ -1,0 +1,598 @@
+{
+  "meta": {
+    "title": "Live operations dashboard",
+    "description": "How Northgate Outfitters watches its online shop: services report metrics, dashboards chart them, and alert rules page the on-call engineer.",
+    "layout": {
+      "direction": "LR"
+    },
+    "summary": {
+      "headline": "One metrics pipeline feeds every chart; two charts carry alert thresholds.",
+      "points": [
+        "Each service card shows its own live reading.",
+        "Chart cards show the dashboards the on-call team watches.",
+        "Alert rules turn a breached threshold into a page within two minutes."
+      ],
+      "facts": {
+        "Snapshot": "Black Friday, 28/11/2025",
+        "Owner": "Site reliability team"
+      }
+    }
+  },
+  "roles": {
+    "service": {
+      "label": "Service",
+      "color": "blue",
+      "icon": "server"
+    },
+    "pipeline": {
+      "label": "Pipeline",
+      "color": "violet"
+    },
+    "chart": {
+      "label": "Dashboard",
+      "color": "teal"
+    },
+    "alert": {
+      "label": "Alerting",
+      "color": "rose"
+    },
+    "people": {
+      "label": "People",
+      "color": "amber",
+      "icon": "user"
+    }
+  },
+  "nodes": [
+    {
+      "id": "storefront",
+      "type": "service",
+      "data": {
+        "title": "Storefront",
+        "subtitle": "Product and basket pages",
+        "tech": "Next.js",
+        "description": "Server-rendered shop front; traffic peaked at 09:00 when the sale opened.",
+        "metadata": {
+          "Owner": "Web team",
+          "Peak traffic": "18,400 requests a minute"
+        },
+        "chart": {
+          "kind": "line",
+          "label": "Requests a minute",
+          "unit": "k",
+          "labels": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00"
+          ],
+          "values": [
+            18.4,
+            15.2,
+            12.8,
+            13.9,
+            14.6,
+            12.1,
+            11.4,
+            12.6
+          ]
+        }
+      }
+    },
+    {
+      "id": "checkout",
+      "type": "service",
+      "data": {
+        "title": "Checkout API",
+        "subtitle": "Orders and payments",
+        "tech": "Go",
+        "description": "Takes the basket, reserves stock and asks Payments to authorise the card.",
+        "metadata": {
+          "Owner": "Checkout team",
+          "SLO": "99.9% of requests succeed"
+        },
+        "chart": {
+          "kind": "ring",
+          "label": "Error budget left",
+          "value": 72,
+          "max": 100,
+          "unit": "%",
+          "tone": "good"
+        }
+      }
+    },
+    {
+      "id": "payments",
+      "type": "service",
+      "data": {
+        "title": "Payments",
+        "subtitle": "Card authorisation",
+        "tech": "Java",
+        "description": "Calls the card acquirer; the authorisation rate dipped below target during the 11:00 peak.",
+        "metadata": {
+          "Owner": "Payments team",
+          "Acquirers": "Two, with failover"
+        },
+        "chart": {
+          "kind": "bullet",
+          "label": "Authorisation rate",
+          "value": 96.6,
+          "target": 97,
+          "max": 100,
+          "unit": "%"
+        }
+      }
+    },
+    {
+      "id": "search",
+      "type": "service",
+      "data": {
+        "title": "Search",
+        "subtitle": "Product search",
+        "tech": "OpenSearch",
+        "description": "Answers product searches; latency climbed while the index was rebuilt.",
+        "metadata": {
+          "Owner": "Discovery team"
+        },
+        "chart": {
+          "kind": "column",
+          "label": "p95 latency",
+          "unit": " ms",
+          "labels": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00"
+          ],
+          "values": [
+            180,
+            210,
+            340,
+            260,
+            190,
+            170,
+            165,
+            172
+          ],
+          "target": 250
+        }
+      }
+    },
+    {
+      "id": "metrics",
+      "type": "pipeline",
+      "data": {
+        "title": "Metrics pipeline",
+        "subtitle": "Scrapes and stores series",
+        "tech": "OpenTelemetry, Prometheus",
+        "description": "Collects metrics from every service every 15 seconds and keeps them for 30 days.",
+        "chart": {
+          "kind": "area",
+          "label": "Samples a second",
+          "unit": "k",
+          "labels": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00"
+          ],
+          "values": [
+            410,
+            395,
+            402,
+            420,
+            415,
+            398,
+            390,
+            405
+          ]
+        }
+      }
+    },
+    {
+      "id": "latency-chart",
+      "type": "chart",
+      "shape": "chart",
+      "width": 400,
+      "data": {
+        "title": "p95 latency by service",
+        "subtitle": "Today against last Friday",
+        "description": "Checkout, Payments and Search crossed the 250 ms target at 11:00.",
+        "chart": {
+          "kind": "column",
+          "title": "p95 latency by service",
+          "unit": " ms",
+          "categories": [
+            "Storefront",
+            "Checkout",
+            "Payments",
+            "Search"
+          ],
+          "series": [
+            {
+              "name": "Last Friday",
+              "values": [
+                120,
+                190,
+                210,
+                170
+              ]
+            },
+            {
+              "name": "Today",
+              "values": [
+                135,
+                240,
+                260,
+                340
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "orders-chart",
+      "type": "chart",
+      "shape": "chart",
+      "data": {
+        "title": "Orders per hour",
+        "subtitle": "Card orders taken",
+        "description": "Orders held up through the payment dip, so the dip was short.",
+        "chart": {
+          "kind": "area",
+          "title": "Orders per hour",
+          "categories": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00"
+          ],
+          "series": [
+            {
+              "name": "Orders",
+              "values": [
+                4200,
+                3900,
+                3100,
+                3500,
+                3700,
+                3300,
+                3000,
+                3200
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "errors-chart",
+      "type": "chart",
+      "shape": "chart",
+      "data": {
+        "title": "Errors by cause",
+        "subtitle": "5xx responses today",
+        "description": "Card declines from the acquirer were the largest single cause.",
+        "chart": {
+          "kind": "donut",
+          "title": "Errors by cause",
+          "data": [
+            {
+              "label": "Acquirer declines",
+              "value": 1840
+            },
+            {
+              "label": "Search timeouts",
+              "value": 1210
+            },
+            {
+              "label": "Stock locks",
+              "value": 560
+            },
+            {
+              "label": "Other",
+              "value": 310
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "alerts",
+      "type": "alert",
+      "data": {
+        "title": "Alert rules",
+        "subtitle": "Thresholds on the charts",
+        "tech": "Alertmanager",
+        "description": "Fires when p95 latency stays over 250 ms for five minutes, or errors exceed 2% of requests.",
+        "chart": {
+          "kind": "bar",
+          "label": "Alerts today",
+          "data": [
+            {
+              "label": "Critical",
+              "value": 2,
+              "tone": "bad"
+            },
+            {
+              "label": "Warning",
+              "value": 7,
+              "tone": "warn"
+            },
+            {
+              "label": "Info",
+              "value": 12,
+              "tone": "neutral"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "oncall",
+      "type": "people",
+      "data": {
+        "title": "On-call engineer",
+        "subtitle": "Paged within two minutes",
+        "description": "Acknowledges the page, opens the incident channel and follows the runbook.",
+        "metadata": {
+          "Rota": "Weekly, follow the sun"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-store",
+      "source": "storefront",
+      "target": "metrics",
+      "label": "Metrics"
+    },
+    {
+      "id": "e-check",
+      "source": "checkout",
+      "target": "metrics",
+      "label": "Metrics"
+    },
+    {
+      "id": "e-pay",
+      "source": "payments",
+      "target": "metrics",
+      "label": "Metrics"
+    },
+    {
+      "id": "e-search",
+      "source": "search",
+      "target": "metrics",
+      "label": "Metrics"
+    },
+    {
+      "id": "e-latency",
+      "source": "metrics",
+      "target": "latency-chart",
+      "label": "p95 latency"
+    },
+    {
+      "id": "e-orders",
+      "source": "metrics",
+      "target": "orders-chart",
+      "label": "Orders"
+    },
+    {
+      "id": "e-errors",
+      "source": "metrics",
+      "target": "errors-chart",
+      "label": "5xx errors"
+    },
+    {
+      "id": "e-l-alert",
+      "source": "latency-chart",
+      "target": "alerts",
+      "label": "Over 250 ms"
+    },
+    {
+      "id": "e-e-alert",
+      "source": "errors-chart",
+      "target": "alerts",
+      "label": "Over 2%"
+    },
+    {
+      "id": "e-page",
+      "source": "alerts",
+      "target": "oncall",
+      "label": "Page"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-services",
+      "title": "Shop services",
+      "nodes": [
+        "storefront",
+        "checkout",
+        "payments",
+        "search"
+      ]
+    },
+    {
+      "id": "g-dash",
+      "title": "Dashboards",
+      "nodes": [
+        "latency-chart",
+        "orders-chart",
+        "errors-chart"
+      ],
+      "color": "teal"
+    }
+  ],
+  "panels": [
+    {
+      "id": "incident",
+      "title": "Incident",
+      "blocks": [
+        {
+          "type": "callout",
+          "tone": "warn",
+          "label": "11:02",
+          "body": "Search and checkout latency crossed 250 ms as the sale traffic peaked; the on-call engineer was paged at 11:04."
+        },
+        {
+          "type": "gantt",
+          "title": "Follow-up plan",
+          "start": "2025-11-28",
+          "items": [
+            {
+              "id": "detect",
+              "title": "Latency alert fires",
+              "start": "2025-11-28",
+              "days": 1,
+              "group": "Respond",
+              "tone": "bad"
+            },
+            {
+              "id": "mitigate",
+              "title": "Pause index rebuild",
+              "after": "detect",
+              "days": 1,
+              "group": "Respond"
+            },
+            {
+              "id": "fix",
+              "title": "Add search replicas",
+              "after": "mitigate",
+              "days": 3,
+              "group": "Fix"
+            },
+            {
+              "title": "Review published",
+              "milestone": true,
+              "after": "fix",
+              "tone": "good"
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "kind": "line",
+          "title": "Checkout p95 latency",
+          "unit": " ms",
+          "categories": [
+            "09:00",
+            "10:00",
+            "11:00",
+            "12:00",
+            "13:00",
+            "14:00",
+            "15:00",
+            "16:00"
+          ],
+          "series": [
+            {
+              "name": "p95",
+              "values": [
+                180,
+                205,
+                248,
+                236,
+                212,
+                195,
+                188,
+                190
+              ],
+              "tone": "bad"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "tour",
+      "name": "Black Friday morning",
+      "steps": [
+        {
+          "id": "s1",
+          "title": "The whole dashboard",
+          "description": "Four shop services report to one metrics pipeline; three chart cards show what the on-call team watches, and alert rules page a person."
+        },
+        {
+          "id": "s2",
+          "title": "Services report metrics",
+          "description": "Every service sends its readings every 15 seconds; each card shows its own: traffic, error budget, authorisation rate and search latency.",
+          "highlightNodes": [
+            "storefront",
+            "checkout",
+            "payments",
+            "search",
+            "metrics"
+          ],
+          "highlightEdges": [
+            "e-store",
+            "e-check",
+            "e-pay",
+            "e-search"
+          ]
+        },
+        {
+          "id": "s3",
+          "title": "Latency crosses the line",
+          "description": "At 11:00 checkout, payments and search p95 latency rise above the 250 ms target; last Friday stayed under it.",
+          "highlightNodes": [
+            "metrics",
+            "latency-chart"
+          ],
+          "highlightEdges": [
+            "e-latency"
+          ]
+        },
+        {
+          "id": "s4",
+          "title": "Orders hold up",
+          "description": "Orders dip from 4,200 to 3,100 an hour but recover by 12:00; the error mix shows acquirer declines as the largest cause.",
+          "highlightNodes": [
+            "metrics",
+            "orders-chart",
+            "errors-chart"
+          ],
+          "highlightEdges": [
+            "e-orders",
+            "e-errors"
+          ]
+        },
+        {
+          "id": "s5",
+          "title": "An alert pages on-call",
+          "description": "Two thresholds fire; the alert rules page the on-call engineer, who pauses the index rebuild.",
+          "highlightNodes": [
+            "latency-chart",
+            "errors-chart",
+            "alerts",
+            "oncall"
+          ],
+          "highlightEdges": [
+            "e-l-alert",
+            "e-e-alert",
+            "e-page"
+          ]
+        }
+      ]
+    }
+  ]
+}

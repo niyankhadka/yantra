@@ -109,7 +109,7 @@ export function computeSequenceScene(payload, options = {}) {
     const node = nodeById.get(id);
     const role = model.roles[roleKey(node)] || { label: node.type, hue: 'slate' };
     // Headers are always cards: pseudo-states (dots, diamonds) need a name above a lifeline
-    return { id, node, role, ...measureNode({ ...node, shape: 'card', width: node.width || SEQ.headerWidth }) };
+    return { id, node, role, ...measureNode({ ...node, shape: 'card', width: (node.shape !== 'chart' && node.width) || SEQ.headerWidth }, { chart: false }) };
   });
   const headerH = Math.max(80, ...sized.map((s) => s.h));
   const chains = sized.map((s) => gi.chain(s.id));

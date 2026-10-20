@@ -22,6 +22,7 @@ import parallelCheckout from '../../examples/parallel-checkout-states.json';
 import smartCity from '../../examples/smart-city-operations.json';
 import retailGroup from '../../examples/global-retail-group.json';
 import hospitalTrust from '../../examples/hospital-trust-monitoring.json';
+import liveOps from '../../examples/live-operations-dashboard.json';
 import { registerStrings } from '../core/i18n.js';
 import { TABLES } from '../core/locales/index.js';
 import { PAGE_EXAMPLES, CHART_EXAMPLES } from './gallery-pages.js';
@@ -32,6 +33,7 @@ registerStrings(TABLES);
 /** Built-in gallery, shown only when the page has no embedded payload. */
 export const EXAMPLES = [
   { id: 'cloud-architecture', name: 'Cloud architecture', data: cloud },
+  { id: 'live-operations-dashboard', name: 'Live operations dashboard (charts)', data: liveOps },
   { id: 'aws-serverless', name: 'AWS serverless (groups)', data: awsServerless },
   { id: 'oauth-login', name: 'OAuth sign-in (sequence)', data: oauthLogin },
   { id: 'ecommerce-schema', name: 'E-commerce schema (ERD)', data: ecommerceSchema },

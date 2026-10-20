@@ -100,6 +100,23 @@ d.add_edge("method", "card", relation="realization")   # triangle on the source 
 `method(name, params, type, visibility, static=, abstract=)` build rows; `RELATIONS` and
 `END_KINDS` list the accepted `relation` and `source_end` / `target_end` values.
 
+## Charts in diagrams
+
+```python
+from yantra import Diagram, blocks, mini_chart
+
+d = Diagram("Shop health")
+d.add_node("api", "Orders API", "service",
+           chart=mini_chart([180, 172, 165, 150, 142], "line", "p95 latency", unit=" ms", target=160))
+d.add_node("db", "Orders DB", "service", chart=mini_chart(value=99.95, label="Uptime", unit="%"))
+d.add_chart_card("latency", "p95 latency by service",
+                 blocks.chart(kind="column", unit=" ms", categories=["Orders", "Payments"],
+                              series={"Last week": [150, 210], "This week": [142, 260]}))
+```
+
+`mini_chart` kinds: line, area, column, bar, donut, ring, bullet (`MINI_KINDS`). A chart card
+takes any page chart block (`yantra.blocks.chart`); `width` is 240-480.
+
 ## Trees and mind maps
 
 ```python

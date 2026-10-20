@@ -6,6 +6,7 @@ import { isEntity, members, memberKey, memberName, memberType, VISIBILITY_NAMES 
 import { hasNotation, notationText } from './notation.js';
 import { collectDiagrams, drillOf, modeDrills, levelOrder, safeUrl } from './drill.js';
 import { localeOf } from './i18n.js';
+import { chartMarkdownLines, hasChart } from './cardchart.js';
 
 const cell = (v) => md(v ?? '—').replace(/\|/g, '\\|') || '—';
 /** Markdown link target (safe URLs only), bare unless it has spaces or brackets. */
@@ -109,6 +110,17 @@ function levelMarkdown(payload, root) {
         }
       }
       out.push('');
+    }
+    out.pop();
+  }
+
+  // Charts on cards: the data as a list or table, under the card's title
+  const charted = model.nodes.filter(hasChart).map((n) => [n, chartMarkdownLines(n, L)]).filter(([, lines]) => lines.length);
+  if (charted.length) {
+    out.push('', `## ${md(t('node.chart'))}`, '');
+    for (const [n, lines] of charted) {
+      const label = typeof n.data.chart.label === 'string' && n.data.chart.label ? ` (${md(n.data.chart.label)})` : '';
+      out.push(`### ${md(n.data.title || n.id)}${label}`, '', ...lines, '');
     }
     out.pop();
   }

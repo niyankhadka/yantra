@@ -210,7 +210,7 @@ export class Renderer {
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
     const drill = typeof n.node.data?.drill === 'string' && n.node.data.drill;
-    el.setAttribute('aria-label', [n.node.data?.title, n.node.data?.subtitle, drill && DRILL_TEXT.cardHint].filter(Boolean).join(', '));
+    el.setAttribute('aria-label', [n.node.data?.title, n.node.data?.subtitle, n.lines?.chart?.label, drill && DRILL_TEXT.cardHint].filter(Boolean).join(', '));
     el.classList.toggle('has-drill', !!drill);
     if (n.shape === 'state') el.classList.add('is-state');
     if (n.shape === 'fork') {
@@ -237,10 +237,13 @@ export class Renderer {
       `<div class="y-node-kicker">${iconSvg(n.icon, 14)}<span>${h(n.kicker)}</span></div>` +
       `<div class="y-node-title">${n.lines.title.map((l) => `<span>${h(l)}</span>`).join('')}</div>` +
       (n.lines.subtitle.length ? `<div class="y-node-sub">${n.lines.subtitle.map((l) => `<span>${h(l)}</span>`).join('')}</div>` : '') +
+      // The card's chart (core-drawn SVG, measured in the core; the card's aria-label carries its summary)
+      (n.lines.chart ? `<div class="y-node-chart" style="height:${n.lines.chart.h}px" aria-hidden="true">${n.lines.chart.svg}</div>` : '') +
       (n.lines.tech ? `<div class="y-node-tech">${h(n.lines.tech)}</div>` : '') +
       (n.lines.rows ? rowsHtml(n.lines.rows, this.L) : '');
     if (n.stereotype) el.classList.add('is-stereotype');
     if (n.lines.rows) el.classList.add('is-entity');
+    if (n.shape === 'chart') el.classList.add('is-chart');
     this.nodeLayer.appendChild(el);
     this.nodes.set(n.id, el);
     return el;

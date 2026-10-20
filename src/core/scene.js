@@ -36,7 +36,8 @@ export function computeScene(payload, options = {}) {
 
   // Fork bars run across the flow and grow with the edges on their busier side
   const forkPorts = (id) => Math.max(edges.filter((e) => e.target === id && e.source !== id).length, edges.filter((e) => e.source === id && e.target !== id).length);
-  const sized = nodes.map((n) => ({ node: n, ...measureNode(n, shapeOf(n) === 'fork' ? { direction: model.layout.direction, ports: forkPorts(n.id) } : {}) }));
+  const L = localeOf(model.meta);
+  const sized = nodes.map((n) => ({ node: n, ...measureNode(n, shapeOf(n) === 'fork' ? { direction: model.layout.direction, ports: forkPorts(n.id) } : { L }) }));
   const byId = new Map(sized.map((s) => [s.node.id, s]));
   // Tree layouts draw the hierarchy itself, so groups are not drawn there (lint warns)
   const gi = groupIndex(treeMode ? [] : folded.groups, new Set(nodes.map((n) => n.id)));
@@ -109,7 +110,6 @@ export function computeScene(payload, options = {}) {
   }
   // auto layouts left room for whole titles (base.titled / base.nested); manual ones may cut them
   const boxes = groupBoxes(gi.list, boxRects, { fit: true, titles: !!(base.nested || base.titled) });
-  const L = localeOf(model.meta);
   const rtl = L.dir === 'rtl';
   const dividers = regionDividers(gi, boxes, model.layout.direction);
   const sceneGroups = gi.list

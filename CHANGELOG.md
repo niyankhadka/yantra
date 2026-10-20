@@ -9,6 +9,23 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Added
 
+- Charts in diagrams: `data.chart` draws a mini chart inside any card, under the subtitle
+  (sparkline, area, mini columns, labelled bars, share donut, progress ring, bullet against a
+  target), and `"shape": "chart"` makes a chart card that draws any page chart kind (column,
+  bar, line, area, pie, donut; series, stacking, axes and legend) at card scale. Cards grow to
+  fit; light, dark, every zoom level, SVG and PNG export look the same (one style table for the
+  viewer and the export). The Details tab shows the chart full size with its data table, the
+  Markdown export lists the numbers, and the card's accessible name carries them.
+- Lint: `chart/missing`, `chart/invalid`, `chart/unknown-kind`, `chart/mismatch`,
+  `chart/negative`, `chart/out-of-range`, `chart/too-many-points`, `chart/too-many-series`,
+  `budget/too-many-chart-cards` and `budget/too-many-mini-charts`.
+- Python SDK: `add_node(..., chart=...)`, `add_chart_card(...)` and `mini_chart(...)`.
+- Example `live-operations-dashboard` (services, chart cards and alerting, with an incident
+  panel holding a gantt and a chart); mini charts on `cloud-architecture`, `sales-pipeline`
+  and `smart-city-operations`.
+- Strings `chart.kind.ring`, `chart.kind.bullet`, `chart.target`, `chart.remaining` and
+  `node.chart` in every language.
+
 - Deep hierarchies in one frame: groups nest up to six levels within budget (eight at most).
   From four levels the layered layout places each group as a block in its parent, so boxes
   never overlap and edges cross borders cleanly; padding tightens below the third level, boxes
@@ -47,6 +64,8 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Changed
 
+- Charts fitted to a narrow container (inspector panels) are drawn shorter, and column value
+  labels that would collide are left to the tooltips.
 - Keyboard shortcuts open in a side panel (`?` or the help button) in the inspector's place:
   same dock, theming and slide-in, on the left in right-to-left languages, a bottom sheet on
   phones. Grouped (walkthrough, navigate, view, fold and depth, drill-down and focus, mouse and

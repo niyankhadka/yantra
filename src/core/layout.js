@@ -8,6 +8,7 @@ import { textWidth, wrapText, truncate } from './text.js';
 import { isEntity, entityWidth, measureMembers } from './entity.js';
 import { shapeOf, POINT_SHAPES } from './model.js';
 import { hasNotation } from './notation.js';
+import { measureChart, chartCardWidth, MINI } from './cardchart.js';
 
 /** Card metrics. src/css/diagram.css mirrors these numbers exactly. */
 export const CARD = {
@@ -225,7 +226,8 @@ export function selfLoop(r, side, lab, opts = {}) {
 
 /**
  * Width/height plus the wrapped text lines a card will show.
- * @param opts { direction: 'LR' | 'TB', ports: edges on the busier side } (fork bars only)
+ * @param opts { direction: 'LR' | 'TB', ports: edges on the busier side } (fork bars only),
+ *             { L: localeOf() result (chart numbers and labels), chart: false (leave out data.chart) }
  */
 export function measureNode(node, opts = {}) {
   const shape = shapeOf(node);
@@ -238,9 +240,10 @@ export function measureNode(node, opts = {}) {
   }
   const d = node.data || {};
   const entity = isEntity(d);
-  // Entity / class cards widen (up to maxWidth) to fit their rows unless a width is given
+  // Entity / class cards widen (up to maxWidth) to fit their rows unless a width is given;
+  // chart cards are wider (CHART_CARD in cardchart.js)
   const want = node.width || (entity ? Math.max(CARD.width, entityWidth(d, CARD.padX)) : CARD.width);
-  const w = ceilTo(Math.min(CARD.maxWidth, Math.max(CARD.minWidth, want)), 20);
+  const w = shape === 'chart' ? chartCardWidth(node) : ceilTo(Math.min(CARD.maxWidth, Math.max(CARD.minWidth, want)), 20);
   const inner = w - CARD.padX * 2;
 
   const title = wrapText(d.title || node.id, inner, CARD.titleSize, { weight: 600 }, CARD.titleMax);
@@ -249,6 +252,9 @@ export function measureNode(node, opts = {}) {
 
   let h = CARD.padY + CARD.kicker + CARD.kickerGap + title.length * CARD.titleLine;
   if (subtitle.length) h += CARD.subGap + subtitle.length * CARD.subLine;
+  // A chart under the subtitle (data.chart): a mini chart, or a chart card's chart
+  const chart = opts.chart === false ? null : measureChart(node, inner, opts.L);
+  if (chart) h += MINI.gap + chart.h;
   if (tech) h += CARD.techGap + CARD.techLine;
   // Field / method rows below the header (see entity.js)
   const rows = entity ? measureMembers(d, inner, h) : null;
@@ -257,7 +263,7 @@ export function measureNode(node, opts = {}) {
 
   // Even multiples of the grid keep centres on the grid, so aligned
   // neighbours produce perfectly straight edges after snapping.
-  return { w, h: Math.max(ceilTo(h, 20), 80), lines: { title, subtitle, tech, ...(rows ? { rows } : {}) } };
+  return { w, h: Math.max(ceilTo(h, 20), 80), lines: { title, subtitle, tech, ...(rows ? { rows } : {}), ...(chart ? { chart } : {}) } };
 }
 
 /**

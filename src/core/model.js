@@ -152,8 +152,10 @@ export function visibleGraph(model, modeId) {
  * dot), "final" (ringed dot) and "choice" (diamond), plus "fork", a thick bar
  * for a fork or join (horizontal in TB, vertical in LR) that edges attach
  * along. Their title still names them in the inspector, tooltips and exports.
+ * "chart" is a wider card that draws its `data.chart` as a full chart
+ * (src/core/cardchart.js).
  */
-export const NODE_SHAPES = ['card', 'state', 'initial', 'final', 'choice', 'fork'];
+export const NODE_SHAPES = ['card', 'state', 'initial', 'final', 'choice', 'fork', 'chart'];
 export const POINT_SHAPES = new Set(['initial', 'final', 'choice']);
 /** Shapes drawn without text: the pseudo-states and the fork / join bar. */
 export const TEXTLESS = new Set([...POINT_SHAPES, 'fork']);

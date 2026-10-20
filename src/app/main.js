@@ -9,7 +9,8 @@ import { renderSvg } from '../core/svg.js';
 import { toMarkdown } from '../core/markdown.js';
 import { escapeHtml as h } from '../core/text.js';
 import { renderBlock, renderPage, isPage, BLOCK_CSS } from '../core/page.js';
-import { enhanceCharts } from '../core/charts.js';
+import { enhanceCharts, withChartLocale } from '../core/charts.js';
+import { CARD_CHART_CSS, chartBlock } from '../core/cardchart.js';
 import { safeUrl } from '../core/drill.js';
 import { LINK_ICON, DRILL_ICON } from '../core/icons.js';
 import { YantraEngine } from './engine.js';
@@ -85,7 +86,7 @@ const savePref = (key, value) => {
 class App {
   constructor(embedded) {
     const style = document.createElement('style');
-    style.textContent = `${themeCss()}\n${BLOCK_CSS}`;
+    style.textContent = `${themeCss()}\n${BLOCK_CSS}\n${CARD_CHART_CSS}`;
     document.head.prepend(style);
 
     this.embedded = embedded;
@@ -880,7 +881,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
       step: scenarios.some((s) => (s.steps || []).some((st) => (st.payload && typeof st.payload === 'object') || safeUrl(st.url))),
       node: nodes.some((n) => {
         const d = n.data || {};
-        return d.description || d.tech || d.runtime || d.ports || d.status || d.sourceFile || Object.keys(d.metadata || {}).length || this.levels.target(n) || safeUrl(d.url) || isEntity(d);
+        return d.description || d.tech || d.runtime || d.ports || d.status || d.sourceFile || Object.keys(d.metadata || {}).length || this.levels.target(n) || safeUrl(d.url) || isEntity(d) || chartBlock(n);
       })
     };
     const labels = { ...Object.fromEntries(Object.entries(BUILTIN_TABS).map(([id, key]) => [id, this.L.t(key)])), ...(inspector.labels || {}) };
@@ -1073,9 +1074,20 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
       ${d.description ? `<p>${h(d.description)}</p>` : ''}
       ${this.drillButton(sel.node)}${linkHtml(d.url)}
       ${fields.length ? `<dl class="y-fields">${fields.map(([k, v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join('')}</dl>` : ''}
-      ${tables}
+      ${tables}${this.nodeChartHtml(sel.node)}
       <h4>${h(L.t('node.connections'))}</h4>
       ${conns.length ? `<ul class="y-conns">${conns.join('')}</ul>` : `<p class="y-empty">${h(L.t('node.noConnections'))}</p>`}`;
+  }
+
+  /** A card's chart (data.chart) at full size, drawn at the panel's width with its data table. */
+  nodeChartHtml(node) {
+    const L = this.L;
+    const b = withChartLocale(L, () => chartBlock(node));
+    if (!b) return '';
+    const box = $('inspector-body');
+    const pad = box ? parseFloat(getComputedStyle(box).paddingLeft) + parseFloat(getComputedStyle(box).paddingRight) : 0;
+    const width = box && box.clientWidth ? box.clientWidth - pad : 300;
+    return `<h4>${h(b.title || L.t('node.chart'))}</h4>${renderBlock({ ...b, title: undefined, span: 'full' }, `node-chart-${node.id}`, { pageMeta: this.engine.model.meta, locale: L, width })}`;
   }
 
   // --- Levels (drill-down) ---------------------------------------------------

@@ -50,6 +50,11 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   `gantt` plans (dates or relative days, working days and holidays, groups, milestones,
   dependencies, today line), legends that toggle series and slices, and
   `matrix` blocks (2x2 quadrants, 3x3-5x5 risk heat maps); inline SVG, both themes, no libraries. See [`docs/pages.md`](docs/pages.md).
+- **Charts in diagrams**: `data.chart` puts a mini chart on any card (sparkline, mini columns,
+  labelled bars, share donut, progress ring, bullet against a target) and `"shape": "chart"`
+  makes a chart card (any page chart kind, with axes and legend) that connects and highlights
+  like any card. Both export to SVG / PNG, open full size in the inspector and list their
+  numbers in Markdown. See [`docs/authoring.md`](docs/authoring.md#charts-in-diagrams).
 - **Data models and class diagrams**: cards with field rows (PK / FK / UK, types) or attributes
   and methods (visibility, «stereotype»), growing with their rows; crow's foot cardinality and
   UML heads (inheritance, realization, composition, aggregation, dependency) at edge ends,
@@ -160,19 +165,20 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 
 ## Examples
 
-24 diagrams, 13 answer pages and 7 chart pages in [`examples/`](examples) (`yantra examples`
+25 diagrams, 13 answer pages and 7 chart pages in [`examples/`](examples) (`yantra examples`
 lists them). In the dev viewer (`npm run dev`) the example menu has three sections: Diagrams,
 Answer pages (Q&A) and Charts & dashboards; a page opens in the viewer with its own theme and
 live diagram embeds.
 
-- Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
+- Diagrams: `live-operations-dashboard` (chart cards and mini charts on cards),
+  `cloud-architecture` (modes, mini charts), `aws-serverless` (groups), `oauth-login` (sequence),
   `platform-overview` (drill-down into two detail diagrams, links),
-  `smart-city-operations` (six nested levels in one frame, opens partly folded),
+  `smart-city-operations` (six nested levels in one frame, opens partly folded, live readings),
   `global-retail-group` (six-level drill-down, nested groups inside levels),
   `hospital-trust-monitoring` (six nested levels plus two detail levels),
   `ecommerce-schema` (ERD), `payment-classes` (UML class diagram),
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
-  (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
+  (panels), `research-paper-lifecycle`, `sales-pipeline` (mini charts), `supply-chain`, `academic-faculty`,
   `healthcare-clinical`, `ticket-lifecycle` (state machine), `parallel-checkout-states` (fork,
   join and concurrent regions), `org-chart` (tree),
   `study-plan-mindmap` (mind map), `incident-triage-decision-tree` (decision tree, opens folded),

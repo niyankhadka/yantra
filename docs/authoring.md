@@ -42,6 +42,7 @@ direction of the edges, so **edge direction is your layout tool**:
 | Node title | ≤ 42 columns (characters; CJK count 2) | Detail goes in `subtitle` (card) or `description` (inspector) |
 | Edge label | ≤ 28 columns, ideally 1–3 words | Labels name what flows: `JWT`, `Order event`, `SQL write` |
 | Steps per scenario | 3–8 | The first step is usually an overview |
+| Charts | ≤ 6 chart cards, ≤ 12 cards with a mini chart | A chart stands out only when few cards carry one |
 | Groups | 2–5 in a flat diagram; nested: ≤ 24 groups, ≤ 6 levels | Deeper or larger: fold inner boxes, or drill down (see [Deep hierarchies](#deep-hierarchies)) |
 
 ## Content rules
@@ -69,7 +70,7 @@ user wants that kind of information:
 |---|---|---|
 | **Summary** | `meta.summary` exists | a summary, overview, key points, TL;DR |
 | **Step** | any step has a `payload` | request/response detail, data per step, step-by-step specifics |
-| **Details** | any node has `description`, `tech`, `metadata`, `ports`, `sourceFile`… | component details, specs, owners, code references |
+| **Details** | any node has `description`, `tech`, `metadata`, `ports`, `sourceFile`, `chart`… | component details, specs, owners, code references |
 | *your panel* | listed in `panels` | anything else: risks, costs, glossary, FAQ, decisions, metrics |
 
 ```json
@@ -494,6 +495,65 @@ Edges take a marker at each end, independent of `style`:
 
 See `examples/ecommerce-schema.json` and `examples/payment-classes.json`.
 
+## Charts in diagrams
+
+A card can carry a chart, drawn inside it under the subtitle. The card grows to fit it (the
+layout uses the real height), both themes and every zoom level look the same, and the SVG /
+PNG export draws it too. Clicking the card shows the chart full size, with its data table, in
+the **Details** tab; the Markdown export lists the numbers under **Chart**.
+
+**Mini charts** (`data.chart` on an ordinary card) show one reading at a glance:
+
+```json
+{ "id": "api", "type": "service", "data": { "title": "Orders API", "subtitle": "Takes orders",
+  "chart": { "kind": "line", "label": "p95 latency", "unit": " ms",
+             "values": [180, 172, 165, 190, 158, 150, 146, 142], "target": 160 } } }
+```
+
+| `kind` | Draws | Data |
+|---|---|---|
+| `line` (default with `values`), `area` | A sparkline; the latest value at the right of the caption | `values` (2-48 numbers, `null` for a gap), optional `labels` |
+| `column` | Mini columns from zero | `values` (up to 16), optional `labels` |
+| `bar` | Labelled bars with their values | `data: [{ label, value, tone? }]` (up to 5) |
+| `donut` | A small share donut with a legend | `data: [{ label, value, tone? }]` (up to 5, values ≥ 0) |
+| `ring` (default with only `value`) | Progress: `value` of `max` (default 100) | `value`, `max`, optional `target` |
+| `bullet` | One bar: `value` against a `target` tick | `value`, `target`, `max` (default: a round number above both) |
+
+- `label` is the short caption drawn on the card ("p95 latency", "Uptime"). `unit` goes after
+  numbers (`%`, ` ms`, `k`), `prefix` before (`£`). `target` draws a dashed line on line, area
+  and column charts and a tick on rings and bullets.
+- The chart takes the card's role colour; `tone` (`good`, `warn`, `bad`, `info`, `neutral` or a
+  hue) overrides it, and `data` items take their own `tone`.
+- A ring states its scale ("47 / 52") unless it is a plain percentage.
+- Per-mode readings: put a different `chart` in `data.modes.<id>`.
+
+**Chart cards** (`"shape": "chart"`) are wider cards (360px; `width` 240-480) whose `data.chart`
+is a page chart block (see `docs/pages.md`, Charts): `kind` `column`, `bar`, `line`, `area`,
+`pie` or `donut`, with `data` or `categories` + `series`, `stacked`, `unit` and `prefix`. They
+draw axes, gridlines and a legend at card scale, connect like any card and can be highlighted in
+steps. The card title is drawn; the chart's own `title` is what a screen reader hears.
+
+```json
+{ "id": "latency", "type": "dashboard", "shape": "chart", "width": 400,
+  "data": { "title": "p95 latency by service", "subtitle": "Today against last Friday",
+    "chart": { "kind": "column", "unit": " ms", "categories": ["Checkout", "Payments", "Search"],
+               "series": [{ "name": "Last Friday", "values": [190, 210, 170] },
+                          { "name": "Today", "values": [240, 260, 340] }] } } }
+```
+
+- Keep a chart card to 4 series, 12 bars or columns, 60 line points or 6 slices; a single
+  series takes the card's colour, several take the page chart colours.
+- Use chart cards for the 1-3 numbers the diagram is about (a dashboard, a funnel); use mini
+  charts for a reading per component; put anything bigger in a panel.
+- Accessibility: the card's accessible name adds the chart's kind, caption and values; chart
+  cards draw a `<title>`, and the inspector adds the hidden data table.
+- Custom `panels` take `chart`, `gantt` and `matrix` blocks too; they are drawn at the panel's
+  width.
+
+See `examples/live-operations-dashboard.json` (chart cards and mini charts),
+`examples/cloud-architecture.json`, `examples/sales-pipeline.json` and
+`examples/smart-city-operations.json`.
+
 ## Languages and right to left
 
 ```json
@@ -788,6 +848,11 @@ Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-ara
 | `chart.points` | {n} points |
 | `chart.seriesCount` | {n} series |
 | `chart.summary` | {kind}, {points}; values in the table that follows. |
+| `chart.kind.ring` | Progress ring |
+| `chart.kind.bullet` | Bullet chart |
+| `chart.target` | Target |
+| `chart.remaining` | Remaining |
+| `node.chart` | Chart |
 | `fold.expand` | Expand {title} ({n} hidden) |
 | `fold.collapse` | Collapse {title} |
 | `fold.folded` | Folded |
@@ -872,7 +937,7 @@ Fix in this order; each fix can clear later errors.
 | `ref/inspector-unknown-click-target`, `ref/panel-unknown-node` | Point `onNodeClick` at `node`, `stay` or a panel id; list only real card ids in `nodes`. |
 | `panel/*`, `ref/inspector-unknown-tab` | Give each panel a unique `id`, a `title` and blocks; list only existing tab ids. |
 | `page/block-invalid` (inside a panel) | Supply the block fields listed in the message. |
-| `schema/node-shape-invalid`, `schema/edge-arrow-invalid` | Use a listed `shape` (`card`, `state`, `initial`, `final`, `choice`, `fork`) or `arrow` (`forward`, `both`, `none`). |
+| `schema/node-shape-invalid`, `schema/edge-arrow-invalid` | Use a listed `shape` (`card`, `state`, `initial`, `final`, `choice`, `fork`, `chart`) or `arrow` (`forward`, `both`, `none`). |
 | `story/fork-needs-branches` (warning) | A fork splits into two or more transitions and a join merges two or more: add the missing branch, or drop the bar. |
 | `schema/group-kind-invalid` | `kind` on a group is `"region"` or absent. |
 | `group/region-needs-parent` | A region divides a composite state: set its `parent` to that group. |
@@ -902,6 +967,14 @@ Fix in this order; each fix can clear later errors.
 | `geometry/end-label-overlap` (warning) | An end label touches a card or another label: widen the gap, or shorten the label. |
 | `content/too-many-fields` (warning) | Over 12 rows on one card: keep the keys and the columns the story needs. |
 | `content/duplicate-field` (warning) | Remove or rename the repeated field. |
+| `chart/missing` | A chart card (`shape: "chart"`) needs `data.chart`. |
+| `chart/invalid` | `data.chart` is an object with numbers to draw: `values` (2+ for line and area), `data: [{ label, value }]`, or `value` for a ring or bullet; a chart card needs `data` or `categories` + `series`. |
+| `chart/unknown-kind` | Mini charts: `line`, `area`, `column`, `bar`, `donut`, `ring`, `bullet`. Chart cards: `column`, `bar`, `line`, `area`, `pie`, `donut`. |
+| `chart/mismatch` | Give one label per value, and one value per category in every series. |
+| `chart/negative` | Ring, donut and pie values must be 0 or more (and not all 0). |
+| `chart/out-of-range` (warning) | A ring or bullet `value` or `target` is above `max`: raise `max`. |
+| `chart/too-many-points`, `chart/too-many-series` (warnings) | Over the mini chart or chart card limits: shorten the series, group the rest as "Other", or move the chart to a panel. |
+| `budget/too-many-chart-cards`, `budget/too-many-mini-charts` (warnings) | Over 6 chart cards or 12 mini charts: keep the charts that carry the story. |
 | `drill/unknown-target` | `data.drill` must name a key of `diagrams` (ids are case-sensitive). |
 | `drill/cycle` | Levels drill into each other (A > B > A), or `$ref` files load each other: remove one `data.drill` or ref so levels form a tree. |
 | `drill/too-deep` | More than 8 levels below the overview: merge a level, or link the deepest one as a separate diagram (`url`). |

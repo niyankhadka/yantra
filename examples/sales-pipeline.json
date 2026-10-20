@@ -52,7 +52,27 @@
           "ACV Potential": "$350,000 / yr",
           "Intent Score": "94/100 (High)"
         },
-        "description": "Executive sponsor seeking to consolidate fragmented workflows into an automated enterprise platform."
+        "description": "Executive sponsor seeking to consolidate fragmented workflows into an automated enterprise platform.",
+        "chart": {
+          "kind": "column",
+          "label": "Inbound leads per month",
+          "labels": [
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct"
+          ],
+          "values": [
+            142,
+            156,
+            131,
+            118,
+            167,
+            184
+          ]
+        }
       }
     },
     {
@@ -68,7 +88,14 @@
           "SLA Window": "4 Hours",
           "Conversion Rate": "68%"
         },
-        "description": "Rigorous qualification aligning customer pain points, budgetary authority, and technical feasibility."
+        "description": "Rigorous qualification aligning customer pain points, budgetary authority, and technical feasibility.",
+        "chart": {
+          "kind": "bullet",
+          "label": "Qualified this quarter",
+          "value": 58,
+          "target": 70,
+          "max": 80
+        }
       }
     },
     {
@@ -84,7 +111,26 @@
           "Deliverable": "POC Verification Matrix",
           "Success Metric": "100% KPI Pass"
         },
-        "description": "Hands-on proof-of-concept demonstrating scalability, SOC2 compliance, and API interoperability."
+        "description": "Hands-on proof-of-concept demonstrating scalability, SOC2 compliance, and API interoperability.",
+        "chart": {
+          "kind": "bar",
+          "label": "Stage conversion",
+          "unit": "%",
+          "data": [
+            {
+              "label": "To POC",
+              "value": 42
+            },
+            {
+              "label": "POC passed",
+              "value": 71
+            },
+            {
+              "label": "To exec",
+              "value": 64
+            }
+          ]
+        }
       }
     },
     {
@@ -100,7 +146,28 @@
           "Sign-off Threshold": "Unanimous Quorum",
           "Priority": "P0 Strategic Initiative"
         },
-        "description": "Formal business case defense and executive capital expenditure authorization."
+        "description": "Formal business case defense and executive capital expenditure authorization.",
+        "chart": {
+          "kind": "donut",
+          "label": "Decisions this year",
+          "data": [
+            {
+              "label": "Approved",
+              "value": 23,
+              "tone": "good"
+            },
+            {
+              "label": "Deferred",
+              "value": 9,
+              "tone": "warn"
+            },
+            {
+              "label": "Declined",
+              "value": 6,
+              "tone": "bad"
+            }
+          ]
+        }
       }
     },
     {
@@ -116,7 +183,31 @@
           "Payment Terms": "Net 30 / Multi-Year",
           "Liability Cap": "Standard 2x Annual"
         },
-        "description": "Corporate counsel redlining of Master Services Agreement, data privacy addendum, and uptime warranties."
+        "description": "Corporate counsel redlining of Master Services Agreement, data privacy addendum, and uptime warranties.",
+        "chart": {
+          "kind": "line",
+          "label": "Days in redlining",
+          "unit": " d",
+          "labels": [
+            "Q1 2025",
+            "Q2 2025",
+            "Q3 2025",
+            "Q4 2025",
+            "Q1 2026",
+            "Q2 2026",
+            "Q3 2026"
+          ],
+          "values": [
+            41,
+            38,
+            44,
+            36,
+            31,
+            29,
+            26
+          ],
+          "target": 30
+        }
       }
     },
     {
@@ -132,7 +223,15 @@
           "Time-to-Value": "30 Days",
           "Assigned CSM": "Global Strategic Pod 1"
         },
-        "description": "Deal execution recorded, revenue recognized, and white-glove onboarding kickoff initiated."
+        "description": "Deal execution recorded, revenue recognized, and white-glove onboarding kickoff initiated.",
+        "chart": {
+          "kind": "ring",
+          "label": "Annual target won",
+          "prefix": "£",
+          "unit": "m",
+          "value": 3.1,
+          "max": 4.2
+        }
       }
     }
   ],

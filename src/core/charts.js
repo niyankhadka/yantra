@@ -28,18 +28,23 @@ export const CHART_STRINGS = {
   milestone: 'Milestone',
   item: 'Item',
   noData: 'No data to chart.',
+  target: 'Target',
+  remaining: 'Remaining',
   series: (n) => `Series ${n}`,
   more: (n) => `+${n} more`,
   days: (n) => `${n} day${n === 1 ? '' : 's'}`,
   dayN: (n) => `Day ${n}`,
   quadrants: ['Top left', 'Top right', 'Bottom left', 'Bottom right'],
   months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-  kinds: { bar: 'Bar chart', column: 'Column chart', line: 'Line chart', area: 'Area chart', pie: 'Pie chart', donut: 'Donut chart', gantt: 'Gantt chart', matrix: 'Matrix', heat: 'Heat map', trend: 'Trend' },
+  kinds: { bar: 'Bar chart', column: 'Column chart', line: 'Line chart', area: 'Area chart', pie: 'Pie chart', donut: 'Donut chart', gantt: 'Gantt chart', matrix: 'Matrix', heat: 'Heat map', trend: 'Trend', ring: 'Progress ring', bullet: 'Bullet chart' },
   summary: (kind, n, s) => `${kind}, ${n} ${n === 1 ? 'point' : 'points'}${s > 1 ? `, ${s} series` : ''}; values in the table that follows.`
 };
 
 let S = CHART_STRINGS;
 let NUM_LANG = 'en-GB';
+
+/** The chart words in effect (inside withChartLocale, that language's). */
+export const chartWords = () => S;
 
 /** Chart words for a locale (localeOf() result); the English set when none. Months come from Intl. */
 export function chartStringsFor(L) {
@@ -58,7 +63,7 @@ export function chartStringsFor(L) {
     }
   }
   const kinds = Object.fromEntries(Object.keys(CHART_STRINGS.kinds).map((k) => [k, t(`chart.kind.${k}`)]));
-  const words = ['total', 'today', 'value', 'share', 'task', 'group', 'start', 'end', 'after', 'milestone', 'item', 'noData'];
+  const words = ['total', 'today', 'value', 'share', 'task', 'group', 'start', 'end', 'after', 'milestone', 'item', 'noData', 'target', 'remaining'];
   return {
     ...Object.fromEntries(words.map((w) => [w, t(`chart.${w}`)])),
     day: t('chart.day', { n: '' }).trim(),
@@ -199,6 +204,9 @@ const fmtDayShort = (n) => {
 const svgOpen = (w, hgt, label, minW, maxScale = 1.25) =>
   `<svg class="p-chart-svg" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${h(label)}" direction="ltr" style="min-width:${minW}px;max-width:${Math.round(w * maxScale)}px"><title>${h(label)}</title>`;
 
+/** The drawing's root: a page chart's scaling <svg>, or (o.bare) a fixed-size one for nesting in a card. */
+const open = (o, w, hgt, lbl, minW) => (o.bare ? `<svg x="${o.x || 0}" y="${o.y || 0}" width="${w}" height="${hgt}" viewBox="0 0 ${w} ${hgt}">` : svgOpen(w, hgt, lbl, minW));
+
 /** Word-wrap to at most `lines` lines of `chars` characters; the last line is clipped. */
 const wrap = (s, chars, lines = 2) => {
   const out = [];
@@ -301,17 +309,42 @@ export function renderChart(b, opts = {}) {
   if (!model.cats.length || !model.series.length) return empty();
   if (kind === 'pie' || kind === 'donut') return pieChart(b, model, kind, opts);
   const W = widthFor(opts, 760, 440);
-  const svg = kind === 'line' || kind === 'area' ? lineChart(b, model, kind, W) : bandChart(b, model, kind, W);
+  // Fitted to a narrow container (an inspector panel), column, line and area charts get shorter too
+  const H = isNum(opts.width) && opts.width > 0 ? Math.round(Math.max(190, Math.min(280, W * 0.66))) : undefined;
+  const svg = kind === 'line' || kind === 'area' ? lineChart(b, model, kind, W, { H }) : bandChart(b, model, kind, W, { H });
   const many = model.series.length > 1;
   const table = srTable(label(kind, b), ['', ...model.series.map((s) => s.name)], model.cats.map((c, j) => [c, ...model.series.map((s) => (s.values[j] === null ? '' : fmtValue(s.values[j], b)))]));
   return figure(kind, `${many ? legendHtml(model.series, kind === 'line') : ''}<div class="p-scroll">${svg}${fitVariants(renderChart, b, opts, W)}</div>${table}`, opts.caption);
+}
+
+/**
+ * A chart block drawn at a fixed size for a chart card on a diagram
+ * (src/core/cardchart.js): the same drawing as on pages, as a bare <svg> to
+ * nest at (o.x, o.y). `o.width` and `o.height` size column, line and area
+ * charts (a bar chart's height follows its rows); `o.size` is a pie's
+ * diameter. `o.hue` colours a single series that names no tone. Returns
+ * { kind, model, svg, h } (pies add items, total, pct), or null when there is
+ * nothing to draw.
+ */
+export function chartDrawing(b, o = {}) {
+  const kind = CHART_KINDS.includes(b.kind) ? b.kind : 'bar';
+  const model = chartSeries(b);
+  if (!model.cats.length || !model.series.length) return null;
+  if (kind === 'pie' || kind === 'donut') {
+    const r = pieChart(b, model, kind, { bare: true, size: o.size, x: o.x, y: o.y });
+    return typeof r === 'string' ? null : { kind, model, ...r, h: o.size || 240 };
+  }
+  if (o.hue && model.series.length === 1 && !(Array.isArray(b.series) && b.series[0]?.tone)) model.series[0].hue = o.hue;
+  const draw = kind === 'line' || kind === 'area' ? lineChart : bandChart;
+  const svg = draw(b, model, kind, o.width || 360, { bare: true, H: o.height, x: o.x, y: o.y });
+  return { kind, model, svg, h: +/height="([\d.]+)"/.exec(svg)[1] };
 }
 
 /** Tag a series mark with its series index (legend toggles hide data-s marks). */
 const ofSeries = (k, mark) => mark.replace(/^<(\w+) /, (_, tag) => `<${tag} data-s="${k}" `);
 
 /** Column (vertical) or bar (horizontal) chart: grouped, or stacked with `stacked: true`. */
-function bandChart(b, { cats, series }, kind, W) {
+function bandChart(b, { cats, series }, kind, W, o = {}) {
   const horizontal = kind === 'bar';
   const n = cats.length;
   const s = series.length;
@@ -346,11 +379,13 @@ function bandChart(b, { cats, series }, kind, W) {
   const hueAt = (se, j) => se.hues?.[j] || se.hue;
 
   if (!horizontal) {
-    const H = 280;
+    const H = o.H || 280;
     const ml = Math.ceil(Math.max(...t.ticks.map((v) => textW(tick(v), 11)))) + 14;
     const [x0, x1, y0, y1] = [ml, W - 12, showValues ? 20 : 10, H - 30];
     const vy = (v) => y1 - ((v - t.min) / (t.max - t.min)) * (y1 - y0);
     const slot = (x1 - x0) / n;
+    // Value labels only when each fits over its column (narrow panels drop them; tooltips keep them)
+    const labelled = showValues && Math.max(...series[0].values.map((v) => (v === null ? 0 : textW(val(v), 10.5)))) <= slot - 4;
     const gw = Math.min(slot * (single || stacked ? 0.62 : 0.8), single || stacked ? 64 : 28 * s);
     const bw = single || stacked ? gw : gw / s;
     for (const v of t.ticks) out.push(`<line class="${v === 0 ? 'c-zero' : 'c-grid'}" x1="${x0}" x2="${x1}" y1="${r1(vy(v))}" y2="${r1(vy(v))}"/>`, txt(x0 - 6, vy(v) + 4, tick(v), { anchor: 'end' }));
@@ -369,7 +404,7 @@ function bandChart(b, { cats, series }, kind, W) {
           out.push(ofSeries(k, bar(base, gw, acc[i], acc[i] + v, hueAt(se, j), tip(j, se, v))));
           acc[i] += v;
         } else out.push(ofSeries(k, bar(base + k * bw + (single ? 0 : 0.75), bw - (single ? 0 : 1.5), 0, v, hueAt(se, j), tip(j, se, v))));
-        if (showValues) out.push(txt(base + gw / 2, v >= 0 ? vy(v) - 5 : vy(v) + 13, val(v), { anchor: 'middle', size: 10.5, cls: 'c-val' }));
+        if (labelled) out.push(txt(base + gw / 2, v >= 0 ? vy(v) - 5 : vy(v) + 13, val(v), { anchor: 'middle', size: 10.5, cls: 'c-val' }));
       });
     }
     // Category labels: every k-th when they would collide, clipped to the space they get
@@ -378,7 +413,7 @@ function bandChart(b, { cats, series }, kind, W) {
     while (k < n && slot * k < lw + 8) k++;
     const chars = Math.max(3, Math.floor((slot * k - 6) / (11 * 0.58)));
     cats.forEach((c, j) => j % k === 0 && out.push(txt(x0 + slot * (j + 0.5), y1 + 17, clip(c, chars), { anchor: 'middle' })));
-    return `${svgOpen(W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
+    return `${open(o, W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
   }
 
   const lw = Math.min(Math.max(...cats.map((c) => textW(c, 12))), W * 0.3);
@@ -408,7 +443,7 @@ function bandChart(b, { cats, series }, kind, W) {
       if (showValues) out.push(txt(v >= 0 ? vx(v) + 5 : vx(0) + 5, top + bandH / 2 + 4, val(v), { size: 10.5, cls: 'c-val' }));
     });
   }
-  return `${svgOpen(W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
+  return `${open(o, W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}</svg>`;
 }
 
 const MARKS = [
@@ -420,11 +455,11 @@ const MARKS = [
 const DASHES = ['', '7 4', '2 3', '9 3 2 3', '4 4', '1 3'];
 
 /** Line or area chart; x positions follow the dates when every category is one. */
-function lineChart(b, { cats, series }, kind, W) {
+function lineChart(b, { cats, series }, kind, W, o = {}) {
   const area = kind === 'area';
   const n = cats.length;
   const stacked = area && b.stacked === true && series.length > 1;
-  const H = 280;
+  const H = o.H || 280;
   const tops = [];
   const bases = [];
   const cum = new Array(n).fill(0);
@@ -493,7 +528,7 @@ function lineChart(b, { cats, series }, kind, W) {
       se.values.forEach((v, j) => v !== null && (g += MARKS[i % MARKS.length](px(j), vy(top[j]), ' class="c-mark"', `<title>${h(`${cats[j]}${series.length > 1 ? ` · ${se.name}` : ''}: ${fmtValue(v, b)}`)}</title>`)));
     return `<g data-hue="${se.hue}" data-s="${i}">${g}</g>`;
   });
-  return `${svgOpen(W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}${paths.join('')}</svg>`;
+  return `${open(o, W, H, label(kind, b), Math.round(W * 0.75))}${out.join('')}${paths.join('')}</svg>`;
 }
 
 /** Pie or donut: slices from `data`, a legend with values and shares, the total in a donut's centre. */
@@ -525,14 +560,17 @@ function pieChart(b, { cats, series }, kind, opts) {
       out.push(`<path data-hue="${d.hue}" data-i="${i}" fill="currentColor" class="c-slice" d="M${at(a, r)}A${r} ${r} 0 ${big} 1 ${at(b2, r)}${
         donut ? `L${at(b2, ir)}A${ir} ${ir} 0 ${big} 0 ${at(a, ir)}` : `L${c} ${c}`
       }Z">${title}</path>`);
-    if (frac >= (donut ? 0.08 : 0.06)) {
+    // a card-sized pie (opts.bare) is too small for labels on the slices: its legend lists the shares
+    if (!opts.bare && frac >= (donut ? 0.08 : 0.06)) {
       const mid = (a + b2) / 2;
       const rad = donut ? (r + ir) / 2 : r * 0.64;
       out.push(txt(c + rad * Math.cos(mid), c + rad * Math.sin(mid) + 4, pct(d.value), { anchor: 'middle', size: donut ? 11 : 12, cls: 'c-pct' }));
     }
     a = b2;
   }
-  if (donut) out.push(txt(c, c + 4, fmtValue(total, b, { compact: total >= 1e5 }), { anchor: 'middle', size: 24, cls: 'c-total' }), txt(c, c + 24, S.total, { anchor: 'middle', size: 11.5 }));
+  if (donut && opts.bare) out.push(txt(c, c + 10, fmtValue(total, b, { compact: total >= 1e4 }), { anchor: 'middle', size: 30, cls: 'c-total' }));
+  else if (donut) out.push(txt(c, c + 4, fmtValue(total, b, { compact: total >= 1e5 }), { anchor: 'middle', size: 24, cls: 'c-total' }), txt(c, c + 24, S.total, { anchor: 'middle', size: 11.5 }));
+  if (opts.bare) return { svg: `${open(opts, opts.size || 240, opts.size || 240, '', 0).replace(/viewBox="[^"]*"/, 'viewBox="0 0 240 240"')}${out.join('')}</svg>`, items, total, pct };
   const svg = `${svgOpen(240, 240, label(kind, b), 0)}${out.join('')}</svg>`;
   const legend = `<ul class="p-legend p-legend--pie">${items
     .map((d, i) => `<li data-hue="${d.hue}" data-i="${i}" data-v="${d.value}"><i></i><span>${h(d.label)}</span><b>${h(fmtValue(d.value, b))}</b><em>${h(pct(d.value))}</em></li>`)
