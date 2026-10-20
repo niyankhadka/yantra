@@ -38,7 +38,7 @@ class MetadataTests(unittest.TestCase):
         self.assertEqual(npm["version"], yantra.__version__)
 
     def test_pyproject_metadata(self) -> None:
-        self.assertEqual(_field("name"), "yantra-diagrams")
+        self.assertEqual(_field("name"), "niyankhadka-yantra")
         self.assertEqual(_field("readme"), "README.md")
         self.assertTrue((ROOT / "python" / "README.md").exists())
         self.assertTrue((ROOT / "python" / "LICENSE").exists())

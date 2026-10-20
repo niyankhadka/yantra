@@ -3,7 +3,7 @@
 All notable changes to Yantra are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The npm package
-(`@niyankhadka/yantra`) and the Python SDK (`yantra-diagrams`) share one version number.
+(`@niyankhadka/yantra`) and the Python SDK (`niyankhadka-yantra`) share one version number.
 
 ## [Unreleased]
 

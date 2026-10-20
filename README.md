@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/node-%3E%3D18-339933.svg" alt="Node.js 18 or later">
   <!-- Once published:
   <a href="https://www.npmjs.com/package/@niyankhadka/yantra"><img src="https://img.shields.io/npm/v/@niyankhadka/yantra.svg" alt="npm"></a>
-  <a href="https://pypi.org/project/yantra-diagrams/"><img src="https://img.shields.io/pypi/v/yantra-diagrams.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/niyankhadka-yantra/"><img src="https://img.shields.io/pypi/v/niyankhadka-yantra.svg" alt="PyPI"></a>
   -->
 </p>
 
@@ -143,7 +143,7 @@ Once published, the packages install with:
 
 ```bash
 npm i -g @niyankhadka/yantra      # the `yantra` command; ships a prebuilt viewer
-pip install yantra-diagrams       # Python SDK (import yantra)
+pip install niyankhadka-yantra    # Python SDK (import yantra)
 ```
 
 ## Pick your output
@@ -335,7 +335,7 @@ The SDK (Python 3.9 or later, no third-party dependencies) writes payloads in Py
 the CLI to validate and build, so Node.js is still needed for those steps.
 
 ```bash
-pip install -e python/          # from a clone today; `pip install yantra-diagrams` once published
+pip install -e python/          # from a clone today; `pip install niyankhadka-yantra` once published
 ```
 
 ```python
@@ -435,7 +435,7 @@ src/assets/          Logos
 schemas/             JSON Schemas for diagrams and answer pages
 examples/            Example diagrams and pages, and import samples
 docs/                Authoring, pages, import and architecture guides
-python/              Python SDK (yantra-diagrams)
+python/              Python SDK (niyankhadka-yantra)
 tests/               Node test suite
 ```
 

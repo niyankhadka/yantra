@@ -8,8 +8,8 @@ No third-party Python dependencies; Python >= 3.9.
 > (`to_dict()`, `save_json()`) works without it.
 
 ```bash
-pip install yantra-diagrams     # once published; import name "yantra"
-pip install -e python/          # from a checkout of the repository
+pip install niyankhadka-yantra     # once published; import name "yantra"
+pip install -e python/             # from a checkout of the repository
 ```
 
 The CLI is found, in order, via:
