@@ -27,6 +27,10 @@ const source = {
   filePath: { type: 'string', description: 'Path to a .json file (alternative to payload). Page diagram `src` paths and drill-down `{ "$ref": "detail.json" }` entries resolve relative to it (and must stay inside the input root).' }
 };
 const level = { type: 'string', description: 'Id of a detail diagram (drill-down level, a key of the diagrams map) to use instead of the overview.' };
+const fold = {
+  collapsed: { type: 'array', items: { type: 'string' }, description: 'Ids folded when the diagram opens, instead of meta.layout.collapsed: subtree roots (tree, mindmap) or groups (layered). Diagrams only.' },
+  expandAll: { type: 'boolean', description: 'Open with nothing folded (overrides collapsed and meta.layout.collapsed).' }
+};
 
 const TOOLS = [
   {
@@ -54,7 +58,7 @@ const TOOLS = [
     description: 'Validate and write a single offline HTML file (interactive diagram or one-page answer). Refuses on validation errors unless force is true.',
     inputSchema: {
       type: 'object',
-      properties: { ...source, outputPath: { type: 'string' }, force: { type: 'boolean' } },
+      properties: { ...source, outputPath: { type: 'string' }, force: { type: 'boolean' }, ...fold },
       required: ['outputPath']
     }
   },
@@ -72,6 +76,7 @@ const TOOLS = [
         step: { type: 'number', description: '1-based step to highlight (sequence view)' },
         level,
         allLevels: { type: 'boolean', description: 'Markdown only: append every detail diagram after the overview.' },
+        ...fold,
         outputPath: { type: 'string' }
       },
       required: ['format']
@@ -117,7 +122,8 @@ const TOOLS = [
         theme: { type: 'string', enum: ['light', 'dark'] },
         step: { type: 'number', description: '1-based walkthrough step to show' },
         view: { type: 'string', enum: ['flow', 'sequence'], description: 'Flow graph or sequence diagram (default meta.view)' },
-        level
+        level,
+        ...fold
       },
       required: ['outputPath']
     }
@@ -214,7 +220,7 @@ function call(name, args) {
       return localizeFindings(lint(payload), args.lang === 'auto' ? payload?.meta?.lang : args.lang);
     }
     case 'yantra_build': {
-      const payload = loadPayload(args);
+      const payload = withFolds(loadPayload(args), args);
       const out = outputPath(args.outputPath, ['.html']);
       const report = lint(payload);
       if (!report.valid && !args.force) return { written: false, ...report };
@@ -226,7 +232,7 @@ function call(name, args) {
       if (args.format !== 'md' && isPage(payload)) throw new Error('Answer pages export to md, or to html with yantra_build.');
       const theme = args.theme === 'dark' ? 'dark' : 'light';
       const logos = readLogos();
-      const lv = pickLevel(payload, args.level);
+      const lv = withFolds(pickLevel(payload, args.level), args);
       const content =
         args.format === 'md'
           ? isPage(payload) ? pageToMarkdown(payload) : toMarkdown(lv, { levels: !!args.allLevels && lv === payload })
@@ -275,12 +281,16 @@ function call(name, args) {
         tmp = `${png}.tmp.html`;
         const payload = loadPayload(args);
         pickLevel(payload, args.level);
+        foldsOf(payload, args); // pages refuse folds early
         fs.writeFileSync(tmp, buildAny(payload));
         html = tmp;
         if (isPage(payload)) args = { ...args, width: 1100, height: 2200 };
       }
       try {
-        const out = screenshot(html, png, { theme: args.theme, hash: [args.level ? `level=${encodeURIComponent(args.level)}` : '', args.step ? `step=${args.step}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&'), width: args.width, height: args.height });
+        // Folds go in the link (#collapsed=a,b; empty unfolds all), so they apply to a level too
+        const ids = args.expandAll === true ? [] : Array.isArray(args.collapsed) ? args.collapsed.map(String) : null;
+        const hash = [args.level ? `level=${encodeURIComponent(args.level)}` : '', ids ? `collapsed=${ids.map(encodeURIComponent).join(',')}` : '', args.step ? `step=${args.step}` : '', args.view ? `view=${args.view}` : ''];
+        const out = screenshot(html, png, { theme: args.theme, hash: hash.filter(Boolean).join('&'), width: args.width, height: args.height });
         return { outputPath: out };
       } finally {
         if (tmp) fs.rmSync(tmp, { force: true });
@@ -289,6 +299,23 @@ function call(name, args) {
     default:
       throw Object.assign(new Error(`Unknown tool: ${name}`), { code: -32602 });
   }
+}
+
+/** Ids folded when the diagram opens (collapsed / expandAll), or null to keep meta.layout.collapsed. */
+function foldsOf(payload, args) {
+  if (args.expandAll !== true && args.collapsed === undefined) return null;
+  if (isPage(payload)) throw new Error('collapsed and expandAll apply to diagrams, not answer pages.');
+  if (args.expandAll === true) return [];
+  if (!Array.isArray(args.collapsed) || !args.collapsed.every((id) => typeof id === 'string')) throw new Error('collapsed must be an array of node or group ids.');
+  return [...new Set(args.collapsed)];
+}
+
+function withFolds(payload, args) {
+  const ids = foldsOf(payload, args);
+  if (!ids) return payload;
+  const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+  const layout = meta.layout && typeof meta.layout === 'object' ? meta.layout : {};
+  return { ...payload, meta: { ...meta, layout: { ...layout, collapsed: ids } } };
 }
 
 function send(msg) {

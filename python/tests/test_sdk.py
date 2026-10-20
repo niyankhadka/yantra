@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -272,6 +273,24 @@ class PayloadShapeTests(unittest.TestCase):
         with self.assertRaises(YantraError):
             Diagram("X").layout("TB", algorithm="radial")
 
+    def test_compact_and_assistants(self) -> None:
+        d = Diagram("Org").tree("TB", compact=True)
+        ceo = d.add_node("ceo", "Amara Okafor", "exec")
+        cos = ceo.assistant("cos", "Rhys Morgan", subtitle="Chief of Staff")
+        p = d.to_dict()
+        self.assertEqual(p["meta"]["layout"], {"direction": "TB", "algorithm": "tree", "compact": True})
+        node = next(n for n in p["nodes"] if n["id"] == "cos")
+        self.assertEqual((node["type"], node["data"]["assistant"]), ("exec", True))
+        self.assertIn({"id": "ceo-cos", "source": "ceo", "target": "cos"}, p["edges"])
+        self.assertEqual(cos.id, "cos")
+        self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
+        self.assertEqual(Diagram("A").tree(compact="auto").meta["layout"]["compact"], "auto")
+        self.assertNotIn("compact", Diagram("B").tree().meta["layout"])
+        with self.assertRaises(YantraError):
+            Diagram("C").tree(compact="yes")
+        with self.assertRaises(YantraError):
+            Diagram("D").tree(compact=1)
+
     def test_data_model_payload(self) -> None:
         p = data_model().to_dict()
         self.assertEqual(check(p, SCHEMAS["yantra-payload.schema.json"], "yantra-payload.schema.json"), [])
@@ -434,6 +453,22 @@ class CliTests(unittest.TestCase):
         report = org_chart().validate()
         self.assertClean(report)
         self.assertEqual(report["warnings"], [])
+
+    def test_folds_pass_through(self) -> None:
+        d = org_chart()
+        d.nodes["ceo"].assistant("ea", "Sam Lee", subtitle="Executive assistant")
+        self.assertEqual(d.validate()["warnings"], [])
+        chips = lambda text: len(re.findall(r">\+\d+</text>", text))  # +N fold badges
+        folded = Path(d.export_svg(os.path.join(self.tmp, "a.svg"))).read_text(encoding="utf-8")
+        self.assertEqual(chips(folded), 1, "eng opens folded")
+        open_all = Path(d.export_svg(os.path.join(self.tmp, "b.svg"), expand_all=True)).read_text(encoding="utf-8")
+        self.assertEqual(chips(open_all), 0)
+        two = Path(d.export_svg(os.path.join(self.tmp, "c.svg"), collapsed=["eng", "ops"], theme="dark")).read_text(encoding="utf-8")
+        self.assertEqual(chips(two), 2)
+        html = Path(d.build_html(os.path.join(self.tmp, "d.html"), collapsed=["ops"])).read_text(encoding="utf-8")
+        self.assertIn('"collapsed":["ops"]', html.replace(" ", ""))
+        with self.assertRaises(YantraError):
+            d.build_html(os.path.join(self.tmp, "e.html"), collapsed=["nobody"])
 
     def test_diagram_build(self) -> None:
         out = full_diagram().build_html(os.path.join(self.tmp, "d.html"))

@@ -13,6 +13,7 @@ import { escapeHtml as h } from '../core/text.js';
 import { sequenceLive } from '../core/sequence.js';
 import { END_KINDS, markerDef } from '../core/notation.js';
 import { POINT_SHAPES } from '../core/model.js';
+import { POINT_BADGE } from '../core/tree.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const hueVar = (hue) => `var(--y-hue-${HUES[hue] ? hue : 'slate'})`;
@@ -162,9 +163,11 @@ export class Renderer {
     const rtl = this.L?.dir === 'rtl';
     const n = scene.nodes.find((m) => m.id === id);
     if (n) {
-      if (n.toggle === 'bottom') return { x: n.x + n.w / 2, y: n.y + n.h };
-      if (n.toggle === 'right') return { x: n.x + n.w, y: n.y + n.h / 2 };
-      if (n.toggle === 'left') return { x: n.x, y: n.y + n.h / 2 };
+      // a folded pseudo-state's +N badge sits just outside the dot or diamond
+      const off = POINT_SHAPES.has(n.shape) ? POINT_BADGE : 0;
+      if (n.toggle === 'bottom') return { x: n.x + n.w / 2, y: n.y + n.h + off };
+      if (n.toggle === 'right') return { x: n.x + n.w + off, y: n.y + n.h / 2 };
+      if (n.toggle === 'left') return { x: n.x - off, y: n.y + n.h / 2 };
       return { x: rtl ? n.x + 26 : n.x + n.w - 26, y: n.y };
     }
     const g = (scene.groups || []).find((m) => m.id === id);

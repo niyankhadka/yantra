@@ -44,7 +44,10 @@ For "explain how X works", make the diagram first, then the page around it
    - Hierarchies → `meta.layout.algorithm: "tree"` (`direction: "TB"` for org charts and
      decision trees, `"LR"` for deep breakdowns) or `"mindmap"`. Edges go parent → child, one
      parent per node; hierarchy edges need no label (label decision branches `Yes` / `No`).
-     Up to ~40 cards; for bigger trees fold branches with `meta.layout.collapsed`.
+     Up to ~40 cards; for bigger trees fold branches with `meta.layout.collapsed`. Wide org
+     charts stack leaf teams in a column by themselves (`meta.layout.compact`, default
+     `"auto"`); mark an assistant or chief of staff `data.assistant: true` to sit beside
+     the manager. Groups are not drawn in trees: fold a subtree instead.
    - Steps: an overview first, then focused steps listing the nodes **and** edges involved.
      In the sequence view each step's `highlightEdges` become its arrows, in order.
    - Inspector tabs come from content, so include only what was asked for: `meta.summary`

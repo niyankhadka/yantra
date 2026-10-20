@@ -28,6 +28,10 @@ All notable changes to Yantra are documented here. The format follows
   `classDiagram` import.
 - Tree and mind-map layouts (`meta.layout.algorithm: "tree" | "mindmap"`) with collapsible
   branches, and Mermaid `mindmap` import.
+- Org charts: compact stacks for wide trees (`meta.layout.compact`), assistant cards beside
+  their manager (`data.assistant`), subtree dragging with tidy connectors, `+N` badges on
+  folded pseudo-states, and `--collapsed` / `--expand-all` (CLI), `collapsed` / `expandAll`
+  (MCP) and `collapsed=` / `expand_all=` (Python) for builds and exports.
 - draw.io / diagrams.net import (`.drawio`, `.xml`, `.drawio.svg`, compressed pages):
   shapes to node types, containers and swimlanes to groups, edge labels, arrow heads,
   ER cardinalities, UML relations, class and table cards, page selection with `--page` or `--all`.

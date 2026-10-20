@@ -5,7 +5,8 @@
     "version": "1.0.0",
     "layout": {
       "algorithm": "tree",
-      "direction": "TB"
+      "direction": "TB",
+      "compact": true
     },
     "summary": {
       "headline": "Four executives report to the CEO; engineering is the largest organisation.",
@@ -28,6 +29,7 @@
   },
   "nodes": [
     { "id": "ceo", "type": "exec", "width": 200, "data": { "title": "Amara Okafor", "subtitle": "Chief Executive Officer", "badge": "CEO", "metadata": { "Reports": 4, "Location": "London" } } },
+    { "id": "cos", "type": "exec", "width": 200, "data": { "title": "Rhys Morgan", "subtitle": "Chief of Staff", "badge": "Staff", "assistant": true, "description": "Runs the leadership meeting and the planning cycle; sits beside the CEO rather than in a reporting line." } },
     { "id": "cto", "type": "exec", "width": 200, "data": { "title": "Daniel Reyes", "subtitle": "Chief Technology Officer", "badge": "CTO", "metadata": { "Teams": 4, "Headcount": 58 } } },
     { "id": "cpo", "type": "exec", "width": 200, "data": { "title": "Mei Lin", "subtitle": "Chief Product Officer", "badge": "CPO", "metadata": { "Teams": 2, "Headcount": 21 } } },
     { "id": "cfo", "type": "exec", "width": 200, "data": { "title": "Tomás Silva", "subtitle": "Chief Financial Officer", "badge": "CFO", "metadata": { "Teams": 2, "Headcount": 12 } } },
@@ -45,6 +47,7 @@
     { "id": "support", "type": "ops", "width": 180, "data": { "title": "Leo Martins", "subtitle": "Head of Customer Support", "badge": "Support" } }
   ],
   "edges": [
+    { "id": "ceo-cos", "source": "ceo", "target": "cos" },
     { "id": "ceo-cto", "source": "ceo", "target": "cto" },
     { "id": "ceo-cpo", "source": "ceo", "target": "cpo" },
     { "id": "ceo-cfo", "source": "ceo", "target": "cfo" },
@@ -66,8 +69,8 @@
       "id": "main",
       "name": "Tour of the organisation",
       "steps": [
-        { "id": "overview", "title": "Overview", "description": "Sixteen leaders in four levels. Use the fold buttons under a card to hide or show its team." },
-        { "id": "leadership", "title": "Leadership team", "description": "The CEO and four executives meet weekly as the leadership team.", "highlightNodes": ["ceo", "cto", "cpo", "cfo", "coo"], "highlightEdges": ["ceo-cto", "ceo-cpo", "ceo-cfo", "ceo-coo"] },
+        { "id": "overview", "title": "Overview", "description": "Seventeen leaders in four levels. The chief of staff sits beside the CEO; small teams are listed under their leader. Use the fold buttons under a card to hide or show its team." },
+        { "id": "leadership", "title": "Leadership team", "description": "The CEO and four executives meet weekly as the leadership team; the chief of staff runs the meeting.", "highlightNodes": ["ceo", "cos", "cto", "cpo", "cfo", "coo"], "highlightEdges": ["ceo-cos", "ceo-cto", "ceo-cpo", "ceo-cfo", "ceo-coo"] },
         { "id": "engineering", "title": "Engineering", "description": "Platform (with reliability and data), product engineering and security report to the CTO.", "highlightNodes": ["cto", "platform", "sre", "data", "apps", "security"], "highlightEdges": ["cto-platform", "platform-sre", "platform-data", "cto-apps", "cto-security"] },
         { "id": "product", "title": "Product and design", "description": "Design and product management share one leader.", "highlightNodes": ["cpo", "design", "pm"], "highlightEdges": ["cpo-design", "cpo-pm"] },
         { "id": "operations", "title": "Finance and operations", "description": "Finance and legal report to the CFO; people and support to the COO.", "highlightNodes": ["cfo", "finance", "legal", "coo", "people", "support"], "highlightEdges": ["cfo-finance", "cfo-legal", "coo-people", "coo-support"] }

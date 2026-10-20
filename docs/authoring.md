@@ -160,14 +160,33 @@ child; the engine takes the hierarchy from them.
   the branch needs a name: `Yes` / `No` in a decision tree, a condition, a percentage.
 - **People cards**: `title` is the name, `subtitle` the role, `badge` a short team or level
   tag; `width: 180-200` keeps wide org charts compact.
+- **Wide org charts: compact stacks.** In a `TB` tree, a parent whose children are all
+  leaves (no reports of their own, no edge label) can list them in one column below itself,
+  indented on a side bus, instead of a row. `meta.layout.compact`: `"auto"` (default) does
+  this only when the spread tree is much wider than tall (over 1600 px and 2.4 times its
+  height), `true` always, `false` never. Parents with a mix of leaf and non-leaf children keep
+  their row. A 30-40 person org chart then fits a near-square canvas. `LR` trees and mind maps
+  are never stacked (`layout/compact-ignored` when `compact: true` is set there).
+- **Assistants and staff**: `data.assistant: true` on a leaf card (an executive assistant, a
+  chief of staff) places it beside its manager, in the manager's row, on a short side
+  connector instead of a level below. The first assistant goes right (TB) or below (LR), the
+  next on the other side, more stack in those columns. A root, a card with reports or a mind
+  map ignores the flag (`layout/assistant-ignored`).
+- **Dragging** a card moves its visible subtree with it; comb, stack and assistant connectors
+  are rebuilt from where the cards now sit (mind-map curves stay curves). A child dragged out
+  of tree order (above its parent, say) is routed like any other edge.
 - **Mind maps** have one root (the first node nothing points at). Branch colours replace role
   colours on the canvas, so the roles legend is hidden; keep `roles` for the inspector.
 - Order children the way they should read: siblings keep the order of their edges.
 - State shapes work here too: a self-loop sits right of its card (TB tree) or below it (LR
-  tree, mind map) with room kept for it; dots and diamonds carry no fold button. Cards with
+  tree, mind map) with room kept for it; dots and diamonds carry no fold button while open,
+  and a `+N` badge beside them while folded (click it to unfold). Cards with
   `data.drill` keep their drill mark, and each detail level opens with its own `collapsed`.
 - Groups are not drawn in these layouts (`layout/groups-ignored`); the hierarchy is the
-  boundary.
+  boundary. This is deliberate: a tidy tree packs subtrees by their outline, so a box around
+  one subtree would often enclose cards of its neighbours. To show or hide a team, fold its
+  top card (`meta.layout.collapsed: ["cto"]`); folding a group id in a tree warns
+  `layout/collapse-ignored`.
 
 See `examples/org-chart.json`, `examples/study-plan-mindmap.json` and
 `examples/incident-triage-decision-tree.json`.
@@ -181,7 +200,9 @@ key `X` on a selected card; the state is kept in the link as `#collapsed=id,id`)
 - in the `layered` layout, every **group** folds into a summary card that takes over the
   group's edges (parallel edges merge, internal ones disappear).
 
-`meta.layout.collapsed: ["id", ...]` lists what is folded when the viewer opens. Use it for
+`meta.layout.collapsed: ["id", ...]` lists what is folded when the viewer opens (`build`,
+`export` and `screenshot` take `--collapsed id,id` or `--expand-all` to override it for one
+output; MCP tools take `collapsed` / `expandAll`). Use it for
 large trees (lint counts the cards that show at first against the budget of 40) and for detail
 groups in an architecture overview. A step that highlights a folded card unfolds it, so a
 walkthrough can open a branch at the right moment. Validation checks the drawing both as it
@@ -685,7 +706,10 @@ Fix in this order; each fix can clear later errors.
 | `schema/unknown-view` | `meta.view` must be `flow` or `sequence`. |
 | `schema/unknown-layout-algorithm`, `schema/layout-collapsed-invalid` | `meta.layout.algorithm` is `layered`, `tree` or `mindmap`; `collapsed` is an array of ids. |
 | `ref/collapsed-unknown` | List only node or group ids in `meta.layout.collapsed`. |
-| `layout/collapse-ignored` (warning) | Tree layouts fold cards that have children; the layered layout folds groups only. |
+| `layout/collapse-ignored` (warning) | Tree layouts fold cards that have children (not groups); the layered layout folds groups only. |
+| `schema/layout-compact-invalid` | `meta.layout.compact` is `true`, `false` or `"auto"`. |
+| `layout/compact-ignored` (warning) | Compact stacks apply to `tree` layouts with `direction: "TB"` only. |
+| `layout/assistant-ignored` (warning) | `data.assistant: true` needs a tree layout and a leaf card with a manager. |
 | `layout/tree-cross-link` (warning) | A node has a second parent: repeat the shared card or drop the edge. |
 | `layout/groups-ignored` (warning) | Remove `groups` from a tree or mind map, or use the layered layout. |
 | `layout/mindmap-roots` (warning) | Connect every branch to one central root. |

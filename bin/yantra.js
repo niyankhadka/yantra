@@ -2,9 +2,9 @@
 /**
  * Yantra CLI.
  *   yantra validate <diagram.json> [--json] [--lang xx]
- *   yantra build <diagram.json> [-o out.html]
- *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
- *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id]
+ *   yantra build <diagram.json> [-o out.html] [--collapsed id,id | --expand-all]
+ *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels] [--collapsed id,id | --expand-all]
+ *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id] [--collapsed id,id | --expand-all]
  *   yantra import <file.mmd|file.md|file.drawio|file.puml> [-o out.json] [--from mermaid|drawio|plantuml] [--page n] [--title "..."] [--all]
  *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp   yantra dev
  * Works with diagrams and with one-page answers ({ "kind": "page" }).
@@ -46,6 +46,9 @@ Options
                 "auto" uses the payload's meta.lang. Untranslated messages stay in English
   --level id    a detail diagram (drill-down level) instead of the overview
   --all-levels  Markdown export: append every detail diagram after the overview
+  --collapsed a,b   build / export / screenshot: open with these subtrees (tree, mindmap) or
+                    groups (layered) folded, instead of meta.layout.collapsed
+  --expand-all      build / export / screenshot: open with nothing folded
 
 Detail diagrams: a card with data.drill opens a diagram from the payload's "diagrams" map;
 { "$ref": "./detail.json" } entries are loaded relative to the input file.`;
@@ -60,7 +63,7 @@ function parse(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang'].includes(key)) out[key] = argv[++i];
+      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang', 'collapsed'].includes(key)) out[key] = argv[++i];
       else out[key] = true;
     } else out._.push(a);
   }
@@ -149,6 +152,26 @@ function pickLevel(payload, id) {
   return level;
 }
 
+/**
+ * --collapsed a,b / --expand-all: the ids folded when the diagram opens (null: keep
+ * meta.layout.collapsed). Diagrams only; an answer page keeps its embeds as authored.
+ */
+function folds(payload) {
+  if (!args['expand-all'] && args.collapsed === undefined) return null;
+  if (isPage(payload)) fail('--collapsed and --expand-all apply to diagrams, not answer pages.');
+  if (args['expand-all']) return [];
+  if (typeof args.collapsed !== 'string') fail('--collapsed needs a comma-separated list of ids, e.g. --collapsed eng,ops.');
+  return [...new Set(args.collapsed.split(',').map((s) => s.trim()).filter(Boolean))];
+}
+
+/** The payload opening with `ids` folded (null: unchanged). */
+function withFolds(payload, ids) {
+  if (!ids) return payload;
+  const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+  const layout = meta.layout && typeof meta.layout === 'object' ? meta.layout : {};
+  return { ...payload, meta: { ...meta, layout: { ...layout, collapsed: ids } } };
+}
+
 const args = parse(process.argv.slice(2));
 const [cmd = 'help', input] = args._;
 
@@ -165,7 +188,8 @@ try {
     }
 
     case 'build': {
-      const payload = load(input);
+      const raw = load(input);
+      const payload = withFolds(raw, folds(raw));
       const report = lint(payload);
       printReport(report, input);
       if (!report.valid && !args.force) fail('Fix the errors above, or pass --force to build anyway.');
@@ -178,7 +202,7 @@ try {
     case 'export': {
       const payload = load(input);
       const format = (args.format || (isPage(payload) ? 'md' : 'svg')).toLowerCase();
-      const level = pickLevel(payload, args.level);
+      const level = withFolds(pickLevel(payload, args.level), folds(payload));
       let content;
       if (format === 'svg') {
         if (isPage(payload)) fail('Answer pages export to html (yantra build) or md.');
@@ -200,15 +224,19 @@ try {
       let html = path.resolve(input);
       let tmp;
       let page = false;
+      let fold = null;
       if (input.endsWith('.json')) {
         const payload = load(input);
         page = isPage(payload);
+        fold = folds(payload);
         pickLevel(payload, args.level); // fails early on an unknown level
         tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-'));
         html = path.join(tmp, 'diagram.html');
         fs.writeFileSync(html, buildAny(payload));
-      }
-      const hash = [args.level ? `level=${encodeURIComponent(args.level)}` : '', args.step ? `step=${args.step}` : '', args.mode ? `mode=${args.mode}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&');
+      } else if (args['expand-all']) fold = [];
+      else if (typeof args.collapsed === 'string') fold = args.collapsed.split(',').map((s) => s.trim()).filter(Boolean);
+      // Folds go in the link (#collapsed=a,b; empty unfolds all), so they apply to --level too
+      const hash = [args.level ? `level=${encodeURIComponent(args.level)}` : '', fold ? `collapsed=${fold.map(encodeURIComponent).join(',')}` : '', args.step ? `step=${args.step}` : '', args.mode ? `mode=${args.mode}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&');
       const theme = args.theme === 'dark' ? 'dark' : 'light';
       const out = args.output || outName(input, `-${theme}.png`);
       try {

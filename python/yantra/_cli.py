@@ -22,9 +22,9 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
-__all__ = ["YantraError", "cli_command", "run_cli", "validate_payload", "build_payload", "import_diagram",
+__all__ = ["YantraError", "cli_command", "run_cli", "validate_payload", "build_payload", "export_payload", "import_diagram",
            "NPM_PACKAGE"]
 
 NPM_PACKAGE = "yantra-diagrams"
@@ -118,16 +118,50 @@ def validate_payload(payload: Dict[str, Any], name: str = "payload.json", base_d
         raise YantraError(f"yantra validate gave no report:\n{res.stderr or res.stdout}") from exc
 
 
+def _fold_args(collapsed: Optional[Iterable[Any]], expand_all: bool) -> List[str]:
+    """``--collapsed a,b`` / ``--expand-all``: what is folded when the diagram opens."""
+    if expand_all:
+        return ["--expand-all"]
+    if collapsed is None:
+        return []
+    ids = [str(i) for i in ([collapsed] if isinstance(collapsed, str) else collapsed)]
+    if any("," in i for i in ids):
+        raise YantraError("collapsed ids cannot contain commas")
+    return ["--collapsed", ",".join(ids)]
+
+
 def build_payload(payload: Dict[str, Any], output_html: str, force: bool = False,
-                  name: str = "payload.json", base_dir: Optional[str] = None) -> str:
-    """Validate and write a single-file offline HTML; returns the output path."""
+                  name: str = "payload.json", base_dir: Optional[str] = None,
+                  collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False) -> str:
+    """Validate and write a single-file offline HTML; returns the output path.
+    `collapsed` (ids) or `expand_all` replace meta.layout.collapsed for this build (diagrams only)."""
     out = os.path.abspath(output_html)
     with _PayloadFile(payload, name, base_dir) as file:
-        args = ["build", file, "-o", out]
+        args = ["build", file, "-o", out] + _fold_args(collapsed, expand_all)
         if force:
             args.append("--force")
         run_cli(args)
     return output_html
+
+
+def export_payload(payload: Dict[str, Any], output: str, format: str = "svg", theme: str = "light",
+                   step: Optional[int] = None, view: Optional[str] = None, level: Optional[str] = None,
+                   collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False,
+                   name: str = "payload.json", base_dir: Optional[str] = None) -> str:
+    """Write a static SVG (diagrams) or Markdown export (``yantra export``); returns the output path."""
+    if format not in ("svg", "md"):
+        raise YantraError(f"export format must be 'svg' or 'md', not {format!r}")
+    out = os.path.abspath(output)
+    with _PayloadFile(payload, name, base_dir) as file:
+        args = ["export", file, "-f", format, "-o", out, "--theme", theme] + _fold_args(collapsed, expand_all)
+        if step is not None:
+            args += ["--step", str(step)]
+        if view:
+            args += ["--view", view]
+        if level:
+            args += ["--level", level]
+        run_cli(args)
+    return output
 
 
 def import_diagram(source: str, format: Optional[str] = None, page: Optional[Any] = None,

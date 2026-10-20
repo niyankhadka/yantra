@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
-from ._cli import YantraError, build_payload, validate_payload
+from ._cli import YantraError, build_payload, export_payload, validate_payload
 from .i18n import language_meta
 
 __all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO",
@@ -24,6 +24,7 @@ SHAPES = ("card", "state", "initial", "final", "choice")
 #: Edge arrow heads: at the target (default), at both ends, or none (an undirected link).
 ARROWS = ("forward", "both", "none")
 ALGORITHMS = ("layered", "tree", "mindmap")
+COMPACT = (True, False, "auto")
 #: UML relationship kinds (edge ``relation``). Triangles and diamonds sit on the source.
 RELATIONS = ("inheritance", "realization", "composition", "aggregation", "association", "dependency")
 #: Markers for ``source_end`` / ``target_end``: UML heads and ER cardinality (crow's foot).
@@ -119,6 +120,12 @@ class Node:
         node = self._diagram.add_node(child_id, title, type or self.type, width=width, **data)
         self._diagram.add_edge(self.id, child_id, label=label)
         return node
+
+    def assistant(self, child_id: str, title: str, type: Optional[str] = None, label: str = "",
+                  width: Optional[float] = None, **data: Any) -> "Node":
+        """Add an assistant (staff) card: in a tree layout it sits beside this card on a short side
+        connector instead of a level below (``data.assistant: true``). Returns the assistant."""
+        return self.child(child_id, title, type, label=label, width=width, assistant=True, **data)
 
     def drill(self, diagram_id: str) -> "Node":
         """Open the detail diagram `diagram_id` (see :meth:`Diagram.detail`) from this card."""
@@ -259,18 +266,21 @@ class Diagram:
 
     # --- meta ---------------------------------------------------------------
     def layout(self, direction: str = "LR", mode: Optional[str] = None, algorithm: Optional[str] = None,
-               collapsed: Optional[Iterable[Any]] = None) -> "Diagram":
+               collapsed: Optional[Iterable[Any]] = None, compact: Optional[Union[bool, str]] = None) -> "Diagram":
         """Main flow direction: "LR" (left-to-right) or "TB" (top-to-bottom). `mode="manual"` uses node x/y.
 
         `algorithm`: "layered" (default; flows), "tree" (org charts, decision trees, breakdowns) or
         "mindmap" (central topic, balanced branches). `collapsed`: node ids (tree, mindmap) or group
-        ids (layered) folded when the viewer opens."""
+        ids (layered) folded when the viewer opens. `compact` (TB trees): True lists leaf teams in a
+        column under their parent, False never, "auto" (the default) only when the tree gets too wide."""
         if direction not in ("LR", "TB"):
             raise YantraError(f"layout direction must be 'LR' or 'TB', not {direction!r}")
         if mode not in (None, "auto", "manual"):
             raise YantraError(f"layout mode must be 'auto' or 'manual', not {mode!r}")
         if algorithm not in (None,) + ALGORITHMS:
             raise YantraError(f"layout algorithm must be one of {ALGORITHMS}, not {algorithm!r}")
+        if compact is not None and compact is not True and compact is not False and compact != "auto":
+            raise YantraError(f"layout compact must be True, False or 'auto', not {compact!r}")
         layout: Dict[str, Any] = {"direction": direction}
         if mode:
             layout["mode"] = mode
@@ -278,12 +288,16 @@ class Diagram:
             layout["algorithm"] = algorithm
         if collapsed:
             layout["collapsed"] = _ids(collapsed)
+        if compact is not None:
+            layout["compact"] = compact
         self.meta["layout"] = layout
         return self
 
-    def tree(self, direction: str = "TB", collapsed: Optional[Iterable[Any]] = None) -> "Diagram":
-        """Tidy tree layout: parents centred over children, comb connectors. Edges define the hierarchy."""
-        return self.layout(direction, algorithm="tree", collapsed=collapsed)
+    def tree(self, direction: str = "TB", collapsed: Optional[Iterable[Any]] = None,
+             compact: Optional[Union[bool, str]] = None) -> "Diagram":
+        """Tidy tree layout: parents centred over children, comb connectors. Edges define the hierarchy.
+        `compact` (TB): True / False / "auto" - list leaf teams in a column under their parent."""
+        return self.layout(direction, algorithm="tree", collapsed=collapsed, compact=compact)
 
     def mindmap(self, collapsed: Optional[Iterable[Any]] = None) -> "Diagram":
         """Mind-map layout: the first root in the centre, branches left and right, one colour per branch."""
@@ -544,6 +558,17 @@ class Diagram:
         translates the common messages ("auto": the diagram's language); codes do not change."""
         return validate_payload(self.to_dict(), "diagram.json", base_dir, lang)
 
-    def build_html(self, output_html: str, force: bool = False, base_dir: Optional[str] = None) -> str:
-        """Validate and write a single-file offline HTML diagram (every detail level included)."""
-        return build_payload(self.to_dict(), output_html, force, "diagram.json", base_dir)
+    def build_html(self, output_html: str, force: bool = False, base_dir: Optional[str] = None,
+                   collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False) -> str:
+        """Validate and write a single-file offline HTML diagram (every detail level included).
+        `collapsed` (ids) or `expand_all=True` set what is folded when it opens, for this file only."""
+        return build_payload(self.to_dict(), output_html, force, "diagram.json", base_dir,
+                             collapsed=collapsed, expand_all=expand_all)
+
+    def export_svg(self, output_svg: str, theme: str = "light", step: Optional[int] = None,
+                   view: Optional[str] = None, level: Optional[str] = None, collapsed: Optional[Iterable[Any]] = None,
+                   expand_all: bool = False, base_dir: Optional[str] = None) -> str:
+        """Write a static SVG of the diagram (or detail `level`); `step` is 1-based. `collapsed` /
+        `expand_all` set what is folded, as in :meth:`build_html`."""
+        return export_payload(self.to_dict(), output_svg, "svg", theme, step, view, level, collapsed, expand_all,
+                              "diagram.json", base_dir)

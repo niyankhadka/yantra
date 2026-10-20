@@ -6,7 +6,7 @@
 import { normalize, visibleGraph, groupIndex, roleKey, has, shapeOf, arrowOf, POINT_SHAPES } from './model.js';
 import { measureNode, autoLayout, labelSize, groupBoxes, groupTitle, selfLoop, GRID } from './layout.js';
 import { routeEdges, placeLabels, roundedPath, loopGeometry } from './route.js';
-import { treeIndex, tidyTree, mindMap, busRoute, dropLabel, curveRoute, branchHues, collapseGraph, isTreeAlgorithm, loopSideFor } from './tree.js';
+import { POINT_BADGE, treeIndex, tidyTree, mindMap, busRoute, dropLabel, curveRoute, branchHues, collapseGraph, isTreeAlgorithm, loopSideFor, stackRoute, sideRoute, endLabel, busFor } from './tree.js';
 import { iconFor, knownIcon } from './icons.js';
 import { HUES } from './theme.js';
 import { edgeEnds } from './notation.js';
@@ -60,7 +60,9 @@ export function computeScene(payload, options = {}) {
       loop.set(e.source, selfLoop({ x: 0, y: 0, w: s.w, h: s.h }, loopSide, labelSize(e.label)).extent + 10);
     }
     const boxes = sized.map((s) => ({ id: s.node.id, w: s.w, h: s.h, loop: loop.get(s.node.id) || 0 }));
-    if (algorithm === 'tree') base = { ...tidyTree(boxes, index, { direction: model.layout.direction, labels }), sides };
+    // Assistant cards sit beside their manager; compact stacks list leaf teams in a column
+    const assistants = new Set(nodes.filter((n) => n.data?.assistant === true).map((n) => n.id));
+    if (algorithm === 'tree') base = { ...tidyTree(boxes, index, { direction: model.layout.direction, labels, compact: model.layout.compact, assistants }), sides };
     else if (algorithm === 'mindmap') base = { ...mindMap(boxes, index, { labels }), sides };
     else
       base = autoLayout(
@@ -103,23 +105,58 @@ export function computeScene(payload, options = {}) {
       return { id: g.id, title: g.title, label: t.text, titleBox: t.strip, x: b.x, y: b.y, w: b.w, h: b.h, depth: g.depth, parent: g.parent, hue: g.hue, dashed: g.dashed, members: g.nodes, group: g.group };
     });
 
-  // Hierarchy edges: comb connectors (tree, until a card is dragged) or curves
-  // (mind map); everything else goes through the orthogonal router.
+  // Hierarchy edges: comb connectors, compact stacks and assistant links (tree)
+  // or curves (mind map); everything else goes through the orthogonal router.
+  // After a drag each parent's connectors are rebuilt from where its cards are now;
+  // an edge whose cards no longer sit in tree order falls back to the router.
   const drawn = new Map(); // edgeId -> { points, d, label }
   const treeLabels = [];
   const sideOf = (p, c) => (c.x + c.w / 2 >= p.x + p.w / 2 ? 1 : -1);
+  const atBase = (id) => {
+    const b = base.positions.get(id);
+    const r = rects.get(id);
+    return !!b && b.x === r.x && b.y === r.y;
+  };
+  const combKids = new Map(); // parent -> its comb children (tree layout)
+  if (algorithm === 'tree' && base.bus)
+    for (const e of edges)
+      if (isTreeEdge(e) && base.bus.has(e.source) && !base.links?.has(e.target)) {
+        if (!combKids.has(e.source)) combKids.set(e.source, []);
+        combKids.get(e.source).push(e.target);
+      }
+  const busAt = new Map();
+  combKids.forEach((list, pid) => {
+    const p = rects.get(pid);
+    const b = base.positions.get(pid);
+    if (!b) return;
+    // an unmoved parent with unmoved children keeps the layout's bus exactly
+    if (atBase(pid) && list.every(atBase)) return busAt.set(pid, base.bus.get(pid));
+    const shift = base.bus.get(pid) - (base.direction === 'LR' ? b.x + p.w : b.y + p.h);
+    const at = busFor(p, list.map((id) => rects.get(id)), shift, base.direction);
+    if (at !== null) busAt.set(pid, at);
+  });
   for (const e of edges) {
     if (!isTreeEdge(e)) continue;
     const p = rects.get(e.source);
     const c = rects.get(e.target);
     const size = labelSize(e.label);
     if (algorithm === 'mindmap') {
-      const curve = curveRoute(p, c, sideOf(p, c), moved ? undefined : base.band?.get(e.source));
+      // the band edge holds while parent and child sit where the layout put them
+      const band = atBase(e.source) && atBase(e.target) ? base.band?.get(e.source) : undefined;
+      const curve = curveRoute(p, c, sideOf(p, c), band);
       drawn.set(e.id, { points: curve.points, d: curve.d, label: size ? { x: curve.mid.x, y: curve.mid.y, w: size.w, h: size.h } : null });
-    } else if (!moved && base.bus?.has(e.source)) {
-      const points = busRoute(p, c, base.bus.get(e.source), base.direction);
-      drawn.set(e.id, { points, d: roundedPath(points), label: size ? dropLabel(points, size, base.direction) : null });
-    } else continue;
+    } else {
+      const link = base.links?.get(e.target);
+      let points = null;
+      if (link === 'stack') points = stackRoute(p, c);
+      else if (link === 'side') points = sideRoute(p, c, base.direction);
+      else if (busAt.has(e.source)) {
+        const at = busAt.get(e.source);
+        if (base.direction === 'LR' ? c.x >= at + GRID : c.y >= at + GRID) points = busRoute(p, c, at, base.direction);
+      }
+      if (!points) continue;
+      drawn.set(e.id, { points, d: roundedPath(points), label: size ? (link ? endLabel(points, size) : dropLabel(points, size, base.direction)) : null });
+    }
     const l = drawn.get(e.id).label;
     if (l) treeLabels.push({ x: l.x - l.w / 2, y: l.y - l.h / 2, w: l.w, h: l.h });
   }
@@ -145,8 +182,9 @@ export function computeScene(payload, options = {}) {
     const role = model.roles[roleKey(s.node)] || { label: s.node.type, hue: 'slate' };
     const summary = s.node.summary;
     const kids = treeMode ? (index.children.get(s.node.id) || []).length : 0;
-    // Pseudo-states (dots, diamonds) are too small to carry a fold button
-    const side = summary ? 'corner' : kids && !POINT_SHAPES.has(shapeOf(s.node)) ? toggleSide(s.node.id) : null;
+    // Pseudo-states (dots, diamonds) are too small for a fold button; folded, they carry a +N badge beside them
+    const folds = folded.hidden.get(s.node.id) || 0;
+    const side = summary ? 'corner' : kids && (!POINT_SHAPES.has(shapeOf(s.node)) || folds) ? toggleSide(s.node.id) : null;
     return {
       id: s.node.id,
       node: s.node,
@@ -160,7 +198,7 @@ export function computeScene(payload, options = {}) {
       kicker: stereotypeOf(s.node) || s.node.data?.badge || role.label || '',
       stereotype: !!stereotypeOf(s.node),
       icon: knownIcon(s.node.data?.icon) || knownIcon(role.icon) || iconFor(s.node),
-      ...(side ? { toggle: side, collapsed: folded.hidden.get(s.node.id) || 0 } : {})
+      ...(side ? { toggle: side, collapsed: folds } : {})
     };
   });
 
@@ -234,7 +272,11 @@ function boundsOf(nodes, edges, groups = []) {
     x0 = Math.min(x0, x); y0 = Math.min(y0, y);
     x1 = Math.max(x1, x); y1 = Math.max(y1, y);
   };
-  nodes.forEach((n) => { add(n.x, n.y); add(n.x + n.w, n.y + n.h); });
+  nodes.forEach((n) => {
+    // a folded pseudo-state's +N badge sits outside it
+    const m = n.collapsed && POINT_SHAPES.has(n.shape) ? POINT_BADGE + 16 : 0;
+    add(n.x - m, n.y - m); add(n.x + n.w + m, n.y + n.h + m);
+  });
   groups.forEach((g) => { add(g.x, g.y); add(g.x + g.w, g.y + g.h); });
   edges.forEach((e) => {
     e.points.forEach((p) => add(p.x, p.y));

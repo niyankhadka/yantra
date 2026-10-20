@@ -16,7 +16,9 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 - **Groups**: 2-5 labelled boundaries (VPC, team, phase) drawn behind their cards.
 - **Trees and mind maps**: `meta.layout.algorithm: "tree"` (org charts, decision trees,
   breakdowns; tidy layout with comb connectors, TB or LR) or `"mindmap"` (central topic,
-  balanced branches, one colour per branch).
+  balanced branches, one colour per branch). Wide org charts list leaf teams in compact
+  columns (`meta.layout.compact`), assistants (`data.assistant`) sit beside their manager, and
+  dragging a card takes its subtree and tidy connectors along.
 - **Big diagrams**: fold subtrees or groups into one card and back (`+N`, key `X`,
   `meta.layout.collapsed`, `#collapsed=` in the link); trees get a larger node budget.
 - **State machines and lifecycles**: state cards, initial / final dots and choice diamonds,
@@ -137,6 +139,7 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
 | `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
 | `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). |
+| `--collapsed id,id` / `--expand-all` | With `build`, `export` and `screenshot`: open with these subtrees or groups folded, or nothing folded, instead of `meta.layout.collapsed`. |
 | `yantra import <file> [-o out.json] [--from mermaid\|drawio\|plantuml] [--page n\|name] [--title "..."] [--all]` | Convert Mermaid (flowchart, sequence, state, ER, class, mind map), draw.io or PlantUML, then validate. |
 | `yantra new <file> [--page]` | Starter diagram or answer page. |
 | `yantra examples [name] [-o file]` | List the examples or copy one. |

@@ -60,7 +60,7 @@
                 "mindmap"
               ],
               "default": "layered",
-              "description": "layered (default): flows and architectures. tree: a tidy hierarchy (org charts, decision trees, work breakdowns, taxonomies) with parents centred over their children and comb connectors, in `direction` TB or LR. mindmap: the root in the centre, branches balanced left and right with curved connectors, one colour per branch. In tree and mindmap, edges define the hierarchy (first parent wins), hierarchy edges need no label and groups are not drawn."
+              "description": "layered (default): flows and architectures. tree: a tidy hierarchy (org charts, decision trees, work breakdowns, taxonomies) with parents centred over their children and comb connectors, in `direction` TB or LR. mindmap: the root in the centre, branches balanced left and right with curved connectors, one colour per branch. In tree and mindmap, edges define the hierarchy (first parent wins), hierarchy edges need no label and groups are not drawn (any card with children folds its subtree instead)."
             },
             "collapsed": {
               "type": "array",
@@ -69,6 +69,15 @@
               },
               "uniqueItems": true,
               "description": "Ids folded when the viewer opens: nodes whose subtree is hidden (tree, mindmap) or groups shown as one summary card (layered). Readers unfold them with the +N button; a step that highlights a hidden node unfolds it."
+            },
+            "compact": {
+              "enum": [
+                true,
+                false,
+                "auto"
+              ],
+              "default": "auto",
+              "description": "Tree layout, direction TB: a parent whose children are all unlabelled leaves lists them in one column below itself, on a side bus, instead of a row (wide org charts). true: every such parent; false: never; auto (default): only when the spread tree is much wider than tall."
             }
           },
           "additionalProperties": false
@@ -347,6 +356,10 @@
               "drill": {
                 "type": "string",
                 "description": "Id of a detail diagram in diagrams: the card shows a drill mark and opens that diagram (breadcrumb, Back and Esc return)."
+              },
+              "assistant": {
+                "type": "boolean",
+                "description": "Tree layout: an assistant or staff card. It sits beside its manager (the card its hierarchy edge comes from) on a short side connector instead of a level below; first one right (TB) or below (LR), then alternating sides. Leaves only."
               },
               "url": {
                 "type": "string",

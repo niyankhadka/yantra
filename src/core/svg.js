@@ -8,6 +8,7 @@ import { TOKENS, HUES, FONT_SANS, FONT_MONO } from './theme.js';
 import { ICONS, DRILL_ICON } from './icons.js';
 import { sequenceLive } from './sequence.js';
 import { POINT_SHAPES } from './model.js';
+import { POINT_BADGE } from './tree.js';
 import { escapeXml as x, textWidth } from './text.js';
 import { localeOf } from './i18n.js';
 import { ROWS } from './entity.js';
@@ -292,7 +293,7 @@ function groupTitle(g, color, rtl) {
 }
 
 /** Pseudo-states: a filled dot (initial), a ringed dot (final), a diamond (choice). */
-function pointSvg(n, t, hueColor, isActive) {
+function pointSvg(n, t, hueColor, isActive, L = localeOf()) {
   const r = n.w / 2;
   const ring = isActive ? (n.shape === 'choice'
     ? `<polygon points="${r},-4 ${n.w + 4},${r} ${r},${n.h + 4} -4,${r}" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>`
@@ -301,7 +302,16 @@ function pointSvg(n, t, hueColor, isActive) {
     n.shape === 'initial' ? `<circle cx="${r}" cy="${r}" r="${r}" fill="${hueColor}"/>` :
     n.shape === 'final' ? `<circle cx="${r}" cy="${r}" r="${r - 1}" fill="${t.surface}" stroke="${hueColor}" stroke-width="2"/><circle cx="${r}" cy="${r}" r="${r - 5}" fill="${hueColor}"/>` :
     `<polygon points="${r},0 ${n.w},${r} ${r},${n.h} 0,${r}" fill="${t.surface}" stroke="${hueColor}" stroke-width="${isActive ? 2 : 1.5}" stroke-linejoin="round"/>`;
-  return `<g transform="translate(${n.x} ${n.y})" opacity="${isActive === false ? 0.25 : 1}"><title>${x(n.node.data?.title || n.id)}</title>${ring}${body}</g>`;
+  return `<g transform="translate(${n.x} ${n.y})" opacity="${isActive === false ? 0.25 : 1}"><title>${x(n.node.data?.title || n.id)}</title>${ring}${body}${foldChip(n, t, hueColor, false, L, POINT_BADGE)}</g>`;
+}
+
+/** +N chip of a folded subtree or group, centred on the toggle side (`off` px outside it for pseudo-states). */
+function foldChip(n, t, hueColor, rtl, L, off = 0) {
+  if (!n.collapsed) return '';
+  const text = `+${L.num(n.collapsed)}`;
+  const cw = Math.ceil(textWidth(text, 11, { weight: 600 })) + 14;
+  const at = { bottom: [n.w / 2, n.h + off], right: [n.w + off, n.h / 2], left: [-off, n.h / 2], corner: [rtl ? cw / 2 + 10 : n.w - cw / 2 - 10, 0] }[n.toggle] || [n.w / 2, n.h + off];
+  return `<g transform="translate(${at[0] - cw / 2} ${at[1] - 9})"><rect width="${cw}" height="18" rx="9" fill="${hueColor}"/><text x="${cw / 2}" y="12.5" text-anchor="middle" font-size="11" font-weight="600" fill="${t.surface}">${text}</text></g>`;
 }
 
 /**
@@ -310,7 +320,7 @@ function pointSvg(n, t, hueColor, isActive) {
  * lines and so the card height are the same in both directions.
  */
 function nodeSvg(n, t, hueColor, isActive, rtl = false, L = localeOf()) {
-  if (POINT_SHAPES.has(n.shape)) return pointSvg(n, t, hueColor, isActive);
+  if (POINT_SHAPES.has(n.shape)) return pointSvg(n, t, hueColor, isActive, L);
   const C = CARD;
   const dim = isActive === false;
   const rx = n.shape === 'state' ? 16 : 8;
@@ -334,13 +344,7 @@ function nodeSvg(n, t, hueColor, isActive, rtl = false, L = localeOf()) {
     lines.push(`<text x="${tx}" y="${baseline(y, C.techLine, C.techSize)}"${rtl ? ' direction="ltr" text-anchor="end"' : ''} font-size="${C.techSize}" font-family="${x(FONT_MONO)}" fill="${t.ink3}">${x(n.lines.tech)}</text>`);
   }
   // A folded subtree or group shows how many cards it holds
-  let chip = '';
-  if (n.collapsed) {
-    const text = `+${L.num(n.collapsed)}`;
-    const cw = Math.ceil(textWidth(text, 11, { weight: 600 })) + 14;
-    const at = { bottom: [n.w / 2, n.h], right: [n.w, n.h / 2], left: [0, n.h / 2], corner: [rtl ? cw / 2 + 10 : n.w - cw / 2 - 10, 0] }[n.toggle] || [n.w / 2, n.h];
-    chip = `<g transform="translate(${at[0] - cw / 2} ${at[1] - 9})"><rect width="${cw}" height="18" rx="9" fill="${hueColor}"/><text x="${cw / 2}" y="12.5" text-anchor="middle" font-size="11" font-weight="600" fill="${t.surface}">${text}</text></g>`;
-  }
+  const chip = foldChip(n, t, hueColor, rtl, L);
   if (n.lines.rows) lines.push(rowsSvg(n, t, hueColor, rtl, L));
   // Cards that open a detail diagram carry the drill mark top-right, as in the viewer
   const drill = typeof n.node?.data?.drill === 'string' && n.node.data.drill

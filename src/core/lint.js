@@ -13,7 +13,7 @@ import { computeSequenceScene, hasSequence } from './sequence.js';
 import { overlaps, segmentsOf, segmentHitsBox } from './route.js';
 import { ICONS } from './icons.js';
 import { STRING_KEYS, LANGUAGES, isLangTag, shippedLang, isPluralKey } from './i18n.js';
-import { ALGORITHMS, isTreeAlgorithm, treeIndex } from './tree.js';
+import { ALGORITHMS, COMPACT_MODES, isTreeAlgorithm, treeIndex } from './tree.js';
 import { ROWS, members } from './entity.js';
 import { END_KINDS, RELATIONS } from './notation.js';
 import { collectDiagrams, drillEdges, drillOf, isUnsafeRefPath, safeUrl, DRILL_MAX_DEPTH } from './drill.js';
@@ -197,17 +197,37 @@ function diagramFindings(payload, add) {
   const groupIds = new Set(model.groups.map((g) => g.id));
   if (treeMode) {
     if (model.groups.length)
-      add('warning', 'layout/groups-ignored', `Groups are not drawn in the ${algorithm} layout; the hierarchy already shows the structure. Remove groups or use the layered layout.`);
+      add('warning', 'layout/groups-ignored', `Groups are not drawn in the ${algorithm} layout; the hierarchy already shows the structure, and any card with children folds its subtree. Remove groups or use the layered layout.`);
     for (const id of hierarchy.cross)
       add('warning', 'layout/tree-cross-link', `Edge "${id}" is not part of the ${algorithm} (its target already has a parent); it is drawn as a routed cross-link. Duplicate the shared node or drop the edge.`, { edge: id });
     if (algorithm === 'mindmap' && hierarchy.roots.length > 1)
       add('warning', 'layout/mindmap-roots', `The mind map has ${hierarchy.roots.length} roots; "${hierarchy.roots[0]}" is the centre and the others float unconnected. Link every branch to one root.`);
   }
+  if (layoutIn && typeof layoutIn === 'object' && layoutIn.compact !== undefined) {
+    if (!COMPACT_MODES.includes(layoutIn.compact))
+      add('error', 'schema/layout-compact-invalid', 'meta.layout.compact must be true, false or "auto".');
+    else if (layoutIn.compact === true && (algorithm !== 'tree' || model.layout.direction !== 'TB'))
+      add('warning', 'layout/compact-ignored', `meta.layout.compact stacks leaf teams in top-to-bottom trees only (algorithm "tree", direction "TB"); this diagram is ${algorithm === 'tree' ? 'a left-to-right tree' : `a ${algorithm} layout`}.`);
+  }
+  // Assistant cards sit beside their manager in tree layouts
+  for (const n of model.nodes) {
+    const flag = n.data?.assistant;
+    if (flag === undefined || flag === false) continue;
+    const why =
+      flag !== true ? 'data.assistant must be true or false'
+      : algorithm !== 'tree' ? `assistants are placed in the tree layout only (this is ${algorithm})`
+      : !hierarchy.parent.has(n.id) ? 'it has no manager (no hierarchy edge points at it)'
+      : hierarchy.children.get(n.id)?.length ? 'it has reports of its own; an assistant is a leaf'
+      : '';
+    if (why) add('warning', 'layout/assistant-ignored', `Node "${n.id}" is marked as an assistant, but ${why}; it is drawn as an ordinary card.`, { node: n.id });
+  }
   for (const id of arr(layoutIn?.collapsed)) {
     if (typeof id !== 'string' || (!nodeIds.has(id) && !groupIds.has(id))) add('error', 'ref/collapsed-unknown', `meta.layout.collapsed lists "${id}", which is neither a node nor a group.`);
     else if (treeMode ? !nodeIds.has(id) || !hierarchy.children.get(id)?.length : !groupIds.has(id))
       add('warning', 'layout/collapse-ignored', treeMode
-        ? `meta.layout.collapsed lists "${id}", which has no children to fold in the ${algorithm} layout.`
+        ? nodeIds.has(id)
+          ? `meta.layout.collapsed lists "${id}", which has no children to fold in the ${algorithm} layout.`
+          : `meta.layout.collapsed lists group "${id}"; the ${algorithm} layout folds subtrees, so list the group's top card instead.`
         : `meta.layout.collapsed lists node "${id}"; the layered layout folds groups only (use algorithm "tree" or "mindmap" to fold subtrees).`);
   }
 

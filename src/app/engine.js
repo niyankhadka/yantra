@@ -117,7 +117,22 @@ export class YantraEngine {
     this.collapseChanged();
   }
 
+  /** Drag a card; in tree and mind-map layouts its visible subtree moves with it. */
   moveNode(id, x, y) {
+    const scene = isTreeAlgorithm(this.model.layout.algorithm) ? this.getFlowScene() : null;
+    const at = scene?.nodes.find((n) => n.id === id);
+    if (at && (at.x !== x || at.y !== y)) {
+      const kids = new Map();
+      for (const e of scene.edges) if (e.tree) kids.set(e.edge.source, [...(kids.get(e.edge.source) || []), e.edge.target]);
+      const pos = new Map(scene.nodes.map((n) => [n.id, n]));
+      const stack = [...(kids.get(id) || [])];
+      while (stack.length) {
+        const d = stack.pop();
+        const n = pos.get(d);
+        if (n) this.overrides.set(d, { x: n.x + x - at.x, y: n.y + y - at.y });
+        stack.push(...(kids.get(d) || []));
+      }
+    }
     this.overrides.set(id, { x, y });
     this.invalidate();
   }

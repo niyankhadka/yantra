@@ -103,8 +103,14 @@ org = Diagram("Org chart").tree("TB")                    # or .mindmap(), or .la
 ceo = org.add_node("ceo", "Amara Okafor", "exec", subtitle="CEO")
 cto = ceo.child("cto", "Daniel Reyes", subtitle="CTO")    # node + ceo -> cto edge, type inherited
 cto.child("platform", "Platform", "team").child("sre", "Reliability")
+ceo.assistant("cos", "Rhys Morgan", subtitle="Chief of Staff")  # beside the CEO, not below
 org.collapse("cto")                                       # opens folded; readers unfold with +N
+org.build_html("org.html", expand_all=True)               # or collapsed=["cto", "cfo"] for this file
+org.export_svg("org.svg", collapsed=["cto"])
 ```
+
+`.tree("TB", compact=True)` lists leaf teams in one column under their leader (`False`: never;
+the default `"auto"` does it only when the chart gets too wide).
 
 Edges define the hierarchy; hierarchy edges need no label (`label=` is shown on the connector,
 e.g. "Yes" / "No" in a decision tree).

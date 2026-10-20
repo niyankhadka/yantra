@@ -80,7 +80,9 @@ export function normalize(payload) {
       mode: layout.mode === 'manual' ? 'manual' : 'auto',
       direction: layout.direction === 'TB' ? 'TB' : 'LR',
       algorithm: layout.algorithm === 'tree' || layout.algorithm === 'mindmap' ? layout.algorithm : 'layered',
-      collapsed: strings(layout.collapsed)
+      collapsed: strings(layout.collapsed),
+      // Tree layouts: stack leaf teams in a column (true), never (false) or when too wide (auto)
+      compact: layout.compact === true || layout.compact === false ? layout.compact : 'auto'
     },
     roles: resolveRoles({ roles: p.roles, nodes }),
     panels: objects(p.panels),
