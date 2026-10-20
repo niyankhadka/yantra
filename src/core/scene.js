@@ -3,13 +3,14 @@
  * geometry. The browser renderer, SVG exporter and validator all draw from
  * this one function, so what is validated is exactly what is shown.
  */
-import { normalize, visibleGraph, groupIndex, roleKey, has, shapeOf, arrowOf, POINT_SHAPES } from './model.js';
-import { measureNode, autoLayout, labelSize, groupBoxes, groupTitle, selfLoop, GRID } from './layout.js';
-import { routeEdges, placeLabels, roundedPath, loopGeometry } from './route.js';
+import { normalize, visibleGraph, groupIndex, roleKey, has, shapeOf, arrowOf, POINT_SHAPES, TEXTLESS } from './model.js';
+import { measureNode, autoLayout, labelSize, groupBoxes, groupTitle, selfLoop, GRID, GROUP } from './layout.js';
+import { routeEdges, placeLabels, placeEndLabels, roundedPath, loopGeometry } from './route.js';
 import { POINT_BADGE, treeIndex, tidyTree, mindMap, busRoute, dropLabel, curveRoute, branchHues, collapseGraph, isTreeAlgorithm, loopSideFor, stackRoute, sideRoute, endLabel, busFor } from './tree.js';
 import { iconFor, knownIcon } from './icons.js';
 import { HUES } from './theme.js';
-import { edgeEnds } from './notation.js';
+import { edgeEnds, hasNotation } from './notation.js';
+import { fieldRows } from './entity.js';
 
 /**
  * @param payload   Yantra payload (raw or already normalised)
@@ -32,7 +33,9 @@ export function computeScene(payload, options = {}) {
   const original = new Set(graph.edges);
   const isTreeEdge = (e) => treeMode && index.tree.has(e.id) && original.has(e);
 
-  const sized = nodes.map((n) => ({ node: n, ...measureNode(n) }));
+  // Fork bars run across the flow and grow with the edges on their busier side
+  const forkPorts = (id) => Math.max(edges.filter((e) => e.target === id && e.source !== id).length, edges.filter((e) => e.source === id && e.target !== id).length);
+  const sized = nodes.map((n) => ({ node: n, ...measureNode(n, shapeOf(n) === 'fork' ? { direction: model.layout.direction, ports: forkPorts(n.id) } : {}) }));
   const byId = new Map(sized.map((s) => [s.node.id, s]));
   // Tree layouts draw the hierarchy itself, so groups are not drawn there (lint warns)
   const gi = groupIndex(treeMode ? [] : folded.groups, new Set(nodes.map((n) => n.id)));
@@ -66,7 +69,7 @@ export function computeScene(payload, options = {}) {
     else if (algorithm === 'mindmap') base = { ...mindMap(boxes, index, { labels }), sides };
     else
       base = autoLayout(
-        sized.map((s) => ({ id: s.node.id, w: s.w, h: s.h, rank: s.node.rank })),
+        sized.map((s) => ({ id: s.node.id, w: s.w, h: s.h, rank: s.node.rank, shape: shapeOf(s.node) })),
         edges,
         { direction: model.layout.direction, groups: gi }
       );
@@ -79,8 +82,12 @@ export function computeScene(payload, options = {}) {
   for (const s of sized) {
     const p = overrides.get(s.node.id) || base.positions.get(s.node.id) || { x: 0, y: 0 };
     const shape = shapeOf(s.node);
-    rects.set(s.node.id, { x: Math.round(p.x), y: Math.round(p.y), w: s.w, h: s.h, ...(POINT_SHAPES.has(shape) ? { shape } : {}) });
+    const fields = fieldRows(s.node.data, s.lines);
+    rects.set(s.node.id, { x: Math.round(p.x), y: Math.round(p.y), w: s.w, h: s.h, ...(TEXTLESS.has(shape) ? { shape } : {}), ...(fields ? { fields } : {}) });
   }
+
+  // Fork / join bars stretch across their neighbours so edges leave them straight
+  for (const s of sized) if (shapeOf(s.node) === 'fork') stretchBar(s.node.id, rects, edges);
 
   // Layout hints only hold while nothing has been dragged (a self-loop keeps its side)
   const routeInput = edges.map((e) => ({
@@ -88,7 +95,10 @@ export function computeScene(payload, options = {}) {
     source: e.source,
     target: e.target,
     label: e.label,
-    sides: moved && e.source !== e.target ? undefined : base.sides.get(e.id)
+    sides: moved && e.source !== e.target ? undefined : base.sides.get(e.id),
+    ...(typeof e.sourceField === 'string' ? { sourceField: e.sourceField } : {}),
+    ...(typeof e.targetField === 'string' ? { targetField: e.targetField } : {}),
+    marked: hasNotation(e)
   }));
   // Group boxes always follow their members (auto, manual or dragged) and wrap their self-loops
   const boxRects = new Map(rects);
@@ -97,12 +107,15 @@ export function computeScene(payload, options = {}) {
     boxRects.set(src, union(boxRects.get(src), loop.box));
   }
   const boxes = groupBoxes(gi.list, boxRects);
+  const dividers = regionDividers(gi, boxes, model.layout.direction);
   const sceneGroups = gi.list
     .filter((g) => boxes.has(g.id))
     .map((g) => {
       const b = boxes.get(g.id);
       const t = groupTitle(g.title, b);
-      return { id: g.id, title: g.title, label: t.text, titleBox: t.strip, x: b.x, y: b.y, w: b.w, h: b.h, depth: g.depth, parent: g.parent, hue: g.hue, dashed: g.dashed, members: g.nodes, group: g.group };
+      // A concurrent region draws as a compartment of its parent: its title and the dashed divider before it
+      const region = isRegion(g, gi) ? { region: true, divider: dividers.get(g.id) || null } : {};
+      return { id: g.id, title: g.title, label: t.text, titleBox: t.strip, x: b.x, y: b.y, w: b.w, h: b.h, depth: g.depth, parent: g.parent, hue: g.hue, dashed: g.dashed, members: g.nodes, group: g.group, ...region };
     });
 
   // Hierarchy edges: comb connectors, compact stacks and assistant links (tree)
@@ -162,8 +175,19 @@ export function computeScene(payload, options = {}) {
   }
   const routes = routeEdges(rects, routeInput.filter((e) => !drawn.has(e.id)), { groups: sceneGroups });
   // Notation markers (UML heads, crow's feet) at either kind of route stay clear of labels
-  const zones = markerZones(edges, new Map([...routes, ...drawn]));
-  const labels = placeLabels(routes, rects, edges.filter((e) => !drawn.has(e.id)), labelSize, [...sceneGroups.map((g) => g.titleBox), ...treeLabels, ...zones]);
+  const allRoutes = new Map([...routes, ...drawn]);
+  const zones = markerZones(edges, allRoutes);
+  // End labels (multiplicities, roles) beside the markers, then edge labels clear of both
+  const box = (l) => ({ x: l.x - l.w / 2, y: l.y - l.h / 2, w: l.w, h: l.h });
+  const loopLabels = [...routes.values()].filter((r) => r.label).map((r) => box(r.label));
+  const endLabels = placeEndLabels(
+    allRoutes,
+    rects,
+    edges.filter((e) => e.sourceLabel || e.targetLabel).map((e) => ({ id: e.id, sourceLabel: e.sourceLabel, targetLabel: e.targetLabel, ...edgeEnds(e) })),
+    [...sceneGroups.map((g) => g.titleBox), ...treeLabels, ...loopLabels]
+  );
+  const endBoxes = [...endLabels.values()].flatMap((r) => [r.source, r.target]).filter(Boolean).map(box);
+  const labels = placeLabels(routes, rects, edges.filter((e) => !drawn.has(e.id)), labelSize, [...sceneGroups.map((g) => g.titleBox), ...treeLabels, ...zones, ...endBoxes]);
   drawn.forEach((r, id) => {
     routes.set(id, { points: r.points, ok: true, d: r.d });
     if (r.label) labels.set(id, r.label);
@@ -184,7 +208,7 @@ export function computeScene(payload, options = {}) {
     const kids = treeMode ? (index.children.get(s.node.id) || []).length : 0;
     // Pseudo-states (dots, diamonds) are too small for a fold button; folded, they carry a +N badge beside them
     const folds = folded.hidden.get(s.node.id) || 0;
-    const side = summary ? 'corner' : kids && (!POINT_SHAPES.has(shapeOf(s.node)) || folds) ? toggleSide(s.node.id) : null;
+    const side = summary ? 'corner' : kids && (!TEXTLESS.has(shapeOf(s.node)) || folds) ? toggleSide(s.node.id) : null;
     return {
       id: s.node.id,
       node: s.node,
@@ -219,7 +243,10 @@ export function computeScene(payload, options = {}) {
       dotted: e.style === 'dotted',
       // Markers at the source / target end (null = none): arrowheads, UML heads, ER cardinality
       start: ends.start,
-      end: ends.end
+      end: ends.end,
+      // End labels (multiplicities, roles): { x, y (centre), w, h, text } or null
+      sourceLabel: endLabels.get(e.id)?.source || null,
+      targetLabel: endLabels.get(e.id)?.target || null
     };
   });
 
@@ -257,6 +284,62 @@ function markerZones(edges, routes) {
 }
 const MARKER_LEN = 20;
 
+/**
+ * Lengthen a fork / join bar (never shorten it) so it spans the centres of the
+ * cards it joins, as far as it can without touching another card.
+ */
+function stretchBar(id, rects, edges) {
+  const r = rects.get(id);
+  const vertical = r.h > r.w;
+  const axis = vertical ? 'y' : 'x';
+  const size = vertical ? 'h' : 'w';
+  const near = edges.filter((e) => e.source !== e.target && (e.source === id || e.target === id)).map((e) => rects.get(e.source === id ? e.target : e.source));
+  const centres = near.filter(Boolean).map((q) => q[axis] + q[size] / 2);
+  if (centres.length < 2) return;
+  const from = Math.min(r[axis], Math.floor((Math.min(...centres) - 16) / GRID) * GRID);
+  const to = Math.max(r[axis] + r[size], Math.ceil((Math.max(...centres) + 16) / GRID) * GRID);
+  const bar = { ...r, [axis]: from, [size]: to - from };
+  const hits = (q) => bar.x - 10 < q.x + q.w && bar.x + bar.w + 10 > q.x && bar.y - 10 < q.y + q.h && bar.y + bar.h + 10 > q.y;
+  if ([...rects].some(([k, q]) => k !== id && hits(q))) return;
+  rects.set(id, bar);
+}
+
+/** A concurrent region: a child group with kind "region", drawn as a compartment of its parent. */
+const isRegion = (g, gi) => g.group?.kind === 'region' && !!g.parent && gi.byId.has(g.parent);
+
+/**
+ * Dashed dividers between the concurrent regions of a composite state. Regions
+ * stack across the flow (rows in LR, columns in TB); each region after the
+ * first gets the line between it and the one before, across the whole parent.
+ * @returns Map<groupId, { x1, y1, x2, y2 }>
+ */
+function regionDividers(gi, boxes, direction) {
+  const out = new Map();
+  const byParent = new Map();
+  for (const g of gi.list) {
+    if (!isRegion(g, gi) || !boxes.has(g.id) || !boxes.has(g.parent)) continue;
+    if (!byParent.has(g.parent)) byParent.set(g.parent, []);
+    byParent.get(g.parent).push(g.id);
+  }
+  const rows = direction !== 'TB';
+  for (const [parent, ids] of byParent) {
+    const p = boxes.get(parent);
+    const sorted = ids.map((id) => [id, boxes.get(id)]).sort((a, b) => (rows ? a[1].y - b[1].y : a[1].x - b[1].x));
+    for (let k = 1; k < sorted.length; k++) {
+      const prev = sorted[k - 1][1];
+      const cur = sorted[k][1];
+      if (rows) {
+        const y = Math.round((prev.y + prev.h + cur.y) / 2);
+        out.set(sorted[k][0], { x1: p.x, y1: y, x2: p.x + p.w, y2: y });
+      } else {
+        const x = Math.round((prev.x + prev.w + cur.x) / 2);
+        out.set(sorted[k][0], { x1: x, y1: p.y + GROUP.padTop - 6, x2: x, y2: p.y + p.h });
+      }
+    }
+  }
+  return out;
+}
+
 /** «stereotype» shown in place of the kicker on class cards (an empty string when none). */
 function stereotypeOf(node) {
   const st = node.data?.stereotype;
@@ -274,13 +357,13 @@ function boundsOf(nodes, edges, groups = []) {
   };
   nodes.forEach((n) => {
     // a folded pseudo-state's +N badge sits outside it
-    const m = n.collapsed && POINT_SHAPES.has(n.shape) ? POINT_BADGE + 16 : 0;
+    const m = n.collapsed && TEXTLESS.has(n.shape) ? POINT_BADGE + 16 : 0;
     add(n.x - m, n.y - m); add(n.x + n.w + m, n.y + n.h + m);
   });
   groups.forEach((g) => { add(g.x, g.y); add(g.x + g.w, g.y + g.h); });
   edges.forEach((e) => {
     e.points.forEach((p) => add(p.x, p.y));
-    if (e.label) { add(e.label.x - e.label.w / 2, e.label.y - e.label.h / 2); add(e.label.x + e.label.w / 2, e.label.y + e.label.h / 2); }
+    for (const l of [e.label, e.sourceLabel, e.targetLabel]) if (l) { add(l.x - l.w / 2, l.y - l.h / 2); add(l.x + l.w / 2, l.y + l.h / 2); }
   });
   if (!isFinite(x0)) return { x: 0, y: 0, w: 0, h: 0 };
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };

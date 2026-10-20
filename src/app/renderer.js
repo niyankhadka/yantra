@@ -12,7 +12,7 @@ import { DRILL_TEXT } from './levels.js';
 import { escapeHtml as h } from '../core/text.js';
 import { sequenceLive } from '../core/sequence.js';
 import { END_KINDS, markerDef } from '../core/notation.js';
-import { POINT_SHAPES } from '../core/model.js';
+import { POINT_SHAPES, TEXTLESS } from '../core/model.js';
 import { POINT_BADGE } from '../core/tree.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -58,6 +58,8 @@ export class Renderer {
     this.groups = new Map();
     this.edges = new Map(); // id -> { g, path, gradient, from, to }
     this.labels = new Map();
+    this.endLabels = new Map(); // `${edgeId}|source|target` -> element
+    this.dividers = new Map(); // region id -> divider element
     this.reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
@@ -100,6 +102,18 @@ export class Renderer {
         this.labelLayer.appendChild(lab);
         this.labels.set(e.id, lab);
       }
+      // End labels (multiplicities, roles) next to each end
+      for (const end of ['source', 'target']) {
+        const l = e[`${end}Label`];
+        if (!l) continue;
+        const el = document.createElement('div');
+        el.className = 'y-end-label';
+        el.dataset.id = e.id;
+        el.dataset.hue = end === 'source' ? from : to;
+        el.textContent = l.text;
+        this.labelLayer.appendChild(el);
+        this.endLabels.set(`${e.id}|${end}`, el);
+      }
     });
     this.update(scene);
   }
@@ -111,6 +125,8 @@ export class Renderer {
     this.groups.clear();
     this.edges.clear();
     this.labels.clear();
+    this.endLabels.clear();
+    this.dividers.clear();
     this.rows = new Map();
     this.lifelines = new Map();
   }
@@ -118,13 +134,21 @@ export class Renderer {
   addGroups(scene) {
     for (const g of scene.groups || []) {
       const el = document.createElement('div');
-      el.className = `y-group${g.dashed ? '' : ' is-solid'}`;
+      el.className = `y-group${g.dashed ? '' : ' is-solid'}${g.region ? ' is-region' : ''}`;
       el.dataset.id = g.id;
       el.dataset.hue = g.hue;
       el.dataset.depth = g.depth;
       el.innerHTML = `<span class="y-group-title">${h(g.label)}</span>`;
       this.groupLayer.appendChild(el);
       this.groups.set(g.id, el);
+      if (g.divider) {
+        // A concurrent region: the dashed line between it and the region before, in the parent's colour
+        const line = document.createElement('div');
+        line.className = `y-region-divider${g.divider.x1 === g.divider.x2 ? ' is-vertical' : ''}`;
+        line.dataset.hue = (scene.groups || []).find((p) => p.id === g.parent)?.hue || g.hue;
+        this.groupLayer.appendChild(line);
+        this.dividers.set(g.id, line);
+      }
     }
   }
 
@@ -155,7 +179,7 @@ export class Renderer {
       make(n.id, n.node.data?.title || n.id, n.collapsed > 0 || !!n.node.summary, n.collapsed, n.toggle).dataset.hue = n.hue;
     }
     if (scene.layout === 'layered')
-      for (const g of scene.groups || []) make(g.id, g.title, false, 0, 'group').dataset.hue = g.hue;
+      for (const g of scene.groups || []) if (!g.region) make(g.id, g.title, false, 0, 'group').dataset.hue = g.hue;
   }
 
   /** Toggle centre for a card side or a group box corner (the top-left corner in RTL, clear of the mirrored title). */
@@ -164,7 +188,7 @@ export class Renderer {
     const n = scene.nodes.find((m) => m.id === id);
     if (n) {
       // a folded pseudo-state's +N badge sits just outside the dot or diamond
-      const off = POINT_SHAPES.has(n.shape) ? POINT_BADGE : 0;
+      const off = TEXTLESS.has(n.shape) ? POINT_BADGE : 0;
       if (n.toggle === 'bottom') return { x: n.x + n.w / 2, y: n.y + n.h + off };
       if (n.toggle === 'right') return { x: n.x + n.w + off, y: n.y + n.h / 2 };
       if (n.toggle === 'left') return { x: n.x - off, y: n.y + n.h / 2 };
@@ -187,6 +211,15 @@ export class Renderer {
     el.setAttribute('aria-label', [n.node.data?.title, n.node.data?.subtitle, drill && DRILL_TEXT.cardHint].filter(Boolean).join(', '));
     el.classList.toggle('has-drill', !!drill);
     if (n.shape === 'state') el.classList.add('is-state');
+    if (n.shape === 'fork') {
+      // Fork / join bar: a thick bar along the box (CSS draws it), textless like the pseudo-states
+      el.classList.add('y-point', 'is-fork', n.h > n.w ? 'is-vertical' : 'is-horizontal');
+      el.title = n.node.data?.title || n.id;
+      el.innerHTML = '<span class="y-fork-bar"></span>';
+      this.nodeLayer.appendChild(el);
+      this.nodes.set(n.id, el);
+      return el;
+    }
     if (POINT_SHAPES.has(n.shape)) {
       // Pseudo-states are textless; the title shows as a tooltip and in the inspector
       el.classList.add('y-point', `is-${n.shape}`);
@@ -343,6 +376,13 @@ export class Renderer {
       el.style.width = `${g.w}px`;
       el.style.height = `${g.h}px`;
       el.firstChild.textContent = g.label;
+      const line = this.dividers.get(g.id);
+      if (line && g.divider) {
+        const d = g.divider;
+        line.style.transform = `translate(${d.x1}px, ${d.y1}px)`;
+        line.style.width = `${Math.max(1, d.x2 - d.x1)}px`;
+        line.style.height = `${Math.max(1, d.y2 - d.y1)}px`;
+      }
     }
     for (const n of scene.nodes) {
       const el = this.nodes.get(n.id);
@@ -371,6 +411,13 @@ export class Renderer {
       if (lab) {
         lab.hidden = !e.label;
         if (e.label) lab.style.transform = `translate(${e.label.x}px, ${e.label.y}px) translate(-50%, -50%)`;
+      }
+      for (const end of ['source', 'target']) {
+        const el = this.endLabels.get(`${e.id}|${end}`);
+        const l = e[`${end}Label`];
+        if (!el) continue;
+        el.hidden = !l;
+        if (l) el.style.transform = `translate(${l.x}px, ${l.y}px) translate(-50%, -50%)`;
       }
     }
     const b = scene.bounds;
@@ -415,6 +462,7 @@ export class Renderer {
       const any = focused && g.members.some((id) => activeNodes.has(id));
       el.classList.toggle('is-active', any);
       el.classList.toggle('is-dim', focused && !any);
+      this.dividers.get(g.id)?.classList.toggle('is-dim', focused && !scene.groups.find((p) => p.id === g.parent)?.members.some((id) => activeNodes.has(id)));
       this.toggles.get(g.id)?.classList.toggle('is-dim', focused && !any);
     }
     for (const n of scene.nodes) this.toggles.get(n.id)?.classList.toggle('is-dim', focused && !activeNodes.has(n.id));
@@ -430,6 +478,10 @@ export class Renderer {
     this.labels.forEach((el, id) => {
       el.classList.toggle('is-active', focused && activeEdges.has(id));
       el.classList.toggle('is-dim', focused && !activeEdges.has(id));
+    });
+    this.endLabels.forEach((el) => {
+      el.classList.toggle('is-active', focused && activeEdges.has(el.dataset.id));
+      el.classList.toggle('is-dim', focused && !activeEdges.has(el.dataset.id));
     });
 
     // Signals travel along the active edges, or along every edge in an overview

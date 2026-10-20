@@ -178,7 +178,7 @@ test('Markdown lists fields and adds a relationship column only when edges carry
   assert.match(md, /### order_items\n\n\| Field \| Type \| Key \| Notes \|/);
   assert.match(md, /\| customer_id \| uuid \| FK \| → customers\.id \|/);
   assert.match(md, /\| From \| To \| Label \| Relationship \|/);
-  assert.match(md, /\| customers \| orders \| places \| exactly one to zero or more \|/);
+  assert.match(md, /\| customers\.id \| orders\.customer_id \| places \| exactly one to zero or more \|/);
   const cls = toMarkdown(example('payment-classes'));
   assert.match(cls, /### «interface» PaymentMethod/);
   assert.match(cls, /\| zero\(currency\) \(static\) \| Money \| public \|/);

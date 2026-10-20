@@ -287,10 +287,11 @@
               "state",
               "initial",
               "final",
-              "choice"
+              "choice",
+              "fork"
             ],
             "default": "card",
-            "description": "card: the usual card. state: a rounder card for a state in a state machine. initial (filled dot), final (ringed dot) and choice (diamond) are small, textless pseudo-states; data.title still names them in tooltips, the inspector and exports."
+            "description": "card: the usual card. state: a rounder card for a state in a state machine. initial (filled dot), final (ringed dot) and choice (diamond) are small, textless pseudo-states; data.title still names them in tooltips, the inspector and exports. fork: a thick bar for a fork or join (vertical in LR, horizontal in TB) that edges attach along; it grows with its edges, width sets its length."
           },
           "rank": {
             "type": "integer",
@@ -299,9 +300,9 @@
           },
           "width": {
             "type": "number",
-            "minimum": 160,
-            "maximum": 320,
-            "description": "Card width; default 220."
+            "minimum": 40,
+            "maximum": 480,
+            "description": "Card width, 160-320; default 220. For a fork bar: its length (40-480)."
           },
           "x": {
             "type": "number",
@@ -474,6 +475,24 @@
           "targetEnd": {
             "$ref": "#/definitions/end",
             "description": "Marker at the target end, e.g. \"zero-or-many\" for the many side of a one-to-many relationship."
+          },
+          "sourceField": {
+            "type": "string",
+            "description": "Name of a field (data.fields[].name) on the source card: the edge attaches at that row, on the left or right side facing the other card. Use for foreign key -> primary key links."
+          },
+          "targetField": {
+            "type": "string",
+            "description": "Name of a field on the target card the edge attaches to, like sourceField."
+          },
+          "sourceLabel": {
+            "type": "string",
+            "maxLength": 16,
+            "description": "Short text beside the source end, clear of its marker: a multiplicity (\"1\", \"0..1\") or a role name."
+          },
+          "targetLabel": {
+            "type": "string",
+            "maxLength": 16,
+            "description": "Short text beside the target end, e.g. \"0..*\" or \"1..*\"."
           }
         }
       }
@@ -511,6 +530,12 @@
           "parent": {
             "type": "string",
             "description": "Id of the enclosing group. Nesting is at most 3 deep and must not form a cycle."
+          },
+          "kind": {
+            "enum": [
+              "region"
+            ],
+            "description": "region: a concurrent region of its parent group (a composite state). Regions of one parent stack across the flow and are divided by dashed lines instead of boxes; only their title shows. Needs parent; use two or more, and put every node of the parent in one of them."
           },
           "color": {
             "type": "string",

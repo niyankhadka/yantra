@@ -73,6 +73,21 @@ function allocate(nf, nm) {
   return [f, Math.min(nm, ROWS.max - f)];
 }
 
+/**
+ * Row centre (from the card top) of every field of a measured card, for edges
+ * that attach to a field row (sourceField / targetField). Fields cut off by the
+ * row cap attach to the "+ N more" row. Null for cards without fields.
+ */
+export function fieldRows(data, lines) {
+  const sec = lines?.rows?.sections.find((s) => s.kind === 'fields');
+  if (!sec) return null;
+  const out = new Map();
+  const more = sec.rows.find((r) => r.more);
+  for (const r of sec.rows) if (!r.more) out.set(r.member, r.y + ROWS.line / 2);
+  for (const m of members(data.fields)) if (!out.has(str(m.name).trim()) && more) out.set(str(m.name).trim(), more.y + ROWS.line / 2);
+  return out;
+}
+
 /** Width an entity card needs so its rows fit without cutting (callers clamp it). */
 export function entityWidth(data, padX) {
   let need = 0;
@@ -93,7 +108,7 @@ export function entityWidth(data, padX) {
  * @param data  node data
  * @param inner width inside the card padding
  * @param top   y (from the card top) where the sections start
- * @returns { height, nameX (name offset from the padding: key column + gap), sections: [{ kind, rule, rows: [{ y, key, name, type, pk, static, abstract } | { y, more }] }] }
+ * @returns { height, nameX (name offset from the padding: key column + gap), sections: [{ kind, rule, rows: [{ y, member, key, name, type, pk, static, abstract } | { y, more }] }] }
  */
 export function measureMembers(data, inner, top) {
   const fields = members(data.fields);
@@ -121,6 +136,7 @@ export function measureMembers(data, inner, top) {
       const room = inner - keyCol - (type ? typeWidth(type) + ROWS.typeGap : 0);
       rows.push({
         y,
+        member: str(m.name).trim(),
         key: memberKey(m, kind),
         name: truncate(memberName(m, kind), room, ROWS.nameSize, { weight: m.pk ? 600 : 400 }),
         type,

@@ -61,6 +61,10 @@ For "explain how X works", make the diagram first, then the page around it
      `many`, `one-or-many`, `zero-or-many`) plus a verb label. UML edges: `relation`
      (`inheritance`, `realization`, `composition`, `aggregation`, `association`, `dependency`)
      pointing parent → child and whole → part; structural relations need no label.
+     `sourceField` / `targetField` attach an edge at a field row (FK → PK); `sourceLabel` /
+     `targetLabel` add multiplicities (`"1"`, `"0..*"`) beside the ends.
+   - State machines: `shape: "fork"` is a fork / join bar; concurrent regions are child groups
+     with `"kind": "region"` under the composite state's group.
    - Runbooks, dashboards, specs: `url` on a node (`data.url`), edge or step (http, https or
      mailto only); the inspector opens them in a new tab.
 

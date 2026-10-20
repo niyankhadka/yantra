@@ -3,7 +3,8 @@
  * in Node for `yantra export`, and rasterises to PNG in the browser without
  * tainting the canvas.
  */
-import { CARD, LABEL, GROUP } from './layout.js';
+import { CARD, LABEL, GROUP, FORK } from './layout.js';
+import { END_LABEL } from './route.js';
 import { TOKENS, HUES, FONT_SANS, FONT_MONO } from './theme.js';
 import { ICONS, DRILL_ICON } from './icons.js';
 import { sequenceLive } from './sequence.js';
@@ -110,12 +111,29 @@ export function renderSvg(scene, options = {}) {
     })
     .join('\n    ');
 
+  // End labels (multiplicities, roles): small text on a background patch beside each end
+  const endLabels = scene.edges
+    .flatMap((e) => [e.sourceLabel, e.targetLabel].filter(Boolean).map((l) => [e, l]))
+    .map(([e, l]) => {
+      const on = focus && active('edges', e.id);
+      return `<g opacity="${focus && !on ? 0.3 : 1}"><rect x="${l.x - l.w / 2}" y="${l.y - l.h / 2}" width="${l.w}" height="${l.h}" rx="3" fill="${t.bg}"/>` +
+        `<text x="${l.x}" y="${l.y + 3.5}" text-anchor="middle" font-size="${END_LABEL.size}" font-weight="500" fill="${on ? t.ink : t.ink2}">${x(l.text)}</text></g>`;
+    })
+    .join('\n    ');
+
   // Group boxes sit behind everything; a box dims when none of its members is active
+  const groupHue = new Map((scene.groups || []).map((g) => [g.id, g.hue]));
   const groups = (scene.groups || [])
     .map((g) => {
       const c = hue(g.hue);
       const on = !focus || g.members.some((id) => highlight.nodes.has(id));
       const dash = g.dashed ? ' stroke-dasharray="5 4"' : '';
+      if (g.region) {
+        // A concurrent region: its title and the dashed divider before it, in the parent's colour
+        const d = g.divider;
+        const line = d ? `<line x1="${d.x1}" y1="${d.y1}" x2="${d.x2}" y2="${d.y2}" stroke="${hue(groupHue.get(g.parent) || g.hue)}" stroke-opacity="0.55" stroke-width="1.5" stroke-dasharray="6 4"/>` : '';
+        return `<g opacity="${on ? 1 : 0.35}">${line}${groupTitle(g, c, rtl)}</g>`;
+      }
       return `<g opacity="${on ? 1 : 0.35}"><rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${GROUP.radius}" fill="${c}" fill-opacity="${theme === 'dark' ? 0.07 : 0.045}" stroke="${c}" stroke-opacity="0.55"${dash}/>` +
         `${groupTitle(g, c, rtl)}</g>`;
     })
@@ -125,7 +143,7 @@ export function renderSvg(scene, options = {}) {
 
   const defs = `${[...usedHues].map((h) => arrowMarker(`arrow-${h}`, hue(h))).join('')}${[...notation.values()].join('')}
     ${gradients.join('')}`;
-  return frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body: [groups, edges, nodes, labels], ox, oy, L });
+  return frame({ scene, t, hue, roles, markText, logo, header, width, height, defs, body: [groups, edges, nodes, labels, endLabels], ox, oy, L });
 }
 
 /** Document shell shared by the flow and sequence exports: title, legend, watermark. */
@@ -292,8 +310,16 @@ function groupTitle(g, color, rtl) {
   return `<text x="${tx}" y="${g.y + GROUP.titleY + 11.5}" font-size="${GROUP.titleSize}" font-weight="600"${rtl ? '' : ' letter-spacing="0.06em"'} fill="${color}">${x(g.label)}</text>`;
 }
 
-/** Pseudo-states: a filled dot (initial), a ringed dot (final), a diamond (choice). */
+/** Pseudo-states: a filled dot (initial), a ringed dot (final), a diamond (choice), a fork / join bar. */
 function pointSvg(n, t, hueColor, isActive, L = localeOf()) {
+  if (n.shape === 'fork') {
+    // Fork / join bar across the middle of its box
+    const v = n.h > n.w;
+    const k = FORK.thick;
+    const bar = v ? { x: n.w / 2 - k / 2, y: 0, w: k, h: n.h } : { x: 0, y: n.h / 2 - k / 2, w: n.w, h: k };
+    const glow = isActive ? `<rect x="${bar.x - 3}" y="${bar.y - 3}" width="${bar.w + 6}" height="${bar.h + 6}" rx="${k / 2 + 3}" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>` : '';
+    return `<g transform="translate(${n.x} ${n.y})" opacity="${isActive === false ? 0.25 : 1}"><title>${x(n.node.data?.title || n.id)}</title>${glow}<rect x="${bar.x}" y="${bar.y}" width="${bar.w}" height="${bar.h}" rx="${k / 2}" fill="${hueColor}"/>${foldChip(n, t, hueColor, false, L, POINT_BADGE)}</g>`;
+  }
   const r = n.w / 2;
   const ring = isActive ? (n.shape === 'choice'
     ? `<polygon points="${r},-4 ${n.w + 4},${r} ${r},${n.h + 4} -4,${r}" fill="none" stroke="${hueColor}" stroke-opacity="0.22" stroke-width="3"/>`
@@ -320,7 +346,7 @@ function foldChip(n, t, hueColor, rtl, L, off = 0) {
  * lines and so the card height are the same in both directions.
  */
 function nodeSvg(n, t, hueColor, isActive, rtl = false, L = localeOf()) {
-  if (POINT_SHAPES.has(n.shape)) return pointSvg(n, t, hueColor, isActive, L);
+  if (POINT_SHAPES.has(n.shape) || n.shape === 'fork') return pointSvg(n, t, hueColor, isActive, L);
   const C = CARD;
   const dim = isActive === false;
   const rx = n.shape === 'state' ? 16 : 8;

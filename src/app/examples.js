@@ -18,6 +18,7 @@ import ecommerceSchema from '../../examples/ecommerce-schema.json';
 import paymentClasses from '../../examples/payment-classes.json';
 import platform from '../../examples/platform-overview.json';
 import ticketLifecycle from '../../examples/ticket-lifecycle.json';
+import parallelCheckout from '../../examples/parallel-checkout-states.json';
 import { registerStrings } from '../core/i18n.js';
 import { TABLES } from '../core/locales/index.js';
 
@@ -41,6 +42,7 @@ export const EXAMPLES = [
   { id: 'manufacturing-quality', name: 'Manufacturing quality (panel)', data: manufacturing },
   { id: 'research-paper-lifecycle', name: 'Research paper lifecycle', data: researchPaper },
   { id: 'ticket-lifecycle', name: 'Ticket lifecycle (states)', data: ticketLifecycle },
+  { id: 'parallel-checkout-states', name: 'Parallel checkout (fork / join)', data: parallelCheckout },
   { id: 'org-chart', name: 'Org chart (tree)', data: orgChart },
   { id: 'study-plan-mindmap', name: 'Revision plan (mind map)', data: studyPlan },
   { id: 'incident-triage-decision-tree', name: 'Incident triage (decision tree)', data: triageTree },

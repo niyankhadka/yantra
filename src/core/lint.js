@@ -46,6 +46,9 @@ function budgetSize(text) {
  */
 export const TREE_BUDGET = { nodes: 40, total: 120, crossLinks: 4 };
 
+/** End labels (sourceLabel / targetLabel) are multiplicities or short role names. */
+export const END_LABEL_CHARS = 16;
+
 /** UML relations whose symbol already says what the edge means: no label needed. */
 const SELF_EXPLAINING = new Set(['inheritance', 'realization', 'composition', 'aggregation']);
 
@@ -146,9 +149,10 @@ function diagramFindings(payload, add) {
   const hierarchy = treeMode ? treeIndex([...nodeIds], model.edges.filter((e) => e && typeof e.id === 'string')) : null;
 
   const edgeIds = new Set();
-  // A transition out of an initial state or into a final state needs no label
+  // A transition out of an initial state, into a final state or through a fork / join bar needs no label
   const shapeById = new Map(model.nodes.map((n) => [n.id, shapeOf(n)]));
-  const pseudoEnd = (e) => shapeById.get(e.source) === 'initial' || shapeById.get(e.target) === 'final';
+  const pseudoEnd = (e) =>
+    shapeById.get(e.source) === 'initial' || shapeById.get(e.target) === 'final' || shapeById.get(e.source) === 'fork' || shapeById.get(e.target) === 'fork';
   model.edges.forEach((e, i) => {
     if (!e || typeof e.id !== 'string' || !e.id) return add('error', 'ref/edge-missing-id', `edges[${i}] has no id.`);
     if (edgeIds.has(e.id)) add('error', 'ref/duplicate-edge-id', `Duplicate edge id "${e.id}".`, { edge: e.id });
@@ -183,6 +187,8 @@ function diagramFindings(payload, add) {
       add('warning', 'story/final-has-outgoing', `Final state "${n.id}" has an outgoing edge; nothing leaves a final state.`, { node: n.id });
     if (shape === 'choice' && out < 2)
       add('warning', 'story/choice-needs-branches', `Choice "${n.id}" has ${out} outgoing edge${out === 1 ? '' : 's'}; a choice needs two or more guarded branches.`, { node: n.id });
+    if (shape === 'fork' && into < 2 && out < 2)
+      add('warning', 'story/fork-needs-branches', `Fork / join bar "${n.id}" has ${into} incoming and ${out} outgoing edge${out === 1 ? '' : 's'}; a fork splits into two or more transitions, a join merges two or more.`, { node: n.id });
   }
 
   // --- groups -------------------------------------------------------------
@@ -438,6 +444,18 @@ function geometry(scene, mode, add, tagMode, state = '') {
       labels.push({ id: e.id, box });
     }
   }
+  // End labels (multiplicities, roles) next to the cards
+  const ends = [];
+  for (const e of scene.edges)
+    for (const l of [e.sourceLabel, e.targetLabel]) {
+      if (!l) continue;
+      const box = { x: l.x - l.w / 2, y: l.y - l.h / 2, w: l.w, h: l.h };
+      const hit = nodes.find((n) => overlaps(box, n));
+      const other = [...labels, ...ends].find((o) => overlaps(box, o.box));
+      if (hit) add('warning', 'geometry/end-label-overlap', `End label "${l.text}" of "${e.id}" overlaps node "${hit.id}"${sfx}; widen the gap or shorten it.`, { ...ctx, edge: e.id, node: hit.id });
+      else if (other) add('warning', 'geometry/end-label-overlap', `End label "${l.text}" of "${e.id}" overlaps a label of "${other.id}"${sfx}.`, { ...ctx, edges: [e.id, other.id] });
+      ends.push({ id: e.id, box });
+    }
 
   // Group boxes: siblings apart, outsiders out, titles clear
   const groups = scene.groups || [];
@@ -464,7 +482,11 @@ function geometry(scene, mode, add, tagMode, state = '') {
 
   // Parallel edges drawn on top of each other read as one line
   // (a parent's comb or fan of hierarchy edges shares its trunk by design)
-  const segs = scene.edges.flatMap((e) => segmentsOf(e.points).map((s) => ({ ...s, id: e.id, fan: e.tree ? e.edge.source : null })));
+  // (so does the first run out of a field row that several foreign keys reference)
+  const fieldFan = (e, k, n) =>
+    k === 0 && typeof e.edge.sourceField === 'string' ? `\u0000${e.edge.source}.${e.edge.sourceField}` :
+    k === n - 1 && typeof e.edge.targetField === 'string' ? `\u0000${e.edge.target}.${e.edge.targetField}` : null;
+  const segs = scene.edges.flatMap((e) => segmentsOf(e.points).map((s, k, all) => ({ ...s, id: e.id, fan: e.tree ? e.edge.source : fieldFan(e, k, all.length) })));
   const seen = new Set();
   // Only segments on the same line can share track: bucket them by line
   const lineOf = (s) => (s.a.x === s.b.x ? 'v' + s.a.x : 'h' + s.a.y);
@@ -520,6 +542,8 @@ function checkGroups(payload, model, nodeIds, add) {
     ids.add(g.id);
     if (!byId.has(g.id)) byId.set(g.id, g);
     if (!g.title) add('warning', 'group/missing-title', `Group "${g.id}" needs a title.`, { group: g.id });
+    if (g.kind !== undefined && g.kind !== 'region')
+      add('error', 'schema/group-kind-invalid', `Group "${g.id}" kind "${g.kind}" is not supported; use "region" (a concurrent region of its parent state) or leave it out.`, { group: g.id });
   });
   const owner = new Map();
   for (const g of byId.values()) {
@@ -557,6 +581,23 @@ function checkGroups(payload, model, nodeIds, add) {
       return arr(byId.get(id)?.nodes).some((n) => nodeIds.has(n)) || (children.get(id) || []).some((c) => hasNodes(c, seen));
     };
     if (!reported.size && !hasNodes(g.id)) add('warning', 'group/empty', `Group "${g.id}" has no nodes; remove it or list its members.`, { group: g.id });
+  }
+  // Concurrent regions: compartments of a parent group (a composite state)
+  const regions = new Map(); // parent -> [region ids]
+  for (const g of byId.values()) {
+    if (g.kind !== 'region') continue;
+    if (g.parent === undefined || g.parent === null || !byId.has(g.parent)) {
+      add('error', 'group/region-needs-parent', `Region "${g.id}" needs a parent group (the composite state it divides).`, { group: g.id });
+      continue;
+    }
+    regions.set(g.parent, [...(regions.get(g.parent) || []), g.id]);
+  }
+  for (const [parent, ids] of regions) {
+    if (ids.length < 2)
+      add('warning', 'group/single-region', `Group "${parent}" has one region ("${ids[0]}"); concurrent regions come in twos or more. Drop kind "region" or add the other region.`, { group: parent });
+    const plain = (children.get(parent) || []).filter((c) => byId.get(c)?.kind !== 'region');
+    if (arr(byId.get(parent).nodes).length || plain.length)
+      add('warning', 'group/region-mixed', `Group "${parent}" holds regions and also ${arr(byId.get(parent).nodes).length ? 'nodes' : 'groups'} outside them; put everything inside one of its regions.`, { group: parent });
   }
   if (byId.size > 6) add('warning', 'budget/too-many-groups', `${byId.size} groups; keep to 2-5 so the boxes stay readable.`);
 }
@@ -607,6 +648,20 @@ function checkMembers(model, nodeIds, add) {
     for (const key of ['sourceEnd', 'targetEnd'])
       if (e[key] !== undefined && !END_KINDS.includes(e[key]))
         add('error', 'schema/unknown-end', `Edge "${e.id}" ${key} "${e[key]}" is not one of ${END_KINDS.join(', ')}.`, { edge: e.id });
+    // Field rows an edge attaches to (sourceField / targetField)
+    for (const [key, node] of [['sourceField', e.source], ['targetField', e.target]]) {
+      if (e[key] === undefined || !nodeIds.has(node)) continue;
+      const known = fieldsOf.get(node);
+      if (typeof e[key] !== 'string' || !known?.has(e[key]))
+        add('error', 'ref/edge-unknown-field', `Edge "${e.id}" ${key} "${e[key]}" is not a field of node "${node}"${known?.size ? ` (fields: ${[...known].join(', ')})` : ' (it has no data.fields)'}.`, { edge: e.id, node });
+    }
+    // End labels: short text such as "1", "0..*" or a role name
+    for (const key of ['sourceLabel', 'targetLabel']) {
+      if (e[key] === undefined) continue;
+      if (typeof e[key] !== 'string') add('error', 'schema/end-label-invalid', `Edge "${e.id}" ${key} must be a string such as "1", "0..*" or a role name.`, { edge: e.id });
+      else if (e[key].length > END_LABEL_CHARS)
+        add('warning', 'content/end-label-too-long', `Edge "${e.id}" ${key} is ${e[key].length} chars; end labels are multiplicities or short role names (under ${END_LABEL_CHARS}). Put longer text in label.`, { edge: e.id });
+    }
   }
 }
 

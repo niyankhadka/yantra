@@ -7,6 +7,7 @@
 import { textWidth, wrapText, truncate } from './text.js';
 import { isEntity, entityWidth, measureMembers } from './entity.js';
 import { shapeOf, POINT_SHAPES } from './model.js';
+import { hasNotation } from './notation.js';
 
 /** Card metrics. src/css/diagram.css mirrors these numbers exactly. */
 export const CARD = {
@@ -92,60 +93,114 @@ export function labelSize(text) {
 export const POINT_SIZE = { initial: 20, final: 20, choice: 40 };
 
 /**
+ * Fork / join bar: a `thick` bar drawn across the middle of a `box`-deep
+ * rect, as long as its busier side needs (`per` px per edge, at least `min`).
+ * Horizontal in TB layouts, vertical in LR; node.width sets the length.
+ */
+export const FORK = { thick: 6, box: 20, min: 80, per: 40, max: 480 };
+
+/**
  * Self-loop metrics: legs leave the side `reach` px, `span` apart (top and
  * bottom loops widen to hold their label), `legGap` apart on left/right sides.
+ * `marked` loops (ER / UML end markers) reach further so the label clears them;
+ * loops on a dot or diamond reach `pointReach` past its box.
  */
-export const LOOP = { reach: 36, span: 36, inset: 16, legGap: 28, labelGap: 6 };
+export const LOOP = { reach: 36, span: 36, inset: 16, legGap: 28, labelGap: 6, marked: 46, pointReach: 40 };
 
 /**
  * Geometry of a self-loop on one side of its node, clockwise. Top and bottom
  * loops carry their label on the far segment like any edge; left and right
  * loops put it just outside, so it never covers the legs.
- * @param r     node rect { x, y, w, h }
+ * @param r     node rect { x, y, w, h, shape? }
  * @param side  'top' | 'right' | 'bottom' | 'left'
  * @param lab   labelSize() of the edge label, or null
- * @returns { points, label: {x,y,w,h} (centre) | null, box (route + label), extent (beyond the side) }
+ * @param opts  { shape: pseudo-state shape (legs start on its outline, label beyond the loop),
+ *                ys: [y0, y1] absolute leg heights on a left / right side (field rows),
+ *                marked: the edge has end markers }
+ * @returns { points, label: {x,y,w,h} (centre) | null, box (route + label), extent (beyond the side), side }
  */
-export function selfLoop(r, side, lab) {
+export function selfLoop(r, side, lab, opts = {}) {
   const across = side === 'top' || side === 'bottom';
+  const point = POINT_SHAPES.has(opts.shape) ? opts.shape : null;
   let points;
   let label = null;
-  if (across) {
+  let extent;
+  if (point) {
+    // A dot or diamond is too small for a loop on its side: the legs start on
+    // its outline and run out far enough to read as a loop; the label sits beyond it
+    const half = r.w / 2;
+    const s = point === 'choice' ? half - 8 : Math.round(half * 0.7);
+    const depth = point === 'choice' ? half - s : Math.round(Math.sqrt(half * half - s * s) * 10) / 10; // centre to outline
+    const reach = LOOP.pointReach;
+    const cx = r.x + half;
+    const cy = r.y + r.h / 2;
+    const dir = side === 'top' || side === 'left' ? -1 : 1;
+    if (across) {
+      const edge = cy + dir * depth;
+      const far = (dir < 0 ? r.y : r.y + r.h) + dir * reach;
+      const [a, b] = dir < 0 ? [cx - s, cx + s] : [cx + s, cx - s];
+      points = [{ x: a, y: edge }, { x: a, y: far }, { x: b, y: far }, { x: b, y: edge }];
+      if (lab) label = { x: cx, y: far + dir * (LOOP.labelGap + lab.h / 2), w: lab.w, h: lab.h };
+      extent = reach + (lab ? LOOP.labelGap + lab.h : 0);
+    } else {
+      const edge = cx + dir * depth;
+      const far = (dir < 0 ? r.x : r.x + r.w) + dir * reach;
+      const [a, b] = dir > 0 ? [cy - s, cy + s] : [cy + s, cy - s];
+      points = [{ x: edge, y: a }, { x: far, y: a }, { x: far, y: b }, { x: edge, y: b }];
+      if (lab) label = { x: far + dir * (LOOP.labelGap + lab.w / 2), y: cy, w: lab.w, h: lab.h };
+      extent = reach + (lab ? LOOP.labelGap + lab.w : 0);
+    }
+  } else if (across) {
+    const reach = opts.marked ? LOOP.marked : LOOP.reach;
     const max = Math.min(r.w - 8, Math.max(LOOP.span, r.w - LOOP.inset * 2));
     const span = Math.max(Math.min(LOOP.span, r.w - 8), Math.min(max, lab ? lab.w + 16 : LOOP.span));
     const cx = Math.round(r.x + r.w / 2);
     const x0 = Math.round(cx - span / 2);
     const x1 = Math.round(cx + span / 2);
     const edge = side === 'top' ? r.y : r.y + r.h;
-    const far = side === 'top' ? edge - LOOP.reach : edge + LOOP.reach;
+    const far = side === 'top' ? edge - reach : edge + reach;
     points = side === 'top'
       ? [{ x: x0, y: edge }, { x: x0, y: far }, { x: x1, y: far }, { x: x1, y: edge }]
       : [{ x: x1, y: edge }, { x: x1, y: far }, { x: x0, y: far }, { x: x0, y: edge }];
     if (lab) label = { x: cx, y: far, w: lab.w, h: lab.h };
+    extent = reach + (lab ? lab.h / 2 : 0);
   } else {
     const gap = Math.min(LOOP.legGap, Math.max(8, r.h - 8));
     const cy = Math.round(r.y + r.h / 2);
-    const y0 = Math.round(cy - gap / 2);
-    const y1 = Math.round(cy + gap / 2);
+    let y0 = Math.round(cy - gap / 2);
+    let y1 = Math.round(cy + gap / 2);
+    if (Array.isArray(opts.ys)) {
+      // Field rows (ER / class cards): the loop joins the two rows it relates
+      [y0, y1] = opts.ys;
+      if (Math.abs(y1 - y0) < 12) [y0, y1] = y0 <= y1 ? [y0 - 6, y1 + 6] : [y0 + 6, y1 - 6];
+    } else if (side === 'left') [y0, y1] = [y1, y0];
+    const reach = opts.marked ? LOOP.marked : LOOP.reach;
     const edge = side === 'right' ? r.x + r.w : r.x;
-    const far = side === 'right' ? edge + LOOP.reach : edge - LOOP.reach;
-    points = side === 'right'
-      ? [{ x: edge, y: y0 }, { x: far, y: y0 }, { x: far, y: y1 }, { x: edge, y: y1 }]
-      : [{ x: edge, y: y1 }, { x: far, y: y1 }, { x: far, y: y0 }, { x: edge, y: y0 }];
-    if (lab) label = { x: far + (side === 'right' ? 1 : -1) * (LOOP.labelGap + lab.w / 2), y: cy, w: lab.w, h: lab.h };
+    const far = side === 'right' ? edge + reach : edge - reach;
+    points = [{ x: edge, y: y0 }, { x: far, y: y0 }, { x: far, y: y1 }, { x: edge, y: y1 }];
+    if (lab) label = { x: far + (side === 'right' ? 1 : -1) * (LOOP.labelGap + lab.w / 2), y: Math.round((y0 + y1) / 2), w: lab.w, h: lab.h };
+    extent = reach + (lab ? LOOP.labelGap + lab.w : 0);
   }
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
   if (label) xs.push(label.x - label.w / 2, label.x + label.w / 2), ys.push(label.y - label.h / 2, label.y + label.h / 2);
   const box = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
-  const extent = across ? LOOP.reach + (lab ? lab.h / 2 : 0) : LOOP.reach + (lab ? LOOP.labelGap + lab.w : 0);
-  return { points, label, box, extent };
+  return { points, label, box, extent, side };
 }
 
-/** Width/height plus the wrapped text lines a card will show. */
-export function measureNode(node) {
+/**
+ * Width/height plus the wrapped text lines a card will show.
+ * @param opts { direction: 'LR' | 'TB', ports: edges on the busier side } (fork bars only)
+ */
+export function measureNode(node, opts = {}) {
   const shape = shapeOf(node);
   if (POINT_SHAPES.has(shape)) return { w: POINT_SIZE[shape], h: POINT_SIZE[shape], lines: { title: [], subtitle: [], tech: '' } };
+  if (shape === 'fork') {
+    const want = typeof node.width === 'number' && node.width > 0 ? node.width : FORK.per * Math.max(1, opts.ports || 2);
+    const len = ceilTo(Math.min(FORK.max, Math.max(FORK.min, want)), 20);
+    const lines = { title: [], subtitle: [], tech: '' };
+    return opts.direction === 'TB' ? { w: len, h: FORK.box, lines } : { w: FORK.box, h: len, lines };
+  }
   const d = node.data || {};
   const entity = isEntity(d);
   // Entity / class cards widen (up to maxWidth) to fit their rows unless a width is given
@@ -171,7 +226,7 @@ export function measureNode(node) {
 }
 
 /**
- * @param nodes  [{ id, w, h, rank? }]
+ * @param nodes  [{ id, w, h, rank?, shape? }]
  * @param edges  [{ id, source, target, label? }]
  * @param groups groupIndex() result over these nodes (optional): members stay
  *               contiguous in every rank and get room for their boxes
@@ -431,14 +486,23 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
     const taken = new Set();
     for (const { edge } of oriented) if (corridor.has(edge.id) && (edge.source === id || edge.target === id)) taken.add(laneSide(corridor.get(edge.id)));
     for (const o of loopEdges) if (o.source === id && loopSide.has(o.id)) taken.add(loopSide.get(o.id));
-    const side = prefer.find((x) => !taken.has(x)) || prefer[0];
+    let order = prefer;
+    if (fieldLoop(e)) {
+      // A loop between two field rows runs on the left or right side: the one with fewer edges
+      const right = horiz ? oriented.filter((o) => o.u === id).length : 0;
+      const left = horiz ? oriented.filter((o) => o.v === id).length : 0;
+      order = right <= left ? ['right', 'left'] : ['left', 'right'];
+    }
+    const side = order.find((x) => !taken.has(x)) || order[0];
     loopSide.set(e.id, side);
     const n = byId.get(id);
-    const { extent } = selfLoop({ x: 0, y: 0, w: n.w, h: n.h }, side, labelSize(e.label));
+    const { extent } = selfLoop({ x: 0, y: 0, w: n.w, h: n.h }, side, labelSize(e.label), loopOpts(n, e));
     const it = items.get(id);
-    if (side === (horiz ? 'top' : 'left')) it.loopStart = Math.max(it.loopStart || 0, extent);
-    else if (side === (horiz ? 'bottom' : 'right')) it.loopEnd = Math.max(it.loopEnd || 0, extent);
-    else mainLoops.push({ rank: rank.get(id), after: side === (horiz ? 'right' : 'bottom'), extent });
+    // A dot or diamond may take its loop on either free side once ports are known: room on both
+    const point = POINT_SHAPES.has(n.shape);
+    if (side === (horiz ? 'top' : 'left') || (point && side === (horiz ? 'bottom' : 'right'))) it.loopStart = Math.max(it.loopStart || 0, extent);
+    if (side === (horiz ? 'bottom' : 'right') || (point && side === (horiz ? 'top' : 'left'))) it.loopEnd = Math.max(it.loopEnd || 0, extent);
+    if (side === 'left' || side === 'right' ? horiz : !horiz) mainLoops.push({ rank: rank.get(id), after: side === (horiz ? 'right' : 'bottom'), extent });
   }
 
   // 5. Cross-axis placement: pull towards neighbours, keep order and spacing
@@ -496,9 +560,10 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
   const gapNeed = Array.from({ length: Math.max(0, layers.length - 1) }, () => (horiz ? 90 : 80));
   for (const { edge, u, v } of oriented) {
     const lab = labelSize(edge.label);
-    if (!lab || corridor.has(edge.id)) continue; // corridor labels sit on the long run
+    const ends = endLabelRoom(edge, horiz);
+    if ((!lab && !ends) || corridor.has(edge.id)) continue; // corridor labels sit on the long run
     const g = Math.min(rank.get(u), rank.get(v));
-    if (g < gapNeed.length) gapNeed[g] = Math.max(gapNeed[g], (horiz ? lab.w : lab.h) + 52);
+    if (g < gapNeed.length) gapNeed[g] = Math.max(gapNeed[g], (lab ? (horiz ? lab.w : lab.h) : 0) + ends + 52);
   }
   // Edges both ways between the same two nodes (common in state machines) run
   // side by side through one gap: make room for their labels next to each other
@@ -587,7 +652,7 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
       const card = horiz ? { x: main, y: c, w: n.w, h: n.h } : { x: c, y: main, w: n.w, h: n.h };
       // a group box also wraps its members' self-loops
       let r = card;
-      for (const e of loopEdges) if (e.source === id) r = union(r, selfLoop(card, loopSide.get(e.id), labelSize(e.label)).box);
+      for (const e of loopEdges) if (e.source === id) r = union(r, selfLoop(card, loopSide.get(e.id), labelSize(e.label), loopOpts(n, e)).box);
       return r;
     };
     const shift = (r, from, to, d) => {
@@ -646,6 +711,23 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
     }
   }
 }
+
+/**
+ * Room along the flow that an edge's end labels (sourceLabel / targetLabel)
+ * take next to its edge label: their width in LR, their 14px height in TB.
+ */
+function endLabelRoom(edge, horiz) {
+  let room = 0;
+  for (const t of [edge.sourceLabel, edge.targetLabel])
+    if (typeof t === 'string' && t.trim()) room += (horiz ? Math.ceil(textWidth(t.trim(), 10.5, { weight: 500 })) + 6 : 14) + 8;
+  return room;
+}
+
+/** True when a self-loop joins field rows (sourceField / targetField on an entity or class card). */
+export const fieldLoop = (e) => typeof e?.sourceField === 'string' || typeof e?.targetField === 'string';
+
+/** selfLoop() options for a loop on node n (layout input or rect: { shape? }). */
+const loopOpts = (n, e) => ({ shape: n.shape, marked: hasNotation(e) });
 
 function union(a, b) {
   const x = Math.min(a.x, b.x);

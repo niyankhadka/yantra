@@ -110,11 +110,20 @@ function levelMarkdown(payload, root) {
   // plain one-way arrow, Relationship when some edge carries notation
   const ARROW_TEXT = { forward: '→', both: `↔ ${t('md.both')}`, none: `— ${t('md.undirected')}` };
   const directed = model.edges.some((e) => !hasNotation(e) && (arrowOf(e) !== 'forward' || e.source === e.target));
-  const notation = model.edges.some(hasNotation);
+  // End labels (multiplicities, roles) join the Relationship column, as "1 → 0..*"
+  const endText = (e) => {
+    const lab = (v) => (typeof v === 'string' && v.trim() ? v.trim() : '');
+    const [a, b] = [lab(e.sourceLabel), lab(e.targetLabel)];
+    return a || b ? `${a || '—'} → ${b || '—'}` : '';
+  };
+  const notation = model.edges.some((e) => hasNotation(e) || endText(e));
+  // An end that attaches to a field row names it: "Orders.customer_id"
+  const endName = (id, field) => (typeof field === 'string' && field ? `${title(id)}.${field}` : title(id));
   out.push('', `## ${md(t('summary.connections'))}`, '', row(...['md.from', 'md.to', ...(directed ? ['md.direction'] : []), 'md.label', ...(notation ? ['md.relationship'] : [])].map((k) => cell(t(k)))), `|---|---|${directed ? '---|' : ''}---|${notation ? '---|' : ''}`);
   for (const e of model.edges) {
     const dir = hasNotation(e) ? '' : e.source === e.target ? `↻ ${t('md.selfLoop')}${arrowOf(e) === 'forward' ? '' : ` (${ARROW_TEXT[arrowOf(e)].slice(2)})`}` : ARROW_TEXT[arrowOf(e)];
-    out.push(`| ${cell(title(e.source))} | ${cell(title(e.target))} |${directed ? ` ${cell(dir)} |` : ''} ${href(e.url) ? `[${cell(e.label || t('md.link'))}](${href(e.url)})` : cell(e.label)} |${notation ? ` ${cell(notationText(e, L))} |` : ''}`);
+    const rel = [notationText(e, L), endText(e)].filter(Boolean).join('; ');
+    out.push(`| ${cell(endName(e.source, e.sourceField))} | ${cell(endName(e.target, e.targetField))} |${directed ? ` ${cell(dir)} |` : ''} ${href(e.url) ? `[${cell(e.label || t('md.link'))}](${href(e.url)})` : cell(e.label)} |${notation ? ` ${cell(rel)} |` : ''}`);
   }
 
   if (model.modes.length > 1) {

@@ -16,11 +16,16 @@ from ._cli import YantraError, build_payload, export_payload, validate_payload
 from .i18n import language_meta
 
 __all__ = ["Diagram", "Node", "Edge", "Step", "Scenario", "Group", "COLORS", "SHAPES", "ARROWS", "DEFAULT_SCENARIO",
-           "RELATIONS", "END_KINDS", "VISIBILITY", "ALGORITHMS", "field", "method"]
+           "RELATIONS", "END_KINDS", "VISIBILITY", "ALGORITHMS", "GROUP_KINDS", "field", "method"]
 
 COLORS = ("blue", "teal", "green", "amber", "rose", "violet", "orange", "slate")
-#: Node shapes: cards ("card", "state") and state-machine pseudo-states ("initial", "final", "choice").
-SHAPES = ("card", "state", "initial", "final", "choice")
+#: Node shapes: cards ("card", "state"), state-machine pseudo-states ("initial", "final", "choice")
+#: and the fork / join bar ("fork").
+SHAPES = ("card", "state", "initial", "final", "choice", "fork")
+#: Group kinds: "region" is a concurrent region of its parent group (a composite state).
+GROUP_KINDS = ("region",)
+#: End labels (``source_label`` / ``target_label``) are multiplicities or short role names.
+END_LABEL_CHARS = 16
 #: Edge arrow heads: at the target (default), at both ends, or none (an undirected link).
 ARROWS = ("forward", "both", "none")
 ALGORITHMS = ("layered", "tree", "mindmap")
@@ -228,7 +233,8 @@ class Group:
     """A titled boundary around nodes (e.g. a VPC, a team, a bounded context)."""
 
     def __init__(self, group_id: str, title: str, nodes: Iterable[NodeRef], parent: Optional[str] = None,
-                 color: Optional[str] = None, description: Optional[str] = None, style: Optional[str] = None):
+                 color: Optional[str] = None, description: Optional[str] = None, style: Optional[str] = None,
+                 kind: Optional[str] = None):
         self.id = group_id
         self.title = title
         self.nodes = _ids(nodes)
@@ -236,10 +242,11 @@ class Group:
         self.color = color
         self.description = description
         self.style = style
+        self.kind = kind
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"id": self.id, "title": self.title, "nodes": self.nodes}
-        for key in ("parent", "color", "description", "style"):
+        for key in ("parent", "color", "description", "style", "kind"):
             value = getattr(self, key)
             if value is not None:
                 d[key] = value
@@ -384,12 +391,15 @@ class Diagram:
         """Add a card. Common data fields: subtitle, tech, icon, badge, description, metadata.
         `rank` forces the column (LR) or row (TB); `width` is 160-320 (default 220).
         `shape`: "card" (default), "state" (rounder card), or the textless pseudo-states
-        "initial" (filled dot), "final" (ringed dot) and "choice" (diamond)."""
+        "initial" (filled dot), "final" (ringed dot), "choice" (diamond) and "fork" (a fork / join
+        bar across the flow; its `width` is the bar's length, 40-480)."""
         if node_id in self.nodes:
             raise YantraError(f"Duplicate node id: {node_id}")
         if shape is not None and shape not in SHAPES:
             raise YantraError(f"node shape must be one of {SHAPES}, not {shape!r}")
-        if width is not None and not 160 <= width <= 320:
+        if width is not None and shape == "fork" and not 40 <= width <= 480:
+            raise YantraError(f"fork bar length (width) must be 40-480, not {width}")
+        if width is not None and shape != "fork" and not 160 <= width <= 320:
             raise YantraError(f"node width must be 160-320, not {width}")
         if rank is not None and (not isinstance(rank, int) or rank < 0):
             raise YantraError(f"node rank must be a non-negative integer, not {rank!r}")
@@ -417,13 +427,18 @@ class Diagram:
     def add_edge(self, source: NodeRef, target: NodeRef, label: str = "", edge_id: Optional[str] = None,
                  type: Optional[str] = None, style: Optional[str] = None, arrow: Optional[str] = None,
                  relation: Optional[str] = None, source_end: Optional[str] = None, target_end: Optional[str] = None,
+                 source_field: Optional[str] = None, target_field: Optional[str] = None,
+                 source_label: Optional[str] = None, target_label: Optional[str] = None,
                  **extra: Any) -> Edge:
         """Connect two nodes. `type`: sync | async | event | stream | data; `style`: solid | dashed | dotted;
         `arrow`: forward (default) | both | none. `source == target` draws a self-loop.
         `url=` adds an http(s) or mailto link shown in the inspector.
         `relation`: a UML kind (see RELATIONS; triangles and diamonds sit on the source, so point edges
         parent -> child and whole -> part). `source_end` / `target_end`: ER cardinality or UML heads
-        (see END_KINDS), e.g. source_end="one", target_end="zero-or-many". Notation replaces `arrow`."""
+        (see END_KINDS), e.g. source_end="one", target_end="zero-or-many". Notation replaces `arrow`.
+        `source_field` / `target_field`: a field name on that end's card; the edge attaches at its row
+        (e.g. source_field="id", target_field="customer_id"). `source_label` / `target_label`: short
+        text beside each end, such as multiplicities ("1", "0..*") or a role name."""
         source, target = _id(source), _id(target)
         if style not in (None, "solid", "dashed", "dotted"):
             raise YantraError(f"edge style must be solid, dashed or dotted, not {style!r}")
@@ -436,8 +451,16 @@ class Diagram:
         for end in (source_end, target_end):
             if end is not None and end not in END_KINDS:
                 raise YantraError(f"edge end must be one of {END_KINDS}, not {end!r}")
+        for name, text in (("source_label", source_label), ("target_label", target_label)):
+            if text is not None and (not isinstance(text, str) or not text.strip() or len(text) > END_LABEL_CHARS):
+                raise YantraError(f"edge {name} must be a short string (1-{END_LABEL_CHARS} chars), not {text!r}")
+        for name, value in (("source_field", source_field), ("target_field", target_field)):
+            if value is not None and (not isinstance(value, str) or not value):
+                raise YantraError(f"edge {name} must be a field name, not {value!r}")
         extra.update({k: v for k, v in (("relation", relation), ("sourceEnd", source_end),
-                                        ("targetEnd", target_end)) if v is not None})
+                                        ("targetEnd", target_end), ("sourceField", source_field),
+                                        ("targetField", target_field), ("sourceLabel", source_label),
+                                        ("targetLabel", target_label)) if v is not None})
         edge_id = edge_id or f"{source}-{target}"
         base, n = edge_id, 2
         while edge_id in self.edges:
@@ -449,13 +472,19 @@ class Diagram:
 
     def group(self, group_id: str, title: str, nodes: Iterable[NodeRef], parent: Optional[str] = None,
               color: Optional[str] = None, description: Optional[str] = None,
-              style: Optional[str] = None) -> Group:
-        """Draw a titled boundary around `nodes`; `parent` nests it inside another group."""
+              style: Optional[str] = None, kind: Optional[str] = None) -> Group:
+        """Draw a titled boundary around `nodes`; `parent` nests it inside another group.
+        `kind="region"` makes it a concurrent region of its parent (a composite state): regions
+        stack inside the parent, divided by dashed lines."""
         if group_id in self.groups:
             raise YantraError(f"Duplicate group id: {group_id}")
         if color is not None and color not in COLORS:
             raise YantraError(f"group colour must be one of {COLORS}, not {color!r}")
-        g = Group(group_id, title, nodes, parent, color, description, style)
+        if kind is not None and kind not in GROUP_KINDS:
+            raise YantraError(f"group kind must be one of {GROUP_KINDS}, not {kind!r}")
+        if kind == "region" and not parent:
+            raise YantraError("a region needs a parent group (the composite state it divides)")
+        g = Group(group_id, title, nodes, parent, color, description, style, kind)
         self.groups[group_id] = g
         return g
 

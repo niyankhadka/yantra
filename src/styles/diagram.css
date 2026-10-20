@@ -62,6 +62,32 @@
   opacity: 0.35;
 }
 
+/* Concurrent regions (kind "region"): compartments of the parent box, divided
+ * by a dashed line in the parent's colour; only their title is drawn. */
+.y-group-layer .y-group.is-region,
+:root[data-theme="dark"] .y-group-layer .y-group.is-region {
+  border-color: transparent;
+  background: transparent;
+}
+
+.y-region-divider {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  border-top: 1.5px dashed color-mix(in srgb, var(--y-hue) 55%, transparent);
+  transition: opacity 180ms ease;
+}
+
+.y-region-divider.is-vertical {
+  border-top: none;
+  border-left: 1.5px dashed color-mix(in srgb, var(--y-hue) 55%, transparent);
+}
+
+.y-region-divider.is-dim {
+  opacity: 0.35;
+}
+
 /* Mirrors to the top-right corner in RTL, like the SVG export */
 .y-group-title {
   position: absolute;
@@ -286,6 +312,41 @@
   stroke-width: 1.5;
 }
 
+/* Fork / join bar: FORK.thick (6px) across the middle of its 20px box */
+.y-node.y-point.is-fork {
+  border-radius: 0;
+}
+
+.y-fork-bar {
+  position: absolute;
+  border-radius: 3px;
+  background: var(--y-hue);
+}
+
+.is-fork.is-vertical .y-fork-bar {
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 3px);
+  width: 6px;
+}
+
+.is-fork.is-horizontal .y-fork-bar {
+  left: 0;
+  right: 0;
+  top: calc(50% - 3px);
+  height: 6px;
+}
+
+.y-node.y-point.is-fork.is-active,
+.y-node.y-point.is-fork.is-selected {
+  box-shadow: none;
+}
+
+.y-node.y-point.is-fork.is-active .y-fork-bar,
+.y-node.y-point.is-fork.is-selected .y-fork-bar {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--y-hue) 25%, transparent);
+}
+
 .y-node.y-point.is-active,
 .y-node.y-point.is-selected {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--y-hue) 25%, transparent);
@@ -442,6 +503,33 @@
 }
 
 .y-label.is-dim {
+  opacity: 0.25;
+}
+
+/* End labels (multiplicities, roles): END_LABEL in src/core/route.js, 14px high */
+.y-end-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--y-bg);
+  color: var(--y-ink-2);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 180ms ease, color 180ms ease;
+}
+
+.y-end-label.is-active {
+  color: var(--y-ink);
+}
+
+.y-end-label.is-dim {
   opacity: 0.25;
 }
 

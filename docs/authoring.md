@@ -293,9 +293,14 @@ transitions labelled with their event:
   role (e.g. `pseudo`, slate) so the legend explains the dots.
 - A transition out of an initial state or into a final state needs no label; every other
   transition should name its event.
+- When several transitions meet a dot or diamond, the best-aligned one keeps its side and
+  each other one enters from the free side that gives it the shortest route, so lines reach
+  the dot directly instead of going round it.
 - **Self-loops** (`source` equal to `target`) draw as a small loop on a free side of the card
   (above or below it in `LR`, to its right in `TB`), with the label on the loop. Layout makes
-  room for it; steps may highlight it like any edge.
+  room for it; steps may highlight it like any edge. Ports of other edges on that side stay
+  clear of the loop's legs. A loop on a dot or diamond takes a side no other edge uses, starts
+  on the outline and reaches well past the shape, with its label beyond the loop.
 - **Back-edges** (reopen, retry, decline) are fine: point them the way the event goes and
   layout routes them back. Two edges between the same pair of states get a wider gap so
   both labels fit side by side.
@@ -310,6 +315,34 @@ transitions labelled with their event:
 ```
 
 See `examples/ticket-lifecycle.json`; Mermaid `stateDiagram` imports to the same shapes.
+
+### Fork, join and concurrent regions
+
+- `shape: "fork"` draws a **fork or join bar**: a thick bar across the flow (vertical in `LR`,
+  horizontal in `TB`). Edges attach along its length on the two long sides, lined up with the
+  cards they join, and end on the bar's face. The bar grows with its edges (and stretches to
+  span its neighbours when there is room); `width` sets a length. Use the same shape for a
+  join. Transitions into or out of a bar need no label; a bar should split into or merge two
+  or more transitions (`story/fork-needs-branches`).
+- **Concurrent regions**: make the composite state a group, and each region a child group with
+  `"kind": "region"` and `"parent"` set to it. Regions stack across the flow (rows in `LR`,
+  columns in `TB`); the parent draws its box and title, each region only its title, with a
+  dashed line between neighbouring regions. Put every node of the composite state inside one
+  of its regions, and use two or more regions.
+- In `tree` and `mindmap` layouts a bar is drawn like the other pseudo-states (folded, it
+  shows a `+N` badge); hierarchy edges there are tree connectors and ignore `sourceField` /
+  `targetField`, which apply to cross-links and self-loops only.
+
+```json
+{ "id": "split", "type": "pseudo", "shape": "fork", "data": { "title": "Fork" } },
+"groups": [
+  { "id": "processing", "title": "Processing", "nodes": [] },
+  { "id": "payment", "title": "Payment", "kind": "region", "parent": "processing", "nodes": ["authorise", "capture"] },
+  { "id": "stock", "title": "Stock", "kind": "region", "parent": "processing", "nodes": ["reserve", "pack"] }
+]
+```
+
+See `examples/parallel-checkout-states.json`.
 
 ## Data models and class diagrams
 
@@ -359,7 +392,23 @@ Edges take a marker at each end, independent of `style`:
 - Inheritance, realization, composition and aggregation need no label (the symbol says it);
   ER relationships still want a verb (`places`, `contains`). Markers fit in the straight stub at
   each port, and labels are kept clear of them.
-- Edges attach to card sides, not to individual rows.
+- **Field rows**: `sourceField` / `targetField` name a field of the source / target card; the
+  edge then attaches at that row, on the left or right side facing the other card (both on the
+  right when the cards stand one above the other). Point foreign keys at the key they reference
+  (`"sourceField": "id", "targetField": "customer_id"`); several edges from one key share its
+  port. An unknown name is an error (`ref/edge-unknown-field`). Without them, edges attach to
+  card sides.
+- **End labels**: `sourceLabel` / `targetLabel` put short text beside each end, past its marker:
+  multiplicities (`"1"`, `"0..*"`, `"1..*"`) or role names (`"owner"`), up to 16 characters. The
+  Markdown export adds them to the Relationship column (`1 → 0..*`).
+- **Self-relationships** (`employees.manager_id` → `employees.id`) are self-loops: with field
+  names they join the two rows on the less busy left or right side, with their markers and the
+  label beside the loop.
+
+```json
+{ "id": "places", "source": "customers", "target": "orders", "label": "places", "sourceEnd": "one", "targetEnd": "zero-or-many", "sourceField": "id", "targetField": "customer_id" },
+{ "id": "lines", "source": "order", "target": "line", "relation": "composition", "label": "lines", "sourceLabel": "1", "targetLabel": "1..*" }
+```
 
 See `examples/ecommerce-schema.json` and `examples/payment-classes.json`.
 
@@ -697,7 +746,11 @@ Fix in this order; each fix can clear later errors.
 | `ref/inspector-unknown-click-target`, `ref/panel-unknown-node` | Point `onNodeClick` at `node`, `stay` or a panel id; list only real card ids in `nodes`. |
 | `panel/*`, `ref/inspector-unknown-tab` | Give each panel a unique `id`, a `title` and blocks; list only existing tab ids. |
 | `page/block-invalid` (inside a panel) | Supply the block fields listed in the message. |
-| `schema/node-shape-invalid`, `schema/edge-arrow-invalid` | Use a listed `shape` (`card`, `state`, `initial`, `final`, `choice`) or `arrow` (`forward`, `both`, `none`). |
+| `schema/node-shape-invalid`, `schema/edge-arrow-invalid` | Use a listed `shape` (`card`, `state`, `initial`, `final`, `choice`, `fork`) or `arrow` (`forward`, `both`, `none`). |
+| `story/fork-needs-branches` (warning) | A fork splits into two or more transitions and a join merges two or more: add the missing branch, or drop the bar. |
+| `schema/group-kind-invalid` | `kind` on a group is `"region"` or absent. |
+| `group/region-needs-parent` | A region divides a composite state: set its `parent` to that group. |
+| `group/single-region`, `group/region-mixed` (warnings) | Give the composite state two or more regions and put all of its nodes inside them. |
 | `story/initial-has-incoming`, `story/final-has-outgoing` (warnings) | Nothing enters an initial state or leaves a final one: retarget the edge at a real state. |
 | `story/choice-needs-branches` (warning) | Give the choice two or more outgoing, labelled branches, or make it a state. |
 | `story/edge-endpoint-dimmed` (warning) | Add the edge's source and target to that step's `highlightNodes`. |
@@ -717,6 +770,9 @@ Fix in this order; each fix can clear later errors.
 | `schema/members-invalid` | `data.fields` / `data.methods` must be arrays of objects with a `name`; `stereotype` a string. |
 | `ref/field-unknown-ref` | A field's `ref` must name a node (`"orders"`) or one of its fields (`"orders.id"`). |
 | `schema/unknown-relation`, `schema/unknown-end` | Use a listed `relation` or `sourceEnd` / `targetEnd` value. |
+| `ref/edge-unknown-field` | `sourceField` / `targetField` must name a field (`data.fields[].name`) of that end's card. |
+| `schema/end-label-invalid`, `content/end-label-too-long` (warning) | `sourceLabel` / `targetLabel` are short strings (a multiplicity or role name, under 16 chars). |
+| `geometry/end-label-overlap` (warning) | An end label touches a card or another label: widen the gap, or shorten the label. |
 | `content/too-many-fields` (warning) | Over 12 rows on one card: keep the keys and the columns the story needs. |
 | `content/duplicate-field` (warning) | Remove or rename the repeated field. |
 | `drill/unknown-target` | `data.drill` must name a key of `diagrams` (ids are case-sensitive). |

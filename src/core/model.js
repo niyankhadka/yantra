@@ -149,11 +149,14 @@ export function visibleGraph(model, modeId) {
 /**
  * Node shapes. "card" (default) and "state" (a rounder card) carry text;
  * the state-machine pseudo-states are small and textless: "initial" (filled
- * dot), "final" (ringed dot) and "choice" (diamond). Their title still names
- * them in the inspector, tooltips and exports.
+ * dot), "final" (ringed dot) and "choice" (diamond), plus "fork", a thick bar
+ * for a fork or join (horizontal in TB, vertical in LR) that edges attach
+ * along. Their title still names them in the inspector, tooltips and exports.
  */
-export const NODE_SHAPES = ['card', 'state', 'initial', 'final', 'choice'];
+export const NODE_SHAPES = ['card', 'state', 'initial', 'final', 'choice', 'fork'];
 export const POINT_SHAPES = new Set(['initial', 'final', 'choice']);
+/** Shapes drawn without text: the pseudo-states and the fork / join bar. */
+export const TEXTLESS = new Set([...POINT_SHAPES, 'fork']);
 export const shapeOf = (node) => (NODE_SHAPES.includes(node?.shape) ? node.shape : 'card');
 
 /** Edge arrowheads: "forward" (default, at the target), "both", or "none" (an undirected link). */

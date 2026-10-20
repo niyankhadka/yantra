@@ -136,8 +136,8 @@
   ],
   "edges": [
     { "id": "entity-order", "source": "entity", "target": "order", "relation": "inheritance" },
-    { "id": "customer-order", "source": "customer", "target": "order", "relation": "aggregation", "label": "places" },
-    { "id": "order-line", "source": "order", "target": "line", "relation": "composition", "label": "1..* lines" },
+    { "id": "customer-order", "source": "customer", "target": "order", "relation": "aggregation", "label": "places", "sourceLabel": "1", "targetLabel": "0..*" },
+    { "id": "order-line", "source": "order", "target": "line", "relation": "composition", "label": "lines", "sourceLabel": "1", "targetLabel": "1..*" },
     { "id": "line-money", "source": "line", "target": "money", "relation": "association", "label": "unitPrice" },
     { "id": "order-method", "source": "order", "target": "method", "relation": "dependency", "label": "pays with" },
     { "id": "method-card", "source": "method", "target": "card", "relation": "realization" },

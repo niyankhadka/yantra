@@ -22,8 +22,9 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 - **Big diagrams**: fold subtrees or groups into one card and back (`+N`, key `X`,
   `meta.layout.collapsed`, `#collapsed=` in the link); trees get a larger node budget.
 - **State machines and lifecycles**: state cards, initial / final dots and choice diamonds,
-  self-loops drawn on the card, two-way and undirected edges (`edge.arrow`), back-edges
-  routed cleanly. See `examples/ticket-lifecycle.json`.
+  fork / join bars and concurrent regions, self-loops drawn on the card, two-way and
+  undirected edges (`edge.arrow`), back-edges routed cleanly. See
+  `examples/ticket-lifecycle.json` and `examples/parallel-checkout-states.json`.
 - **Sequence view**: the same payload as a lifeline diagram (`meta.view: "sequence"`, key `V`,
   `--view sequence`), one message per step.
 - **Modes**: alternative views (production vs local) that hide nodes or swap details.
@@ -44,7 +45,8 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   `matrix` blocks (2x2 quadrants, 3x3-5x5 risk heat maps); inline SVG, both themes, no libraries. See [`docs/pages.md`](docs/pages.md).
 - **Data models and class diagrams**: cards with field rows (PK / FK / UK, types) or attributes
   and methods (visibility, «stereotype»), growing with their rows; crow's foot cardinality and
-  UML heads (inheritance, realization, composition, aggregation, dependency) at edge ends.
+  UML heads (inheritance, realization, composition, aggregation, dependency) at edge ends,
+  edges attached to field rows (foreign key → key), multiplicity labels at either end.
 - **Import**: `yantra import` turns Mermaid flowcharts, sequence, state, ER and class diagrams
   and mind maps, draw.io / diagrams.net files and PlantUML sequence, component, use-case,
   activity, state, class and mind-map / WBS diagrams into payloads. See
@@ -154,7 +156,8 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
   `ecommerce-schema` (ERD), `payment-classes` (UML class diagram),
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
   (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
-  `healthcare-clinical`, `ticket-lifecycle` (state machine), `org-chart` (tree),
+  `healthcare-clinical`, `ticket-lifecycle` (state machine), `parallel-checkout-states` (fork,
+  join and concurrent regions), `org-chart` (tree),
   `study-plan-mindmap` (mind map), `incident-triage-decision-tree` (decision tree, opens folded),
   `health-referral-nepali` (Nepali), `order-fulfilment-arabic` (Arabic, right to left).
 - Pages: `answer-checkout-saga`, `answer-how-to-choose-database` (interactive diagram),

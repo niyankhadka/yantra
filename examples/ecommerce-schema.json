@@ -147,14 +147,15 @@
     }
   ],
   "edges": [
-    { "id": "customers-addresses", "source": "customers", "target": "addresses", "label": "has", "sourceEnd": "one", "targetEnd": "zero-or-many" },
-    { "id": "customers-orders", "source": "customers", "target": "orders", "label": "places", "sourceEnd": "one", "targetEnd": "zero-or-many" },
-    { "id": "addresses-orders", "source": "addresses", "target": "orders", "label": "ships to", "sourceEnd": "one", "targetEnd": "zero-or-many" },
-    { "id": "orders-items", "source": "orders", "target": "order_items", "label": "contains", "sourceEnd": "one", "targetEnd": "one-or-many" },
-    { "id": "products-items", "source": "products", "target": "order_items", "label": "sold as", "sourceEnd": "one", "targetEnd": "zero-or-many" },
-    { "id": "categories-products", "source": "categories", "target": "products", "label": "groups", "sourceEnd": "one", "targetEnd": "zero-or-many" },
-    { "id": "orders-payments", "source": "orders", "target": "payments", "label": "paid by", "sourceEnd": "one", "targetEnd": "zero-or-many" },
-    { "id": "orders-shipments", "source": "orders", "target": "shipments", "label": "shipped in", "sourceEnd": "one", "targetEnd": "zero-or-one" }
+    { "id": "customers-addresses", "source": "customers", "target": "addresses", "label": "has", "sourceEnd": "one", "sourceField": "id", "targetField": "customer_id", "targetEnd": "zero-or-many" },
+    { "id": "customers-orders", "source": "customers", "target": "orders", "label": "places", "sourceEnd": "one", "sourceField": "id", "targetField": "customer_id", "targetEnd": "zero-or-many" },
+    { "id": "addresses-orders", "source": "addresses", "target": "orders", "label": "ships to", "sourceEnd": "one", "sourceField": "id", "targetField": "address_id", "targetEnd": "zero-or-many" },
+    { "id": "orders-items", "source": "orders", "target": "order_items", "label": "contains", "sourceEnd": "one", "sourceField": "id", "targetField": "order_id", "targetEnd": "one-or-many" },
+    { "id": "products-items", "source": "products", "target": "order_items", "label": "sold as", "sourceEnd": "one", "sourceField": "id", "targetField": "product_id", "targetEnd": "zero-or-many" },
+    { "id": "categories-products", "source": "categories", "target": "products", "label": "groups", "sourceEnd": "one", "sourceField": "id", "targetField": "category_id", "targetEnd": "zero-or-many" },
+    { "id": "categories-parent", "source": "categories", "target": "categories", "label": "parent of", "sourceEnd": "zero-or-one", "sourceField": "id", "targetField": "parent_id", "targetEnd": "zero-or-many" },
+    { "id": "orders-payments", "source": "orders", "target": "payments", "label": "paid by", "sourceEnd": "one", "sourceField": "id", "targetField": "order_id", "targetEnd": "zero-or-many" },
+    { "id": "orders-shipments", "source": "orders", "target": "shipments", "label": "shipped in", "sourceEnd": "one", "sourceField": "id", "targetField": "order_id", "targetEnd": "zero-or-one" }
   ],
   "scenarios": [
     {
@@ -192,7 +193,7 @@
           "title": "Catalogue",
           "description": "Each product sits in one category. Categories nest through parent_id, which is empty for top-level ones.",
           "highlightNodes": ["categories", "products"],
-          "highlightEdges": ["categories-products"]
+          "highlightEdges": ["categories-products", "categories-parent"]
         },
         {
           "id": "after",
