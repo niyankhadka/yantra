@@ -163,7 +163,16 @@ export const shapeOf = (node) => (NODE_SHAPES.includes(node?.shape) ? node.shape
 export const EDGE_ARROWS = ['forward', 'both', 'none'];
 export const arrowOf = (edge) => (EDGE_ARROWS.includes(edge?.arrow) ? edge.arrow : 'forward');
 
-export const GROUP_MAX_DEPTH = 3;
+/** Deepest group nesting the validator accepts (group/too-deep). */
+export const GROUP_MAX_DEPTH = 8;
+/**
+ * Comfortable limits for groups in one frame: beyond these lint warns
+ * (budget/too-many-groups, budget/deep-nesting) and suggests folding or a
+ * detail diagram. Importers merge groups nested deeper than `depth`. A diagram
+ * whose groups open folded counts its cards as they show at first (BUDGET in
+ * lint.js) and all of them against `nodes` / `edges`.
+ */
+export const GROUP_BUDGET = { groups: 24, depth: 6, nodes: 48, edges: 64 };
 
 /**
  * Resolve groups into a forest over the given node ids. Tolerant of bad

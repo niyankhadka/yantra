@@ -230,7 +230,26 @@ export default {
   'fold.expand': 'باز کردن {title} ({n} مورد پنهان)',
   'fold.collapse': 'جمع کردن {title}',
   'fold.folded': 'جمع‌شده',
-  'fold.expanded': 'بازشده'
+  'fold.expanded': 'بازشده',
+  'fold.badge': 'گروه',
+  'fold.card': '{n} کارت جمع شد',
+  'fold.cards': '{n} کارت جمع شد',
+  'fold.cardCount1': '{n} کارت',
+  'fold.cardCount': '{n} کارت',
+  'fold.groupCount1': '{n} گروه',
+  'fold.groupCount': '{n} گروه',
+  'depth.title': 'جمع کردن تا سطح',
+  'depth.level1': '{n} سطح باز',
+  'depth.level': '{n} سطح باز',
+  'depth.none': 'همه جمع‌شده',
+  'depth.all': 'همه بازشده',
+  'help.depth': 'جمع کردن تا سطح (0 همه را باز می‌کند)',
+  'focus.crumbs': 'مسیر گروه',
+  'focus.whole': 'کل نمودار',
+  'focus.hint': 'برای بزرگ‌نمایی روی {title} دوبار کلیک کنید',
+  'focus.focused': 'بزرگ‌نمایی روی {title}',
+  'help.focus': 'بزرگ‌نمایی روی گروه کارت انتخاب‌شده (Esc برای کوچک‌نمایی)',
+  'drill.more': 'نمایش {n} سطح پنهان'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

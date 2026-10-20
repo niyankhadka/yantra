@@ -7,7 +7,7 @@
  */
 
 /** Detail levels below the overview. */
-export const DRILL_MAX_DEPTH = 3;
+export const DRILL_MAX_DEPTH = 8;
 
 const isObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
 

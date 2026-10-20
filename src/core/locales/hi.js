@@ -230,7 +230,26 @@ export default {
   'fold.expand': '{title} खोलें ({n} छिपे हुए)',
   'fold.collapse': '{title} समेटें',
   'fold.folded': 'समेटा गया',
-  'fold.expanded': 'खोला गया'
+  'fold.expanded': 'खोला गया',
+  'fold.badge': 'समूह',
+  'fold.card': '{n} कार्ड समेटा गया',
+  'fold.cards': '{n} कार्ड समेटे गए',
+  'fold.cardCount1': '{n} कार्ड',
+  'fold.cardCount': '{n} कार्ड',
+  'fold.groupCount1': '{n} समूह',
+  'fold.groupCount': '{n} समूह',
+  'depth.title': 'स्तर तक समेटें',
+  'depth.level1': '{n} स्तर खुला',
+  'depth.level': '{n} स्तर खुले',
+  'depth.none': 'सब कुछ समेटा गया',
+  'depth.all': 'सब कुछ खुला',
+  'help.depth': 'स्तर तक समेटें (0 सब कुछ खोलता है)',
+  'focus.crumbs': 'समूह का मार्ग',
+  'focus.whole': 'पूरा आरेख',
+  'focus.hint': '{title} पर ज़ूम करने के लिए डबल-क्लिक करें',
+  'focus.focused': '{title} पर ज़ूम किया गया',
+  'help.focus': 'चुने गए कार्ड के समूह पर ज़ूम करें (Esc से ज़ूम आउट)',
+  'drill.more': '{n} छिपे हुए स्तर दिखाएँ'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

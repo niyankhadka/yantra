@@ -230,7 +230,26 @@ export default {
   'fold.expand': '{title} 펼치기({n}개 숨김)',
   'fold.collapse': '{title} 접기',
   'fold.folded': '접힘',
-  'fold.expanded': '펼쳐짐'
+  'fold.expanded': '펼쳐짐',
+  'fold.badge': '그룹',
+  'fold.card': '카드 {n}개 접힘',
+  'fold.cards': '카드 {n}개 접힘',
+  'fold.cardCount1': '카드 {n}개',
+  'fold.cardCount': '카드 {n}개',
+  'fold.groupCount1': '그룹 {n}개',
+  'fold.groupCount': '그룹 {n}개',
+  'depth.title': '수준까지 접기',
+  'depth.level1': '{n}개 수준 펼침',
+  'depth.level': '{n}개 수준 펼침',
+  'depth.none': '모두 접기',
+  'depth.all': '모두 펼치기',
+  'help.depth': '수준까지 접기(0은 모두 펼침)',
+  'focus.crumbs': '그룹 경로',
+  'focus.whole': '전체 다이어그램',
+  'focus.hint': '두 번 클릭하여 {title}(으)로 확대',
+  'focus.focused': '{title}(으)로 확대함',
+  'help.focus': '선택한 카드의 그룹으로 확대(Esc로 축소)',
+  'drill.more': '숨겨진 수준 {n}개 표시'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

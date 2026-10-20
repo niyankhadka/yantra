@@ -40,6 +40,12 @@
           <button role="radio" aria-checked="true" data-view="flow" title="Flow: the system as a graph (V)" data-i18n-tip="view.flowTip" data-kbd="V" data-i18n="view.flow">Flow</button>
           <button role="radio" aria-checked="false" data-view="sequence" title="Sequence: messages in time order (V)" data-i18n-tip="view.sequenceTip" data-kbd="V" data-i18n="view.sequence" tabindex="-1">Sequence</button>
         </div>
+        <div id="depth" class="y-menu" hidden>
+          <button id="btn-depth" class="y-icon-btn" title="Fold to depth (0-6)" aria-label="Fold to depth" data-i18n-tip="depth.title" data-kbd="0-6" data-i18n-label="depth.title" aria-haspopup="menu" aria-expanded="false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="8" width="10" height="9" rx="1.5"/><path d="M10 12h4"/></svg>
+          </button>
+          <div id="depth-menu" class="y-menu-list" role="menu" hidden></div>
+        </div>
         <div class="y-group">
           <button id="btn-zoom-out" class="y-icon-btn" title="Zoom out (-)" aria-label="Zoom out" data-i18n-tip="zoom.out" data-kbd="-" data-i18n-label="zoom.out">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
@@ -80,6 +86,9 @@
     <main id="viewport" class="y-viewport" aria-label="Diagram canvas" data-i18n-label="canvas.label">
       <div id="world" class="y-world"></div>
     </main>
+
+    <nav id="focus-crumbs" class="y-crumbs y-focus-crumbs" aria-label="Group path" data-i18n-label="focus.crumbs" hidden></nav>
+    <div id="crumb-menu" class="y-menu-list y-crumb-menu" role="menu" hidden></div>
 
     <div id="legend" class="y-legend">
       <div id="legend-list" class="y-legend-list" role="menu" aria-label="Filter by role" data-i18n-label="legend.filter" hidden></div>
@@ -161,6 +170,8 @@
         <dt><kbd>L</kbd></dt><dd data-i18n="help.legend">Roles legend</dd>
         <dt><kbd>S</kbd></dt><dd data-i18n="help.story">Collapse walkthrough</dd>
         <dt><kbd>X</kbd></dt><dd data-i18n="help.fold">Fold / unfold selected branch</dd>
+        <dt><kbd>0</kbd>–<kbd>6</kbd></dt><dd data-i18n="help.depth">Fold to depth (0 opens everything)</dd>
+        <dt><kbd>G</kbd></dt><dd data-i18n="help.focus">Zoom to the selected card's group (Esc zooms out)</dd>
         <dt><kbd>R</kbd></dt><dd data-i18n="help.fit">Fit to screen</dd>
         <dt><kbd>+</kbd> <kbd>-</kbd></dt><dd data-i18n="help.zoom">Zoom</dd>
         <dt><kbd>T</kbd></dt><dd data-i18n="help.theme">Light / dark</dd>

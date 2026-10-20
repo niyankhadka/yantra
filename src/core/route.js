@@ -229,7 +229,7 @@ export function loopGeometry(rects, edges, slots = null) {
 /**
  * @param rects Map<nodeId, {x,y,w,h, shape?, fields?: Map<fieldName, row centre from the card top>}>
  * @param edges [{ id, source, target, sides?: [src,tgt], label?, sourceField?, targetField?, marked? }]
- * @param options { groups?: [{ x, y, w, h, titleBox }] }
+ * @param options { groups?: [{ x, y, w, h, titleBox, toggleBox? }] }
  * @returns Map<edgeId, { points: [{x,y}], ok: boolean, label?: fixed self-loop label }>
  */
 export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
@@ -410,7 +410,14 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     xsSet.add(o.x0); xsSet.add(o.x1);
     ysSet.add(o.y0); ysSet.add(o.y1);
   }
-  const titles = containers.filter((gr) => gr.titleBox).map(({ titleBox: t }) => ({ x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }));
+  // Titles and fold buttons of group boxes: routes keep off them
+  const titles = containers.flatMap((gr) => [gr.titleBox, gr.toggleBox]).filter(Boolean).map((t) => ({ x0: t.x, y0: t.y, x1: t.x + t.w, y1: t.y + t.h }));
+  // grid lines at the edges of titles and fold buttons, so a long run is split there
+  // and the part across a title is priced as such (see titleH / titleV)
+  for (const t of titles) {
+    xsSet.add(t.x0 - 2); xsSet.add(t.x1 + 2);
+    ysSet.add(t.y0 - 2); ysSet.add(t.y1 + 2);
+  }
   for (const gr of containers) {
     // tracks just outside each box so detours run clear of the border
     xsSet.add(gr.x - 12); xsSet.add(gr.x + gr.w + 12);

@@ -230,7 +230,26 @@ export default {
   'fold.expand': '展开 {title}（已隐藏 {n} 项）',
   'fold.collapse': '折叠 {title}',
   'fold.folded': '已折叠',
-  'fold.expanded': '已展开'
+  'fold.expanded': '已展开',
+  'fold.badge': '分组',
+  'fold.card': '已折叠 {n} 张卡片',
+  'fold.cards': '已折叠 {n} 张卡片',
+  'fold.cardCount1': '{n} 张卡片',
+  'fold.cardCount': '{n} 张卡片',
+  'fold.groupCount1': '{n} 个分组',
+  'fold.groupCount': '{n} 个分组',
+  'depth.title': '折叠到层级',
+  'depth.level1': '展开 {n} 层',
+  'depth.level': '展开 {n} 层',
+  'depth.none': '全部折叠',
+  'depth.all': '全部展开',
+  'help.depth': '折叠到层级（0 全部展开）',
+  'focus.crumbs': '分组路径',
+  'focus.whole': '整个图表',
+  'focus.hint': '双击以放大到 {title}',
+  'focus.focused': '已放大到 {title}',
+  'help.focus': '放大到所选卡片的分组（Esc 缩小）',
+  'drill.more': '显示 {n} 个隐藏层级'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

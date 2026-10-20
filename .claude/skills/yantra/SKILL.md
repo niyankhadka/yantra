@@ -30,8 +30,9 @@ For "explain how X works", make the diagram first, then the page around it
 1. **Plan the story**: the question it answers and 3-6 walkthrough steps. More than ~12
    nodes → an overview plus detail diagrams: give the subsystem card `data.drill: "<id>"`
    and put the detail diagram (its own nodes, edges, steps) under `diagrams.<id>`, or
-   `{ "$ref": "./detail.json" }` for a file next to it. At most 3 levels; see Drill-down in
-   `docs/authoring.md`. A card can open another level per mode: `data.modes.<id>.drill`.
+   `{ "$ref": "./detail.json" }` for a file next to it. Up to 8 levels (deep breadcrumbs
+   fold their middle into a menu); see Drill-down in `docs/authoring.md`. A card can open
+   another level per mode: `data.modes.<id>.drill`.
 2. **Write the payload** (`meta`, `roles`, `nodes`, `edges`, `scenarios`) in one pass.
    - Do **not** write `x`/`y`. Point edges along the main flow; layout and routing are automatic.
    - Group node `type`s into 3-5 `roles` with one colour each; specific label in `data.badge`.
@@ -41,6 +42,12 @@ For "explain how X works", make the diagram first, then the page around it
      whose `source` is its `target` draws a self-loop (retry, edit, poll); keep it.
    - Boundaries that matter to the explanation (VPC, trust zone, team, phase) → `groups`:
      2-5 of them, each node in its innermost group only.
+   - Deep hierarchies (city > district > service > system > site > sensors, trust > hospital
+     > ward > bay > bed) nest groups with `parent`, up to 6 levels and 24 groups in one frame;
+     a group may hold only child groups (`"nodes": []`). Open with inner boxes folded
+     (`meta.layout.collapsed`, list inner ids too) and let steps open them with
+     `focusGroup: "<group id>"`. When a level needs its own story or the cards would pass ~14,
+     drill down instead, or both. See Deep hierarchies in `docs/authoring.md`.
    - Hierarchies → `meta.layout.algorithm: "tree"` (`direction: "TB"` for org charts and
      decision trees, `"LR"` for deep breakdowns) or `"mindmap"`. Edges go parent → child, one
      parent per node; hierarchy edges need no label (label decision branches `Yes` / `No`).

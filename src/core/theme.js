@@ -52,6 +52,25 @@ export const HUES = {
   slate: { light: '#59606d', dark: '#a3aab6' }
 };
 
+/**
+ * Group boxes by nesting depth (0 = outermost; deeper ones repeat the last).
+ * Nested boxes are translucent layers, so each level tints less than the one
+ * around it and outlines step from dashed to dotted: six levels stay calm in
+ * both themes. fill / fillDark: tint opacity; stroke: border opacity; line:
+ * the outline of a dashed (non-solid) box. The viewer gets the same values as
+ * CSS from themeCss(), the SVG export reads them directly.
+ */
+export const GROUP_TONES = [
+  { fill: 0.045, fillDark: 0.07, stroke: 0.55, line: 'dashed' },
+  { fill: 0.035, fillDark: 0.055, stroke: 0.5, line: 'dashed' },
+  { fill: 0.03, fillDark: 0.045, stroke: 0.5, line: 'dashed' },
+  { fill: 0.025, fillDark: 0.04, stroke: 0.45, line: 'dotted' },
+  { fill: 0.02, fillDark: 0.035, stroke: 0.45, line: 'dotted' }
+];
+export const groupTone = (depth) => GROUP_TONES[Math.min(GROUP_TONES.length - 1, Math.max(0, depth | 0))];
+/** SVG stroke-dasharray of a dashed box's outline at a depth. */
+export const groupDash = (depth) => (groupTone(depth).line === 'dotted' ? '1.5 3' : '5 4');
+
 export const HUE_ORDER = ['blue', 'teal', 'violet', 'amber', 'green', 'rose', 'orange', 'slate'];
 
 export const FONT_SANS = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
@@ -71,6 +90,23 @@ export function themeCss() {
   return [
     `:root { --y-font-sans: ${FONT_SANS}; --y-font-mono: ${FONT_MONO}; ${block('light')} }`,
     `:root[data-theme="dark"] { ${block('dark')} color-scheme: dark; }`,
-    ...Object.keys(HUES).map((name) => `[data-hue="${name}"] { --y-hue: var(--y-hue-${name}); }`)
+    ...Object.keys(HUES).map((name) => `[data-hue="${name}"] { --y-hue: var(--y-hue-${name}); }`),
+    ...groupToneCss()
   ].join('\n');
+}
+
+/** Viewer rules for nested group boxes (depth 1 and deeper; depth 0 is in diagram.css). */
+function groupToneCss() {
+  const pct = (v) => `${Math.round(v * 1000) / 10}%`;
+  const last = GROUP_TONES.length - 1;
+  return GROUP_TONES.slice(1).map((t, i) => {
+    const d = i + 1;
+    // the last tone also covers every deeper box
+    const sel = d === last
+      ? `.y-group-layer .y-group:is(${Array.from({ length: 5 }, (_, k) => `[data-depth="${d + k}"]`).join(', ')})`
+      : `.y-group-layer .y-group[data-depth="${d}"]`;
+    const line = t.line === 'dotted' ? ` .y-group-layer .y-group:not(.is-solid)${sel.slice('.y-group-layer .y-group'.length)} { border-style: dotted; }` : '';
+    return `${sel} { background: color-mix(in srgb, var(--y-hue) ${pct(t.fill)}, transparent); border-color: color-mix(in srgb, var(--y-hue) ${pct(t.stroke)}, transparent); }${line}\n` +
+      `:root[data-theme="dark"] ${sel} { background: color-mix(in srgb, var(--y-hue) ${pct(t.fillDark)}, transparent); }`;
+  });
 }

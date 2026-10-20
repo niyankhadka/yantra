@@ -4,7 +4,7 @@
  * can repair deterministically:
  *   { level: 'error' | 'warning', code, message, ...context }
  */
-import { normalize, GROUP_MAX_DEPTH, has, NODE_SHAPES, EDGE_ARROWS, shapeOf, arrowOf } from './model.js';
+import { normalize, GROUP_MAX_DEPTH, GROUP_BUDGET, has, NODE_SHAPES, EDGE_ARROWS, shapeOf, arrowOf } from './model.js';
 import { TEXT_CAP, displayWidth } from './text.js';
 import { HUES } from './theme.js';
 import { WINDOW_NODES, WINDOW_EDGES } from './route.js';
@@ -17,6 +17,7 @@ import { ALGORITHMS, COMPACT_MODES, isTreeAlgorithm, treeIndex } from './tree.js
 import { ROWS, members } from './entity.js';
 import { END_KINDS, RELATIONS } from './notation.js';
 import { collectDiagrams, drillEdges, drillOf, modeDrills, isUnsafeRefPath, safeUrl, DRILL_MAX_DEPTH } from './drill.js';
+import { foldLevels, foldsForDepth, DEPTH_KEYS } from './nesting.js';
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => (typeof v === 'string' ? v : '');
@@ -256,6 +257,12 @@ function diagramFindings(payload, add) {
       const hn = arr(st.highlightNodes || st.activeNodes);
       const he = arr(st.highlightEdges || st.activeEdges);
       hn.forEach((id) => nodeIds.has(id) || add('error', 'ref/step-unknown-node', `${where} highlights unknown node "${id}".`, { step: st.id }));
+      if (st.focusGroup !== undefined) {
+        if (typeof st.focusGroup !== 'string' || !groupIds.has(st.focusGroup))
+          add('error', 'ref/step-unknown-group', `${where} focusGroup "${st.focusGroup}" is not a group id.`, { step: st.id });
+        else if (treeMode)
+          add('warning', 'layout/focus-group-ignored', `${where} focuses group "${st.focusGroup}", but the ${algorithm} layout draws no groups; highlight the cards instead.`, { step: st.id });
+      }
       he.forEach((id) => {
         const e = edgeById.get(id);
         if (!e) return add('error', 'ref/step-unknown-edge', `${where} highlights unknown edge "${id}".`, { step: st.id });
@@ -306,21 +313,44 @@ function diagramFindings(payload, add) {
     if (hierarchy.cross.length && model.nodes.length > WINDOW_NODES)
       add('warning', 'budget/large-graph-fast-routing', `Graph is large (over ${WINDOW_NODES} nodes), so cross-links use the faster windowed router; routes may bend more.`);
   } else {
-    if (model.nodes.length > BUDGET.nodes)
-      add('warning', 'budget/too-many-nodes', `${model.nodes.length} nodes (budget ${BUDGET.nodes}). Split into an overview plus detail diagrams.`);
-    if (model.edges.length > BUDGET.edges)
-      add('warning', 'budget/too-many-edges', `${model.edges.length} edges (budget ${BUDGET.edges}). Merge parallel flows or split the diagram.`);
+    // Nested groups that open folded: cards and edges count as they show at first,
+    // with a larger cap on the whole diagram (every box unfolded)
+    const open = sound && model.groups.length && model.layout.collapsed.length ? computeScene(payload) : null;
+    const shown = open ? open.nodes.length : model.nodes.length;
+    const shownEdges = open ? open.edges.length : model.edges.length;
+    if (shown > BUDGET.nodes)
+      add('warning', 'budget/too-many-nodes', open
+        ? `${shown} cards show when the diagram opens (budget ${BUDGET.nodes}). Fold more groups with meta.layout.collapsed, or split into an overview plus detail diagrams.`
+        : `${model.nodes.length} nodes (budget ${BUDGET.nodes}). Split into an overview plus detail diagrams, or fold groups with meta.layout.collapsed.`);
+    else if (open && model.nodes.length > GROUP_BUDGET.nodes)
+      add('warning', 'budget/too-many-nodes', `${model.nodes.length} nodes in one diagram (budget ${GROUP_BUDGET.nodes} even when folded). Move a branch into a detail diagram.`);
+    if (shownEdges > BUDGET.edges)
+      add('warning', 'budget/too-many-edges', open
+        ? `${shownEdges} edges show when the diagram opens (budget ${BUDGET.edges}). Fold more groups or merge parallel flows.`
+        : `${model.edges.length} edges (budget ${BUDGET.edges}). Merge parallel flows or split the diagram.`);
+    else if (open && model.edges.length > GROUP_BUDGET.edges)
+      add('warning', 'budget/too-many-edges', `${model.edges.length} edges in one diagram (budget ${GROUP_BUDGET.edges} even when folded). Move a branch into a detail diagram.`);
     if (model.nodes.length > WINDOW_NODES || model.edges.length > WINDOW_EDGES)
       add('warning', 'budget/large-graph-fast-routing', `Graph is large (over ${WINDOW_NODES} nodes or ${WINDOW_EDGES} edges), so edges use the faster windowed router; routes may bend more. Split the diagram for the best routing.`);
   }
 
   // --- geometry (only when the graph is referentially sound) -------------
-  // A diagram that opens folded is checked as it opens and fully expanded
+  // A diagram that opens folded is checked as it opens and fully expanded; deep
+  // nesting (three or more box levels) also at every depth the viewer folds to
   if (!findings.some((f) => f.level === 'error')) {
-    const states = model.layout.collapsed.length ? [undefined, []] : [undefined];
-    for (const mode of model.modes)
-      for (const collapsed of states)
-        geometry(computeScene(payload, { modeId: mode.id, collapsed }), mode, add, model.modes.length > 1, collapsed ? ' [expanded]' : '');
+    for (const mode of model.modes) {
+      const states = [[undefined, ''], ...(model.layout.collapsed.length ? [[[], ' [expanded]']] : [])];
+      const levels = foldLevels(payload, { modeId: mode.id });
+      if (levels.kind === 'groups' && levels.levels >= 3)
+        for (let d = 1; d < Math.min(levels.levels, DEPTH_KEYS + 1); d++) states.push([foldsForDepth(payload, d, { modeId: mode.id }), ` [depth ${d}]`]);
+      const seen = new Set();
+      for (const [collapsed, tag] of states) {
+        const key = collapsed ? [...collapsed].sort().join('\u0000') : null;
+        if (key !== null && seen.has(key)) continue;
+        if (key !== null) seen.add(key);
+        geometry(computeScene(payload, { modeId: mode.id, collapsed }), mode, add, model.modes.length > 1, tag);
+      }
+    }
   }
 
   // --- sequence view ------------------------------------------------------
@@ -499,9 +529,10 @@ function geometry(scene, mode, add, tagMode, state = '') {
       if (!members.has(n.id) && overlaps(n, g))
         add('error', 'geometry/node-in-foreign-group', `Node "${n.id}" sits inside group "${g.id}" but is not a member${sfx}; add it to the group or move it out.`, { ...ctx, node: n.id, group: g.id });
     for (const l of labels)
-      if (overlaps(l.box, g.titleBox))
+      if (overlaps(l.box, g.titleBox) || (g.toggleBox && overlaps(l.box, g.toggleBox)))
         add('warning', 'geometry/label-overlaps-group-title', `Label of "${l.id}" covers the title of group "${g.id}"${sfx}.`, { ...ctx, edge: l.id, group: g.id });
   }
+  nestedGeometry(scene, groups, add, ctx, sfx);
 
   // Parallel edges drawn on top of each other read as one line
   // (a parent's comb or fan of hierarchy edges shares its trunk by design)
@@ -535,6 +566,40 @@ function geometry(scene, mode, add, tagMode, state = '') {
         add('warning', 'geometry/edges-stacked', `Edges "${a.id}" and "${b.id}" share ${Math.round(shared)}px of track${sfx}.`, { ...ctx, edges: [a.id, b.id] });
       }
     }
+}
+
+/**
+ * Nested boxes: each box sits inside its parent, below the parent's title;
+ * titles stay clear of cards, of each other and of edges; a title that had
+ * to be cut is reported so the box can be widened or the title shortened.
+ */
+function nestedGeometry(scene, groups, add, ctx, sfx) {
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+  const strip = (g) => shrink(g.titleBox, 2);
+  for (const g of groups) {
+    const p = byId.get(g.parent);
+    if (p && !inside(g, p))
+      add('error', 'geometry/group-outside-parent', `Group "${g.id}" reaches outside its parent "${p.id}"${sfx}.`, { ...ctx, groups: [g.id, p.id] });
+    else if (p && !g.region && overlaps(g, strip(p)))
+      add('error', 'geometry/group-title-overlap', `Group "${g.id}" covers the title of its parent "${p.id}"${sfx}.`, { ...ctx, groups: [g.id, p.id] });
+    if (g.region) continue;
+    const hit = scene.nodes.find((n) => overlaps(n, strip(g)));
+    if (hit) add('error', 'geometry/group-title-overlap', `Card "${hit.id}" covers the title of group "${g.id}"${sfx}.`, { ...ctx, node: hit.id, group: g.id });
+    if (typeof g.label === 'string' && g.label.endsWith('…') && g.label !== String(g.title).toUpperCase())
+      add('warning', 'content/group-title-cut', `Title of group "${g.id}" is cut to fit its box${sfx}; shorten it (detail goes in description).`, { ...ctx, group: g.id });
+  }
+  const titled = groups.filter((g) => !g.region);
+  for (let i = 0; i < titled.length; i++)
+    for (let j = i + 1; j < titled.length; j++)
+      if (overlaps(strip(titled[i]), strip(titled[j])))
+        add('error', 'geometry/group-title-overlap', `Titles of groups "${titled[i].id}" and "${titled[j].id}" overlap${sfx}.`, { ...ctx, groups: [titled[i].id, titled[j].id] });
+  for (const e of scene.edges) {
+    if (e.tree) continue;
+    const segs = segmentsOf(e.points);
+    const g = titled.find((t) => segs.some((s) => segmentHitsBox(s, strip(t))));
+    if (g) add('warning', 'geometry/edge-through-group-title', `Edge "${e.id}" runs through the title of group "${g.id}"${sfx}.`, { ...ctx, edge: e.id, group: g.id });
+  }
 }
 
 /**
@@ -587,6 +652,12 @@ function checkGroups(payload, model, nodeIds, add) {
     else children.set(g.parent, [...(children.get(g.parent) || []), g.id]);
   }
   const reported = new Set();
+  const depthOf = (id) => {
+    const seen = new Set();
+    let n = 0;
+    for (let q = byId.get(id); q && !seen.has(q.id); q = byId.get(q.parent)) seen.add(q.id), n++;
+    return n;
+  };
   for (const g of byId.values()) {
     const chain = [g.id];
     let q = byId.get(g.parent);
@@ -598,7 +669,7 @@ function checkGroups(payload, model, nodeIds, add) {
       const cyc = chain.slice(chain.indexOf(q.id)).sort().join(' > ');
       if (!reported.has(cyc)) add('error', 'group/cycle', `Groups form a parent cycle: ${cyc}.`, { groups: cyc.split(' > ') });
       reported.add(cyc);
-    } else if (chain.length > GROUP_MAX_DEPTH) add('error', 'group/too-deep', `Group "${g.id}" is nested ${chain.length} deep; the maximum is ${GROUP_MAX_DEPTH}.`, { group: g.id });
+    } else if (chain.length > GROUP_MAX_DEPTH) add('error', 'group/too-deep', `Group "${g.id}" is nested ${chain.length} deep; the maximum is ${GROUP_MAX_DEPTH} (aim for ${GROUP_BUDGET.depth} or fewer).`, { group: g.id });
   }
   for (const g of byId.values()) {
     const hasNodes = (id, seen = new Set()) => {
@@ -625,7 +696,13 @@ function checkGroups(payload, model, nodeIds, add) {
     if (arr(byId.get(parent).nodes).length || plain.length)
       add('warning', 'group/region-mixed', `Group "${parent}" holds regions and also ${arr(byId.get(parent).nodes).length ? 'nodes' : 'groups'} outside them; put everything inside one of its regions.`, { group: parent });
   }
-  if (byId.size > 6) add('warning', 'budget/too-many-groups', `${byId.size} groups; keep to 2-5 so the boxes stay readable.`);
+  if (byId.size > GROUP_BUDGET.groups)
+    add('warning', 'budget/too-many-groups', `${byId.size} groups (budget ${GROUP_BUDGET.groups}); fold or merge boxes, or move a branch into a detail diagram (drill-down).`);
+  if (!reported.size) {
+    const deepest = Math.max(0, ...[...byId.values()].map((g) => depthOf(g.id)));
+    if (deepest > GROUP_BUDGET.depth && deepest <= GROUP_MAX_DEPTH)
+      add('warning', 'budget/deep-nesting', `Groups nest ${deepest} levels deep (budget ${GROUP_BUDGET.depth}); merge a level, or move the deepest boxes into a detail diagram (drill-down).`);
+  }
 }
 
 /** Fields / methods of entity and class cards, FK refs, and edge notation values. */

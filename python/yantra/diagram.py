@@ -183,7 +183,8 @@ class Step:
 
     def __init__(self, step_id: str, title: str, description: str = "",
                  nodes: Optional[List[str]] = None, edges: Optional[List[str]] = None,
-                 payload: Optional[Dict[str, Any]] = None, url: Optional[str] = None):
+                 payload: Optional[Dict[str, Any]] = None, url: Optional[str] = None,
+                 focus_group: Optional[Any] = None):
         self.id = step_id
         self.title = title
         self.description = description
@@ -191,6 +192,7 @@ class Step:
         self.edges = _ids(edges)
         self.payload = payload
         self.url = _url(url)
+        self.focus_group = _id(focus_group) if focus_group is not None else None
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"id": self.id, "title": self.title}
@@ -204,6 +206,8 @@ class Step:
             d["payload"] = self.payload
         if self.url:
             d["url"] = self.url
+        if self.focus_group:
+            d["focusGroup"] = self.focus_group
         return d
 
 
@@ -218,12 +222,14 @@ class Scenario:
 
     def step(self, title: str, description: str = "", nodes: Optional[Iterable[NodeRef]] = None,
              edges: Optional[Iterable[Any]] = None, payload: Optional[Dict[str, Any]] = None,
-             step_id: Optional[str] = None, url: Optional[str] = None) -> Step:
+             step_id: Optional[str] = None, url: Optional[str] = None,
+             focus_group: Optional[Any] = None) -> Step:
         """Append a step. `nodes`/`edges` accept ids or Node/Edge objects; `payload` and `url`
-        (an http(s) or mailto link) show in the inspector."""
+        (an http(s) or mailto link) show in the inspector. `focus_group` (a group id or Group)
+        zooms the camera to that group and unfolds it and the boxes around it."""
         prefix = "step" if self.id == DEFAULT_SCENARIO else f"{self.id}-step"
         s = Step(step_id or f"{prefix}-{len(self.steps) + 1}", title, description,
-                 _ids(nodes), _ids(edges), payload, url)
+                 _ids(nodes), _ids(edges), payload, url, focus_group)
         self.steps.append(s)
         return s
 
@@ -485,12 +491,16 @@ class Diagram:
         self.edges[edge_id] = edge
         return edge
 
-    def group(self, group_id: str, title: str, nodes: Iterable[NodeRef], parent: Optional[str] = None,
+    def group(self, group_id: str, title: str, nodes: Iterable[NodeRef] = (), parent: Optional[Any] = None,
               color: Optional[str] = None, description: Optional[str] = None,
               style: Optional[str] = None, kind: Optional[str] = None) -> Group:
-        """Draw a titled boundary around `nodes`; `parent` nests it inside another group.
+        """Draw a titled boundary around `nodes`; `parent` (a group id or Group) nests it inside
+        another group, up to six levels deep within the budget (eight at most), e.g. city >
+        district > service > system > site > sensors. List each node in its innermost group
+        only; a group may hold only child groups (`nodes` left empty).
         `kind="region"` makes it a concurrent region of its parent (a composite state): regions
         stack inside the parent, divided by dashed lines."""
+        parent = _id(parent) if parent is not None else None
         if group_id in self.groups:
             raise YantraError(f"Duplicate group id: {group_id}")
         if color is not None and color not in COLORS:
@@ -564,9 +574,10 @@ class Diagram:
 
     def add_step(self, title: str, description: str = "", nodes: Optional[List[str]] = None,
                  edges: Optional[List[str]] = None, payload: Optional[Dict[str, Any]] = None,
-                 url: Optional[str] = None) -> Step:
-        """Add a step to the default walkthrough. With no nodes/edges it is an overview step."""
-        return self._default().step(title, description, nodes, edges, payload, url=url)
+                 url: Optional[str] = None, focus_group: Optional[Any] = None) -> Step:
+        """Add a step to the default walkthrough. With no nodes/edges it is an overview step;
+        `focus_group` zooms the camera to a group (see :meth:`Scenario.step`)."""
+        return self._default().step(title, description, nodes, edges, payload, url=url, focus_group=focus_group)
 
     # --- output -------------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
@@ -603,16 +614,18 @@ class Diagram:
         return validate_payload(self.to_dict(), "diagram.json", base_dir, lang)
 
     def build_html(self, output_html: str, force: bool = False, base_dir: Optional[str] = None,
-                   collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False) -> str:
+                   collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False,
+                   depth: Optional[int] = None) -> str:
         """Validate and write a single-file offline HTML diagram (every detail level included).
-        `collapsed` (ids) or `expand_all=True` set what is folded when it opens, for this file only."""
+        `collapsed` (ids), `expand_all=True` or `depth` (fold to depth: that many levels of nested
+        group boxes, or tree levels, stay open) set what is folded when it opens, for this file only."""
         return build_payload(self.to_dict(), output_html, force, "diagram.json", base_dir,
-                             collapsed=collapsed, expand_all=expand_all)
+                             collapsed=collapsed, expand_all=expand_all, depth=depth)
 
     def export_svg(self, output_svg: str, theme: str = "light", step: Optional[int] = None,
                    view: Optional[str] = None, level: Optional[str] = None, collapsed: Optional[Iterable[Any]] = None,
-                   expand_all: bool = False, base_dir: Optional[str] = None) -> str:
+                   expand_all: bool = False, base_dir: Optional[str] = None, depth: Optional[int] = None) -> str:
         """Write a static SVG of the diagram (or detail `level`); `step` is 1-based. `collapsed` /
-        `expand_all` set what is folded, as in :meth:`build_html`."""
+        `expand_all` / `depth` set what is folded, as in :meth:`build_html`."""
         return export_payload(self.to_dict(), output_svg, "svg", theme, step, view, level, collapsed, expand_all,
-                              "diagram.json", base_dir)
+                              "diagram.json", base_dir, depth=depth)

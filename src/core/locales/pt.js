@@ -230,7 +230,26 @@ export default {
   'fold.expand': 'Expandir {title} ({n} ocultos)',
   'fold.collapse': 'Recolher {title}',
   'fold.folded': 'Recolhido',
-  'fold.expanded': 'Expandido'
+  'fold.expanded': 'Expandido',
+  'fold.badge': 'Grupo',
+  'fold.card': '{n} cartão recolhido',
+  'fold.cards': '{n} cartões recolhidos',
+  'fold.cardCount1': '{n} cartão',
+  'fold.cardCount': '{n} cartões',
+  'fold.groupCount1': '{n} grupo',
+  'fold.groupCount': '{n} grupos',
+  'depth.title': 'Recolher até o nível',
+  'depth.level1': '{n} nível aberto',
+  'depth.level': '{n} níveis abertos',
+  'depth.none': 'Tudo recolhido',
+  'depth.all': 'Tudo expandido',
+  'help.depth': 'Recolher até o nível (0 expande tudo)',
+  'focus.crumbs': 'Caminho do grupo',
+  'focus.whole': 'Diagrama inteiro',
+  'focus.hint': 'Clique duas vezes para aproximar de {title}',
+  'focus.focused': 'Zoom em {title}',
+  'help.focus': 'Aproximar do grupo do cartão selecionado (Esc afasta)',
+  'drill.more': 'Mostrar {n} níveis ocultos'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

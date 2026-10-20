@@ -19,6 +19,9 @@ import paymentClasses from '../../examples/payment-classes.json';
 import platform from '../../examples/platform-overview.json';
 import ticketLifecycle from '../../examples/ticket-lifecycle.json';
 import parallelCheckout from '../../examples/parallel-checkout-states.json';
+import smartCity from '../../examples/smart-city-operations.json';
+import retailGroup from '../../examples/global-retail-group.json';
+import hospitalTrust from '../../examples/hospital-trust-monitoring.json';
 import { registerStrings } from '../core/i18n.js';
 import { TABLES } from '../core/locales/index.js';
 import { PAGE_EXAMPLES, CHART_EXAMPLES } from './gallery-pages.js';
@@ -34,6 +37,9 @@ export const EXAMPLES = [
   { id: 'ecommerce-schema', name: 'E-commerce schema (ERD)', data: ecommerceSchema },
   { id: 'payment-classes', name: 'Order classes (UML)', data: paymentClasses },
   { id: 'platform-overview', name: 'Shop platform (drill-down)', data: platform },
+  { id: 'smart-city-operations', name: 'Smart city (six nested levels)', data: smartCity },
+  { id: 'global-retail-group', name: 'Global retail group (six-level drill-down)', data: retailGroup },
+  { id: 'hospital-trust-monitoring', name: 'Hospital trust (nesting and drill-down)', data: hospitalTrust },
   { id: 'sales-pipeline', name: 'B2B sales pipeline', data: sales },
   { id: 'supply-chain', name: 'Supply chain', data: supplyChain },
   { id: 'academic-faculty', name: 'Academic lifecycle', data: academic },

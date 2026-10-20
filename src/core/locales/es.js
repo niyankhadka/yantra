@@ -230,7 +230,26 @@ export default {
   'fold.expand': 'Desplegar {title} ({n} ocultos)',
   'fold.collapse': 'Plegar {title}',
   'fold.folded': 'Plegado',
-  'fold.expanded': 'Desplegado'
+  'fold.expanded': 'Desplegado',
+  'fold.badge': 'Grupo',
+  'fold.card': '{n} tarjeta plegada',
+  'fold.cards': '{n} tarjetas plegadas',
+  'fold.cardCount1': '{n} tarjeta',
+  'fold.cardCount': '{n} tarjetas',
+  'fold.groupCount1': '{n} grupo',
+  'fold.groupCount': '{n} grupos',
+  'depth.title': 'Plegar hasta un nivel',
+  'depth.level1': '{n} nivel abierto',
+  'depth.level': '{n} niveles abiertos',
+  'depth.none': 'Todo plegado',
+  'depth.all': 'Todo desplegado',
+  'help.depth': 'Plegar hasta un nivel (0 despliega todo)',
+  'focus.crumbs': 'Ruta del grupo',
+  'focus.whole': 'Diagrama completo',
+  'focus.hint': 'Doble clic para acercar a {title}',
+  'focus.focused': 'Vista de {title}',
+  'help.focus': 'Acercar al grupo de la tarjeta seleccionada (Esc aleja)',
+  'drill.more': 'Mostrar {n} niveles ocultos'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

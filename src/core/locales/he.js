@@ -232,7 +232,30 @@ export default {
   'fold.expand': 'הרחבת {title} ({n} מוסתרים)',
   'fold.collapse': 'כיווץ {title}',
   'fold.folded': 'מקופל',
-  'fold.expanded': 'מורחב'
+  'fold.expanded': 'מורחב',
+  'fold.badge': 'קבוצה',
+  'fold.card': '{n} כרטיס מקופל',
+  'fold.cards': '{n} כרטיסים מקופלים',
+  'fold.cardCount1': '{n} כרטיס',
+  'fold.cardCount': '{n} כרטיסים',
+  'fold.groupCount1': '{n} קבוצה',
+  'fold.groupCount': '{n} קבוצות',
+  'depth.title': 'קיפול עד רמה',
+  'depth.level1': '{n} רמה פתוחה',
+  'depth.level': '{n} רמות פתוחות',
+  'depth.none': 'הכול מקופל',
+  'depth.all': 'הכול מורחב',
+  'help.depth': 'קיפול עד רמה (0 מרחיב הכול)',
+  'focus.crumbs': 'נתיב הקבוצה',
+  'focus.whole': 'התרשים כולו',
+  'focus.hint': 'לחיצה כפולה להתקרבות אל {title}',
+  'focus.focused': 'התקרבות אל {title}',
+  'help.focus': 'התקרבות אל הקבוצה של הכרטיס הנבחר (Esc להתרחקות)',
+  'drill.more': 'הצגת {n} רמות מוסתרות',
+  'fold.cards.two': 'שני כרטיסים מקופלים',
+  'fold.cardCount.two': 'שני כרטיסים',
+  'fold.groupCount.two': 'שתי קבוצות',
+  'depth.level.two': 'שתי רמות פתוחות'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

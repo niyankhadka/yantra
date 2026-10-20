@@ -5,7 +5,7 @@
  * rules as the Mermaid importer (ids, text budgets, step generation).
  * Pure (no DOM, no Node APIs).
  */
-import { humanize, GROUP_MAX_DEPTH } from './model.js';
+import { humanize, GROUP_BUDGET } from './model.js';
 import { SHAPE_ROLES, shorten, assignRoles, flowSteps, ignoredCollector } from './mermaid.js';
 
 export { ignoredCollector, shorten, SHAPE_ROLES };
@@ -164,7 +164,7 @@ export function buildFlow({ nodes, edges, groups = [], direction = 'TB', title, 
   let merged = 0;
   for (const g of gByRaw.values()) {
     if (g.parent && !gByRaw.has(g.parent)) delete g.parent;
-    while (depthOf(g) > GROUP_MAX_DEPTH) {
+    while (depthOf(g) > GROUP_BUDGET.depth) {
       g.mergeInto = g.parent;
       g.parent = gByRaw.get(g.parent)?.parent;
     }
@@ -181,7 +181,7 @@ export function buildFlow({ nodes, edges, groups = [], direction = 'TB', title, 
     if (g && byRaw.has(n.raw)) g.members.push(byRaw.get(n.raw));
   }
   for (const g of gByRaw.values()) if (g.mergeInto) merged++;
-  if (merged) warnings.push(`${merged} group${merged > 1 ? 's' : ''} nested deeper than ${GROUP_MAX_DEPTH} levels ${merged > 1 ? 'were' : 'was'} merged into ${merged > 1 ? 'their' : 'its'} parent.`);
+  if (merged) warnings.push(`${merged} group${merged > 1 ? 's' : ''} nested deeper than ${GROUP_BUDGET.depth} levels ${merged > 1 ? 'were' : 'was'} merged into ${merged > 1 ? 'their' : 'its'} parent.`);
   const live = [...gByRaw.values()].filter((g) => !g.mergeInto);
   const hasMembers = (g) => g.members.length > 0 || live.some((c) => c.parent === g.raw && hasMembers(c));
   const kept = live.filter(hasMembers);

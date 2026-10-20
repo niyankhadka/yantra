@@ -118,8 +118,14 @@ def validate_payload(payload: Dict[str, Any], name: str = "payload.json", base_d
         raise YantraError(f"yantra validate gave no report:\n{res.stderr or res.stdout}") from exc
 
 
-def _fold_args(collapsed: Optional[Iterable[Any]], expand_all: bool) -> List[str]:
-    """``--collapsed a,b`` / ``--expand-all``: what is folded when the diagram opens."""
+def _fold_args(collapsed: Optional[Iterable[Any]], expand_all: bool, depth: Optional[int] = None) -> List[str]:
+    """``--collapsed a,b`` / ``--expand-all`` / ``--depth n``: what is folded when the diagram opens."""
+    if sum([bool(expand_all), collapsed is not None, depth is not None]) > 1:
+        raise YantraError("use one of collapsed, expand_all and depth")
+    if depth is not None:
+        if isinstance(depth, bool) or not isinstance(depth, int) or depth < 0:
+            raise YantraError(f"depth must be a whole number of levels to keep open, not {depth!r}")
+        return ["--depth", str(depth)]
     if expand_all:
         return ["--expand-all"]
     if collapsed is None:
@@ -132,12 +138,14 @@ def _fold_args(collapsed: Optional[Iterable[Any]], expand_all: bool) -> List[str
 
 def build_payload(payload: Dict[str, Any], output_html: str, force: bool = False,
                   name: str = "payload.json", base_dir: Optional[str] = None,
-                  collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False) -> str:
+                  collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False,
+                  depth: Optional[int] = None) -> str:
     """Validate and write a single-file offline HTML; returns the output path.
-    `collapsed` (ids) or `expand_all` replace meta.layout.collapsed for this build (diagrams only)."""
+    `collapsed` (ids), `expand_all` or `depth` (fold to depth n) replace meta.layout.collapsed
+    for this build (diagrams only)."""
     out = os.path.abspath(output_html)
     with _PayloadFile(payload, name, base_dir) as file:
-        args = ["build", file, "-o", out] + _fold_args(collapsed, expand_all)
+        args = ["build", file, "-o", out] + _fold_args(collapsed, expand_all, depth)
         if force:
             args.append("--force")
         run_cli(args)
@@ -147,13 +155,13 @@ def build_payload(payload: Dict[str, Any], output_html: str, force: bool = False
 def export_payload(payload: Dict[str, Any], output: str, format: str = "svg", theme: str = "light",
                    step: Optional[int] = None, view: Optional[str] = None, level: Optional[str] = None,
                    collapsed: Optional[Iterable[Any]] = None, expand_all: bool = False,
-                   name: str = "payload.json", base_dir: Optional[str] = None) -> str:
+                   name: str = "payload.json", base_dir: Optional[str] = None, depth: Optional[int] = None) -> str:
     """Write a static SVG (diagrams) or Markdown export (``yantra export``); returns the output path."""
     if format not in ("svg", "md"):
         raise YantraError(f"export format must be 'svg' or 'md', not {format!r}")
     out = os.path.abspath(output)
     with _PayloadFile(payload, name, base_dir) as file:
-        args = ["export", file, "-f", format, "-o", out, "--theme", theme] + _fold_args(collapsed, expand_all)
+        args = ["export", file, "-f", format, "-o", out, "--theme", theme] + _fold_args(collapsed, expand_all, depth)
         if step is not None:
             args += ["--step", str(step)]
         if view:

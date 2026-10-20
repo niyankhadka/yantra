@@ -22,7 +22,8 @@ import { hscroll, menu, tooltips } from './ui.js';
 import { hashParams } from './hash.js';
 import { Renderer } from './renderer.js';
 import { InteractionManager } from './interact.js';
-import { Levels, DRILL_TEXT, setDrillLocale } from './levels.js';
+import { Levels, DRILL_TEXT, setDrillLocale, crumbListHtml } from './levels.js';
+import { DEPTH_KEYS, groupTrail } from '../core/nesting.js';
 // The example gallery is loaded only when no payload is embedded, so built
 // files (always embedded) do not carry it: `vite build` puts it in its own chunk.
 // GALLERY holds the dropdown sections; EXAMPLES is every entry, diagrams first.
@@ -117,6 +118,10 @@ class App {
     });
 
     this.exportMenu = menu($('btn-export'), $('export-menu'));
+    this.depthMenu = menu($('btn-depth'), $('depth-menu'));
+    this.focusId = null; // group the camera is zoomed to (double-click a title, key G, step.focusGroup)
+    this.focusFromStep = false;
+    this.crumbTrails = {}; // nav id -> breadcrumb items, for the "…" menu of hidden levels
     this.legendMenu = menu($('btn-legend'), $('legend-list'), { canOpen: () => !$('legend').hidden });
 
     this.bindEngine();
@@ -125,6 +130,7 @@ class App {
     this.bindPrint();
     this.inspectorTab = null;
     this.applyHashState();
+    if (!this.focusId) this.stepFocus();
     this.applyLogo();
     this.renderSpeed();
     this.renderFollow();
@@ -158,8 +164,13 @@ class App {
     set('role', this.roleFilter);
     set('inspector', this.inspectorOpen ? this.currentTab() : null);
     // Folded subtrees / groups, when they differ from meta.layout.collapsed (ids encoded one by one)
-    if (e.isDefaultCollapse()) params.delete('collapsed');
+    // (or depth=n when they are exactly "fold to depth n")
+    const depth = e.isDefaultCollapse() ? null : e.foldDepth();
+    if (e.isDefaultCollapse() || depth !== null) params.delete('collapsed');
     else params.set('collapsed', [...e.collapsed].map(encodeURIComponent).join(','));
+    if (depth === null) params.delete('depth');
+    else params.set('depth', e.collapsed.size ? String(depth) : 'all');
+    set('focus', this.focusId && !this.focusFromStep ? this.focusId : null);
     if (params.has('theme')) set('theme', document.documentElement.getAttribute('data-theme'));
     if (this.levels.depth) params.set('level', this.levels.hashValue());
     else params.delete('level');
@@ -198,6 +209,8 @@ class App {
     this.renderSpeed();
     this.renderModes();
     this.renderView();
+    this.renderDepth();
+    this.renderFocusCrumbs();
     this.renderLegend();
     this.renderWatermark();
     this.redraw();
@@ -246,7 +259,8 @@ class App {
       highlight: this.engine.getHighlight(),
       step: this.engine.stepIndex,
       selectedId: this.engine.selectedNodeId,
-      roleFilter: this.roleFilter
+      roleFilter: this.roleFilter,
+      focusGroup: this.focusId
     });
   }
 
@@ -254,6 +268,7 @@ class App {
   followStep({ animate = true, force = false } = {}) {
     if (!this.followCamera && !force) return;
     if (this.engine.getView() === 'sequence') return this.followRow({ animate });
+    if (this.focusId && this.fitGroup(this.focusId, { animate })) return;
     const hl = this.engine.getHighlight();
     if (hl.overview) return this.interact.fit(null, { animate });
     const scene = this.engine.getScene();
@@ -312,6 +327,182 @@ class App {
     if (n?.toggle) this.toggleCollapse(n.id);
   }
 
+  // --- Depth and group focus ------------------------------------------------
+  /** Fold to depth: n levels of boxes (or tree levels) stay open; 'all' unfolds everything. */
+  setDepth(n) {
+    const info = this.engine.foldLevels();
+    if (!info.kind || this.engine.getView() === 'sequence') return;
+    this.engine.foldToDepth(n === 'all' ? null : n);
+    this.toast(this.depthText(n));
+    requestAnimationFrame(() => this.followStep({ force: true }));
+  }
+
+  /** Menu and toast text for a depth: "2 levels open", "Everything folded", "Everything open". */
+  depthText(n) {
+    if (n === 'all') return this.L.t('depth.all');
+    if (!n) return this.L.t('depth.none');
+    return this.L.plural(n, 'depth.level1', 'depth.level', { n: this.L.num(n) });
+  }
+
+  /** Toolbar menu "Fold to depth": shown when boxes (or tree levels) nest two or more deep. */
+  renderDepth() {
+    const e = this.engine;
+    const info = e.foldLevels();
+    const show = !!info.kind && info.levels >= 2 && e.getView() !== 'sequence';
+    $('depth').hidden = !show;
+    if (!show) return this.depthMenu.close();
+    const current = e.collapsed.size ? e.foldDepth() : 'all';
+    const top = Math.min(info.levels - 1, DEPTH_KEYS);
+    const items = [];
+    // trees: depth 0 and 1 both leave only the roots
+    for (let d = info.kind === 'tree' ? 1 : 0; d <= top; d++) items.push([d, String(d)]);
+    items.push(['all', '0']);
+    const list = $('depth-menu');
+    const focused = list.contains(document.activeElement) ? document.activeElement.dataset.depth : null;
+    list.innerHTML = items
+      .map(([d, key]) => `<button role="menuitemradio" tabindex="-1" data-depth="${d}" aria-checked="${current === d}"><span>${h(this.depthText(d))}</span><kbd>${key}</kbd></button>`)
+      .join('');
+    if (focused !== null) this.depthMenu.focusItem(list.querySelector(`[data-depth="${focused}"]`));
+  }
+
+  /** Box of a group on screen, or null (folded away, or not drawn in this view). */
+  groupBox(id) {
+    const scene = this.engine.getScene();
+    return scene.kind === 'sequence' ? null : (scene.groups || []).find((g) => g.id === id) || null;
+  }
+
+  /** Point the camera at a group's box; false when it is not on screen. */
+  fitGroup(id, { animate = true } = {}) {
+    const g = this.groupBox(id);
+    if (!g) return false;
+    this.interact.fit({ x: g.x - 24, y: g.y - 24, w: g.w + 48, h: g.h + 48 }, { animate });
+    return true;
+  }
+
+  /**
+   * Zoom to a group: unfold it and the boxes around it, frame its box and
+   * show the path of boxes around it. `fromStep`: the walkthrough asked for it
+   * (the next step without focusGroup lets go).
+   */
+  setFocus(id, { fromStep = false, animate = true, toast = true } = {}) {
+    if (!id) return this.clearGroupFocus();
+    if (!this.engine.model.groups.some((g) => g.id === id) || this.engine.getView() === 'sequence') return;
+    this.focusId = id;
+    this.focusFromStep = fromStep;
+    this.engine.revealGroup(id);
+    this.renderFocusCrumbs();
+    this.applyState();
+    requestAnimationFrame(() => this.fitGroup(id, { animate }));
+    if (toast) this.toast(this.L.t('focus.focused', { title: this.groupTitle(id) }));
+    this.syncHash();
+  }
+
+  clearGroupFocus({ fit = true } = {}) {
+    if (!this.focusId) return;
+    this.focusId = null;
+    this.focusFromStep = false;
+    this.renderFocusCrumbs();
+    this.applyState();
+    if (fit) requestAnimationFrame(() => this.followStep({ force: true }));
+    this.syncHash();
+  }
+
+  /** Esc while zoomed to a group: zoom out to the box around it (or the whole diagram). */
+  focusOut() {
+    const trail = groupTrail(this.engine.payload, this.focusId);
+    const up = trail[trail.length - 2];
+    if (up) this.setFocus(up.id, { toast: false });
+    else this.clearGroupFocus();
+  }
+
+  /** Key G: zoom to the innermost group around the selected card (or out a level when nothing is selected). */
+  focusSelected() {
+    const id = this.engine.selectedNodeId;
+    if (!id) return this.focusId ? this.focusOut() : undefined;
+    const around = (this.engine.getScene().groups || []).filter((g) => !g.region && g.members.includes(id));
+    const inner = around.sort((a, b) => b.depth - a.depth)[0];
+    if (inner) this.setFocus(inner.id);
+  }
+
+  groupTitle(id) {
+    return this.engine.model.groups.find((g) => g.id === id)?.title || id;
+  }
+
+  /** A step's focusGroup takes the camera; a step without one lets go of a step's focus. */
+  stepFocus() {
+    const id = this.engine.getStep()?.focusGroup;
+    if (typeof id === 'string' && this.engine.model.groups.some((g) => g.id === id)) {
+      this.focusId = id;
+      this.focusFromStep = true;
+    } else if (this.focusId) {
+      this.focusId = null;
+      this.focusFromStep = false;
+    }
+    this.renderFocusCrumbs();
+  }
+
+  /** Drop the focus when its group is no longer drawn (folded, another mode). */
+  checkFocus() {
+    if (this.focusId && !this.groupBox(this.focusId)) this.clearGroupFocus({ fit: false });
+  }
+
+  /** "Whole diagram › City › North district › Transport" under the toolbar while zoomed to a group. */
+  renderFocusCrumbs() {
+    const nav = $('focus-crumbs');
+    if (!this.focusId || this.engine.getView() === 'sequence') {
+      nav.hidden = true;
+      nav.textContent = '';
+      return;
+    }
+    const trail = groupTrail(this.engine.payload, this.focusId).map((g) => ({ title: g.title, attr: `data-focus="${h(g.id)}"` }));
+    const items = [{ title: this.L.t('focus.whole'), attr: 'data-focus=""' }, ...trail];
+    this.crumbTrails['focus-crumbs'] = items;
+    nav.innerHTML = crumbListHtml(items, DRILL_TEXT.more);
+    nav.hidden = false;
+  }
+
+  /** The "…" of a long breadcrumb: a menu of the levels it hides. */
+  openCrumbMenu(btn) {
+    const list = $('crumb-menu');
+    if (this.crumbMenuFrom === btn && !list.hidden) return this.closeCrumbMenu(true);
+    this.closeCrumbMenu();
+    const items = this.crumbTrails[btn.closest('nav')?.id] || [];
+    list.innerHTML = btn.dataset.crumbMore
+      .split(',')
+      .map(Number)
+      .filter((i) => items[i])
+      .map((i) => `<button role="menuitem" tabindex="-1" ${items[i].attr}>${h(items[i].title)}</button>`)
+      .join('');
+    list.hidden = false;
+    const r = btn.getBoundingClientRect();
+    const w = list.offsetWidth;
+    list.style.top = `${Math.round(r.bottom + 6)}px`;
+    list.style.left = `${Math.round(Math.max(8, Math.min(innerWidth - w - 8, isRtl() ? r.right - w : r.left)))}px`;
+    btn.setAttribute('aria-expanded', 'true');
+    this.crumbMenuFrom = btn;
+    const first = list.querySelector('button');
+    if (first) {
+      first.tabIndex = 0;
+      first.focus();
+    }
+  }
+
+  closeCrumbMenu(restoreFocus = false) {
+    const list = $('crumb-menu');
+    if (list.hidden) return false;
+    list.hidden = true;
+    this.crumbMenuFrom?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && this.crumbMenuFrom?.isConnected) this.crumbMenuFrom.focus();
+    this.crumbMenuFrom = null;
+    return true;
+  }
+
+  /** A breadcrumb item was chosen (in a nav or in the "…" menu). */
+  crumbPick(el) {
+    if (el.dataset.level !== undefined) return this.goUp(Number(el.dataset.level));
+    if (el.dataset.focus !== undefined) return el.dataset.focus ? this.setFocus(el.dataset.focus, { toast: false }) : this.clearGroupFocus();
+  }
+
   /** Pan (without zooming) so a card is not hidden behind the panels. */
   keepInView(id) {
     const n = this.engine.getScene().nodes.find((m) => m.id === id);
@@ -345,6 +536,7 @@ class App {
     e.on('stepChanged', () => {
       this.updateStory();
       this.announceStep();
+      this.stepFocus();
       this.applyState();
       this.followStep();
       if (this.currentTab() === 'step') this.renderInspector();
@@ -364,6 +556,8 @@ class App {
     });
     e.on('viewChanged', (view) => {
       this.renderView();
+      this.renderDepth();
+      this.renderFocusCrumbs();
       this.redraw();
       if (this.hashReady) this.toast(this.L.t(view === 'sequence' ? 'view.sequenceToast' : 'view.flowToast'));
       requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
@@ -375,6 +569,8 @@ class App {
       this.renderModes();
       this.renderLegend();
       this.redraw();
+      this.renderDepth();
+      this.checkFocus();
       this.renderInspector();
       this.toast(`${mode.name}`);
       requestAnimationFrame(() => this.followStep({ animate: false, force: true }));
@@ -408,6 +604,8 @@ class App {
     });
     e.on('collapseChanged', () => {
       this.redraw();
+      this.renderDepth();
+      this.checkFocus();
       this.renderLegend();
       this.syncHash();
     });
@@ -908,6 +1106,8 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     this.engine.load(this.levels.current());
     this.roleFilter = null;
     this.inspectorTab = null;
+    this.focusId = null;
+    this.focusFromStep = false;
     if (state) {
       this.engine.setMode(state.modeId);
       this.engine.setView(state.view);
@@ -943,6 +1143,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     const nav = $('crumbs');
     nav.hidden = !this.levels.depth;
     nav.innerHTML = this.levels.crumbsHtml();
+    this.crumbTrails.crumbs = this.levels.crumbItems();
     $('doc-desc').hidden = this.levels.depth > 0;
     document.querySelector('[data-action="md-all"]').hidden = !this.levels.any;
   }
@@ -1013,7 +1214,10 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     const fab = $('btn-legend').getBoundingClientRect();
     if (!$('legend').hidden && fab.top > vp.top + vp.height / 2) bottom = Math.max(bottom, vp.bottom - fab.top + 8);
     const side = this.inspectorOpen && window.innerWidth > 720 ? $('inspector').getBoundingClientRect().width + 16 : 16;
-    return { top: bar.bottom - vp.top + 8, bottom, left: isRtl() ? side : 16, right: isRtl() ? 16 : side };
+    // the group path sits under the toolbar while zoomed to a group
+    const crumbs = $('focus-crumbs');
+    const top = crumbs.hidden ? bar.bottom : Math.max(bar.bottom, crumbs.getBoundingClientRect().bottom);
+    return { top: top - vp.top + 8, bottom, left: isRtl() ? side : 16, right: isRtl() ? 16 : side };
   }
 
   // --- UI events ----------------------------------------------------------
@@ -1059,6 +1263,8 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
       this.hidePage();
       this.levels.reset(ex.data);
       this.engine.load(ex.data);
+      this.focusId = null;
+      this.focusFromStep = false;
       this.engine.setSpeed(Number(pref('speed', 4500)) || 4500);
       this.roleFilter = null;
       this.inspectorTab = null;
@@ -1115,11 +1321,48 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
       this.exportMenu.close(true);
       this.exportAs(action);
     };
-    $('crumbs').onclick = (ev) => {
-      const at = ev.target.closest('[data-level]')?.dataset.level;
-      if (at !== undefined) this.goUp(Number(at));
+    // Breadcrumbs (levels and group focus): an item, or the "…" that lists the hidden ones
+    const crumbClick = (ev) => {
+      const more = ev.target.closest('[data-crumb-more]');
+      if (more) return this.openCrumbMenu(more);
+      const item = ev.target.closest('[data-level], [data-focus]');
+      if (item) this.crumbPick(item);
     };
+    $('crumbs').onclick = crumbClick;
+    $('focus-crumbs').onclick = crumbClick;
+    $('crumb-menu').onclick = (ev) => {
+      const item = ev.target.closest('[data-level], [data-focus]');
+      if (!item) return;
+      this.closeCrumbMenu();
+      this.crumbPick(item);
+    };
+    $('crumb-menu').onkeydown = (ev) => {
+      const items = [...$('crumb-menu').querySelectorAll('button')];
+      const i = items.indexOf(document.activeElement);
+      const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: items.length - 1 }[ev.key];
+      if (to !== undefined) {
+        const el = items[(to + items.length) % items.length];
+        items.forEach((b) => (b.tabIndex = b === el ? 0 : -1));
+        el.focus();
+      } else if (ev.key === 'Escape') this.closeCrumbMenu(true);
+      else if (ev.key === 'Tab') return this.closeCrumbMenu();
+      else return;
+      ev.preventDefault();
+      ev.stopPropagation();
+    };
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest?.('#crumb-menu, [data-crumb-more]')) this.closeCrumbMenu();
+    });
+    $('depth-menu').onclick = (ev) => {
+      const d = ev.target.closest('[data-depth]')?.dataset.depth;
+      if (d === undefined) return;
+      this.depthMenu.close(true);
+      this.setDepth(d === 'all' ? 'all' : Number(d));
+    };
+    // Double-click: a group title zooms to the group, a card opens its detail diagram
     $('viewport').addEventListener('dblclick', (ev) => {
+      const group = ev.target.closest?.('.y-group-title')?.dataset.group;
+      if (group) return this.setFocus(group);
       const id = ev.target.closest?.('.y-node')?.dataset.id;
       if (id) this.drillInto(id);
     });
@@ -1135,7 +1378,19 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
       const k = ev.key;
       // An answer page has no canvas: only the theme key applies
       if (this.page && k.toLowerCase() !== 't') return;
-      if (/^[1-9]$/.test(k) && Number(k) <= this.engine.getScenarios().length) return this.engine.setScenario(Number(k) - 1);
+      // Digits: switch scenario (when there are several) or fold to depth (0 opens everything; Shift+digit always folds)
+      const digit = /^Digit([0-9])$/.exec(ev.code || '')?.[1] ?? (/^[0-9]$/.test(k) ? k : null);
+      if (digit !== null) {
+        const n = Number(digit);
+        const scenarios = this.engine.getScenarios().length;
+        const scenario = !ev.shiftKey && n >= 1 && n <= scenarios;
+        const depth = n <= DEPTH_KEYS && !$('depth').hidden;
+        if (scenario && (scenarios > 1 || !depth)) return this.engine.setScenario(n - 1);
+        if (depth) {
+          ev.preventDefault();
+          return this.setDepth(n === 0 ? 'all' : n);
+        }
+      }
       if ((k === 'Enter' || k === ' ') && ev.target.classList?.contains('y-node')) {
         ev.preventDefault();
         return this.select(ev.target.dataset.id);
@@ -1153,6 +1408,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
         v: () => this.engine.cycleView(),
         i: () => this.toggleInspector(),
         x: () => this.foldSelected(),
+        g: () => this.focusSelected(),
         d: () => this.drillInto(this.engine.selectedNodeId || document.activeElement?.closest?.('.y-node')?.dataset.id),
         l: () => this.legendMenu.toggle(),
         s: () => this.setStoryCollapsed(!this.storyCollapsed),
@@ -1164,7 +1420,14 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
         '-': () => this.interact.zoomBy(1 / 1.2),
         '?': () => this.setHelp($('help').hidden),
         // Esc closes help, then clears the selection or filter, then goes up a level
-        Escape: () => (!$('help').hidden ? this.setHelp(false) : this.engine.selectedNodeId || this.roleFilter || !this.levels.depth ? this.clearFocus() : this.goUp(this.levels.depth - 1))
+        // Esc closes help and menus, then clears the selection or filter, then zooms out of a group, then goes up a level
+        Escape: () => {
+          if (!$('help').hidden) return this.setHelp(false);
+          if (this.closeCrumbMenu(true)) return;
+          if (this.engine.selectedNodeId || this.roleFilter) return this.clearFocus();
+          if (this.focusId) return this.focusOut();
+          return this.levels.depth ? this.goUp(this.levels.depth - 1) : this.clearFocus();
+        }
       };
       const fn = map[logicalKey(k)] || map[k.toLowerCase()];
       if (fn) {
@@ -1312,12 +1575,15 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     else download('diagram.json', text, 'application/json');
   }
 
-  /** Deep links: #mode=<id>&view=sequence&collapsed=<id,id>&scenario=<n>&step=<n> (1-based). */
+  /** Deep links: #mode=<id>&view=sequence&collapsed=<id,id>&depth=<n|all>&scenario=<n>&step=<n> (1-based)&focus=<group id>. */
   applyHashState() {
     const params = hashParams(location.hash);
     const get = (k) => params.get(k) || undefined;
     if (get('mode')) this.engine.setMode(get('mode'));
     if (get('view')) this.engine.setView(get('view'));
+    // depth=n (or all): fold to depth; collapsed= (hand-picked folds) wins when both are given
+    const depth = get('depth');
+    if (depth !== undefined && (depth === 'all' || /^\d+$/.test(depth))) this.engine.foldToDepth(depth === 'all' ? null : Number(depth));
     const folded = hashParams(location.hash, false).get('collapsed');
     if (folded !== undefined)
       this.engine.setCollapsed(folded.split(',').filter(Boolean).map((v) => {
@@ -1329,6 +1595,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
       }));
     if (get('scenario')) this.engine.setScenario(Number(get('scenario')) - 1);
     if (get('step')) this.engine.goToStep(Number(get('step')) - 1);
+    if (get('focus')) this.setFocus(get('focus'), { animate: false, toast: false });
     // An unknown role (stale link, other diagram) would dim every card
     if (get('role') && this.roleInUse(get('role'))) this.roleFilter = get('role');
     if (get('inspector')) this.inspectorTab = get('inspector');

@@ -13,14 +13,19 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   (overlaps, edges through cards, label collisions) for every mode and view.
 - **Walkthroughs**: scenarios with steps that focus nodes and animate the active path;
   storyboard with autoplay, camera follow and a full-screen present mode.
-- **Groups**: 2-5 labelled boundaries (VPC, team, phase) drawn behind their cards.
+- **Groups**: labelled boundaries (VPC, team, phase) drawn behind their cards, nested up to six
+  levels in one frame (city > district > service > system > site > sensors) with padding and
+  tints that calm down at each depth; titles never collide and edges cross borders cleanly.
 - **Trees and mind maps**: `meta.layout.algorithm: "tree"` (org charts, decision trees,
   breakdowns; tidy layout with comb connectors, TB or LR) or `"mindmap"` (central topic,
   balanced branches, one colour per branch). Wide org charts list leaf teams in compact
   columns (`meta.layout.compact`), assistants (`data.assistant`) sit beside their manager, and
   dragging a card takes its subtree and tidy connectors along.
 - **Big diagrams**: fold subtrees or groups into one card and back (`+N`, key `X`,
-  `meta.layout.collapsed`, `#collapsed=` in the link); trees get a larger node budget.
+  `meta.layout.collapsed`, `#collapsed=` in the link); a folded box shows how many cards and
+  boxes it holds. **Fold to depth** with keys `1`-`6` (`0` opens everything), the toolbar menu
+  or `--depth n`; **zoom to a group** by double-clicking its title (or `G`), with a breadcrumb
+  of the boxes around it, and let steps do it with `focusGroup`. Trees get a larger node budget.
 - **State machines and lifecycles**: state cards, initial / final dots and choice diamonds,
   fork / join bars and concurrent regions, self-loops drawn on the card, two-way and
   undirected edges (`edge.arrow`), back-edges routed cleanly. See
@@ -29,8 +34,9 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
   `--view sequence`), one message per step.
 - **Modes**: alternative views (production vs local) that hide nodes or swap details.
 - **Drill-down**: an overview whose cards open detail diagrams (`data.drill`, a `diagrams` map
-  or `$ref` files), with a breadcrumb, Back/`Esc`, deep links (`#level=`) and up to 3 levels;
-  big systems stay under the card budget at every level.
+  or `$ref` files), with a breadcrumb, Back/`Esc`, deep links (`#level=`) and up to 8 levels
+  (deep breadcrumbs keep the first, parent and current level, with a menu for the rest); a
+  level can use nested groups too, and big systems stay under the card budget at every level.
 - **Links**: `url` on nodes, edges and steps opens runbooks, dashboards or specs from the
   inspector (http, https and mailto only).
 - **Inspector**: tabs built from content (Summary, Step, Details) plus custom `panels`;
@@ -145,7 +151,8 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
 | `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
 | `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). `--width 390` shows a page at phone width. |
-| `--collapsed id,id` / `--expand-all` | With `build`, `export` and `screenshot`: open with these subtrees or groups folded, or nothing folded, instead of `meta.layout.collapsed`. |
+| `--collapsed id,id` / `--expand-all` / `--depth n` | With `build`, `export` and `screenshot`: open with these subtrees or groups folded, nothing folded, or folded to depth `n` (n levels of boxes or tree levels open), instead of `meta.layout.collapsed`. |
+| `--focus group` | With `screenshot`: zoom the camera to a group, unfolding it and the boxes around it. |
 | `yantra import <file> [-o out.json] [--from mermaid\|drawio\|plantuml] [--page n\|name] [--title "..."] [--all]` | Convert Mermaid (flowchart, sequence, state, ER, class, mind map), draw.io or PlantUML, then validate. |
 | `yantra new <file> [--page]` | Starter diagram or answer page. |
 | `yantra examples [name] [-o file]` | List the examples or copy one. |
@@ -153,13 +160,16 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 
 ## Examples
 
-21 diagrams, 13 answer pages and 7 chart pages in [`examples/`](examples) (`yantra examples`
+24 diagrams, 13 answer pages and 7 chart pages in [`examples/`](examples) (`yantra examples`
 lists them). In the dev viewer (`npm run dev`) the example menu has three sections: Diagrams,
 Answer pages (Q&A) and Charts & dashboards; a page opens in the viewer with its own theme and
 live diagram embeds.
 
 - Diagrams: `cloud-architecture` (modes), `aws-serverless` (groups), `oauth-login` (sequence),
   `platform-overview` (drill-down into two detail diagrams, links),
+  `smart-city-operations` (six nested levels in one frame, opens partly folded),
+  `global-retail-group` (six-level drill-down, nested groups inside levels),
+  `hospital-trust-monitoring` (six nested levels plus two detail levels),
   `ecommerce-schema` (ERD), `payment-classes` (UML class diagram),
   `ml-training-pipeline` (groups), `customer-support-escalation` (modes), `manufacturing-quality`
   (panels), `research-paper-lifecycle`, `sales-pipeline`, `supply-chain`, `academic-faculty`,
@@ -191,13 +201,14 @@ live diagram embeds.
 | `I` | inspector | `L` | legend |
 | `D` | open the card's detail diagram | `Esc` again | back up a drill-down level |
 | `S` | collapse storyboard | `F` | present (full screen) |
-| `X` | fold / unfold the selected branch | | |
+| `X` | fold / unfold the selected branch | `1`-`6`, `0` | fold to depth, open all (`Shift` with several scenarios) |
+| `G` | zoom to the selected card's group | double-click a group title | zoom to that group (`Esc` zooms out) |
 | `R` / `+` / `-` | fit / zoom | `T` | theme |
 | `?` | all shortcuts | `Esc` | close / clear focus |
 
 Drag cards to rearrange (edges re-route live); **Export → Copy JSON with positions** writes
 the arrangement back as a manual layout. The state is mirrored in the URL hash, so links
-reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&collapsed=<id,id>&theme=dark`
+reopen the same view: `#level=payments&step=3&mode=dev&view=sequence&scenario=2&role=<type>&inspector=<tab>&collapsed=<id,id>&depth=2&focus=<group>&theme=dark`
 (dev server also `#example=<name>`). Printing switches to the light theme and hides the chrome.
 
 ## Languages and right to left
@@ -275,7 +286,7 @@ src/app/               Browser viewer (engine state, renderer, interactions, UI)
 src/styles/            Viewer CSS
 src/assets/            Brand logos
 schemas/               JSON Schemas: diagrams and answer pages
-examples/              21 diagrams, 20 answer and chart pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
+examples/              24 diagrams, 20 answer and chart pages, Mermaid / draw.io / PlantUML samples (all validate cleanly)
 docs/                  Authoring (diagrams, pages, imports, languages) and architecture
 python/                Python SDK (package yantra-diagrams)
 tests/                 node --test suite

@@ -230,7 +230,26 @@ export default {
   'fold.expand': 'Déplier {title} ({n} masqués)',
   'fold.collapse': 'Replier {title}',
   'fold.folded': 'Replié',
-  'fold.expanded': 'Déplié'
+  'fold.expanded': 'Déplié',
+  'fold.badge': 'Groupe',
+  'fold.card': '{n} carte repliée',
+  'fold.cards': '{n} cartes repliées',
+  'fold.cardCount1': '{n} carte',
+  'fold.cardCount': '{n} cartes',
+  'fold.groupCount1': '{n} groupe',
+  'fold.groupCount': '{n} groupes',
+  'depth.title': 'Replier jusqu’au niveau',
+  'depth.level1': '{n} niveau ouvert',
+  'depth.level': '{n} niveaux ouverts',
+  'depth.none': 'Tout replié',
+  'depth.all': 'Tout déplié',
+  'help.depth': 'Replier jusqu’au niveau (0 déplie tout)',
+  'focus.crumbs': 'Chemin du groupe',
+  'focus.whole': 'Diagramme entier',
+  'focus.hint': 'Double-cliquez pour zoomer sur {title}',
+  'focus.focused': 'Zoom sur {title}',
+  'help.focus': 'Zoomer sur le groupe de la carte sélectionnée (Échap dézoome)',
+  'drill.more': 'Afficher {n} niveaux masqués'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -230,7 +230,26 @@ export default {
   'fold.expand': '{title} ausklappen ({n} verborgen)',
   'fold.collapse': '{title} einklappen',
   'fold.folded': 'Eingeklappt',
-  'fold.expanded': 'Ausgeklappt'
+  'fold.expanded': 'Ausgeklappt',
+  'fold.badge': 'Gruppe',
+  'fold.card': '{n} Karte eingeklappt',
+  'fold.cards': '{n} Karten eingeklappt',
+  'fold.cardCount1': '{n} Karte',
+  'fold.cardCount': '{n} Karten',
+  'fold.groupCount1': '{n} Gruppe',
+  'fold.groupCount': '{n} Gruppen',
+  'depth.title': 'Bis zur Ebene einklappen',
+  'depth.level1': '{n} Ebene offen',
+  'depth.level': '{n} Ebenen offen',
+  'depth.none': 'Alles eingeklappt',
+  'depth.all': 'Alles ausgeklappt',
+  'help.depth': 'Bis zur Ebene einklappen (0 klappt alles aus)',
+  'focus.crumbs': 'Gruppenpfad',
+  'focus.whole': 'Ganzes Diagramm',
+  'focus.hint': 'Doppelklicken, um {title} heranzuzoomen',
+  'focus.focused': '{title} herangezoomt',
+  'help.focus': 'Zur Gruppe der ausgewählten Karte zoomen (Esc zoomt heraus)',
+  'drill.more': '{n} verborgene Ebenen anzeigen'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -230,7 +230,26 @@ export default {
   'fold.expand': '{title} پھیلائیں ({n} پوشیدہ)',
   'fold.collapse': '{title} سمیٹیں',
   'fold.folded': 'سمٹا ہوا',
-  'fold.expanded': 'پھیلا ہوا'
+  'fold.expanded': 'پھیلا ہوا',
+  'fold.badge': 'گروپ',
+  'fold.card': '{n} کارڈ سمیٹا گیا',
+  'fold.cards': '{n} کارڈ سمیٹے گئے',
+  'fold.cardCount1': '{n} کارڈ',
+  'fold.cardCount': '{n} کارڈ',
+  'fold.groupCount1': '{n} گروپ',
+  'fold.groupCount': '{n} گروپ',
+  'depth.title': 'درجے تک سمیٹیں',
+  'depth.level1': '{n} درجہ کھلا',
+  'depth.level': '{n} درجے کھلے',
+  'depth.none': 'سب کچھ سمٹا ہوا',
+  'depth.all': 'سب کچھ پھیلا ہوا',
+  'help.depth': 'درجے تک سمیٹیں (0 سب کچھ پھیلاتا ہے)',
+  'focus.crumbs': 'گروپ کا راستہ',
+  'focus.whole': 'پورا ڈایاگرام',
+  'focus.hint': '{title} پر زوم کرنے کے لیے ڈبل کلک کریں',
+  'focus.focused': '{title} پر زوم کیا گیا',
+  'help.focus': 'منتخب کارڈ کے گروپ پر زوم کریں (Esc سے زوم آؤٹ)',
+  'drill.more': '{n} پوشیدہ درجے دکھائیں'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

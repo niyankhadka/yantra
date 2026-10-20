@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { lint, computeScene, renderSvg, toMarkdown, GROUP } from '../src/core/index.js';
+import { GROUP_MAX_DEPTH, GROUP_BUDGET } from '../src/core/model.js';
 
 const node = (id) => ({ id, data: { title: `Service ${id}` } });
 const edge = (source, target) => ({ id: `${source}-${target}`, source, target, label: 'calls' });
@@ -51,15 +52,16 @@ test('group structure errors carry stable codes', () => {
     assert.ok(errors.includes(c), c);
 });
 
-test('nesting deeper than three levels is an error, empty groups warn', () => {
-  const p = base();
-  p.groups = [
-    { id: 'l1', title: 'L1', nodes: [] },
-    { id: 'l2', title: 'L2', nodes: [], parent: 'l1' },
-    { id: 'l3', title: 'L3', nodes: [], parent: 'l2' },
-    { id: 'l4', title: 'L4', nodes: ['a'], parent: 'l3' }
-  ];
-  assert.ok(codes(p).errors.includes('group/too-deep'));
+test('nesting deeper than the maximum is an error, beyond the budget warns, empty groups warn', () => {
+  const chain = (depth) => {
+    const p = base();
+    p.groups = Array.from({ length: depth }, (_, i) => ({ id: `l${i + 1}`, title: `L${i + 1}`, nodes: i === depth - 1 ? ['a'] : [], ...(i ? { parent: `l${i}` } : {}) }));
+    return codes(p);
+  };
+  assert.ok(chain(GROUP_MAX_DEPTH + 1).errors.includes('group/too-deep'));
+  assert.ok(!chain(GROUP_MAX_DEPTH).errors.includes('group/too-deep'), 'exactly the maximum is accepted');
+  assert.ok(chain(GROUP_BUDGET.depth + 1).warnings.includes('budget/deep-nesting'));
+  assert.ok(!chain(GROUP_BUDGET.depth).warnings.includes('budget/deep-nesting'), 'six levels are within budget');
   const q = base();
   q.groups = [{ id: 'g', title: 'G', nodes: ['a'] }, { id: 'e', title: 'Empty', nodes: [] }];
   const r = codes(q);

@@ -230,7 +230,26 @@ export default {
   'fold.expand': '{title} を展開（{n} 件非表示）',
   'fold.collapse': '{title} を折りたたむ',
   'fold.folded': '折りたたみました',
-  'fold.expanded': '展開しました'
+  'fold.expanded': '展開しました',
+  'fold.badge': 'グループ',
+  'fold.card': '{n} 枚のカードを折りたたみ',
+  'fold.cards': '{n} 枚のカードを折りたたみ',
+  'fold.cardCount1': '{n} 枚のカード',
+  'fold.cardCount': '{n} 枚のカード',
+  'fold.groupCount1': '{n} グループ',
+  'fold.groupCount': '{n} グループ',
+  'depth.title': '階層まで折りたたむ',
+  'depth.level1': '{n} 階層を表示',
+  'depth.level': '{n} 階層を表示',
+  'depth.none': 'すべて折りたたみ',
+  'depth.all': 'すべて展開',
+  'help.depth': '階層まで折りたたむ（0 ですべて展開）',
+  'focus.crumbs': 'グループの階層',
+  'focus.whole': '図全体',
+  'focus.hint': 'ダブルクリックで {title} にズーム',
+  'focus.focused': '{title} にズームしました',
+  'help.focus': '選択したカードのグループにズーム（Esc でズームアウト）',
+  'drill.more': '非表示の {n} 階層を表示'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

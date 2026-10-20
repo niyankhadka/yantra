@@ -9,6 +9,7 @@ import { lint } from '../core/lint.js';
 import { hidingIds, isTreeAlgorithm, treeIndex } from '../core/tree.js';
 import { visibleGraph } from '../core/model.js';
 import { layoutStorageKey } from './hash.js';
+import { foldsForDepth, depthOfFolds, foldLevels, foldsHidingGroup } from '../core/nesting.js';
 
 export class YantraEngine {
   constructor(payload) {
@@ -110,15 +111,41 @@ export class YantraEngine {
     this.emit('collapseChanged', [...this.collapsed]);
   }
 
-  /** Unfold whatever hides the nodes a step highlights, so the walkthrough stays visible. */
+  /** Fold levels of the current mode: { kind: 'groups' | 'tree' | null, levels }. */
+  foldLevels() {
+    return foldLevels(this.payload, { modeId: this.modeId });
+  }
+
+  /** Fold to depth n (n levels stay open); null unfolds everything. */
+  foldToDepth(n) {
+    this.setCollapsed(foldsForDepth(this.payload, n, { modeId: this.modeId }));
+  }
+
+  /** The depth the current folds amount to (null when they are hand-picked). */
+  foldDepth() {
+    return depthOfFolds(this.payload, [...this.collapsed], { modeId: this.modeId });
+  }
+
+  /** Unfold a group and every box around it (focusing a group shows its contents). */
+  revealGroup(id) {
+    const hiding = foldsHidingGroup(this.payload, id, this.collapsed);
+    if (!hiding.length) return false;
+    hiding.forEach((g) => this.collapsed.delete(g));
+    this.collapseChanged();
+    return true;
+  }
+
+  /** Unfold whatever hides the nodes a step highlights (and the group it focuses), so the walkthrough stays visible. */
   revealStep() {
     const step = this.getStep();
+    const focus = typeof step?.focusGroup === 'string' ? foldsHidingGroup(this.payload, step.focusGroup, this.collapsed) : [];
     const ids = step?.highlightNodes || step?.activeNodes || [];
-    if (!this.collapsed.size || !ids.length) return;
+    if (!this.collapsed.size || (!ids.length && !focus.length)) return;
     const algorithm = this.model.layout.algorithm;
     const graph = visibleGraph(this.model, this.modeId);
     const index = isTreeAlgorithm(algorithm) ? treeIndex(graph.nodes.map((n) => n.id), graph.edges) : null;
     const hiding = hidingIds({ collapsed: this.collapsed, algorithm, index, groups: this.model.groups }, ids);
+    focus.forEach((g) => hiding.add(g));
     if (!hiding.size) return;
     hiding.forEach((id) => this.collapsed.delete(id));
     this.collapseChanged();

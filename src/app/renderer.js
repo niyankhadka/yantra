@@ -138,7 +138,9 @@ export class Renderer {
       el.dataset.id = g.id;
       el.dataset.hue = g.hue;
       el.dataset.depth = g.depth;
-      el.innerHTML = `<span class="y-group-title">${h(g.label)}</span>`;
+      // Double-clicking the title zooms the camera to the group (main.js)
+      const tip = this.L ? this.L.t('focus.hint', { title: g.title }) : `Double-click to zoom to ${g.title}`;
+      el.innerHTML = `<span class="y-group-title" data-group="${h(g.id)}" title="${h(tip)}">${h(g.label)}</span>`;
       this.groupLayer.appendChild(el);
       this.groups.set(g.id, el);
       if (g.divider) {
@@ -428,7 +430,7 @@ export class Renderer {
   }
 
   /**
-   * @param state { highlight: {nodes,edges,overview}, selectedId, roleFilter }
+   * @param state { highlight: {nodes,edges,overview}, selectedId, roleFilter, focusGroup }
    */
   applyState(state, { force = false } = {}) {
     this.state = state;
@@ -461,7 +463,8 @@ export class Renderer {
       if (!el) continue;
       const any = focused && g.members.some((id) => activeNodes.has(id));
       el.classList.toggle('is-active', any);
-      el.classList.toggle('is-dim', focused && !any);
+      el.classList.toggle('is-dim', focused && !any && g.id !== state.focusGroup);
+      el.classList.toggle('is-focused', g.id === state.focusGroup);
       this.dividers.get(g.id)?.classList.toggle('is-dim', focused && !scene.groups.find((p) => p.id === g.parent)?.members.some((id) => activeNodes.has(id)));
       this.toggles.get(g.id)?.classList.toggle('is-dim', focused && !any);
     }

@@ -160,7 +160,7 @@ are cleaned.
 | `interface`, `() Name`, `circle` | type `interface` |
 | `X as Alias`, `"Name" as Alias`, `Alias as "Name"` | id from the alias, title from the name |
 | `A --> B : label`, `A ..> B` (dashed), `A -- B`, `A <|-- B`, `A *-- B`, `A -left-> B` | edge (direction hints ignored, `<--` reversed) |
-| `package`, `node`, `rectangle`, `frame`, `folder`, `cloud`, `database` ... `{ ... }` | `groups[]`, nested via `parent` (more than 3 levels are merged) |
+| `package`, `node`, `rectangle`, `frame`, `folder`, `cloud`, `database` ... `{ ... }` | `groups[]`, nested via `parent` (more than 6 levels are merged) |
 | edge to a group | attached to its first element (warning) |
 | `left to right direction` | `meta.layout.direction: "LR"` (default `TB`) |
 | `together {`, notes, `skinparam`, `hide` / `show` | ignored, one warning per kind |

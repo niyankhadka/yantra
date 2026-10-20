@@ -35,8 +35,20 @@ export const LABEL = { size: 11, padX: 8, height: 20 };
 /**
  * Group (container) metrics. src/styles/diagram.css mirrors the title
  * metrics. Boxes are member rects plus padding; the top padding holds the title.
+ * `toggle` is the room kept at the right of a title for the box's fold button.
  */
-export const GROUP = { padX: 20, padTop: 36, padBottom: 20, gap: 24, radius: 12, titleSize: 11, titleX: 12, titleY: 8, titleH: 16 };
+export const GROUP = { padX: 20, padTop: 36, padBottom: 20, gap: 24, radius: 12, titleSize: 11, titleX: 12, titleY: 8, titleH: 16, toggle: 34 };
+
+/**
+ * Padding of a group box by nesting depth (0 = outermost): the outer three
+ * levels keep the full padding, deeper boxes get a little tighter so six
+ * levels still fit on a screen. The top always holds the title.
+ */
+export function groupPad(depth = 0) {
+  const d = Math.max(0, depth | 0);
+  if (d <= 2) return { padX: GROUP.padX, padTop: GROUP.padTop, padBottom: GROUP.padBottom };
+  return { padX: d === 3 ? 16 : 14, padTop: 32, padBottom: d === 3 ? 16 : 14 };
+}
 
 /** Width of a group title as drawn: uppercase, semibold, 0.06em tracking. */
 export function groupTitleWidth(text) {
@@ -44,24 +56,44 @@ export function groupTitleWidth(text) {
   return Math.ceil(textWidth(t, GROUP.titleSize, { weight: 600 }) + t.length * GROUP.titleSize * 0.06);
 }
 
+/** Room at the right of a title: the fold button of a layered-layout box (none for regions or the sequence view). */
+const titleRoom = (toggle) => (toggle ? GROUP.toggle : GROUP.titleX);
+
+/**
+ * Narrowest box that shows its whole title (capped, so a very long title is
+ * cut rather than widening the drawing without limit).
+ */
+export function groupMinWidth(title, toggle = true) {
+  return Math.min(GROUP_TITLE_MAX, groupTitleWidth(title)) + GROUP.titleX + titleRoom(toggle);
+}
+const GROUP_TITLE_MAX = 300;
+
 /** Title text cut to fit a box, and the strip it occupies (kept clear of edges and labels). */
-export function groupTitle(title, box) {
-  const max = box.w - GROUP.titleX * 2;
+export function groupTitle(title, box, { toggle = false } = {}) {
+  const max = box.w - GROUP.titleX - titleRoom(toggle);
   let text = String(title || '').toUpperCase();
   if (groupTitleWidth(text) > max) {
-    while (text.length > 1 && groupTitleWidth(`${text}\u2026`) > max) text = text.slice(0, -1);
-    text = `${text.trimEnd()}\u2026`;
+    while (text.length > 1 && groupTitleWidth(`${text}…`) > max) text = text.slice(0, -1);
+    text = `${text.trimEnd()}…`;
   }
   const w = Math.min(max, groupTitleWidth(text));
   return { text, strip: { x: box.x + GROUP.titleX - 4, y: box.y + GROUP.titleY - 3, w: w + 8, h: GROUP.titleH + 6 } };
 }
 
+/** Extra width on each side that lets a box of width `w` show its title (a multiple of the grid). */
+export function titleSlack(g, w) {
+  const need = groupMinWidth(g.title, g.toggle !== false);
+  return need > w ? ceilTo((need - w) / 2, GRID) : 0;
+}
+
 /**
  * Group boxes from member rects, innermost first so parents wrap children.
- * @param list  [{ id, parent, depth, nodes: [nodeId incl. descendants] }]
+ * @param list  [{ id, parent, depth, title?, nodes: [nodeId incl. descendants] }]
+ * @param opts  { fit: pad by depth (groupPad), titles: also widen boxes until their title
+ *                fits (around the members, so the box stays centred on them) }
  * @returns Map<groupId, {x,y,w,h}> (groups without placed members are absent)
  */
-export function groupBoxes(list, rects) {
+export function groupBoxes(list, rects, { fit = false, titles = false } = {}) {
   const boxes = new Map();
   for (const g of [...list].sort((a, b) => b.depth - a.depth)) {
     let x0 = Infinity;
@@ -75,7 +107,10 @@ export function groupBoxes(list, rects) {
     for (const id of g.nodes) if (rects.has(id)) add(rects.get(id));
     for (const c of list) if (c.parent === g.id && boxes.has(c.id)) add(boxes.get(c.id));
     if (!isFinite(x0)) continue;
-    boxes.set(g.id, { x: x0 - GROUP.padX, y: y0 - GROUP.padTop, w: x1 - x0 + GROUP.padX * 2, h: y1 - y0 + GROUP.padTop + GROUP.padBottom });
+    const pad = fit ? groupPad(g.depth) : GROUP;
+    const w = x1 - x0 + pad.padX * 2;
+    const slack = titles ? titleSlack({ title: g.title, toggle: g.group?.kind !== 'region' }, w) : 0;
+    boxes.set(g.id, { x: x0 - pad.padX - slack, y: y0 - pad.padTop, w: w + slack * 2, h: y1 - y0 + pad.padTop + pad.padBottom });
   }
   return boxes;
 }
@@ -232,7 +267,149 @@ export function measureNode(node, opts = {}) {
  *               contiguous in every rank and get room for their boxes
  * @returns { positions: Map<id,{x,y}>, sides: Map<edgeId,[src,tgt]> }
  */
-export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {}) {
+export function autoLayout(nodes, edges, options = {}) {
+  const groups = options.groups;
+  const gl = groups && groups.list.some((g) => g.nodes.length) ? groups : null;
+  if (!gl) return flatLayout(nodes, edges, options);
+  // Shallow nesting: one layered pass keeps every edge in the main flow. Deep
+  // nesting (or a flat pass that cannot keep the boxes apart) lays each group
+  // out on its own and places it as one block in its parent.
+  const deepest = Math.max(...gl.list.filter((g) => g.nodes.length).map((g) => g.depth));
+  if (deepest < NESTED_FROM) {
+    // kept only when every box, widened to show its whole title, stays clear
+    const flat = flatLayout(nodes, edges, options);
+    if (boxesClean(nodes, flat.positions, gl)) return { ...flat, titled: true };
+  }
+  return nestedLayout(nodes, edges, options);
+}
+
+/** Group depth (0-based) from which the layered layout nests blocks instead of one flat pass. */
+export const NESTED_FROM = 3;
+
+/**
+ * True when no box (as drawn: padded by depth, wide enough for its title)
+ * covers a card it does not hold, and boxes that are not nested stay apart.
+ */
+function boxesClean(nodes, positions, gl) {
+  const rects = new Map(nodes.map((n) => [n.id, { ...positions.get(n.id), w: n.w, h: n.h }]));
+  const boxes = groupBoxes(gl.list, rects, { fit: true, titles: true });
+  for (const g of gl.list) {
+    const b = boxes.get(g.id);
+    if (!b) continue;
+    const members = gl.members(g.id);
+    for (const [id, r] of rects) if (!members.has(id) && overlaps(r, b)) return false;
+  }
+  const list = gl.list.filter((g) => boxes.has(g.id));
+  for (let i = 0; i < list.length; i++)
+    for (let j = i + 1; j < list.length; j++) {
+      const A = gl.ancestors(list[i].id);
+      const B = gl.ancestors(list[j].id);
+      if (A.includes(list[j].id) || B.includes(list[i].id)) continue;
+      if (overlaps(boxes.get(list[i].id), boxes.get(list[j].id))) return false;
+    }
+  return true;
+}
+
+/**
+ * Nested blocks: each group is laid out on its own (its cards and its child
+ * groups, each child a single block), boxed with its depth's padding and wide
+ * enough for its title, then placed as one card in its parent. Edges between
+ * cards in different blocks pull the blocks, not the cards; the router draws
+ * them through the box borders afterwards. Boxes never overlap by construction.
+ */
+function nestedLayout(nodes, edges, { direction = 'LR', groups: gl }) {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const order = new Map(nodes.map((n, i) => [n.id, i]));
+  const kids = new Map([[null, []], ...gl.list.map((g) => [g.id, []])]);
+  for (const g of gl.list) if (g.nodes.some((id) => byId.has(id))) kids.get(g.parent ?? null).push({ group: g, first: Math.min(...g.nodes.filter((id) => byId.has(id)).map((id) => order.get(id))) });
+  for (const n of nodes) kids.get(gl.nodeGroup.get(n.id) ?? null).push({ node: n, first: order.get(n.id) });
+  for (const list of kids.values()) list.sort((a, b) => a.first - b.first);
+
+  // The item of container `cid` (null: the drawing) that holds a node, or null when it lies outside
+  const rep = (cid, id) => {
+    const chain = gl.chain(id);
+    if (cid === null) return chain.length ? chain[0] : id;
+    const at = chain.indexOf(cid);
+    if (at < 0) return null;
+    return at === chain.length - 1 ? id : chain[at + 1];
+  };
+  const positions = new Map();
+  const sides = new Map();
+  const reversed = new Set();
+
+  // A block: its size, the drawn box inside it ({x,y,w,h}, null for the drawing) and every
+  // card's position, all relative to the block's corner (which stays on the grid)
+  const block = (cid, depth) => {
+    const items = kids.get(cid).map((k) => {
+      if (k.node) return { id: k.node.id, w: k.node.w, h: k.node.h, rank: k.node.rank, shape: k.node.shape };
+      const sub = block(k.group.id, depth + 1);
+      return { id: k.group.id, w: sub.w, h: sub.h, sub };
+    });
+    const seen = new Set();
+    const inner = [];
+    for (const e of edges) {
+      if (!byId.has(e.source) || !byId.has(e.target)) continue;
+      const a = rep(cid, e.source);
+      const b = rep(cid, e.target);
+      if (a === null || b === null) continue;
+      if (a === b) {
+        // a self-loop on a card of this container keeps its room
+        if (e.source === e.target && a === e.source) inner.push(e);
+        continue;
+      }
+      const key = `${a}\u0000${b}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const direct = a === e.source && b === e.target;
+      inner.push(direct ? e : { id: `\u0000${e.id}`, source: a, target: b, label: e.label });
+    }
+    const r = items.length ? flatLayout(items, inner, { direction }) : { positions: new Map(), sides: new Map(), reversed: new Set() };
+    r.sides.forEach((v, id) => !id.startsWith('\u0000') && sides.set(id, v));
+    r.reversed.forEach((id) => !id.startsWith('\u0000') && reversed.add(id));
+    // Content: cards and child boxes as drawn, in this layout's coordinates
+    const local = new Map();
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    const add = (x, y, w, h) => {
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x + w); y1 = Math.max(y1, y + h);
+    };
+    for (const it of items) {
+      const p = r.positions.get(it.id);
+      if (it.sub) {
+        it.sub.local.forEach((q, id) => local.set(id, { x: p.x + q.x, y: p.y + q.y }));
+        add(p.x + it.sub.box.x, p.y + it.sub.box.y, it.sub.box.w, it.sub.box.h);
+      } else {
+        local.set(it.id, { x: p.x, y: p.y });
+        add(p.x, p.y, it.w, it.h);
+      }
+    }
+    if (cid === null) return { w: x1, h: y1, box: null, local };
+    // The drawn box (exactly what groupBoxes draws), then the block around it, snapped out to the grid
+    const g = gl.byId.get(cid);
+    const pad = groupPad(depth);
+    const slack = titleSlack({ title: g.title, toggle: g.group?.kind !== 'region' }, x1 - x0 + pad.padX * 2);
+    const box = { x: x0 - pad.padX - slack, y: y0 - pad.padTop, w: x1 - x0 + (pad.padX + slack) * 2, h: y1 - y0 + pad.padTop + pad.padBottom };
+    const ox = Math.floor(box.x / GRID) * GRID;
+    const oy = Math.floor(box.y / GRID) * GRID;
+    const out = new Map();
+    local.forEach((q, id) => out.set(id, { x: q.x - ox, y: q.y - oy }));
+    return {
+      w: ceilTo(box.x + box.w, GRID) - ox,
+      h: ceilTo(box.y + box.h, GRID) - oy,
+      box: { x: box.x - ox, y: box.y - oy, w: box.w, h: box.h },
+      local: out
+    };
+  };
+  const root = block(null, 0);
+  root.local.forEach((p, id) => positions.set(id, { x: snap(p.x), y: snap(p.y) }));
+  return { positions, sides, reversed, nested: true };
+}
+
+/** One layered pass over every card (groups kept contiguous by their member paths). */
+function flatLayout(nodes, edges, { direction = 'LR', groups = null } = {}) {
   const horiz = direction !== 'TB';
   const ids = nodes.map((n) => n.id);
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -508,13 +685,16 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
   // 5. Cross-axis placement: pull towards neighbours, keep order and spacing
   const nodeGap = horiz ? 40 : 60;
   const dummyGap = 34;
-  // Crossing a group boundary adds that box's padding (title side first)
-  const padStart = horiz ? GROUP.padTop : GROUP.padX;
-  const padEnd = horiz ? GROUP.padBottom : GROUP.padX;
+  // Crossing a group boundary adds that box's padding (title side first; deeper boxes pad less)
+  const padStart = (d) => (horiz ? groupPad(d).padTop : groupPad(d).padX);
+  const padEnd = (d) => (horiz ? groupPad(d).padBottom : groupPad(d).padX);
   const boundary = (a, b) => {
     let k = 0;
     while (k < a.path.length && k < b.path.length && a.path[k] === b.path[k]) k++;
-    return (a.path.length - k) * padEnd + (b.path.length - k) * padStart;
+    let room = 0;
+    for (let d = k; d < a.path.length; d++) room += padEnd(d);
+    for (let d = k; d < b.path.length; d++) room += padStart(d);
+    return room;
   };
   const sep = (a, b) =>
     a.size / 2 + b.size / 2 + (a.ph || b.ph ? 0 : a.real && b.real ? nodeGap : dummyGap) + (gl ? boundary(a, b) : 0) +
@@ -589,16 +769,12 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
     for (const g of gl.list) {
       if (!span.has(g.id)) continue;
       const [r0, r1] = span.get(g.id);
-      const chain = gl.ancestors(g.id).filter((a) => span.has(a));
-      closeAt[r1] = Math.max(closeAt[r1], chain.filter((a) => span.get(a)[1] === r1).length);
-      openAt[r0] = Math.max(openAt[r0], chain.filter((a) => span.get(a)[0] === r0).length);
+      const chain = gl.ancestors(g.id).map((a, d) => [a, d]).filter(([a]) => span.has(a));
+      const sum = (list, side) => list.reduce((t, [, d]) => t + (side ? (horiz ? groupPad(d).padX : groupPad(d).padTop) : horiz ? groupPad(d).padX : groupPad(d).padBottom), 0);
+      closeAt[r1] = Math.max(closeAt[r1], sum(chain.filter(([a]) => span.get(a)[1] === r1), false));
+      openAt[r0] = Math.max(openAt[r0], sum(chain.filter(([a]) => span.get(a)[0] === r0), true));
     }
-    const mainStart = horiz ? GROUP.padX : GROUP.padTop;
-    const mainEnd = horiz ? GROUP.padX : GROUP.padBottom;
-    for (let r = 0; r < gapNeed.length; r++) {
-      const pads = closeAt[r] * mainEnd + openAt[r + 1] * mainStart;
-      gapNeed[r] += pads;
-    }
+    for (let r = 0; r < gapNeed.length; r++) gapNeed[r] += closeAt[r] + openAt[r + 1];
   }
   const bandStart = [];
   let m = 0;
@@ -661,7 +837,7 @@ export function autoLayout(nodes, edges, { direction = 'LR', groups = null } = {
     const G = GROUP.gap;
     for (let iter = 0; iter < 200; iter++) {
       const rects = new Map(ids.map((id) => [id, rectOf(id)]));
-      const boxes = groupBoxes(list, rects);
+      const boxes = groupBoxes(list, rects, { fit: true });
       let fixed = false;
       // (a) a node inside a box it does not belong to: move it (and everything
       // beyond it in its rank) out on the side it is ordered on

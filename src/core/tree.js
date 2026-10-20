@@ -537,7 +537,7 @@ export function branchHues(index, root, rootHue) {
  * @returns { nodes, edges, groups, alias: Map<nodeId, visibleId>, edgeAlias: Map<edgeId, visibleEdgeId|null>,
  *            hidden: Map<nodeId, count>, active: Set<collapsed id actually applied> }
  */
-export function collapseGraph({ nodes, edges, groups, collapsed, algorithm, index }) {
+export function collapseGraph({ nodes, edges, groups, collapsed, algorithm, index, L = null }) {
   const alias = new Map();
   const hidden = new Map();
   const active = new Set();
@@ -589,6 +589,8 @@ export function collapseGraph({ nodes, edges, groups, collapsed, algorithm, inde
       if (chain(g).slice(1).some((a) => want.has(a))) continue; // an outer group is collapsed
       const list = members(g.id);
       if (!list.length) continue;
+      // Boxes folded inside this one (with members): the card counts them too
+      const inner = groups.filter((c) => c.id !== g.id && chain(c).includes(g.id) && members(c.id).length).length;
       active.add(g.id);
       list.forEach((n) => alias.set(n, g.id));
       hidden.set(g.id, list.length);
@@ -596,8 +598,8 @@ export function collapseGraph({ nodes, edges, groups, collapsed, algorithm, inde
         id: g.id,
         data: {
           title: typeof g.title === 'string' && g.title ? g.title : g.id,
-          subtitle: `${list.length} card${list.length === 1 ? '' : 's'} folded`,
-          badge: 'Group',
+          subtitle: foldedText(list.length, inner, L),
+          badge: L ? L.t('fold.badge') : 'Group',
           icon: 'layers',
           ...(typeof g.description === 'string' ? { description: g.description } : {})
         },
@@ -649,6 +651,14 @@ export function collapseGraph({ nodes, edges, groups, collapsed, algorithm, inde
     }
   }
   return { nodes: outNodes, edges: outEdges, groups: outGroups, alias, edgeAlias, hidden, active };
+}
+
+/** Summary card subtitle: "5 cards folded", or "9 cards · 3 groups" when boxes are folded inside. */
+export function foldedText(cards, inner = 0, L = null) {
+  if (!L) return inner ? `${cards} card${cards === 1 ? '' : 's'} · ${inner} group${inner === 1 ? '' : 's'}` : `${cards} card${cards === 1 ? '' : 's'} folded`;
+  const n = L.num(cards);
+  if (!inner) return L.plural(cards, 'fold.card', 'fold.cards', { n });
+  return `${L.plural(cards, 'fold.cardCount1', 'fold.cardCount', { n })} · ${L.plural(inner, 'fold.groupCount1', 'fold.groupCount', { n: L.num(inner) })}`;
 }
 
 /** Collapsed ids that hide any of `ids` (a step that shows them expands these). */

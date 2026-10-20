@@ -5,6 +5,7 @@
  */
 import { collectDiagrams, levelPath, drillOf, replaceLevel } from '../core/drill.js';
 import { escapeHtml as h } from '../core/text.js';
+import { crumbWindow } from '../core/nesting.js';
 
 /**
  * UI strings of the drill-down and link features (English defaults);
@@ -20,7 +21,8 @@ export const DRILL_TEXT = {
   link: 'Open link',
   newTab: '(opens in a new tab)',
   edgeLink: (label) => `Open link for ${label}`,
-  overview: 'Overview'
+  overview: 'Overview',
+  more: (n) => `Show ${n} hidden levels`
 };
 
 /** Switch DRILL_TEXT to a locale (localeOf() result). */
@@ -35,7 +37,8 @@ export function setDrillLocale(L) {
     link: L.t('drill.link'),
     newTab: L.t('drill.newTab'),
     edgeLink: (label) => L.t('drill.edgeLink', { label }),
-    overview: L.t('drill.overview')
+    overview: L.t('drill.overview'),
+    more: (n) => L.t('drill.more', { n: L.num(n) })
   });
 }
 
@@ -127,16 +130,38 @@ export class Levels {
     return id ? replaceLevel(this.root, id, sub) : sub;
   }
 
-  /** Breadcrumb: back button, then Overview › … › current (the last one is not a link). */
+  /** Breadcrumb items: Overview, then each level (attr: what a click on it does). */
+  crumbItems() {
+    return [null, ...this.path].map((id, i) => ({ title: this.title(id), attr: `data-level="${i}"` }));
+  }
+
+  /**
+   * Breadcrumb: back button, then Overview › … › current (the last one is not
+   * a link). Deep paths keep the overview, the parent and the current level;
+   * the levels between fold into a "…" button that opens a menu.
+   */
   crumbsHtml() {
     if (!this.depth) return '';
-    const trail = [null, ...this.path];
-    const items = trail.map((id, i) =>
-      i === trail.length - 1
-        ? `<li><span aria-current="page">${h(this.title(id))}</span></li>`
-        : `<li><button class="y-crumb" data-level="${i}">${h(this.title(id))}</button></li>`
-    );
-    const up = this.title(trail[trail.length - 2]);
-    return `<button class="y-crumb-back" data-level="${this.depth - 1}" data-tip="${h(DRILL_TEXT.back(up))}" aria-label="${h(DRILL_TEXT.back(up))}">${BACK_ICON}</button><ol>${items.join('')}</ol>`;
+    const items = this.crumbItems();
+    const up = items[items.length - 2].title;
+    return `<button class="y-crumb-back" data-level="${this.depth - 1}" data-tip="${h(DRILL_TEXT.back(up))}" aria-label="${h(DRILL_TEXT.back(up))}">${BACK_ICON}</button>${crumbListHtml(items, DRILL_TEXT.more)}`;
   }
+}
+
+/**
+ * An ordered list of breadcrumb items ({ title, attr }), the last one current.
+ * Long trails show the first item, a "…" button (data-crumb-more: the hidden
+ * indices, opened as a menu by main.js) and the last two.
+ */
+export function crumbListHtml(items, moreLabel) {
+  const { shown, hidden } = crumbWindow(items.length);
+  const li = shown.map((i) => {
+    if (i === null) {
+      const label = h(moreLabel(hidden.length));
+      return `<li><button class="y-crumb y-crumb-gap" data-crumb-more="${hidden.join(',')}" aria-haspopup="menu" aria-expanded="false" data-tip="${label}" aria-label="${label}">…</button></li>`;
+    }
+    const it = items[i];
+    return i === items.length - 1 ? `<li><span aria-current="page">${h(it.title)}</span></li>` : `<li><button class="y-crumb" ${it.attr}>${h(it.title)}</button></li>`;
+  });
+  return `<ol>${li.join('')}</ol>`;
 }

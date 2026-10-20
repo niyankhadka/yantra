@@ -1,0 +1,1380 @@
+{
+  "meta": {
+    "title": "Global retail group",
+    "description": "Halden Retail Group from the boardroom to a payment terminal: six levels, each with its own nested boxes.",
+    "summary": {
+      "headline": "Drill from the group overview to Europe, the United Kingdom, the London flagship, till 7's terminal and its payment kernel; every level keeps its own walkthrough.",
+      "points": [
+        "Six levels: group, region, country, store, terminal, kernel",
+        "Levels use nested groups too (store > shop floor > checkout zone > tills)",
+        "Deep breadcrumbs keep the overview, the parent and the current level; the rest sit behind the ellipsis",
+        "Double-click a card with the magnifier, or press D, to go down; Esc goes back up"
+      ],
+      "facts": {
+        "Stores": "2,070",
+        "Countries": "23",
+        "Levels": "Overview + 5 detail diagrams"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "region": {
+      "label": "Trading region",
+      "color": "blue",
+      "icon": "globe"
+    },
+    "platform": {
+      "label": "Group platform",
+      "color": "violet",
+      "icon": "layers"
+    },
+    "hq": {
+      "label": "Group function",
+      "color": "amber",
+      "icon": "building"
+    },
+    "external": {
+      "label": "External",
+      "color": "slate",
+      "icon": "credit-card"
+    }
+  },
+  "groups": [
+    {
+      "id": "r-regions",
+      "title": "Trading regions",
+      "nodes": [
+        "r-europe",
+        "r-americas",
+        "r-apac"
+      ],
+      "color": "blue"
+    },
+    {
+      "id": "r-hq",
+      "title": "Group HQ",
+      "nodes": [
+        "r-commerce",
+        "r-data",
+        "r-finance"
+      ],
+      "color": "violet",
+      "style": "solid"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "r-europe",
+      "type": "region",
+      "data": {
+        "title": "Europe",
+        "subtitle": "1,140 stores, 9 countries",
+        "drill": "europe"
+      }
+    },
+    {
+      "id": "r-americas",
+      "type": "region",
+      "data": {
+        "title": "North America",
+        "subtitle": "620 stores"
+      }
+    },
+    {
+      "id": "r-apac",
+      "type": "region",
+      "data": {
+        "title": "Asia-Pacific",
+        "subtitle": "310 stores"
+      }
+    },
+    {
+      "id": "r-commerce",
+      "type": "platform",
+      "data": {
+        "title": "Group commerce platform",
+        "subtitle": "Orders, loyalty, catalogue"
+      }
+    },
+    {
+      "id": "r-data",
+      "type": "platform",
+      "data": {
+        "title": "Group data lake",
+        "subtitle": "Sales and stock history"
+      }
+    },
+    {
+      "id": "r-finance",
+      "type": "hq",
+      "data": {
+        "title": "Group finance",
+        "subtitle": "Consolidated reporting"
+      }
+    },
+    {
+      "id": "r-acquirer",
+      "type": "external",
+      "data": {
+        "title": "Card acquirers",
+        "subtitle": "Settle card payments"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "r-e1",
+      "source": "r-europe",
+      "target": "r-commerce",
+      "label": "Orders"
+    },
+    {
+      "id": "r-e2",
+      "source": "r-americas",
+      "target": "r-commerce",
+      "label": "Orders"
+    },
+    {
+      "id": "r-e3",
+      "source": "r-apac",
+      "target": "r-commerce",
+      "label": "Orders"
+    },
+    {
+      "id": "r-e4",
+      "source": "r-commerce",
+      "target": "r-data",
+      "label": "Sales events",
+      "type": "event"
+    },
+    {
+      "id": "r-e5",
+      "source": "r-data",
+      "target": "r-finance",
+      "label": "Daily figures"
+    },
+    {
+      "id": "r-e6",
+      "source": "r-commerce",
+      "target": "r-acquirer",
+      "label": "Settlement"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "group",
+      "name": "Group view",
+      "steps": [
+        {
+          "title": "The group",
+          "description": "Three trading regions feed one commerce platform at group HQ."
+        },
+        {
+          "title": "Regions trade",
+          "description": "Every region sends its orders to the group commerce platform.",
+          "highlightNodes": [
+            "r-europe",
+            "r-americas",
+            "r-apac",
+            "r-commerce"
+          ],
+          "highlightEdges": [
+            "r-e1",
+            "r-e2",
+            "r-e3"
+          ],
+          "focusGroup": "r-regions"
+        },
+        {
+          "title": "Figures reach finance",
+          "description": "Sales events land in the data lake; finance reads daily figures from it.",
+          "highlightNodes": [
+            "r-commerce",
+            "r-data",
+            "r-finance"
+          ],
+          "highlightEdges": [
+            "r-e4",
+            "r-e5"
+          ],
+          "focusGroup": "r-hq"
+        },
+        {
+          "title": "Go down to a till",
+          "description": "Open Europe, then the United Kingdom, the London flagship, terminal T-07 and its kernel: five levels down.",
+          "highlightNodes": [
+            "r-europe"
+          ]
+        }
+      ]
+    }
+  ],
+  "diagrams": {
+    "europe": {
+      "meta": {
+        "title": "Europe region",
+        "description": "Nine countries share one integration hub, regional pricing and the Rotterdam distribution centre.",
+        "layout": {
+          "direction": "LR"
+        }
+      },
+      "roles": {
+        "country": {
+          "label": "Country",
+          "color": "blue",
+          "icon": "flag"
+        },
+        "service": {
+          "label": "Regional service",
+          "color": "violet",
+          "icon": "layers"
+        },
+        "logistics": {
+          "label": "Logistics",
+          "color": "amber",
+          "icon": "truck"
+        }
+      },
+      "groups": [
+        {
+          "id": "e-region",
+          "title": "Europe region",
+          "nodes": [],
+          "color": "slate",
+          "style": "solid"
+        },
+        {
+          "id": "e-countries",
+          "title": "Countries",
+          "nodes": [
+            "e-uk",
+            "e-de",
+            "e-nordics"
+          ],
+          "parent": "e-region",
+          "color": "blue"
+        },
+        {
+          "id": "e-services",
+          "title": "Regional services",
+          "nodes": [
+            "e-hub",
+            "e-pricing"
+          ],
+          "parent": "e-region",
+          "color": "violet"
+        },
+        {
+          "id": "e-logistics",
+          "title": "Logistics",
+          "nodes": [
+            "e-dc"
+          ],
+          "parent": "e-region",
+          "color": "amber"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "e-uk",
+          "type": "country",
+          "data": {
+            "title": "United Kingdom",
+            "subtitle": "430 stores",
+            "drill": "uk"
+          }
+        },
+        {
+          "id": "e-de",
+          "type": "country",
+          "data": {
+            "title": "Germany",
+            "subtitle": "260 stores"
+          }
+        },
+        {
+          "id": "e-nordics",
+          "type": "country",
+          "data": {
+            "title": "Nordics",
+            "subtitle": "180 stores"
+          }
+        },
+        {
+          "id": "e-hub",
+          "type": "service",
+          "data": {
+            "title": "Regional integration hub",
+            "subtitle": "One feed per country"
+          }
+        },
+        {
+          "id": "e-pricing",
+          "type": "service",
+          "data": {
+            "title": "Regional pricing",
+            "subtitle": "Prices and promotions"
+          }
+        },
+        {
+          "id": "e-dc",
+          "type": "logistics",
+          "data": {
+            "title": "Rotterdam distribution centre",
+            "subtitle": "Cross-border stock"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e-e1",
+          "source": "e-uk",
+          "target": "e-hub",
+          "label": "Sales"
+        },
+        {
+          "id": "e-e2",
+          "source": "e-de",
+          "target": "e-hub",
+          "label": "Sales"
+        },
+        {
+          "id": "e-e3",
+          "source": "e-nordics",
+          "target": "e-hub",
+          "label": "Sales"
+        },
+        {
+          "id": "e-e4",
+          "source": "e-pricing",
+          "target": "e-hub",
+          "label": "Price lists"
+        },
+        {
+          "id": "e-e5",
+          "source": "e-hub",
+          "target": "e-dc",
+          "label": "Stock demand"
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "europe",
+          "name": "Regional flow",
+          "steps": [
+            {
+              "title": "Europe at a glance",
+              "description": "Countries, regional services and logistics inside one regional boundary."
+            },
+            {
+              "title": "Countries report sales",
+              "description": "Each country sends one sales feed to the regional hub.",
+              "highlightNodes": [
+                "e-uk",
+                "e-de",
+                "e-nordics",
+                "e-hub"
+              ],
+              "highlightEdges": [
+                "e-e1",
+                "e-e2",
+                "e-e3"
+              ],
+              "focusGroup": "e-countries"
+            },
+            {
+              "title": "Prices and stock",
+              "description": "Regional pricing publishes through the hub, and demand flows to Rotterdam.",
+              "highlightNodes": [
+                "e-pricing",
+                "e-hub",
+                "e-dc"
+              ],
+              "highlightEdges": [
+                "e-e4",
+                "e-e5"
+              ]
+            },
+            {
+              "title": "Open the United Kingdom",
+              "description": "Double-click United Kingdom (or press D) to go a level deeper.",
+              "highlightNodes": [
+                "e-uk"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagrams": {
+        "uk": {
+          "meta": {
+            "title": "United Kingdom",
+            "description": "UK stores, supply and payments: 430 stores in two trading areas.",
+            "layout": {
+              "direction": "LR"
+            }
+          },
+          "roles": {
+            "store": {
+              "label": "Store",
+              "color": "blue",
+              "icon": "building"
+            },
+            "supply": {
+              "label": "Supply",
+              "color": "amber",
+              "icon": "warehouse"
+            },
+            "service": {
+              "label": "UK service",
+              "color": "violet",
+              "icon": "server"
+            },
+            "payment": {
+              "label": "Payment",
+              "color": "rose",
+              "icon": "credit-card"
+            }
+          },
+          "groups": [
+            {
+              "id": "u-ops",
+              "title": "UK operations",
+              "nodes": [],
+              "color": "slate",
+              "style": "solid"
+            },
+            {
+              "id": "u-stores",
+              "title": "Stores",
+              "nodes": [],
+              "parent": "u-ops",
+              "color": "blue"
+            },
+            {
+              "id": "u-london",
+              "title": "London",
+              "nodes": [
+                "u-flagship",
+                "u-canary"
+              ],
+              "parent": "u-stores",
+              "color": "blue"
+            },
+            {
+              "id": "u-midlands",
+              "title": "Midlands",
+              "nodes": [
+                "u-brum"
+              ],
+              "parent": "u-stores",
+              "color": "blue"
+            },
+            {
+              "id": "u-supply",
+              "title": "Supply",
+              "nodes": [
+                "u-dc",
+                "u-online"
+              ],
+              "parent": "u-ops",
+              "color": "amber"
+            }
+          ],
+          "nodes": [
+            {
+              "id": "u-flagship",
+              "type": "store",
+              "data": {
+                "title": "London flagship",
+                "subtitle": "Regent Arcade",
+                "drill": "flagship"
+              }
+            },
+            {
+              "id": "u-canary",
+              "type": "store",
+              "data": {
+                "title": "Canary Wharf store",
+                "subtitle": "Commuter trade"
+              }
+            },
+            {
+              "id": "u-brum",
+              "type": "store",
+              "data": {
+                "title": "Birmingham store",
+                "subtitle": "Bullring centre"
+              }
+            },
+            {
+              "id": "u-dc",
+              "type": "supply",
+              "data": {
+                "title": "Midlands distribution centre",
+                "subtitle": "Next-day store deliveries"
+              }
+            },
+            {
+              "id": "u-online",
+              "type": "supply",
+              "data": {
+                "title": "Online fulfilment",
+                "subtitle": "Web and app orders"
+              }
+            },
+            {
+              "id": "u-stock",
+              "type": "service",
+              "data": {
+                "title": "UK stock service",
+                "subtitle": "Every unit, every store"
+              }
+            },
+            {
+              "id": "u-gateway",
+              "type": "payment",
+              "data": {
+                "title": "UK payment gateway",
+                "subtitle": "Card and wallet payments"
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "u-e1",
+              "source": "u-flagship",
+              "target": "u-gateway",
+              "label": "Payments"
+            },
+            {
+              "id": "u-e2",
+              "source": "u-canary",
+              "target": "u-gateway",
+              "label": "Payments"
+            },
+            {
+              "id": "u-e3",
+              "source": "u-brum",
+              "target": "u-gateway",
+              "label": "Payments"
+            },
+            {
+              "id": "u-e4",
+              "source": "u-flagship",
+              "target": "u-stock",
+              "label": "Sales"
+            },
+            {
+              "id": "u-e5",
+              "source": "u-brum",
+              "target": "u-stock",
+              "label": "Sales"
+            },
+            {
+              "id": "u-e6",
+              "source": "u-stock",
+              "target": "u-dc",
+              "label": "Replenishment"
+            },
+            {
+              "id": "u-e7",
+              "source": "u-online",
+              "target": "u-stock",
+              "label": "Web orders"
+            }
+          ],
+          "scenarios": [
+            {
+              "id": "uk",
+              "name": "UK trading",
+              "steps": [
+                {
+                  "title": "UK operations",
+                  "description": "Stores in two trading areas, supply, and two national services."
+                },
+                {
+                  "title": "London stores take payments",
+                  "description": "Every till payment goes through the UK gateway.",
+                  "highlightNodes": [
+                    "u-flagship",
+                    "u-canary",
+                    "u-gateway"
+                  ],
+                  "highlightEdges": [
+                    "u-e1",
+                    "u-e2"
+                  ],
+                  "focusGroup": "u-london"
+                },
+                {
+                  "title": "Sales drive replenishment",
+                  "description": "Store sales and web orders update the stock service, which orders deliveries from the Midlands centre.",
+                  "highlightNodes": [
+                    "u-flagship",
+                    "u-brum",
+                    "u-online",
+                    "u-stock",
+                    "u-dc"
+                  ],
+                  "highlightEdges": [
+                    "u-e4",
+                    "u-e5",
+                    "u-e7",
+                    "u-e6"
+                  ]
+                },
+                {
+                  "title": "Open the flagship",
+                  "description": "Double-click London flagship (or press D) to see its store systems.",
+                  "highlightNodes": [
+                    "u-flagship"
+                  ]
+                }
+              ]
+            }
+          ],
+          "diagrams": {
+            "flagship": {
+              "meta": {
+                "title": "London flagship store",
+                "description": "Systems on the shop floor and in the back office of the Regent Arcade store.",
+                "layout": {
+                  "direction": "LR",
+                  "collapsed": [
+                    "f-backoffice"
+                  ]
+                }
+              },
+              "roles": {
+                "pos": {
+                  "label": "Point of sale",
+                  "color": "blue",
+                  "icon": "monitor"
+                },
+                "payment": {
+                  "label": "Payment",
+                  "color": "rose",
+                  "icon": "credit-card"
+                },
+                "store": {
+                  "label": "Store system",
+                  "color": "violet",
+                  "icon": "server"
+                },
+                "external": {
+                  "label": "External",
+                  "color": "slate",
+                  "icon": "globe"
+                }
+              },
+              "groups": [
+                {
+                  "id": "f-store",
+                  "title": "Regent Arcade store",
+                  "nodes": [],
+                  "color": "slate",
+                  "style": "solid",
+                  "description": "Four floors, 120 staff, open 08:00 to 21:00."
+                },
+                {
+                  "id": "f-floor",
+                  "title": "Shop floor",
+                  "nodes": [
+                    "f-handheld"
+                  ],
+                  "parent": "f-store",
+                  "color": "blue"
+                },
+                {
+                  "id": "f-checkout",
+                  "title": "Checkout zone",
+                  "nodes": [],
+                  "parent": "f-floor",
+                  "color": "blue",
+                  "description": "Ground floor, by the Arcade entrance."
+                },
+                {
+                  "id": "f-tills",
+                  "title": "Staffed tills",
+                  "nodes": [
+                    "f-till",
+                    "f-t07"
+                  ],
+                  "parent": "f-checkout",
+                  "color": "rose"
+                },
+                {
+                  "id": "f-sco",
+                  "title": "Self-checkout",
+                  "nodes": [
+                    "f-sco-bank"
+                  ],
+                  "parent": "f-checkout",
+                  "color": "teal"
+                },
+                {
+                  "id": "f-backoffice",
+                  "title": "Back office",
+                  "nodes": [
+                    "f-server",
+                    "f-stockroom"
+                  ],
+                  "parent": "f-store",
+                  "color": "violet"
+                }
+              ],
+              "nodes": [
+                {
+                  "id": "f-till",
+                  "type": "pos",
+                  "data": {
+                    "title": "Till 7",
+                    "subtitle": "Scans and totals"
+                  }
+                },
+                {
+                  "id": "f-t07",
+                  "type": "payment",
+                  "data": {
+                    "title": "Payment terminal T-07",
+                    "subtitle": "Card and phone payments",
+                    "drill": "terminal"
+                  }
+                },
+                {
+                  "id": "f-sco-bank",
+                  "type": "pos",
+                  "data": {
+                    "title": "Self-checkout bank",
+                    "subtitle": "Eight lanes"
+                  }
+                },
+                {
+                  "id": "f-handheld",
+                  "type": "pos",
+                  "data": {
+                    "title": "Staff handhelds",
+                    "subtitle": "Price and stock checks"
+                  }
+                },
+                {
+                  "id": "f-server",
+                  "type": "store",
+                  "data": {
+                    "title": "Store server",
+                    "subtitle": "Baskets, prices, stock"
+                  }
+                },
+                {
+                  "id": "f-stockroom",
+                  "type": "store",
+                  "data": {
+                    "title": "Stock room scanner",
+                    "subtitle": "Deliveries in"
+                  }
+                },
+                {
+                  "id": "f-gateway",
+                  "type": "external",
+                  "data": {
+                    "title": "UK payment gateway",
+                    "subtitle": "Routes to acquirers"
+                  }
+                },
+                {
+                  "id": "f-uk-stock",
+                  "type": "external",
+                  "data": {
+                    "title": "UK stock service",
+                    "subtitle": "National stock view"
+                  }
+                }
+              ],
+              "edges": [
+                {
+                  "id": "f-e1",
+                  "source": "f-till",
+                  "target": "f-t07",
+                  "label": "Amount due"
+                },
+                {
+                  "id": "f-e2",
+                  "source": "f-t07",
+                  "target": "f-gateway",
+                  "label": "Authorisation"
+                },
+                {
+                  "id": "f-e3",
+                  "source": "f-till",
+                  "target": "f-server",
+                  "label": "Basket"
+                },
+                {
+                  "id": "f-e4",
+                  "source": "f-sco-bank",
+                  "target": "f-server",
+                  "label": "Basket"
+                },
+                {
+                  "id": "f-e5",
+                  "source": "f-handheld",
+                  "target": "f-server",
+                  "label": "Lookups"
+                },
+                {
+                  "id": "f-e6",
+                  "source": "f-stockroom",
+                  "target": "f-server",
+                  "label": "Deliveries"
+                },
+                {
+                  "id": "f-e7",
+                  "source": "f-server",
+                  "target": "f-uk-stock",
+                  "label": "Stock moves"
+                }
+              ],
+              "scenarios": [
+                {
+                  "id": "store",
+                  "name": "A day in store",
+                  "steps": [
+                    {
+                      "title": "The store",
+                      "description": "Shop floor and back office; the back office opens folded."
+                    },
+                    {
+                      "title": "Paying at till 7",
+                      "description": "The till sends the amount to terminal T-07, which asks the UK gateway to authorise it.",
+                      "highlightNodes": [
+                        "f-till",
+                        "f-t07",
+                        "f-gateway"
+                      ],
+                      "highlightEdges": [
+                        "f-e1",
+                        "f-e2"
+                      ],
+                      "focusGroup": "f-tills"
+                    },
+                    {
+                      "title": "Baskets reach the store server",
+                      "description": "Staffed tills and self-checkout both post baskets to the store server.",
+                      "highlightNodes": [
+                        "f-till",
+                        "f-sco-bank",
+                        "f-server"
+                      ],
+                      "highlightEdges": [
+                        "f-e3",
+                        "f-e4"
+                      ],
+                      "focusGroup": "f-checkout"
+                    },
+                    {
+                      "title": "Stock stays current",
+                      "description": "Deliveries and sales update the national stock view every few minutes.",
+                      "highlightNodes": [
+                        "f-stockroom",
+                        "f-server",
+                        "f-uk-stock"
+                      ],
+                      "highlightEdges": [
+                        "f-e6",
+                        "f-e7"
+                      ],
+                      "focusGroup": "f-backoffice"
+                    }
+                  ]
+                }
+              ]
+            },
+            "terminal": {
+              "meta": {
+                "title": "Payment terminal T-07",
+                "description": "Till 7 at the London flagship: what happens inside the terminal between a tap and an approval.",
+                "layout": {
+                  "direction": "LR"
+                }
+              },
+              "roles": {
+                "reader": {
+                  "label": "Reader",
+                  "color": "teal",
+                  "icon": "credit-card"
+                },
+                "secure": {
+                  "label": "Secure hardware",
+                  "color": "rose",
+                  "icon": "shield"
+                },
+                "soft": {
+                  "label": "Software",
+                  "color": "violet",
+                  "icon": "cpu"
+                },
+                "external": {
+                  "label": "External",
+                  "color": "slate",
+                  "icon": "globe"
+                }
+              },
+              "groups": [
+                {
+                  "id": "t-enclosure",
+                  "title": "Terminal enclosure",
+                  "nodes": [
+                    "t-app",
+                    "t-comms"
+                  ],
+                  "color": "slate",
+                  "style": "solid",
+                  "description": "PCI PTS approved device, bolted to the till counter."
+                },
+                {
+                  "id": "t-readers",
+                  "title": "Card readers",
+                  "nodes": [
+                    "t-nfc",
+                    "t-chip"
+                  ],
+                  "parent": "t-enclosure",
+                  "color": "teal"
+                },
+                {
+                  "id": "t-core",
+                  "title": "Tamper-resistant core",
+                  "nodes": [
+                    "t-kernel"
+                  ],
+                  "parent": "t-enclosure",
+                  "color": "rose",
+                  "description": "Opening the case wipes the keys."
+                },
+                {
+                  "id": "t-se",
+                  "title": "Secure element",
+                  "nodes": [
+                    "t-pinpad",
+                    "t-keys"
+                  ],
+                  "parent": "t-core",
+                  "color": "rose",
+                  "description": "Keys never leave this chip."
+                }
+              ],
+              "nodes": [
+                {
+                  "id": "t-nfc",
+                  "type": "reader",
+                  "data": {
+                    "title": "Contactless reader",
+                    "subtitle": "NFC antenna"
+                  }
+                },
+                {
+                  "id": "t-chip",
+                  "type": "reader",
+                  "data": {
+                    "title": "Chip reader",
+                    "subtitle": "Card slot"
+                  }
+                },
+                {
+                  "id": "t-pinpad",
+                  "type": "secure",
+                  "data": {
+                    "title": "PIN pad",
+                    "subtitle": "Encrypts at the key"
+                  }
+                },
+                {
+                  "id": "t-keys",
+                  "type": "secure",
+                  "data": {
+                    "title": "Key store",
+                    "subtitle": "DUKPT keys",
+                    "description": "A fresh key for every transaction; a stolen key reveals nothing about others."
+                  }
+                },
+                {
+                  "id": "t-kernel",
+                  "type": "soft",
+                  "data": {
+                    "title": "EMV kernel",
+                    "subtitle": "Card checks and decision",
+                    "drill": "kernel"
+                  }
+                },
+                {
+                  "id": "t-app",
+                  "type": "soft",
+                  "data": {
+                    "title": "Terminal app",
+                    "subtitle": "Amount, receipt, retries"
+                  }
+                },
+                {
+                  "id": "t-comms",
+                  "type": "soft",
+                  "data": {
+                    "title": "Network module",
+                    "subtitle": "TLS to the gateway"
+                  }
+                },
+                {
+                  "id": "t-acquirer",
+                  "type": "external",
+                  "data": {
+                    "title": "Acquirer host",
+                    "subtitle": "Approves or declines"
+                  }
+                }
+              ],
+              "edges": [
+                {
+                  "id": "t-e1",
+                  "source": "t-nfc",
+                  "target": "t-kernel",
+                  "label": "Card data"
+                },
+                {
+                  "id": "t-e2",
+                  "source": "t-chip",
+                  "target": "t-kernel",
+                  "label": "Card data"
+                },
+                {
+                  "id": "t-e3",
+                  "source": "t-keys",
+                  "target": "t-pinpad",
+                  "label": "Session key"
+                },
+                {
+                  "id": "t-e4",
+                  "source": "t-pinpad",
+                  "target": "t-kernel",
+                  "label": "PIN block"
+                },
+                {
+                  "id": "t-e5",
+                  "source": "t-kernel",
+                  "target": "t-app",
+                  "label": "Cryptogram"
+                },
+                {
+                  "id": "t-e6",
+                  "source": "t-app",
+                  "target": "t-comms",
+                  "label": "Auth request"
+                },
+                {
+                  "id": "t-e7",
+                  "source": "t-comms",
+                  "target": "t-acquirer",
+                  "label": "ISO 8583"
+                }
+              ],
+              "scenarios": [
+                {
+                  "id": "tap",
+                  "name": "A tap",
+                  "steps": [
+                    {
+                      "title": "Inside the terminal",
+                      "description": "Readers, a tamper-resistant core and the software that talks to the bank."
+                    },
+                    {
+                      "title": "The card is read",
+                      "description": "Both readers hand card data to the EMV kernel inside the protected core.",
+                      "highlightNodes": [
+                        "t-nfc",
+                        "t-chip",
+                        "t-kernel"
+                      ],
+                      "highlightEdges": [
+                        "t-e1",
+                        "t-e2"
+                      ],
+                      "focusGroup": "t-readers"
+                    },
+                    {
+                      "title": "The PIN never leaves the chip",
+                      "description": "The PIN pad encrypts the PIN with a one-time key from the secure element.",
+                      "highlightNodes": [
+                        "t-keys",
+                        "t-pinpad",
+                        "t-kernel"
+                      ],
+                      "highlightEdges": [
+                        "t-e3",
+                        "t-e4"
+                      ],
+                      "focusGroup": "t-se"
+                    },
+                    {
+                      "title": "Online approval",
+                      "description": "The app sends the cryptogram to the acquirer through the network module.",
+                      "highlightNodes": [
+                        "t-kernel",
+                        "t-app",
+                        "t-comms",
+                        "t-acquirer"
+                      ],
+                      "highlightEdges": [
+                        "t-e5",
+                        "t-e6",
+                        "t-e7"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "kernel": {
+              "meta": {
+                "title": "EMV kernel",
+                "description": "Inside the payment kernel of terminal T-07: the checks between a card tap and an approval.",
+                "layout": {
+                  "direction": "LR"
+                }
+              },
+              "roles": {
+                "step": {
+                  "label": "Kernel step",
+                  "color": "violet",
+                  "icon": "cpu"
+                },
+                "card": {
+                  "label": "Card",
+                  "color": "teal",
+                  "icon": "credit-card"
+                },
+                "out": {
+                  "label": "Result",
+                  "color": "green",
+                  "icon": "check-circle"
+                }
+              },
+              "groups": [
+                {
+                  "id": "k-kernel",
+                  "title": "EMV kernel",
+                  "nodes": [
+                    "k-select",
+                    "k-decide"
+                  ],
+                  "color": "violet",
+                  "style": "solid",
+                  "description": "Certified contact and contactless kernel, version 4.3."
+                },
+                {
+                  "id": "k-card",
+                  "title": "Card checks",
+                  "nodes": [
+                    "k-read",
+                    "k-oda"
+                  ],
+                  "parent": "k-kernel",
+                  "color": "teal",
+                  "description": "What the card says about itself, and whether it can be trusted."
+                },
+                {
+                  "id": "k-risk",
+                  "title": "Risk and verification",
+                  "nodes": [
+                    "k-risk-mgmt",
+                    "k-cvm"
+                  ],
+                  "parent": "k-kernel",
+                  "color": "amber",
+                  "description": "Floor limits, velocity checks and how the cardholder is verified."
+                }
+              ],
+              "nodes": [
+                {
+                  "id": "k-card-in",
+                  "type": "card",
+                  "data": {
+                    "title": "Card or phone",
+                    "subtitle": "Tapped or inserted"
+                  }
+                },
+                {
+                  "id": "k-select",
+                  "type": "step",
+                  "data": {
+                    "title": "Application selection",
+                    "subtitle": "Picks the payment app"
+                  }
+                },
+                {
+                  "id": "k-read",
+                  "type": "step",
+                  "data": {
+                    "title": "Read card data",
+                    "subtitle": "Records and limits"
+                  }
+                },
+                {
+                  "id": "k-oda",
+                  "type": "step",
+                  "data": {
+                    "title": "Data authentication",
+                    "subtitle": "Checks the card signature",
+                    "description": "Offline data authentication: proves the card is genuine without going online."
+                  }
+                },
+                {
+                  "id": "k-risk-mgmt",
+                  "type": "step",
+                  "data": {
+                    "title": "Terminal risk checks",
+                    "subtitle": "Floor limit, velocity"
+                  }
+                },
+                {
+                  "id": "k-cvm",
+                  "type": "step",
+                  "data": {
+                    "title": "Cardholder verification",
+                    "subtitle": "PIN, device or none"
+                  }
+                },
+                {
+                  "id": "k-decide",
+                  "type": "step",
+                  "data": {
+                    "title": "Action analysis",
+                    "subtitle": "Approve, decline or go online"
+                  }
+                },
+                {
+                  "id": "k-crypto",
+                  "type": "out",
+                  "data": {
+                    "title": "Application cryptogram",
+                    "subtitle": "Signed by the card",
+                    "description": "The card signs the transaction; the acquirer checks this cryptogram online."
+                  }
+                }
+              ],
+              "edges": [
+                {
+                  "id": "k-e1",
+                  "source": "k-card-in",
+                  "target": "k-select",
+                  "label": "Card apps"
+                },
+                {
+                  "id": "k-e2",
+                  "source": "k-select",
+                  "target": "k-read",
+                  "label": "Chosen app"
+                },
+                {
+                  "id": "k-e3",
+                  "source": "k-read",
+                  "target": "k-oda",
+                  "label": "Signed data"
+                },
+                {
+                  "id": "k-e4",
+                  "source": "k-oda",
+                  "target": "k-risk-mgmt",
+                  "label": "Card trusted"
+                },
+                {
+                  "id": "k-e5",
+                  "source": "k-risk-mgmt",
+                  "target": "k-cvm",
+                  "label": "Within limits"
+                },
+                {
+                  "id": "k-e6",
+                  "source": "k-cvm",
+                  "target": "k-decide",
+                  "label": "Verified"
+                },
+                {
+                  "id": "k-e7",
+                  "source": "k-decide",
+                  "target": "k-crypto",
+                  "label": "Go online"
+                }
+              ],
+              "scenarios": [
+                {
+                  "id": "kernel",
+                  "name": "One tap",
+                  "steps": [
+                    {
+                      "title": "The kernel",
+                      "description": "Six steps run in about 300 milliseconds for a contactless tap."
+                    },
+                    {
+                      "title": "Choose and read",
+                      "description": "The kernel picks the payment app and reads its records.",
+                      "highlightNodes": [
+                        "k-card-in",
+                        "k-select",
+                        "k-read"
+                      ],
+                      "highlightEdges": [
+                        "k-e1",
+                        "k-e2"
+                      ],
+                      "focusGroup": "k-card"
+                    },
+                    {
+                      "title": "Can the card be trusted?",
+                      "description": "Offline data authentication checks the card signature.",
+                      "highlightNodes": [
+                        "k-read",
+                        "k-oda"
+                      ],
+                      "highlightEdges": [
+                        "k-e3"
+                      ]
+                    },
+                    {
+                      "title": "Limits and verification",
+                      "description": "Risk checks and cardholder verification decide how much proof is needed.",
+                      "highlightNodes": [
+                        "k-oda",
+                        "k-risk-mgmt",
+                        "k-cvm"
+                      ],
+                      "highlightEdges": [
+                        "k-e4",
+                        "k-e5"
+                      ],
+                      "focusGroup": "k-risk"
+                    },
+                    {
+                      "title": "Decision",
+                      "description": "Action analysis asks the card for a cryptogram to send online.",
+                      "highlightNodes": [
+                        "k-cvm",
+                        "k-decide",
+                        "k-crypto"
+                      ],
+                      "highlightEdges": [
+                        "k-e6",
+                        "k-e7"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,26 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Added
 
+- Deep hierarchies in one frame: groups nest up to six levels within budget (eight at most).
+  From four levels the layered layout places each group as a block in its parent, so boxes
+  never overlap and edges cross borders cleanly; padding tightens below the third level, boxes
+  widen to show their whole title and fold button, and tints and outlines get calmer with
+  depth in both themes (`GROUP_TONES`).
+- Fold to depth: keys `1`-`6` (`0` opens everything; `Shift` with several scenarios), a toolbar
+  menu and `#depth=n` in the link; `--depth n` for `build`, `export` and `screenshot`, `depth`
+  for the MCP tools, `depth=` in the Python SDK. A folded group's card counts the cards and
+  boxes inside ("9 cards · 3 groups"); unfolding an outer box restores the inner folds.
+- Zoom to a group: double-click its title (or `G` on a selected card) frames the box, opens the
+  folds around it and shows the path of its ancestors (`#focus=`, `Esc` zooms out,
+  `screenshot --focus`). Steps take `focusGroup` (Python `focus_group=`).
+- Drill-down goes eight levels deep; long breadcrumbs keep the first, parent and current level
+  and list the rest in a menu.
+- Lint: `budget/deep-nesting`, `ref/step-unknown-group`, `layout/focus-group-ignored`,
+  `geometry/group-outside-parent`, `geometry/group-title-overlap`, `content/group-title-cut`
+  and `geometry/edge-through-group-title`; deep diagrams are also checked at every fold depth.
+- Examples: `smart-city-operations` (six nested levels), `global-retail-group` (six-level
+  drill-down with nested boxes inside levels) and `hospital-trust-monitoring` (both).
+- New interface strings (`fold.*`, `depth.*`, `focus.*`, `drill.more`) in every built-in language.
 - The dev viewer's example menu has three labelled sections: Diagrams, Answer pages (Q&A)
   and Charts & dashboards (labels in every interface language). Answer pages open in the
   viewer shell (theme toggle and `#example=<id>` work; live diagram embeds run the viewer);
@@ -21,6 +41,13 @@ All notable changes to Yantra are documented here. The format follows
   unchanged).
 
 ### Changed
+
+- Limits: `group/too-deep` above 8 levels (was 3), `drill/too-deep` above 8 levels below the
+  overview (was 3), `budget/too-many-groups` above 24 groups (was 6). A layered diagram whose
+  groups open folded counts its cards as they show at first (budget 14, and 48 in all).
+- Importers keep up to six levels of nested groups (draw.io, PlantUML, Visio and Mermaid
+  subgraphs) and merge deeper ones.
+- Routes and edge labels keep clear of group fold buttons as well as titles.
 
 - `examples/platform-overview.json` keeps its search level in `examples/levels/` as a `$ref`.
 

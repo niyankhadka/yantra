@@ -15,6 +15,7 @@ import { isPage, pageToMarkdown } from '../src/core/page.js';
 import { fromMermaid } from '../src/core/mermaid.js';
 import { importText, FORMATS } from '../src/core/import.js';
 import { collectDiagrams, getLevel } from '../src/core/drill.js';
+import { foldsForDepth } from '../src/core/nesting.js';
 import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
 import { fileIncluder } from '../lib/includes.js';
@@ -30,7 +31,8 @@ const source = {
 const level = { type: 'string', description: 'Id of a detail diagram (drill-down level, a key of the diagrams map) to use instead of the overview.' };
 const fold = {
   collapsed: { type: 'array', items: { type: 'string' }, description: 'Ids folded when the diagram opens, instead of meta.layout.collapsed: subtree roots (tree, mindmap) or groups (layered). Diagrams only.' },
-  expandAll: { type: 'boolean', description: 'Open with nothing folded (overrides collapsed and meta.layout.collapsed).' }
+  expandAll: { type: 'boolean', description: 'Open with nothing folded (overrides collapsed and meta.layout.collapsed).' },
+  depth: { type: 'number', minimum: 0, description: 'Fold to depth: this many levels of nested group boxes (layered) or tree levels stay open, deeper ones fold into summary cards; 0 folds the outermost boxes too. Use one of collapsed, expandAll and depth.' }
 };
 
 const TOOLS = [
@@ -124,7 +126,8 @@ const TOOLS = [
         step: { type: 'number', description: '1-based walkthrough step to show' },
         view: { type: 'string', enum: ['flow', 'sequence'], description: 'Flow graph or sequence diagram (default meta.view)' },
         level,
-        ...fold
+        ...fold,
+        focus: { type: 'string', description: 'Group id: zoom the camera to that group (its folded boxes open), as a double-click on its title does.' }
       },
       required: ['outputPath']
     }
@@ -233,7 +236,8 @@ function call(name, args) {
       if (args.format !== 'md' && isPage(payload)) throw new Error('Answer pages export to md, or to html with yantra_build.');
       const theme = args.theme === 'dark' ? 'dark' : 'light';
       const logos = readLogos();
-      const lv = withFolds(pickLevel(payload, args.level), args);
+      const picked = pickLevel(payload, args.level);
+      const lv = withFolds(picked, args, picked);
       const content =
         args.format === 'md'
           ? isPage(payload) ? pageToMarkdown(payload) : toMarkdown(lv, { levels: !!args.allLevels && lv === payload })
@@ -283,7 +287,7 @@ function call(name, args) {
         tmp = `${png}.tmp.html`;
         const payload = loadPayload(args);
         pickLevel(payload, args.level);
-        foldsOf(payload, args); // pages refuse folds early
+        foldsOf(payload, args); // pages refuse folds early; depth goes in the link below
         fs.writeFileSync(tmp, buildAny(payload));
         html = tmp;
         if (isPage(payload)) args = { ...args, width: 1100, height: 2200 };
@@ -291,7 +295,14 @@ function call(name, args) {
       try {
         // Folds go in the link (#collapsed=a,b; empty unfolds all), so they apply to a level too
         const ids = args.expandAll === true ? [] : Array.isArray(args.collapsed) ? args.collapsed.map(String) : null;
-        const hash = [args.level ? `level=${encodeURIComponent(args.level)}` : '', ids ? `collapsed=${ids.map(encodeURIComponent).join(',')}` : '', args.step ? `step=${args.step}` : '', args.view ? `view=${args.view}` : ''];
+        const hash = [
+          args.level ? `level=${encodeURIComponent(args.level)}` : '',
+          ids ? `collapsed=${ids.map(encodeURIComponent).join(',')}` : '',
+          depthOf(args) !== null ? `depth=${depthOf(args)}` : '',
+          args.step ? `step=${args.step}` : '',
+          args.view ? `view=${args.view}` : '',
+          typeof args.focus === 'string' && args.focus ? `focus=${encodeURIComponent(args.focus)}` : ''
+        ];
         const out = screenshot(html, png, { theme: args.theme, hash: hash.filter(Boolean).join('&'), width: args.width, height: args.height });
         return { outputPath: out };
       } finally {
@@ -303,17 +314,30 @@ function call(name, args) {
   }
 }
 
-/** Ids folded when the diagram opens (collapsed / expandAll), or null to keep meta.layout.collapsed. */
-function foldsOf(payload, args) {
-  if (args.expandAll !== true && args.collapsed === undefined) return null;
-  if (isPage(payload)) throw new Error('collapsed and expandAll apply to diagrams, not answer pages.');
+/** The depth option as a whole number, or null when not given. */
+function depthOf(args) {
+  if (args.depth === undefined || args.depth === null) return null;
+  if (!Number.isInteger(args.depth) || args.depth < 0) throw new Error('depth must be a whole number of levels to keep open (0 or more).');
+  return args.depth;
+}
+
+/**
+ * Ids folded when the diagram (or the level `target`) opens (collapsed / expandAll /
+ * depth), or null to keep meta.layout.collapsed.
+ */
+function foldsOf(payload, args, target = payload) {
+  const depth = depthOf(args);
+  if (args.expandAll !== true && args.collapsed === undefined && depth === null) return null;
+  if (isPage(payload)) throw new Error('collapsed, expandAll and depth apply to diagrams, not answer pages.');
+  if ([args.expandAll === true, args.collapsed !== undefined, depth !== null].filter(Boolean).length > 1) throw new Error('Use one of collapsed, expandAll and depth.');
+  if (depth !== null) return foldsForDepth(target, depth);
   if (args.expandAll === true) return [];
   if (!Array.isArray(args.collapsed) || !args.collapsed.every((id) => typeof id === 'string')) throw new Error('collapsed must be an array of node or group ids.');
   return [...new Set(args.collapsed)];
 }
 
-function withFolds(payload, args) {
-  const ids = foldsOf(payload, args);
+function withFolds(payload, args, target = payload) {
+  const ids = foldsOf(payload, args, target);
   if (!ids) return payload;
   const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
   const layout = meta.layout && typeof meta.layout === 'object' ? meta.layout : {};

@@ -5,7 +5,7 @@
  */
 import { CARD, LABEL, GROUP, FORK } from './layout.js';
 import { END_LABEL } from './route.js';
-import { TOKENS, HUES, FONT_SANS, FONT_MONO } from './theme.js';
+import { TOKENS, HUES, FONT_SANS, FONT_MONO, groupTone, groupDash } from './theme.js';
 import { ICONS, DRILL_ICON } from './icons.js';
 import { sequenceLive } from './sequence.js';
 import { POINT_SHAPES } from './model.js';
@@ -151,14 +151,15 @@ function flowSvg(scene, options) {
     .map((g) => {
       const c = hue(g.hue);
       const on = !focus || g.members.some((id) => highlight.nodes.has(id));
-      const dash = g.dashed ? ' stroke-dasharray="5 4"' : '';
+      const tone = groupTone(g.depth);
+      const dash = g.dashed ? ` stroke-dasharray="${groupDash(g.depth)}"${tone.line === 'dotted' ? ' stroke-linecap="round"' : ''}` : '';
       if (g.region) {
         // A concurrent region: its title and the dashed divider before it, in the parent's colour
         const d = g.divider;
         const line = d ? `<line x1="${d.x1}" y1="${d.y1}" x2="${d.x2}" y2="${d.y2}" stroke="${hue(groupHue.get(g.parent) || g.hue)}" stroke-opacity="0.55" stroke-width="1.5" stroke-dasharray="6 4"/>` : '';
         return `<g opacity="${on ? 1 : 0.35}">${line}${groupTitle(g, c, rtl)}</g>`;
       }
-      return `<g opacity="${on ? 1 : 0.35}"><rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${GROUP.radius}" fill="${c}" fill-opacity="${theme === 'dark' ? 0.07 : 0.045}" stroke="${c}" stroke-opacity="0.55"${dash}/>` +
+      return `<g opacity="${on ? 1 : 0.35}"><rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="${GROUP.radius}" fill="${c}" fill-opacity="${theme === 'dark' ? tone.fillDark : tone.fill}" stroke="${c}" stroke-opacity="${tone.stroke}"${dash}/>` +
         `${groupTitle(g, c, rtl)}</g>`;
     })
     .join('\n    ');

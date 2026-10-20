@@ -7,7 +7,7 @@
  *   fromMermaid(text, { title? }) -> { payload, warnings: string[] }
  *   mermaidBlocks(markdown)       -> string[]   (```mermaid fenced blocks)
  */
-import { humanize } from './model.js';
+import { humanize, GROUP_BUDGET } from './model.js';
 import { RELATIONS, END_LABELS } from './notation.js';
 import { lint } from './lint.js';
 import { fromMermaidGantt, fromMermaidPie, fromMermaidTimeline, fromMermaidQuadrant, fromMermaidJourney } from './importcharts.js';
@@ -473,6 +473,24 @@ function parseFlowchart(lines, ctx) {
   const unlabeled = outEdges.filter((e) => !e.label).length;
   if (unlabeled) warnings.push(`${unlabeled} edge${unlabeled > 1 ? 's have' : ' has'} no label; add |labels| in Mermaid or label them in the JSON.`);
 
+  // Subgraphs nested deeper than the group budget merge into their ancestor at that depth
+  const chainOf = (g) => {
+    const out = [];
+    for (let q = g; q && out.length < 64; q = q.parent) out.unshift(q);
+    return out;
+  };
+  let merged = 0;
+  for (const g of groups) {
+    const chain = chainOf(g);
+    if (chain.length <= GROUP_BUDGET.depth) continue;
+    chain[GROUP_BUDGET.depth - 1].nodes.push(...g.nodes);
+    g.merged = true;
+    merged++;
+  }
+  if (merged) {
+    groups.splice(0, groups.length, ...groups.filter((g) => !g.merged));
+    warnings.push(`${merged} subgraph${merged > 1 ? 's' : ''} nested deeper than ${GROUP_BUDGET.depth} levels ${merged > 1 ? 'were' : 'was'} merged into ${merged > 1 ? 'their' : 'its'} ancestor.`);
+  }
   const groupId = idFactory(new Set(outNodes.map((n) => n.id)));
   for (const g of groups) g.id = groupId(g.raw);
   const outGroups = groups.map((g) => {

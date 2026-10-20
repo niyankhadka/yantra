@@ -18,12 +18,13 @@ validator checks is exactly what the viewer draws.
 | `text.js` | Width estimation per script (full-width CJK, Devanagari, Arabic, zero-width marks) and word wrapping without a DOM (CJK breaks between characters, with kinsoku), HTML/XML escaping. |
 | `entity.js` | Entity / class cards: field and method rows (`ROWS` metrics, the "+ N more" cap), measured so the card height is known before layout. |
 | `notation.js` | Edge end markers: ER cardinality (crow's foot), UML heads, `relation` defaults; marker SVG shared by the viewer and the export. |
-| `layout.js` | Card sizing (`CARD` metrics) and the layered layout: DFS cycle breaking, longest-path ranking, dummy nodes for long edges, barycentre crossing reduction, cross-axis placement by weighted isotonic regression, rank gaps sized for labels, corridors for return edges. Positions snap to the 10px grid; card sizes are multiples of 20 so aligned centres stay aligned. |
+| `layout.js` | Card sizing (`CARD` metrics) and the layered layout: DFS cycle breaking, longest-path ranking, dummy nodes for long edges, barycentre crossing reduction, cross-axis placement by weighted isotonic regression, rank gaps sized for labels, corridors for return edges. Positions snap to the 10px grid; card sizes are multiples of 20 so aligned centres stay aligned. Groups nested four or more deep (or that one pass cannot keep apart) are laid out as blocks: each group on its own, boxed with its depth's padding (`groupPad`) and wide enough for its title, then placed as one card in its parent. |
+| `nesting.js` | Deep hierarchies: fold levels of a diagram, ids for "fold to depth n" (`foldsForDepth`, `depthOfFolds`), a group's ancestor trail and the folds that hide it, breadcrumb truncation (`crumbWindow`). Used by the viewer, CLI, MCP and lint. |
 | `tree.js` | Hierarchical layouts and folding: the spanning forest of a graph (`treeIndex`), the tidy tree (contour packing, parents centred over children, comb connectors), the mind map (balanced halves, curved connectors, branch hues), and `collapseGraph`, which hides folded subtrees or turns folded groups into summary cards with id aliases for steps. |
 | `route.js` | Port assignment (isotonic fit so facing ports line up), A* over a sparse orthogonal grid with node obstacles, a soft halo, and penalties for bends, shared or adjacent tracks and crossings; jog removal and centring; rounded elbows; label placement on the route. Self-loops are fixed loops on a free side; ends at dots and diamonds are clipped to the outline. |
 | `scene.js` | `computeScene(payload, { modeId, overrides, layoutCache, collapsed })`: the single entry point. Picks the layered, tree or mind-map layout from `meta.layout.algorithm`; hierarchy edges of trees and mind maps are drawn directly (comb or curve), the rest go through the router. |
 | `sequence.js` | `computeSequenceScene(payload, { modeId, scenarioIndex })`: the sequence view (participants by first appearance, one message per step `highlightEdges` id, numbered rows, group boxes over adjacent columns; gaps widen to fit labels). `sceneForView` picks flow or sequence. |
-| `lint.js` | Structural, reference, story, budget and geometry checks with stable codes. |
+| `lint.js` | Structural, reference, story, budget and geometry checks with stable codes; nested boxes are checked as the diagram opens, fully unfolded and at every fold depth. |
 | `svg.js` / `markdown.js` | Static exports. SVG is plain SVG (no `foreignObject`), so it rasterises to PNG cleanly. `renderSequenceSvg` draws the sequence view. |
 | `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. `drillTargets` / `modeDrills` (mode-specific `data.modes.<id>.drill`). File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build, and by the `yantra-drill-refs` plugin in `vite.config.js` for the dev server's gallery. |
 | `page.js` | Answer pages: block renderers (shared with inspector panels), `renderPage`, page lint, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. |
@@ -33,7 +34,7 @@ validator checks is exactly what the viewer draws.
 | `drawio.js` / `inflate.js` | `fromDrawio(text, { title, page })`: draw.io / diagrams.net importer (small XML reader, compressed pages inflated in JS, shapes to types, containers to groups). See `docs/import.md`. |
 | `plantuml.js` | `fromPlantUml(text, { title })`: PlantUML sequence, component / use-case, activity and state importer. |
 | `importkit.js` / `import.js` | Shared payload assembly for the importers; `importText` detects the format and dispatches (used by the CLI and MCP). |
-| `theme.js` / `icons.js` | Design tokens for both themes and the icon set; the app injects the tokens as CSS variables. |
+| `theme.js` / `icons.js` | Design tokens for both themes (including the group tints per nesting depth, `GROUP_TONES`) and the icon set; the app injects the tokens as CSS variables. |
 
 ## Viewer
 
@@ -49,6 +50,9 @@ validator checks is exactly what the viewer draws.
   The inspector shows Summary / Step / Details tabs and custom `panels`; `meta.inspector.onNodeClick`
   picks what a card click opens. Closed panels are `inert` / `hidden`, so they are neither
   visible nor focusable.
+- Group focus and fold to depth (`main.js`): double-click a group title or press `G` to zoom to a
+  group (its ancestors' path under the toolbar, `focus=` hash key, `Esc` zooms out); keys `0`-`6`
+  and the toolbar menu fold to a depth (`depth=` hash key); `step.focusGroup` does the same per step.
 - `src/app/levels.js`: drill-down navigation (the level stack, breadcrumb, `level=` hash key,
   state restored on the way back up) and the feature's UI strings (`DRILL_TEXT`). Changing level
   reloads the engine with that level's payload and adds a history entry (not inside embeds),

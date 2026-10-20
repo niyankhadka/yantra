@@ -36,12 +36,13 @@ direction of the edges, so **edge direction is your layout tool**:
 
 | Thing | Budget | Why |
 |---|---|---|
-| Nodes | ≤ 14 (aim for 6–10); trees and mind maps ≤ 40 as they open, ≤ 120 in all | Beyond that, split into an overview plus detail diagrams (see Drill-down), or fold branches |
+| Nodes | ≤ 14 (aim for 6–10) as the diagram opens; with folded groups ≤ 48 in all; trees and mind maps ≤ 40 as they open, ≤ 120 in all | Beyond that, split into an overview plus detail diagrams (see Drill-down), or fold branches and boxes |
 | Edges | ≤ 20 | Merge parallel flows that say the same thing |
 | Roles | 3–5 | Colour means something only when it repeats |
 | Node title | ≤ 42 columns (characters; CJK count 2) | Detail goes in `subtitle` (card) or `description` (inspector) |
 | Edge label | ≤ 28 columns, ideally 1–3 words | Labels name what flows: `JWT`, `Order event`, `SQL write` |
 | Steps per scenario | 3–8 | The first step is usually an overview |
+| Groups | 2–5 in a flat diagram; nested: ≤ 24 groups, ≤ 6 levels | Deeper or larger: fold inner boxes, or drill down (see [Deep hierarchies](#deep-hierarchies)) |
 
 ## Content rules
 
@@ -112,9 +113,10 @@ of the explanation:
 - **ownership**: teams or departments, and **swimlanes** for who does each step of a process;
 - **subsystems**: "Billing", "Search", "Data platform" inside a larger architecture.
 
-Keep to **2-5 groups**, nest at most 3 deep, and leave nodes that sit outside every boundary
+A flat diagram reads best with **2-5 groups**; leave nodes that sit outside every boundary
 (users, third parties) ungrouped. A box with one node rarely helps; put the node's context in
-its subtitle instead.
+its subtitle instead. Groups nest up to six levels deep (24 groups at most within budget): see
+[Deep hierarchies](#deep-hierarchies).
 
 ```json
 "groups": [
@@ -126,9 +128,10 @@ its subtitle instead.
 
 - List each node in its **innermost** group only; the parent's members include the child's.
 - Group ids must not reuse node ids. `color` is a role hue name; `style` is `dashed` (default) or `solid`.
-- Layout keeps members together, pads each box (20px sides, 36px top for the title) and keeps
-  boxes clear of outsiders. Edges cross borders where they enter or leave a group, but never
-  run through a title. In manual layout the box simply wraps its members' cards.
+- Layout keeps members together, pads each box (20px sides, 36px top for the title; a little
+  less below the third level) and keeps boxes clear of outsiders. Edges cross borders where
+  they enter or leave a group, but never run through a title or the box's fold button. In
+  manual layout the box simply wraps its members' cards.
 - During a step, a group whose members are all dimmed is dimmed too.
 
 See `examples/aws-serverless.json`.
@@ -201,12 +204,76 @@ key `X` on a selected card; the state is kept in the link as `#collapsed=id,id`)
   group's edges (parallel edges merge, internal ones disappear).
 
 `meta.layout.collapsed: ["id", ...]` lists what is folded when the viewer opens (`build`,
-`export` and `screenshot` take `--collapsed id,id` or `--expand-all` to override it for one
-output; MCP tools take `collapsed` / `expandAll`). Use it for
+`export` and `screenshot` take `--collapsed id,id`, `--expand-all` or `--depth n` to override it
+for one output; MCP tools take `collapsed` / `expandAll` / `depth`). A folded group's card counts
+the cards and boxes it holds, and folding to a depth (keys `1`-`6`) or zooming to a group works
+at any level: see [Deep hierarchies](#deep-hierarchies). Use it for
 large trees (lint counts the cards that show at first against the budget of 40) and for detail
 groups in an architecture overview. A step that highlights a folded card unfolds it, so a
 walkthrough can open a branch at the right moment. Validation checks the drawing both as it
 opens and fully unfolded (findings for the second carry `[expanded]`).
+
+## Deep hierarchies
+
+Real organisations and systems nest: a city has districts, a district has services, a service
+has systems, a system has sites, a site has sensors. Yantra shows such hierarchies in two
+ways, and they combine.
+
+| Use | When | How |
+|---|---|---|
+| **Nesting in one frame** | the boundaries are the point and the reader should see how a card sits inside them all at once (ownership, trust zones, physical location); flows cross several levels | `groups` with `parent`, up to **6 levels** (lint warns beyond, refuses beyond 8), up to **24 groups**; open with inner boxes folded |
+| **Drill-down** | each level is a different audience or a different story (board, region, store, device), or a level would blow the card budget | `data.drill` and `diagrams`, up to **8 levels** below the overview |
+| **Both** | a big estate: an overview of a few nested boxes, whose cards open detail diagrams that nest again | nested `groups` inside any level |
+
+Rules of thumb: nest in one frame while the opened drawing stays under about 14 cards and a
+reader can name every box; drill down when a level needs its own walkthrough. Six boxes deep
+is the limit of what reads at a glance.
+
+```json
+"groups": [
+  { "id": "city", "title": "Harbourside City", "nodes": [], "style": "solid" },
+  { "id": "north", "title": "North district", "parent": "city", "nodes": [] },
+  { "id": "transport", "title": "Transport", "parent": "north", "nodes": [] },
+  { "id": "traffic", "title": "Traffic management", "parent": "transport", "nodes": ["utc"] },
+  { "id": "junction", "title": "Junction 14 cabinet", "parent": "traffic", "nodes": ["signals"] },
+  { "id": "sensors", "title": "Roadside sensors", "parent": "junction", "nodes": ["loops", "camera"] }
+],
+"meta": { "layout": { "collapsed": ["junction", "sensors"] } }
+```
+
+- A group may hold only child groups (`"nodes": []`); list each card in its innermost group.
+- **Layout.** Up to three levels, one layered pass keeps every edge in the main flow. From four
+  levels (or whenever one pass cannot keep the boxes apart) each group is laid out on its own and
+  placed as one block in its parent, so boxes never overlap and every edge enters and leaves
+  through the borders. Boxes are wide enough for their whole title and the fold button; padding
+  tightens a little below the third level (`groupPad`), and tints and outlines get calmer with
+  each level (dashed, then dotted from the fourth), in both themes.
+- **Folding.** Folding a box hides everything inside it and shows one summary card that counts
+  them ("9 cards · 3 groups"); unfolding it brings back the inner boxes as they were, folded or
+  not. List inner ids in `meta.layout.collapsed` too, so a reader who opens the outer box
+  finds the next level still tidy.
+- **Fold to depth.** Keys `1`-`6` keep that many levels of boxes open and fold the rest (`0`
+  opens everything; with several scenarios the digits switch scenario, so hold `Shift`), or
+  the toolbar's depth menu. The link keeps it (`#depth=2`). CLI `--depth n` (`build`,
+  `export`, `screenshot`), MCP `depth`, Python `depth=`. In tree and mind-map layouts the same
+  control folds by card level.
+- **Focus a group.** Double-click a group title (or select a card and press `G`) to zoom to its
+  box: folded boxes around it open, and a path of its ancestors appears under the toolbar
+  (`Whole diagram › … › Transport › Traffic management`; the middle of a long path is a menu).
+  `Esc` zooms out one box at a time. The link keeps it (`#focus=<id>`); `screenshot --focus <id>`.
+- **Walkthrough.** A step's `focusGroup: "<group id>"` zooms to that box and unfolds it and its
+  ancestors, so a story can open the deep part at the right moment; the next step without
+  `focusGroup` lets go. Highlight the cards too (`highlightNodes`), as in any focused step.
+- **Validation.** Lint checks the drawing as it opens, fully unfolded and, for three or more
+  levels, at every depth the viewer folds to (`[depth n]` in the message): boxes inside their
+  parents and below their titles, titles clear of cards, edges and labels, nothing cut.
+- **Drill-down breadcrumbs.** Deep paths show the overview, the parent and the current level:
+  `Global retail group › … › Payment terminal T-07 › EMV kernel`; the `…` opens a menu of the
+  levels in between.
+
+See `examples/smart-city-operations.json` (six levels in one frame),
+`examples/global-retail-group.json` (six-level drill-down with nested boxes inside levels) and
+`examples/hospital-trust-monitoring.json` (both).
 
 ## Sequence view
 
@@ -262,8 +329,10 @@ Each level is a full diagram: its own steps, inspector tabs, modes and sequence 
 ```
 
 - `data.drill` names a key of the top-level `diagrams` map. A detail diagram may drill further
-  (at most **3 levels** below the overview, no cycles); every id lives in one namespace, so a
-  detail diagram's own `diagrams` map is merged in.
+  (at most **8 levels** below the overview, no cycles); every id lives in one namespace, so a
+  detail diagram's own `diagrams` map is merged in. Any level may use nested groups. Deep
+  breadcrumbs keep the overview, the parent and the current level, with a menu (`…`) for the
+  rest.
 - `{ "$ref": "./search.json" }` keeps a level in its own file. The CLI and MCP server load it
   relative to the file that contains it; it must be a relative `.json` path that stays inside
   the input folder (the input file's folder for the CLI, `YANTRA_INPUT_ROOT` for MCP). The
@@ -724,6 +793,25 @@ Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-ara
 | `fold.collapse` | Collapse {title} |
 | `fold.folded` | Folded |
 | `fold.expanded` | Expanded |
+| `fold.badge` | Group |
+| `fold.card` | {n} card folded |
+| `fold.cards` | {n} cards folded |
+| `fold.cardCount1` | {n} card |
+| `fold.cardCount` | {n} cards |
+| `fold.groupCount1` | {n} group |
+| `fold.groupCount` | {n} groups |
+| `depth.title` | Fold to depth |
+| `depth.level1` | {n} level open |
+| `depth.level` | {n} levels open |
+| `depth.none` | Everything folded |
+| `depth.all` | Everything open |
+| `help.depth` | Fold to depth (0 opens everything) |
+| `focus.crumbs` | Group path |
+| `focus.whole` | Whole diagram |
+| `focus.hint` | Double-click to zoom to {title} |
+| `focus.focused` | Zoomed to {title} |
+| `help.focus` | Zoom to the selected card's group (Esc zooms out) |
+| `drill.more` | Show {n} hidden levels |
 <!-- string-keys:end -->
 
 </details>
@@ -752,7 +840,13 @@ Fix in this order; each fix can clear later errors.
 | `geometry/edges-stacked` (warning) | Two edges share a track; merge them or remove one. |
 | `group/unknown-node`, `group/unknown-parent`, `group/duplicate-id` | Fix the id (group ids must differ from node ids and from each other). |
 | `group/node-in-two-groups` | List the node only in its innermost group. |
-| `group/cycle`, `group/too-deep` | Fix `parent` so groups form a tree at most 3 levels deep. |
+| `group/cycle`, `group/too-deep` | Fix `parent` so groups form a tree at most 8 levels deep (aim for 6). |
+| `budget/deep-nesting`, `budget/too-many-groups` (warnings) | Over 6 levels or 24 groups: merge a level, fold inner boxes, or move a branch into a detail diagram. |
+| `ref/step-unknown-group` | A step's `focusGroup` must name a group id. |
+| `layout/focus-group-ignored` (warning) | Tree and mind-map layouts draw no groups: highlight the cards instead of `focusGroup`. |
+| `geometry/group-outside-parent`, `geometry/group-title-overlap` | Should not occur in auto layout; in manual layout move cards so each box sits inside its parent, below its title. |
+| `content/group-title-cut` (warning) | The title is cut to fit its box (manual layout): shorten it; detail goes in `description`. |
+| `geometry/edge-through-group-title` (warning) | Should not occur in auto layout; in manual layout move cards so the edge runs clear of the title. |
 | `group/empty`, `group/missing-title` (warnings) | Add members and a title, or remove the group. |
 | `geometry/group-overlap`, `geometry/node-in-foreign-group` | Manual layout: move nodes so boxes separate, or add the node to the group. Auto layout avoids both. |
 | `geometry/label-overlaps-group-title` (warning) | Shorten the label or the group title. |
@@ -791,7 +885,7 @@ Fix in this order; each fix can clear later errors.
 | `content/duplicate-field` (warning) | Remove or rename the repeated field. |
 | `drill/unknown-target` | `data.drill` must name a key of `diagrams` (ids are case-sensitive). |
 | `drill/cycle` | Levels drill into each other (A > B > A), or `$ref` files load each other: remove one `data.drill` or ref so levels form a tree. |
-| `drill/too-deep` | More than 3 levels below the overview: merge a level, or link the deepest one as a separate diagram (`url`). |
+| `drill/too-deep` | More than 8 levels below the overview: merge a level, or link the deepest one as a separate diagram (`url`). |
 | `drill/ref-missing` | The `$ref` file is missing, unreadable or not valid JSON (or nothing loaded it: validate with the CLI or MCP). |
 | `drill/ref-unsafe` | Use a relative `.json` path inside the input folder: no absolute paths, URLs or `..` that leaves it. |
 | `drill/invalid-diagram`, `drill/diagrams-invalid`, `drill/duplicate-id` | `diagrams` is an object of diagram payloads (or `$ref`s) with ids unique across all levels. |

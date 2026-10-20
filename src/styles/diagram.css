@@ -62,6 +62,12 @@
   opacity: 0.35;
 }
 
+/* The group the camera is zoomed to (double-click its title, key G, step.focusGroup) */
+.y-group-layer .y-group.is-focused {
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--y-hue) 85%, transparent);
+}
+
 /* Concurrent regions (kind "region"): compartments of the parent box, divided
  * by a dashed line in the parent's colour; only their title is drawn. */
 .y-group-layer .y-group.is-region,
@@ -100,6 +106,10 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   white-space: nowrap;
+  /* double-click zooms to the group; a single press still pans the canvas */
+  pointer-events: auto;
+  cursor: zoom-in;
+  user-select: none;
 }
 
 /* --- Cards ---------------------------------------------------------------- */

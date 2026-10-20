@@ -11,6 +11,7 @@ import { iconFor, knownIcon } from './icons.js';
 import { HUES } from './theme.js';
 import { edgeEnds, hasNotation } from './notation.js';
 import { fieldRows } from './entity.js';
+import { localeOf } from './i18n.js';
 
 /**
  * @param payload   Yantra payload (raw or already normalised)
@@ -28,7 +29,7 @@ export function computeScene(payload, options = {}) {
   // Collapsed subtrees (tree layouts) or groups (layered) fold before layout
   const index = treeMode ? treeIndex(graph.nodes.map((n) => n.id), graph.edges) : null;
   const collapsed = new Set(options.collapsed !== undefined ? options.collapsed : model.layout.collapsed);
-  const folded = collapseGraph({ nodes: graph.nodes, edges: graph.edges, groups: model.groups, collapsed, algorithm, index });
+  const folded = collapseGraph({ nodes: graph.nodes, edges: graph.edges, groups: model.groups, collapsed, algorithm, index, L: localeOf(model.meta) });
   const { nodes, edges } = folded;
   const original = new Set(graph.edges);
   const isTreeEdge = (e) => treeMode && index.tree.has(e.id) && original.has(e);
@@ -106,16 +107,21 @@ export function computeScene(payload, options = {}) {
     const src = routeInput.find((e) => e.id === id).source;
     boxRects.set(src, union(boxRects.get(src), loop.box));
   }
-  const boxes = groupBoxes(gi.list, boxRects);
+  // auto layouts left room for whole titles (base.titled / base.nested); manual ones may cut them
+  const boxes = groupBoxes(gi.list, boxRects, { fit: true, titles: !!(base.nested || base.titled) });
+  const L = localeOf(model.meta);
+  const rtl = L.dir === 'rtl';
   const dividers = regionDividers(gi, boxes, model.layout.direction);
   const sceneGroups = gi.list
     .filter((g) => boxes.has(g.id))
     .map((g) => {
       const b = boxes.get(g.id);
-      const t = groupTitle(g.title, b);
+      const t = groupTitle(g.title, b, { toggle: !treeMode && !isRegion(g, gi) });
       // A concurrent region draws as a compartment of its parent: its title and the dashed divider before it
       const region = isRegion(g, gi) ? { region: true, divider: dividers.get(g.id) || null } : {};
-      return { id: g.id, title: g.title, label: t.text, titleBox: t.strip, x: b.x, y: b.y, w: b.w, h: b.h, depth: g.depth, parent: g.parent, hue: g.hue, dashed: g.dashed, members: g.nodes, group: g.group, ...region };
+      // The fold button in the top corner (layered layout): edges and labels keep clear of it
+      const toggle = !treeMode && !region.region ? { toggleBox: toggleBox(b, rtl) } : {};
+      return { id: g.id, title: g.title, label: t.text, titleBox: t.strip, x: b.x, y: b.y, w: b.w, h: b.h, depth: g.depth, parent: g.parent, hue: g.hue, dashed: g.dashed, members: g.nodes, group: g.group, ...region, ...toggle };
     });
 
   // Hierarchy edges: comb connectors, compact stacks and assistant links (tree)
@@ -184,10 +190,10 @@ export function computeScene(payload, options = {}) {
     allRoutes,
     rects,
     edges.filter((e) => e.sourceLabel || e.targetLabel).map((e) => ({ id: e.id, sourceLabel: e.sourceLabel, targetLabel: e.targetLabel, ...edgeEnds(e) })),
-    [...sceneGroups.map((g) => g.titleBox), ...treeLabels, ...loopLabels]
+    [...sceneGroups.flatMap((g) => [g.titleBox, g.toggleBox]).filter(Boolean), ...treeLabels, ...loopLabels]
   );
   const endBoxes = [...endLabels.values()].flatMap((r) => [r.source, r.target]).filter(Boolean).map(box);
-  const labels = placeLabels(routes, rects, edges.filter((e) => !drawn.has(e.id)), labelSize, [...sceneGroups.map((g) => g.titleBox), ...treeLabels, ...zones, ...endBoxes]);
+  const labels = placeLabels(routes, rects, edges.filter((e) => !drawn.has(e.id)), labelSize, [...sceneGroups.flatMap((g) => [g.titleBox, g.toggleBox]).filter(Boolean), ...treeLabels, ...zones, ...endBoxes]);
   drawn.forEach((r, id) => {
     routes.set(id, { points: r.points, ok: true, d: r.d });
     if (r.label) labels.set(id, r.label);
@@ -302,6 +308,12 @@ function stretchBar(id, rects, edges) {
   const hits = (q) => bar.x - 10 < q.x + q.w && bar.x + bar.w + 10 > q.x && bar.y - 10 < q.y + q.h && bar.y + bar.h + 10 > q.y;
   if ([...rects].some(([k, q]) => k !== id && hits(q))) return;
   rects.set(id, bar);
+}
+
+/** Room of a group box's fold button (the viewer centres it 20px in from the top corner, 16px down). */
+export function toggleBox(b, rtl = false) {
+  const cx = rtl ? b.x + 20 : b.x + b.w - 20;
+  return { x: cx - 13, y: b.y + 3, w: 26, h: 26 };
 }
 
 /** A concurrent region: a child group with kind "region", drawn as a compartment of its parent. */

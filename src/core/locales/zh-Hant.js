@@ -230,7 +230,26 @@ export default {
   'fold.expand': '展開 {title}（已隱藏 {n} 項）',
   'fold.collapse': '摺疊 {title}',
   'fold.folded': '已摺疊',
-  'fold.expanded': '已展開'
+  'fold.expanded': '已展開',
+  'fold.badge': '群組',
+  'fold.card': '已摺疊 {n} 張卡片',
+  'fold.cards': '已摺疊 {n} 張卡片',
+  'fold.cardCount1': '{n} 張卡片',
+  'fold.cardCount': '{n} 張卡片',
+  'fold.groupCount1': '{n} 個群組',
+  'fold.groupCount': '{n} 個群組',
+  'depth.title': '摺疊到層級',
+  'depth.level1': '展開 {n} 層',
+  'depth.level': '展開 {n} 層',
+  'depth.none': '全部摺疊',
+  'depth.all': '全部展開',
+  'help.depth': '摺疊到層級（0 全部展開）',
+  'focus.crumbs': '群組路徑',
+  'focus.whole': '整個圖表',
+  'focus.hint': '按兩下以放大到 {title}',
+  'focus.focused': '已放大到 {title}',
+  'help.focus': '放大到選取卡片的群組（Esc 縮小）',
+  'drill.more': '顯示 {n} 個隱藏層級'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

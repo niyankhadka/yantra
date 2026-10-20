@@ -2,9 +2,9 @@
 /**
  * Yantra CLI.
  *   yantra validate <diagram.json> [--json] [--lang xx]
- *   yantra build <diagram.json> [-o out.html] [--collapsed id,id | --expand-all]
- *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels] [--collapsed id,id | --expand-all]
- *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id] [--collapsed id,id | --expand-all]
+ *   yantra build <diagram.json> [-o out.html] [--collapsed id,id | --expand-all | --depth n]
+ *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels] [--collapsed id,id | --expand-all | --depth n]
+ *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id] [--collapsed id,id | --expand-all | --depth n] [--focus group]
  *   yantra import <file.mmd|file.md|file.drawio|file.puml|file.vsdx|file.drawio.png> [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n] [--title "..."] [--all]
  *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp   yantra dev
  * Works with diagrams and with one-page answers ({ "kind": "page" }).
@@ -21,6 +21,7 @@ import { toMarkdown } from '../src/core/markdown.js';
 import { isPage, pageToMarkdown } from '../src/core/page.js';
 import { importText, FORMATS } from '../src/core/import.js';
 import { collectDiagrams, getLevel } from '../src/core/drill.js';
+import { foldsForDepth } from '../src/core/nesting.js';
 import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
 import { fileIncluder } from '../lib/includes.js';
@@ -33,7 +34,7 @@ Usage
   yantra validate <file.json> [--json]         Check schema, references and rendered geometry  [--lang xx]
   yantra build <file.json> [-o out.html]       Validate, then write a single offline HTML file
   yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
-  yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--width] [--height]
+  yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--focus group] [--width] [--height]
   yantra new <file.json> [--page]              Write a starter diagram (or answer page)
   yantra import <file>                         Convert Mermaid (.mmd/.md; diagrams, or gantt / pie / timeline / quadrant pages), draw.io (.drawio/.xml/.png), PlantUML (.puml) or Visio (.vsdx)  [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n|name] [--title "..."] [--all]
   yantra examples [name] [-o file]             List built-in examples, or copy one
@@ -50,6 +51,9 @@ Options
   --collapsed a,b   build / export / screenshot: open with these subtrees (tree, mindmap) or
                     groups (layered) folded, instead of meta.layout.collapsed
   --expand-all      build / export / screenshot: open with nothing folded
+  --depth n         build / export / screenshot: fold to depth n (n levels of group boxes,
+                    or of a tree, stay open; 0 folds the outermost boxes too)
+  --focus group     screenshot: zoom the camera to a group (its folded boxes open)
 
 Detail diagrams: a card with data.drill opens a diagram from the payload's "diagrams" map;
 { "$ref": "./detail.json" } entries are loaded relative to the input file.`;
@@ -64,7 +68,7 @@ function parse(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang', 'collapsed'].includes(key)) out[key] = argv[++i];
+      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang', 'collapsed', 'depth', 'focus'].includes(key)) out[key] = argv[++i];
       else out[key] = true;
     } else out._.push(a);
   }
@@ -154,15 +158,27 @@ function pickLevel(payload, id) {
 }
 
 /**
- * --collapsed a,b / --expand-all: the ids folded when the diagram opens (null: keep
- * meta.layout.collapsed). Diagrams only; an answer page keeps its embeds as authored.
+ * --collapsed a,b / --expand-all / --depth n: the ids folded when the diagram (or
+ * the level `target`) opens (null: keep meta.layout.collapsed). Diagrams only; an
+ * answer page keeps its embeds as authored.
  */
-function folds(payload) {
-  if (!args['expand-all'] && args.collapsed === undefined) return null;
-  if (isPage(payload)) fail('--collapsed and --expand-all apply to diagrams, not answer pages.');
+function folds(payload, target = payload) {
+  const depth = depthArg();
+  if (!args['expand-all'] && args.collapsed === undefined && depth === null) return null;
+  if (isPage(payload)) fail('--collapsed, --expand-all and --depth apply to diagrams, not answer pages.');
+  if ([args['expand-all'], args.collapsed !== undefined, depth !== null].filter(Boolean).length > 1) fail('Use one of --collapsed, --expand-all and --depth.');
+  if (depth !== null) return foldsForDepth(target, depth);
   if (args['expand-all']) return [];
   if (typeof args.collapsed !== 'string') fail('--collapsed needs a comma-separated list of ids, e.g. --collapsed eng,ops.');
   return [...new Set(args.collapsed.split(',').map((s) => s.trim()).filter(Boolean))];
+}
+
+/** --depth n as a number (null when not given); "all" unfolds everything. */
+function depthArg() {
+  if (args.depth === undefined) return null;
+  if (args.depth === 'all') return Infinity;
+  if (typeof args.depth !== 'string' || !/^\d+$/.test(args.depth)) fail('--depth needs a whole number of levels to keep open, e.g. --depth 2 (or all).');
+  return Number(args.depth);
 }
 
 /** The payload opening with `ids` folded (null: unchanged). */
@@ -203,7 +219,8 @@ try {
     case 'export': {
       const payload = load(input);
       const format = (args.format || (isPage(payload) ? 'md' : 'svg')).toLowerCase();
-      const level = withFolds(pickLevel(payload, args.level), folds(payload));
+      const picked = pickLevel(payload, args.level);
+      const level = withFolds(picked, folds(payload, picked));
       let content;
       if (format === 'svg') {
         if (isPage(payload)) fail('Answer pages export to html (yantra build) or md.');
@@ -229,15 +246,26 @@ try {
       if (input.endsWith('.json')) {
         const payload = load(input);
         page = isPage(payload);
-        fold = folds(payload);
         pickLevel(payload, args.level); // fails early on an unknown level
+        // --depth goes in the link (depth=n), so it applies to whichever level opens
+        if (depthArg() === null) fold = folds(payload);
+        else folds(payload);
         tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-'));
         html = path.join(tmp, 'diagram.html');
         fs.writeFileSync(html, buildAny(payload));
       } else if (args['expand-all']) fold = [];
       else if (typeof args.collapsed === 'string') fold = args.collapsed.split(',').map((s) => s.trim()).filter(Boolean);
       // Folds go in the link (#collapsed=a,b; empty unfolds all), so they apply to --level too
-      const hash = [args.level ? `level=${encodeURIComponent(args.level)}` : '', fold ? `collapsed=${fold.map(encodeURIComponent).join(',')}` : '', args.step ? `step=${args.step}` : '', args.mode ? `mode=${args.mode}` : '', args.view ? `view=${args.view}` : ''].filter(Boolean).join('&');
+      const depth = depthArg();
+      const hash = [
+        args.level ? `level=${encodeURIComponent(args.level)}` : '',
+        fold ? `collapsed=${fold.map(encodeURIComponent).join(',')}` : '',
+        depth !== null ? `depth=${depth === Infinity ? 'all' : depth}` : '',
+        args.step ? `step=${args.step}` : '',
+        args.mode ? `mode=${args.mode}` : '',
+        args.view ? `view=${args.view}` : '',
+        typeof args.focus === 'string' ? `focus=${encodeURIComponent(args.focus)}` : ''
+      ].filter(Boolean).join('&');
       const theme = args.theme === 'dark' ? 'dark' : 'light';
       const out = args.output || outName(input, `-${theme}.png`);
       try {

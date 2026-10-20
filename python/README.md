@@ -113,6 +113,22 @@ org.build_html("org.html", expand_all=True)               # or collapsed=["cto",
 org.export_svg("org.svg", collapsed=["cto"])
 ```
 
+## Deep hierarchies
+
+```python
+city = d.group("city", "Harbourside City", style="solid")              # boxes may hold only boxes
+north = d.group("north", "North district", parent=city)                  # parent: id or Group
+traffic = d.group("traffic", "Traffic management", ["utc"], parent=north)
+d.group("junction", "Junction 14 cabinet", ["signals"], parent=traffic)  # up to 6 levels deep
+d.collapse("junction")
+d.add_step("A queue builds", nodes=["signals", "utc"], focus_group="junction")  # zooms there, unfolds it
+d.build_html("city.html", depth=2)                                      # fold to depth: 2 levels of boxes open
+d.export_svg("city.svg", depth=0)                                       # or collapsed= / expand_all=
+```
+
+`Scenario.step(..., focus_group=...)` does the same for named scenarios. `depth`, `collapsed`
+and `expand_all` are alternatives: pass one.
+
 `.tree("TB", compact=True)` lists leaf teams in one column under their leader (`False`: never;
 the default `"auto"` does it only when the chart gets too wide).
 

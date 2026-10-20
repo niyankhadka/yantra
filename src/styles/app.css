@@ -107,7 +107,7 @@ kbd {
   color-scheme: normal;
 }
 
-.y-app.is-page :is(.y-viewport, .y-legend, .y-story, .y-inspector, .y-watermark, #crumbs, #mode-switch, #view-switch, .y-group, #btn-inspector, .y-menu, #btn-help) {
+.y-app.is-page :is(.y-viewport, .y-legend, .y-story, .y-inspector, .y-watermark, #crumbs, #focus-crumbs, #crumb-menu, #mode-switch, #view-switch, .y-group, #btn-inspector, .y-menu, #btn-help) {
   display: none !important;
 }
 
@@ -1805,6 +1805,52 @@ kbd {
 
 .y-crumb-back:hover {
   background: var(--y-surface-2);
+}
+
+/* Long trails: first › … › parent › current; the gap opens a menu of the hidden middle */
+.y-crumb-gap {
+  min-width: 18px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.y-crumb-gap:hover,
+.y-crumb-gap[aria-expanded='true'] {
+  background: var(--y-surface-2);
+  text-decoration: none;
+}
+
+.y-crumb-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  max-width: min(320px, calc(100vw - 24px));
+}
+
+.y-crumb-menu button {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Group focus: the path of boxes around the zoomed group, under the toolbar */
+.y-focus-crumbs {
+  position: absolute;
+  top: 76px;
+  inset-inline-start: 12px;
+  z-index: 15;
+  max-width: calc(100% - 24px);
+  height: auto;
+  padding: 5px 10px;
+  border: 1px solid var(--y-border);
+  border-radius: 8px;
+  background: var(--y-overlay);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+.y-focus-crumbs[hidden] {
+  display: none;
 }
 
 .y-drill-open {

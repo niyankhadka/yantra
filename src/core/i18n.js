@@ -258,7 +258,26 @@ const en = {
   'fold.expand': 'Expand {title} ({n} hidden)',
   'fold.collapse': 'Collapse {title}',
   'fold.folded': 'Folded',
-  'fold.expanded': 'Expanded'
+  'fold.expanded': 'Expanded',
+  'fold.badge': 'Group',
+  'fold.card': '{n} card folded',
+  'fold.cards': '{n} cards folded',
+  'fold.cardCount1': '{n} card',
+  'fold.cardCount': '{n} cards',
+  'fold.groupCount1': '{n} group',
+  'fold.groupCount': '{n} groups',
+  'depth.title': 'Fold to depth',
+  'depth.level1': '{n} level open',
+  'depth.level': '{n} levels open',
+  'depth.none': 'Everything folded',
+  'depth.all': 'Everything open',
+  'help.depth': 'Fold to depth (0 opens everything)',
+  'focus.crumbs': 'Group path',
+  'focus.whole': 'Whole diagram',
+  'focus.hint': 'Double-click to zoom to {title}',
+  'focus.focused': 'Zoomed to {title}',
+  'help.focus': "Zoom to the selected card's group (Esc zooms out)",
+  'drill.more': 'Show {n} hidden levels'
 };
 
 /** Every shipped language, in table order; each table has exactly the keys of `en` (a test checks this). */

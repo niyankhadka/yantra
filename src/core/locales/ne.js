@@ -230,7 +230,26 @@ export default {
   'fold.expand': '{title} फैलाउनुहोस् ({n} लुकेका)',
   'fold.collapse': '{title} खुम्च्याउनुहोस्',
   'fold.folded': 'खुम्च्याइयो',
-  'fold.expanded': 'फैलाइयो'
+  'fold.expanded': 'फैलाइयो',
+  'fold.badge': 'समूह',
+  'fold.card': '{n} कार्ड खुम्च्याइयो',
+  'fold.cards': '{n} कार्डहरू खुम्च्याइए',
+  'fold.cardCount1': '{n} कार्ड',
+  'fold.cardCount': '{n} कार्डहरू',
+  'fold.groupCount1': '{n} समूह',
+  'fold.groupCount': '{n} समूहहरू',
+  'depth.title': 'तहसम्म खुम्च्याउनुहोस्',
+  'depth.level1': '{n} तह खुला',
+  'depth.level': '{n} तहहरू खुला',
+  'depth.none': 'सबै खुम्च्याइयो',
+  'depth.all': 'सबै फैलाइयो',
+  'help.depth': 'तहसम्म खुम्च्याउनुहोस् (0 ले सबै फैलाउँछ)',
+  'focus.crumbs': 'समूहको बाटो',
+  'focus.whole': 'पूरा रेखाचित्र',
+  'focus.hint': '{title} मा जुम गर्न डबल-क्लिक गर्नुहोस्',
+  'focus.focused': '{title} मा जुम गरियो',
+  'help.focus': 'छानिएको कार्डको समूहमा जुम गर्नुहोस् (Esc ले जुम आउट गर्छ)',
+  'drill.more': '{n} लुकेका तहहरू देखाउनुहोस्'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

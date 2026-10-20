@@ -230,7 +230,26 @@ export default {
   'fold.expand': 'Espandi {title} ({n} nascosti)',
   'fold.collapse': 'Comprimi {title}',
   'fold.folded': 'Compresso',
-  'fold.expanded': 'Espanso'
+  'fold.expanded': 'Espanso',
+  'fold.badge': 'Gruppo',
+  'fold.card': '{n} scheda compressa',
+  'fold.cards': '{n} schede compresse',
+  'fold.cardCount1': '{n} scheda',
+  'fold.cardCount': '{n} schede',
+  'fold.groupCount1': '{n} gruppo',
+  'fold.groupCount': '{n} gruppi',
+  'depth.title': 'Comprimi fino al livello',
+  'depth.level1': '{n} livello aperto',
+  'depth.level': '{n} livelli aperti',
+  'depth.none': 'Tutto compresso',
+  'depth.all': 'Tutto espanso',
+  'help.depth': 'Comprimi fino al livello (0 espande tutto)',
+  'focus.crumbs': 'Percorso del gruppo',
+  'focus.whole': 'Diagramma intero',
+  'focus.hint': 'Doppio clic per ingrandire {title}',
+  'focus.focused': 'Ingrandito su {title}',
+  'help.focus': 'Ingrandisci il gruppo della scheda selezionata (Esc rimpicciolisce)',
+  'drill.more': 'Mostra {n} livelli nascosti'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

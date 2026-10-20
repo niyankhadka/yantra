@@ -68,7 +68,7 @@
                 "type": "string"
               },
               "uniqueItems": true,
-              "description": "Ids folded when the viewer opens: nodes whose subtree is hidden (tree, mindmap) or groups shown as one summary card (layered). Readers unfold them with the +N button; a step that highlights a hidden node unfolds it."
+              "description": "Ids folded when the viewer opens: nodes whose subtree is hidden (tree, mindmap) or groups shown as one summary card (layered; it counts the cards and the boxes folded inside). Folding an outer group hides inner ones; list inner ids too so unfolding the outer box shows them folded. Readers unfold them with the +N button or fold to a depth (keys 0-6, CLI --depth n); a step that highlights a hidden node, or focuses a group, unfolds it."
             },
             "compact": {
               "enum": [
@@ -511,8 +511,8 @@
     },
     "groups": {
       "type": "array",
-      "description": "Containers drawn as labelled boxes around nodes: trust boundaries, cloud accounts/regions/VPCs, teams, swimlanes, subsystems. List each node only in its innermost group; a group's members are its nodes plus everything in its child groups. Keep to 2-5 groups.",
-      "maxItems": 12,
+      "description": "Containers drawn as labelled boxes around nodes: trust boundaries, cloud accounts/regions/VPCs, teams, swimlanes, subsystems, and deep hierarchies (city > district > service > system > site). List each node only in its innermost group; a group's members are its nodes plus everything in its child groups. A flat diagram reads best with 2-5 groups; nested ones stay within 24 groups and 6 levels (lint budget), and can open folded (meta.layout.collapsed, or fold to depth in the viewer).",
+      "maxItems": 48,
       "items": {
         "type": "object",
         "required": [
@@ -541,7 +541,7 @@
           },
           "parent": {
             "type": "string",
-            "description": "Id of the enclosing group. Nesting is at most 3 deep and must not form a cycle."
+            "description": "Id of the enclosing group. Nest up to 6 deep (lint warns beyond, and refuses beyond 8); no cycles. Deeper boxes get slightly less padding and calmer tints."
           },
           "kind": {
             "enum": [
@@ -645,7 +645,7 @@
     },
     "diagrams": {
       "type": "object",
-      "description": "Detail diagrams for drill-down, keyed by id: a card with data.drill opens one. Each value is a full diagram payload (meta, nodes, edges, scenarios...) or { \"$ref\": \"./detail.json\" }, a relative path the CLI and MCP server load (it must stay inside the input folder). Ids are shared by every level; at most 3 levels below the overview, no cycles.",
+      "description": "Detail diagrams for drill-down, keyed by id: a card with data.drill opens one. Each value is a full diagram payload (meta, nodes, edges, scenarios...) or { \"$ref\": \"./detail.json\" }, a relative path the CLI and MCP server load (it must stay inside the input folder). Ids are shared by every level; at most 8 levels below the overview, no cycles. A level may itself use nested groups.",
       "additionalProperties": {
         "type": "object",
         "anyOf": [
@@ -707,6 +707,10 @@
           "type": "string",
           "pattern": "^(https?://|mailto:)",
           "description": "External link (http, https or mailto) opened in a new tab from the inspector."
+        },
+        "focusGroup": {
+          "type": "string",
+          "description": "Group id: the camera zooms to that group's box and the viewer unfolds it and every box around it (layered layout). The next step without focusGroup lets go. Readers do the same by double-clicking a group title or pressing G."
         }
       }
     },

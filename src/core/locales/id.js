@@ -230,7 +230,26 @@ export default {
   'fold.expand': 'Luaskan {title} ({n} tersembunyi)',
   'fold.collapse': 'Ciutkan {title}',
   'fold.folded': 'Diciutkan',
-  'fold.expanded': 'Diluaskan'
+  'fold.expanded': 'Diluaskan',
+  'fold.badge': 'Grup',
+  'fold.card': '{n} kartu diciutkan',
+  'fold.cards': '{n} kartu diciutkan',
+  'fold.cardCount1': '{n} kartu',
+  'fold.cardCount': '{n} kartu',
+  'fold.groupCount1': '{n} grup',
+  'fold.groupCount': '{n} grup',
+  'depth.title': 'Ciutkan sampai tingkat',
+  'depth.level1': '{n} tingkat terbuka',
+  'depth.level': '{n} tingkat terbuka',
+  'depth.none': 'Semua diciutkan',
+  'depth.all': 'Semua diluaskan',
+  'help.depth': 'Ciutkan sampai tingkat (0 meluaskan semua)',
+  'focus.crumbs': 'Jalur grup',
+  'focus.whole': 'Seluruh diagram',
+  'focus.hint': 'Klik dua kali untuk memperbesar {title}',
+  'focus.focused': 'Diperbesar ke {title}',
+  'help.focus': 'Perbesar ke grup kartu yang dipilih (Esc memperkecil)',
+  'drill.more': 'Tampilkan {n} tingkat tersembunyi'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -230,7 +230,26 @@ export default {
   'fold.expand': '{title} প্রসারিত করুন ({n}টি লুকানো)',
   'fold.collapse': '{title} সংকুচিত করুন',
   'fold.folded': 'সংকুচিত',
-  'fold.expanded': 'প্রসারিত'
+  'fold.expanded': 'প্রসারিত',
+  'fold.badge': 'গ্রুপ',
+  'fold.card': '{n}টি কার্ড সংকুচিত',
+  'fold.cards': '{n}টি কার্ড সংকুচিত',
+  'fold.cardCount1': '{n}টি কার্ড',
+  'fold.cardCount': '{n}টি কার্ড',
+  'fold.groupCount1': '{n}টি গ্রুপ',
+  'fold.groupCount': '{n}টি গ্রুপ',
+  'depth.title': 'স্তর পর্যন্ত সংকুচিত করুন',
+  'depth.level1': '{n}টি স্তর খোলা',
+  'depth.level': '{n}টি স্তর খোলা',
+  'depth.none': 'সব সংকুচিত',
+  'depth.all': 'সব প্রসারিত',
+  'help.depth': 'স্তর পর্যন্ত সংকুচিত করুন (0 সব প্রসারিত করে)',
+  'focus.crumbs': 'গ্রুপের পথ',
+  'focus.whole': 'পুরো ডায়াগ্রাম',
+  'focus.hint': '{title}-এ জুম করতে ডাবল-ক্লিক করুন',
+  'focus.focused': '{title}-এ জুম করা হয়েছে',
+  'help.focus': 'নির্বাচিত কার্ডের গ্রুপে জুম করুন (Esc জুম আউট করে)',
+  'drill.more': '{n}টি লুকানো স্তর দেখান'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */
