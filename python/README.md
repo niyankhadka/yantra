@@ -16,8 +16,8 @@ The CLI is found, in order, via:
 
 1. `YANTRA_CLI`: a path to `bin/yantra.js` (run with `node`) or to a `yantra` executable.
 2. `bin/yantra.js` in the checkout the package is installed from (editable installs).
-3. `yantra` on PATH (`npm i -g yantra-diagrams`, or `npm link` in a checkout).
-4. `npx --yes --package yantra-diagrams yantra`, which downloads the CLI from npm on first use
+3. `yantra` on PATH (`npm i -g @niyankhadka/yantra`, or `npm link` in a checkout).
+4. `npx --yes --package @niyankhadka/yantra yantra`, which downloads the CLI from npm on first use
    (set `YANTRA_NO_NPX=1` to turn this off).
 
 If none works, `YantraError` explains what to install.

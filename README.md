@@ -76,7 +76,7 @@ Yantra lays it out, routes the edges, checks the result and ships it as **one of
 Yantra needs **Node.js 18 or later** for everything that validates or produces HTML.
 
 ```bash
-npm i -g yantra-diagrams        # once published: puts `yantra` on PATH
+npm i -g @niyankhadka/yantra    # once published: puts `yantra` on PATH
 yantra build diagram.json
 
 pip install yantra-diagrams     # once published: Python SDK (import yantra)

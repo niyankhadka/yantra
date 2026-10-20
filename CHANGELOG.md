@@ -3,7 +3,7 @@
 All notable changes to Yantra are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The npm package
-(`yantra-diagrams`) and the Python SDK (`yantra-diagrams`) share one version number.
+(`@niyankhadka/yantra`) and the Python SDK (`yantra-diagrams`) share one version number.
 
 ## [Unreleased]
 
@@ -228,8 +228,8 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Changed
 
-- The npm package is named `yantra-diagrams` (the `yantra` name on npm belongs to another
-  project); the command is still `yantra`. Vite is now a development dependency.
+- The npm package is named `@niyankhadka/yantra` (the unscoped `yantra` name on npm belongs to another
+  project) and is published publicly; the command is still `yantra`. Vite is now a development dependency.
 - The Python SDK can also run the CLI through `npx` when no local CLI is found.
 
 ## [2.0.0] - 2026-10-20

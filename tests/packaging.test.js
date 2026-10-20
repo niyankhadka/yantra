@@ -14,7 +14,7 @@ const shipped = (rel) => pkg.files.some((f) => rel === f.replace(/\/$/, '') || r
 
 test('package.json is publishable', () => {
   assert.equal(pkg.private, undefined, 'private packages cannot be published');
-  assert.equal(pkg.name, 'yantra-diagrams');
+  assert.equal(pkg.name, '@niyankhadka/yantra');
   assert.equal(pkg.bin.yantra, './bin/yantra.js');
   assert.ok(pkg.keywords.length >= 5);
   assert.match(pkg.scripts.prepack, /npm run build/, 'prepack builds the viewer into dist/');

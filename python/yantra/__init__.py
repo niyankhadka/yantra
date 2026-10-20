@@ -3,7 +3,7 @@ Yantra Python SDK: build diagram and answer-page payloads in Python and compile 
 
 Layout is automatic, so nodes need no coordinates. Validating and building HTML need Node.js >= 18;
 the CLI is found via ``YANTRA_CLI``, next to this package in the Yantra repository (``bin/yantra.js``),
-on PATH (``yantra``), or through ``npx`` (package ``yantra-diagrams``).
+on PATH (``yantra``), or through ``npx`` (package ``@niyankhadka/yantra``).
 
     from yantra import Diagram, Page, blocks
 """

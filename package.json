@@ -1,5 +1,5 @@
 {
-  "name": "yantra-diagrams",
+  "name": "@niyankhadka/yantra",
   "version": "2.0.0",
   "type": "module",
   "description": "Interactive, step-by-step diagrams with automatic layout, orthogonal routing and a geometry validator. Single-file offline HTML output.",

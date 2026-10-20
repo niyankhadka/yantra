@@ -7,8 +7,8 @@ Discovery order:
 1. ``YANTRA_CLI`` environment variable: a path to ``yantra.js`` (run with node) or to an executable.
 2. ``bin/yantra.js`` in the Yantra repository this package lives in, run with ``node``
    (an editable install from a checkout).
-3. ``yantra`` on ``PATH`` (``npm i -g yantra-diagrams``, or ``npm link`` in a checkout).
-4. ``npx --yes --package yantra-diagrams yantra`` when ``npx`` is available
+3. ``yantra`` on ``PATH`` (``npm i -g @niyankhadka/yantra``, or ``npm link`` in a checkout).
+4. ``npx --yes --package @niyankhadka/yantra yantra`` when ``npx`` is available
    (downloads the CLI from npm on first use; set ``YANTRA_NO_NPX=1`` to disable).
 
 Commands run without a shell, so paths with spaces and Windows paths are safe.
@@ -27,9 +27,9 @@ from typing import Any, Dict, Iterable, List, Optional
 __all__ = ["YantraError", "cli_command", "run_cli", "validate_payload", "build_payload", "export_payload", "import_diagram",
            "NPM_PACKAGE"]
 
-NPM_PACKAGE = "yantra-diagrams"
+NPM_PACKAGE = "@niyankhadka/yantra"
 NODE_HINT = ("Yantra needs Node.js >= 18 to validate and build HTML (https://nodejs.org). Then either "
-             "`npm i -g yantra-diagrams`, run from a Yantra checkout, or set YANTRA_CLI to the path of bin/yantra.js.")
+             "`npm i -g @niyankhadka/yantra`, run from a Yantra checkout, or set YANTRA_CLI to the path of bin/yantra.js.")
 
 
 class YantraError(RuntimeError):

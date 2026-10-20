@@ -80,11 +80,11 @@ class DiscoveryTests(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(_cli, "_node_script", return_value=None), \
                 mock.patch.object(_cli.shutil, "which", side_effect=which):
-            self.assertEqual(cli_command(), ["/usr/bin/npx", "--yes", "--package", "yantra-diagrams", "yantra"])
+            self.assertEqual(cli_command(), ["/usr/bin/npx", "--yes", "--package", "@niyankhadka/yantra", "yantra"])
             os.environ["YANTRA_NO_NPX"] = "1"
             with self.assertRaises(YantraError) as ctx:
                 cli_command()
-        self.assertIn("npm i -g yantra-diagrams", str(ctx.exception))
+        self.assertIn("npm i -g @niyankhadka/yantra", str(ctx.exception))
 
 
 @unittest.skipUnless(HAS_NODE, "Node.js and node_modules are needed for the CLI")
