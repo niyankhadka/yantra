@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { lint } from '../src/core/index.js';
-import { renderBlock, renderPage, pageToMarkdown } from '../src/core/page.js';
+import { renderBlock as renderWithFits, renderPage, pageToMarkdown } from '../src/core/page.js';
 import { niceTicks, parseDay, fmtDay, fmtValue, resolveGantt, chartSeries, isSimpleBars, SERIES_HUES } from '../src/core/charts.js';
 
+// the static drawing only: narrower phone variants (template.p-fit) are covered in finish.test.js
+const renderBlock = (...args) => renderWithFits(...args).replace(/<template class="p-fit"[\s\S]*?<\/template>/g, '');
 const page = (blocks) => ({ kind: 'page', meta: { question: 'Q?' }, answer: { headline: 'A.' }, blocks });
 const codes = (r) => [...r.errors, ...r.warnings].map((f) => f.code);
 const series = { categories: ['Q1', 'Q2', 'Q3'], series: [{ name: 'North', values: [3, 5, 8] }, { name: 'South', values: [2, -1, 4] }] };

@@ -450,7 +450,7 @@ export function cellHue(st) {
  * in several keeps the commonest for itself and splits the others into
  * `<type>-<hue>` roles ("Step (red)"), so the legend still tells them apart.
  */
-function colourRoles(nodes) {
+export function colourRoles(nodes) {
   const byType = new Map();
   for (const n of nodes) {
     if (!byType.has(n.type)) byType.set(n.type, new Map());

@@ -6,7 +6,8 @@
  * computed from the data (span of the plan, largest slice, ...); rewrite it into
  * the real answer before sharing. Pure (no DOM, no Node APIs).
  *
- *   ganttPage({ title, items, today?, source, warnings })  -> { payload, warnings }
+ *   ganttPage({ title, items, today?, workdays?, holidays?, source, warnings })  -> { payload, warnings }
+ *     (an item's `until: ref` ends it the day before task `ref` starts)
  *   fromMermaidGantt / fromMermaidPie / fromMermaidTimeline / fromMermaidQuadrant /
  *   fromMermaidJourney (lines, ctx)                        -> { payload, warnings }
  */
@@ -40,7 +41,7 @@ function page({ title, kicker, question, headline, text: body, points, blocks, s
  * A plan page from gantt items ({ title, id?, group?, start?, end? | days?, after?,
  * milestone?, progress?, tone? }). Dependencies that name no task are dropped.
  */
-export function ganttPage({ title, items, today, source, warnings }) {
+export function ganttPage({ title, items, today, workdays = false, holidays = [], source, warnings }) {
   if (!items.length) throw new Error('The gantt chart has no tasks.');
   const ids = new Set(items.map((it) => it.id).filter(Boolean));
   const titles = new Set(items.map((it) => it.title));
@@ -55,6 +56,12 @@ export function ganttPage({ title, items, today, source, warnings }) {
   if (lost) warnings.push(`Dropped ${plural(lost, 'dependency', 'dependencies')} on tasks that do not exist; those tasks follow the task above them.`);
   const block = { type: 'gantt', title: 'Schedule', items };
   if (today) block.today = today;
+  if (workdays) {
+    block.workdays = true;
+    const days = [...new Set(holidays)].sort((a, b) => a - b);
+    if (days.length) block.holidays = days.map(fmtDay);
+  }
+  untilEnds(block, warnings);
 
   const g = resolveGantt(block);
   for (const p of g.problems) warnings.push(`Gantt: ${p.message}`);
@@ -98,6 +105,34 @@ export function ganttPage({ title, items, today, source, warnings }) {
   return { payload, warnings };
 }
 
+/**
+ * Tasks that run `until` another task starts: each ends the day before it
+ * (resolved on the plan, a few passes since the ends move later tasks).
+ */
+function untilEnds(block, warnings) {
+  const open = block.items.filter((it) => it.until !== undefined);
+  if (!open.length) return;
+  for (const it of open) if (it.days === undefined && it.end === undefined) it.days = 1;
+  for (let pass = 0; pass < 4; pass++) {
+    const g = resolveGantt(block);
+    let moved = false;
+    for (const it of open) {
+      const ref = g.tasks.find((t) => t.item.id === it.until);
+      if (!ref || ref.s === null || g.mode !== 'date') continue;
+      const end = fmtDay(ref.s - 1);
+      if (it.end === end) continue;
+      delete it.days;
+      it.end = end;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  for (const it of open) {
+    if (it.end === undefined) warnings.push(`Gantt: "${it.title}" runs until "${it.until}", which is not a dated task; it lasts one day.`);
+    delete it.until;
+  }
+}
+
 /** Mermaid dateFormat ("YYYY-MM-DD", "DD.MM.YYYY HH:mm", ...) -> a parser to day numbers. */
 function dateParser(format) {
   const order = [];
@@ -129,6 +164,8 @@ function dateParser(format) {
   };
 }
 
+const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
 /** "3d", "2w", "36h", "1.5d" -> days (rounded up), or null. */
 function duration(s, warn) {
   const m = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d|w|M|y)$/.exec(String(s).trim());
@@ -154,6 +191,8 @@ export function fromMermaidGantt(lines, ctx) {
   let title;
   let section;
   const items = [];
+  const off = new Set(); // excluded weekdays
+  const closed = []; // excluded dates (day numbers)
   for (const { text: line, no } of lines.slice(1)) {
     let m;
     if ((m = /^title\s+(.+)$/.exec(line))) title = text(m[1]);
@@ -161,7 +200,19 @@ export function fromMermaidGantt(lines, ctx) {
       parser = dateParser(m[1].trim());
       if (parser.times) notes.add('times of day are dropped: the plan is drawn in whole days');
     } else if (/^inclusiveEndDates\b/.test(line)) inclusive = true;
-    else if ((m = /^(axisFormat|tickInterval|todayMarker|weekday|weekend|excludes|includes|click|displayMode|topAxis|accTitle|accDescr|classDef|class)\b/.exec(line))) ignored.add(m[1]);
+    else if ((m = /^excludes\s+(.+)$/.exec(line))) {
+      // weekends and dates become non-working days; other weekdays cannot be drawn
+      for (const tok of m[1].split(/[\s,]+/).filter(Boolean)) {
+        const word = tok.toLowerCase().replace(/s$/, '');
+        const day = parser.parse(tok);
+        if (word === 'weekend') off.add('saturday').add('sunday');
+        else if (WEEKDAYS.includes(word)) off.add(word);
+        else if (day !== null) closed.push(day);
+        else warnings.push(`Line ${no}: excluded day "${tok}" is neither a weekday nor a date; ignored.`);
+      }
+    } else if ((m = /^weekend\s+(\w+)/.exec(line))) {
+      if (m[1].toLowerCase() !== 'saturday') ignored.add('weekend');
+    } else if ((m = /^(axisFormat|tickInterval|todayMarker|weekday|includes|click|displayMode|topAxis|accTitle|accDescr|classDef|class)\b/.exec(line))) ignored.add(m[1]);
     else if ((m = /^section\s+(.+)$/.exec(line))) section = text(m[1]);
     else if ((m = /^(.+?)\s*:\s*(.*)$/.exec(line))) {
       const parts = m[2].split(',').map((s) => s.trim()).filter(Boolean);
@@ -188,12 +239,10 @@ export function fromMermaidGantt(lines, ctx) {
       }
       if (end && !tags.has('milestone')) {
         const days = duration(end, (why) => notes.add(why));
-        const until = /^until\s+/.test(end);
+        const until = /^until\s+(\S+)/.exec(end);
         if (days !== null) it.days = days;
-        else if (until) {
-          warnings.push(`Line ${no}: "${end}" is not supported; the task lasts one day.`);
-          it.days = 1;
-        } else {
+        else if (until) it.until = until[1];
+        else {
           const d = parser.parse(end);
           if (d === null) {
             warnings.push(`Line ${no}: end "${end}" is neither a date nor a duration; the task lasts one day.`);
@@ -214,9 +263,19 @@ export function fromMermaidGantt(lines, ctx) {
       items.push(it);
     } else warnings.push(`Line ${no}: could not parse "${line}".`);
   }
-  ignored.flush({ excludes: 'durations count calendar days', weekend: 'durations count calendar days', todayMarker: 'pages are static; add `today` to the gantt block', click: 'links are not imported' });
+  ignored.flush({
+    weekend: 'weekends are Saturday and Sunday',
+    includes: 'excluded days stay excluded',
+    todayMarker: 'pages are static; add `today` to the gantt block',
+    click: 'links are not imported'
+  });
   for (const why of notes) warnings.push(`Gantt: ${why}.`);
-  return ganttPage({ title: ctx.title || title, items, source: 'a Mermaid gantt chart', warnings });
+  // Working days: Saturday and Sunday together, plus excluded dates
+  const workdays = off.has('saturday') && off.has('sunday');
+  const kept = [...off].filter((d) => !(workdays && (d === 'saturday' || d === 'sunday')));
+  if (kept.length) warnings.push(`Gantt: only weekends (Saturday and Sunday together) and dates can be excluded; ${kept.join(', ')} still count${kept.length > 1 ? '' : 's'} as working.`);
+  if (closed.length && !workdays) warnings.push('Gantt: excluded dates only count together with "excludes weekends"; they still count as working days.');
+  return ganttPage({ title: ctx.title || title, items, workdays, holidays: workdays ? closed : [], source: 'a Mermaid gantt chart', warnings });
 }
 
 // --- pie --------------------------------------------------------------------------

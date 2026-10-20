@@ -93,8 +93,8 @@ For "explain how X works", make the diagram first, then the page around it
    repair rounds; if geometry still fails, remove nodes or split the diagram.
 2. **Build**: `node bin/yantra.js build file.json -o file.html`
 3. **Look**: `node bin/yantra.js screenshot file.json` (diagrams: `--step 2`, sequence:
-   `--view sequence`; detail diagrams: `--level <id>`; pages: `--height 3200` if long; also
-   `--theme dark`) and view the PNG.
+   `--view sequence`; detail diagrams: `--level <id>`; pages: `--height 3200` if long,
+   `--width 390` for phones; also `--theme dark`) and view the PNG.
    Do not say it looks right without viewing it.
 4. **Report** the HTML path and, in chat, the answer headline or the walkthrough steps,
    plus any warnings you chose to keep. `export -f md` gives a Markdown copy to paste.

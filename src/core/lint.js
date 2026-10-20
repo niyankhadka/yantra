@@ -505,11 +505,13 @@ function geometry(scene, mode, add, tagMode, state = '') {
 
   // Parallel edges drawn on top of each other read as one line
   // (a parent's comb or fan of hierarchy edges shares its trunk by design)
-  // (so does the first run out of a field row that several foreign keys reference)
-  const fieldFan = (e, k, n) =>
-    k === 0 && typeof e.edge.sourceField === 'string' ? `\u0000${e.edge.source}.${e.edge.sourceField}` :
-    k === n - 1 && typeof e.edge.targetField === 'string' ? `\u0000${e.edge.target}.${e.edge.targetField}` : null;
-  const segs = scene.edges.flatMap((e) => segmentsOf(e.points).map((s, k, all) => ({ ...s, id: e.id, fan: e.tree ? e.edge.source : fieldFan(e, k, all.length) })));
+  // (so do the trunk and spine out of a field row that several foreign keys reference)
+  const fieldFan = (e, k, n, role) =>
+    role === 0 ? (k <= 1 && typeof e.edge.sourceField === 'string' ? `\u0000${e.edge.source}.${e.edge.sourceField}` : null) :
+    k >= n - 2 && typeof e.edge.targetField === 'string' ? `\u0000${e.edge.target}.${e.edge.targetField}` : null;
+  const segs = scene.edges.flatMap((e) =>
+    segmentsOf(e.points).map((s, k, all) => ({ ...s, id: e.id, fan: e.tree ? e.edge.source : fieldFan(e, k, all.length, 0), fanT: e.tree ? null : fieldFan(e, k, all.length, 1) }))
+  );
   const seen = new Set();
   // Only segments on the same line can share track: bucket them by line
   const lineOf = (s) => (s.a.x === s.b.x ? 'v' + s.a.x : 'h' + s.a.y);
@@ -524,7 +526,8 @@ function geometry(scene, mode, add, tagMode, state = '') {
       if (j <= i) continue;
       const a = segs[i];
       const b = segs[j];
-      if (a.id === b.id || (a.fan !== null && a.fan === b.fan)) continue;
+      const fans = (s) => [s.fan, s.fanT].filter((f) => f !== null);
+      if (a.id === b.id || fans(a).some((f) => fans(b).includes(f))) continue;
       const shared = collinearOverlap(a, b);
       const key = [a.id, b.id].sort().join('|');
       if (shared >= 8 && !seen.has(key)) {

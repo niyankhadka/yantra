@@ -26,6 +26,7 @@ import { hasNotation } from './notation.js';
 import { textWidth } from './text.js';
 
 const STUB = 20; // straight run out of / into a port
+const TRUNK = 40; // shared run out of a field row that several edges leave together
 const CLEAR = 14; // minimum distance kept from any node
 const HALO = 34; // softer zone around nodes that routes avoid when they can
 const BEND = 26;
@@ -141,17 +142,84 @@ export function loopSides(rects, edges) {
   return out;
 }
 
+/** Ends sharing one field row: tracks this far apart (less when many share it), within the row. */
+const ROW_TRACK = 12;
+const ROW_SPAN = 18;
+
+/** Head row a field loop joins when one of its fields is missing. */
+const headY = (r) => r.y + Math.min(30, r.h / 2);
+
+/**
+ * Ends that meet at one field row on one side of a card. Ends going to
+ * different places share the row's port and leave as one trunk (a family);
+ * parallel ends (same far card and row) and self-loop legs get tracks of
+ * their own across the row: loop legs on the inside (towards the loop's other
+ * leg), so a loop nests inside the edges leaving the same row.
+ * @returns { offset: Map<`${edgeId}|${role}`, dy>, family: Map<`${edgeId}|${role}`, key> }
+ */
+export function rowSlots(rects, edges, sides = loopSides(rects, edges)) {
+  const rows = new Map(); // `${node}|${side}|${y}` -> [{ id, role, ref, far, loop?: inward, rank }]
+  edges.forEach((e, rank) => {
+    if (!rects.has(e.source) || !rects.has(e.target)) return;
+    const a = rects.get(e.source);
+    if (e.source === e.target) {
+      const side = sides.get(e.id);
+      if (!fieldLoop(e) || !a.fields || (side !== 'left' && side !== 'right')) return;
+      const ys = [fieldY(a, e.sourceField), fieldY(a, e.targetField)];
+      const legs = ys.map((y) => y ?? headY(a));
+      ys.forEach((y, role) => {
+        if (y !== null) push(rows, `${e.source}|${side}|${y}`, { id: e.id, role, loop: Math.sign(legs[1 - role] - legs[role]), rank });
+      });
+      return;
+    }
+    const b = rects.get(e.target);
+    const s = endSides(e, rects);
+    const same = s[0] === s[1];
+    [[a, b, e.sourceField, e.targetField, e.target, 0], [b, a, e.targetField, e.sourceField, e.source, 1]].forEach(([r, o, name, other, farId, role]) => {
+      const side = s[role];
+      const y = side === 'left' || side === 'right' ? fieldY(r, name) : null;
+      if (y === null) return;
+      const far = `${farId}|${s[1 - role]}|${fieldY(o, other) ?? ''}`;
+      push(rows, `${role ? e.target : e.source}|${side}|${y}`, { id: e.id, role, ref: center(o).y, far, rank: role && same ? -rank : rank });
+    });
+  });
+  const offset = new Map();
+  const family = new Map();
+  for (const [key, list] of rows) {
+    if (list.length < 2) continue;
+    const loops = list.filter((p) => p.loop !== undefined);
+    const fars = new Set(list.map((p) => p.far));
+    if (!loops.length && fars.size === list.length) {
+      list.forEach((p) => family.set(`${p.id}|${p.role}`, key));
+      continue;
+    }
+    const n = list.length;
+    const gap = Math.min(ROW_TRACK, ROW_SPAN / (n - 1));
+    const up = loops.filter((p) => p.loop < 0);
+    const down = loops.filter((p) => p.loop > 0);
+    const flat = loops.filter((p) => p.loop === 0);
+    const rest = [...list.filter((p) => p.loop === undefined).sort((p, q) => p.ref - q.ref || p.rank - q.rank), ...flat];
+    [...up, ...rest, ...down].forEach((p, k) => offset.set(`${p.id}|${p.role}`, Math.round((k - (n - 1) / 2) * gap)));
+  }
+  return { offset, family };
+}
+
 /** Self-loop geometry for every loop edge: Map<edgeId, selfLoop()>. */
-export function loopGeometry(rects, edges) {
+export function loopGeometry(rects, edges, slots = null) {
   const out = new Map();
-  for (const [id, side] of loopSides(rects, edges)) {
+  const sides = loopSides(rects, edges);
+  const { offset } = slots || rowSlots(rects, edges, sides);
+  for (const [id, side] of sides) {
     const e = edges.find((x) => x.id === id);
     const r = rects.get(e.source);
     const opts = { shape: r.shape, marked: e.marked ?? hasNotation(e) };
     if (fieldLoop(e) && r.fields && (side === 'left' || side === 'right')) {
-      // a missing field end joins the card's header
-      const head = r.y + Math.min(30, r.h / 2);
-      opts.ys = [fieldY(r, e.sourceField) ?? head, fieldY(r, e.targetField) ?? head];
+      // a missing field end joins the card's header; a row shared with other ends gives the leg its own track
+      const at = (name, role) => {
+        const y = fieldY(r, name);
+        return y === null ? headY(r) : y + (offset.get(`${id}|${role}`) || 0);
+      };
+      opts.ys = [at(e.sourceField, 0), at(e.targetField, 1)];
     }
     out.set(id, selfLoop(r, side, labelSize(e.label), opts));
   }
@@ -167,7 +235,8 @@ export function loopGeometry(rects, edges) {
 export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
   const all = edges.filter((e) => rects.has(e.source) && rects.has(e.target));
   const list = all.filter((e) => e.source !== e.target);
-  const loops = loopGeometry(rects, all);
+  const slots = rowSlots(rects, all);
+  const loops = loopGeometry(rects, all, slots);
   const windowed = list.length > WINDOW_EDGES || rects.size > WINDOW_NODES;
 
   // --- Sides and spread ports -------------------------------------------
@@ -176,9 +245,12 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     const a = rects.get(e.source);
     const b = rects.get(e.target);
     const sides = endSides(e, rects);
-    const row = (r, side, name) => (side === 'left' || side === 'right' ? fieldY(r, name) : null);
-    push(ends, `${e.source}|${sides[0]}`, { edge: e, role: 0, ref: center(b), field: row(a, sides[0], e.sourceField) });
-    push(ends, `${e.target}|${sides[1]}`, { edge: e, role: 1, ref: center(a), field: row(b, sides[1], e.targetField) });
+    const row = (r, side, name, role) => {
+      const y = side === 'left' || side === 'right' ? fieldY(r, name) : null;
+      return y === null ? null : y + (slots.offset.get(`${e.id}|${role}`) || 0);
+    };
+    push(ends, `${e.source}|${sides[0]}`, { edge: e, role: 0, ref: center(b), field: row(a, sides[0], e.sourceField, 0) });
+    push(ends, `${e.target}|${sides[1]}`, { edge: e, role: 1, ref: center(a), field: row(b, sides[1], e.targetField, 1) });
   }
   // Sides a self-loop occupies: dots and diamonds keep them free of ports,
   // cards keep ports out of the stretch between the loop's legs
@@ -316,6 +388,22 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
   }));
   // Loops (with their labels) are fixed: other routes keep clear of them
   for (const { box: b } of loops.values()) obstacles.push({ x0: b.x - 6, y0: b.y - 6, x1: b.x + b.w + 6, y1: b.y + b.h + 6 });
+  // Ends that leave one field row together (a family) share a longer trunk out of
+  // the port, then branch: routes of one family may run on each other's tracks
+  const famNo = new Map(); // family key -> number (1...)
+  const fams = new Map(); // edgeId -> [family of the source end, of the target end] (0 = none)
+  for (const e of list)
+    fams.set(e.id, [0, 1].map((role) => {
+      const key = slots.family.get(`${e.id}|${role}`);
+      if (!key) return 0;
+      if (!famNo.has(key)) famNo.set(key, famNo.size + 1);
+      const p = ports.get(`${e.id}|${role}`);
+      const [dx, dy] = DIRS[p.dir];
+      const tip = { x: p.x + dx * TRUNK, y: p.y + dy * TRUNK };
+      const own = rects.get(role ? e.target : e.source);
+      if (!obstacles.some((o, k) => o.x0 < tip.x && tip.x < o.x1 && o.y0 < tip.y && tip.y < o.y1 && !(k < rects.size && [...rects.values()][k] === own))) p.stub = TRUNK;
+      return famNo.get(key);
+    }));
   const xsSet = new Set();
   const ysSet = new Set();
   for (const o of obstacles) {
@@ -332,7 +420,7 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
   for (const p of [...ports.values(), ...flexPorts]) {
     const [dx, dy] = DIRS[p.dir];
     xsSet.add(p.x); ysSet.add(p.y);
-    xsSet.add(p.x + dx * STUB); ysSet.add(p.y + dy * STUB);
+    xsSet.add(p.x + dx * (p.stub || STUB)); ysSet.add(p.y + dy * (p.stub || STUB));
   }
   const frame = [...obstacles, ...containers.map((gr) => ({ x0: gr.x, y0: gr.y, x1: gr.x + gr.w, y1: gr.y + gr.h }))].reduce(
     (f, o) => ({ x0: Math.min(f.x0, o.x0), y0: Math.min(f.y0, o.y0), x1: Math.max(f.x1, o.x1), y1: Math.max(f.y1, o.y1) }),
@@ -398,6 +486,10 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
   }
   const usedH = new Uint16Array(nx * ny);
   const usedV = new Uint16Array(nx * ny);
+  const famH = new Int32Array(nx * ny); // family whose routes alone use a segment (0 none, -1 several)
+  const famV = new Int32Array(nx * ny);
+  let fam = [0, 0]; // families of the edge being routed
+  let trunk = [false, false]; // its ends leave a shared trunk: turn at the trunk's tip
   const nearH = new Uint16Array(nx * ny);
   const nearV = new Uint16Array(nx * ny);
   const turnedAt = new Uint8Array(nx * ny); // bit 1: horizontal pass, bit 2: vertical pass
@@ -427,6 +519,7 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     .sort((a, b) => a.d - b.d);
 
   for (const { e } of ordered) {
+    fam = fams.get(e.id);
     // A flexible end tries every free side of its dot or diamond: the cheapest route wins
     let best = null;
     for (const S of candidates(e, 0))
@@ -447,14 +540,14 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     let points;
     if (ok) {
       points = [s, ...cells.map((c) => ({ x: xs[c.i], y: ys[c.j] })), t];
-      markUsed(cells);
+      markUsed(cells, fam);
     } else {
       // Fallback keeps the drawing connected; the validator reports it.
-      const sStub = { x: s.x + DIRS[s.dir][0] * STUB, y: s.y + DIRS[s.dir][1] * STUB };
-      const tStub = { x: t.x + DIRS[t.dir][0] * STUB, y: t.y + DIRS[t.dir][1] * STUB };
+      const sStub = stubOf(s);
+      const tStub = stubOf(t);
       points = [s, sStub, { x: tStub.x, y: sStub.y }, tStub, t];
     }
-    results.set(e.id, { points: simplify(points.map(({ x, y }) => ({ x, y }))), ok });
+    results.set(e.id, { points: simplify(points.map(({ x, y }) => ({ x, y }))), ok, fam });
   }
   centerJogs(results, [...obstacles, ...titles]);
   for (const e of list) {
@@ -462,13 +555,20 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     clipToShape(r.points, rects.get(e.source), true);
     clipToShape(r.points, rects.get(e.target), false);
   }
+  for (const r of results.values()) delete r.fam;
   for (const [id, loop] of loops) results.set(id, { points: loop.points, ok: true, ...(loop.label ? { label: loop.label } : {}) });
   return results;
 
+  function stubOf(p) {
+    const len = p.stub || STUB;
+    return { x: p.x + DIRS[p.dir][0] * len, y: p.y + DIRS[p.dir][1] * len };
+  }
+
   /** Grid path between two ports (null when there is none), with its cost. */
   function attempt(s, t) {
-    const sStub = { x: s.x + DIRS[s.dir][0] * STUB, y: s.y + DIRS[s.dir][1] * STUB };
-    const tStub = { x: t.x + DIRS[t.dir][0] * STUB, y: t.y + DIRS[t.dir][1] * STUB };
+    const sStub = stubOf(s);
+    const tStub = stubOf(t);
+    trunk = [!!s.stub, !!t.stub];
     const start = { i: xi.get(sStub.x), j: yi.get(sStub.y), d: s.dir };
     const goal = { i: xi.get(tStub.x), j: yi.get(tStub.y) };
     if (start.i === undefined || start.j === undefined || goal.i === undefined || goal.j === undefined) return null;
@@ -549,7 +649,8 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
           const at = j * nx + (ni < i ? ni : i);
           if (blockedH[at]) continue;
           len = Math.abs(xs[ni] - xs[i]);
-          shared = usedH[at];
+          shared = usedH[at] && kin(famH[at]) ? 0 : usedH[at];
+          if (usedH[at] && !shared) len *= 0.5;
           near = haloH[at];
           inTitle = titleH[at];
           onBorder = borderH[at];
@@ -558,7 +659,8 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
           const at = (nj < j ? nj : j) * nx + i;
           if (blockedV[at]) continue;
           len = Math.abs(ys[nj] - ys[j]);
-          shared = usedV[at];
+          shared = usedV[at] && kin(famV[at]) ? 0 : usedV[at];
+          if (usedV[at] && !shared) len *= 0.5;
           near = haloV[at];
           inTitle = titleV[at];
           onBorder = borderV[at];
@@ -572,6 +674,9 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
         const crossBit = nd === 0 || nd === 2 ? 2 : 1;
         if (turnedAt[nj * nx + ni] & crossBit) cost += CROSS;
         if (ni === goal.i && nj === goal.j && arriveDir >= 0 && nd !== arriveDir) cost += BEND;
+        // a trunk branches where it ends: going straight on past its tip costs extra
+        if (trunk[0] && k === k0 && nd === d) cost += BEND * 2;
+        if (trunk[1] && ni === goal.i && nj === goal.j && nd === arriveDir) cost += BEND * 2;
         const nk = ((nj * nx + ni) << 2) | nd;
         if (stamp[nk] !== search || cost < gCost[nk]) {
           stamp[nk] = search;
@@ -584,20 +689,28 @@ export function routeEdges(rects, edges, { groups: containers = [] } = {}) {
     return null;
   }
 
-  function markUsed(cells) {
+  /** The segment is used only by routes of a family the current edge belongs to. */
+  function kin(f) {
+    return f > 0 && (f === fam[0] || f === fam[1]);
+  }
+
+  function markUsed(cells, [f0, f1]) {
+    const own = f0 || f1; // a route in two families shares tracks with both, but marks the first
+    const mark = (arr, at, used) => (arr[at] = used === 1 ? own : arr[at] === own || kin2(arr[at]) ? arr[at] : -1);
+    const kin2 = (f) => f > 0 && (f === f0 || f === f1);
     for (let k = 1; k < cells.length; k++) {
       const a = cells[k - 1];
       const b = cells[k];
       if (a.j === b.j && a.i !== b.i) {
         const si = Math.min(a.i, b.i);
-        usedH[a.j * nx + si]++;
+        mark(famH, a.j * nx + si, ++usedH[a.j * nx + si]);
         // tracks closer than NEAR read as one thick line: discourage them
         for (let jj = a.j - 1; jj >= 0 && ys[a.j] - ys[jj] < NEAR; jj--) nearH[jj * nx + si]++;
         for (let jj = a.j + 1; jj < ny && ys[jj] - ys[a.j] < NEAR; jj++) nearH[jj * nx + si]++;
         turnedAt[a.j * nx + a.i] |= 1; turnedAt[b.j * nx + b.i] |= 1;
       } else if (a.i === b.i && a.j !== b.j) {
         const sj = Math.min(a.j, b.j);
-        usedV[sj * nx + a.i]++;
+        mark(famV, sj * nx + a.i, ++usedV[sj * nx + a.i]);
         for (let ii = a.i - 1; ii >= 0 && xs[a.i] - xs[ii] < NEAR; ii--) nearV[sj * nx + ii]++;
         for (let ii = a.i + 1; ii < nx && xs[ii] - xs[a.i] < NEAR; ii++) nearV[sj * nx + ii]++;
         turnedAt[a.j * nx + a.i] |= 2; turnedAt[b.j * nx + b.i] |= 2;
@@ -697,6 +810,7 @@ function centerJogs(results, obstacles) {
       if (!vertical && !horizontal) continue;
       const axis = vertical ? 'x' : 'y';
       if (Math.sign(b[axis] - a[axis]) !== Math.sign(next[axis] - c[axis])) continue; // Z only
+      if ((k === 1 && r.fam?.[0]) || (k + 2 === p.length - 1 && r.fam?.[1])) continue; // a shared trunk stays put
       const dir = Math.sign(next[axis] - a[axis]);
       // keep the straight stub out of each port
       const from = a[axis] + (k === 1 ? STUB * dir : 0);

@@ -4,8 +4,8 @@
  * and connectors: shapes with text become nodes (type from the master name:
  * Decision, Start/End, Database, Document, Data, Actor ...), glued connectors
  * become edges, group shapes with text become groups. Geometry only hints the
- * direction; styling, themes, layers and images are not read. Pure (no DOM, no
- * Node APIs).
+ * direction. Fill (else line) colours become role colours as in draw.io; themes,
+ * layers and images are not read. Pure (no DOM, no Node APIs).
  *
  *   unzip(bytes)                          -> Map<name, () => Uint8Array>
  *   isVsdx(bytes)                         -> boolean
@@ -13,7 +13,7 @@
  *   fromVisio(bytes, { title?, page? })   -> { payload, warnings, pages }
  */
 import { inflateRaw } from './inflate.js';
-import { parseXml } from './drawio.js';
+import { parseXml, cellHue, colourRoles } from './drawio.js';
 import { buildFlow, tidy, slug } from './importkit.js';
 
 const MAX_ENTRY = 64 * 1024 * 1024;
@@ -73,6 +73,17 @@ const kids = (el, name) => (el?.children || []).filter((c) => c.name === name);
 const kid = (el, name) => kids(el, name)[0];
 const allText = (el) => (el ? el.text + el.children.map(allText).join('') : '');
 const cell = (shape, n) => kids(shape, 'Cell').find((c) => c.attrs.N === n)?.attrs.V;
+
+/** Visio's legacy colour indices (0-7) as hex; documents usually store #rrggbb. */
+const COLOUR_INDEX = ['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+const colour = (v) => (/^\d+$/.test(String(v ?? '')) ? COLOUR_INDEX[Number(v)] ?? null : v ?? null);
+
+/** Role hue of a shape from its own fill, else line, colour (as draw.io cells); null when none. */
+function shapeHue(el) {
+  const fill = cell(el, 'FillPattern') === '0' ? null : colour(cell(el, 'FillForegnd'));
+  const line = cell(el, 'LinePattern') === '0' ? null : colour(cell(el, 'LineColor'));
+  return cellHue({ fillColor: fill, strokeColor: line });
+}
 
 function openVsdx(bytes) {
   const zip = unzip(bytes);
@@ -173,7 +184,12 @@ export function fromVisio(bytes, opts = {}) {
       s.kind = texty ? (s.text ? 'group' : 'transparent') : undefined;
     }
   }
-  for (const s of ordered.filter((x) => x.kind === 'group')) groups.push({ raw: s.id, title: s.text.replace(/\n/g, ' '), parent: groupOf(s), hint: slug(s.text) || undefined });
+  for (const s of ordered.filter((x) => x.kind === 'group')) {
+    const g = { raw: s.id, title: s.text.replace(/\n/g, ' '), parent: groupOf(s), hint: slug(s.text) || undefined };
+    const hue = shapeHue(s.el);
+    if (hue && hue !== 'slate') g.color = hue;
+    groups.push(g);
+  }
   const connected = new Set([...ends.values()].flatMap((e) => [e.from, e.to]).filter(Boolean));
   const nodes = [];
   const nodeIds = new Set();
@@ -185,7 +201,7 @@ export function fromVisio(bytes, opts = {}) {
       continue;
     }
     const type = visioType(s.master || s.name);
-    const n = { raw: s.id, label: s.text || s.master.replace(/\.\d+$/, '') || 'Shape', type, group: groupOf(s), hint: slug(s.text) || undefined };
+    const n = { raw: s.id, label: s.text || s.master.replace(/\.\d+$/, '') || 'Shape', type, group: groupOf(s), hint: slug(s.text) || undefined, hue: shapeHue(s.el) };
     if (type === 'store') n.data = { icon: 'database' };
     if (type === 'actor') n.data = { icon: 'user' };
     nodes.push(n);
@@ -236,7 +252,8 @@ export function fromVisio(bytes, opts = {}) {
     direction: dx > dy ? 'LR' : 'TB',
     title: opts.title || (named ? page.name : 'Imported Visio diagram'),
     description: `Imported from Visio${named ? ` page "${page.name}"` : ''}: ${nodes.length} shapes, ${edges.length} connectors.`,
-    warnings
+    warnings,
+    roleOverrides: colourRoles(nodes)
   });
   return { ...res, pages: pages.map((p) => p.name) };
 }

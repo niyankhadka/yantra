@@ -109,11 +109,12 @@ export to draw.io and import the `.drawio` file.
 | a shape with text | node; type from its master name: Decision → `decision`, Start/End / Terminator → `terminal`, Database / Data store → `store`, Document / Data → `io`, Actor / Person → `actor`, else `node` |
 | a connector glued at both ends (`<Connect>` `BeginX` / `EndX`) | edge with the connector text as label; `BeginArrow` / `EndArrow` give the direction (`arrow: "both"` / `"none"`), `LinePattern` > 1 is dashed |
 | a group whose parts carry text | `groups[]` titled by the group text (an untitled group is transparent); a group whose parts have no text is one shape |
+| `FillForegnd` (else `LineColor`) on a shape or group, `#rrggbb` or a legacy index 0-7 | role colour as for draw.io fills: a type drawn in several colours splits into `<type>-<hue>` roles ("Step (red)"); white, black, `FillPattern` / `LinePattern` 0 and colours inherited from masters or themes are not read |
 | shapes without text or connections, unglued connectors | dropped (one warning each kind) |
 | page name | `meta.title` unless it is a default `Page-n` |
 
-Positions only hint the direction (`LR` when connectors mostly run sideways). Themes, colours,
-layers, comments and data graphics are not read.
+Positions only hint the direction (`LR` when connectors mostly run sideways). Themes, layers,
+comments and data graphics are not read; colours only as in the table above.
 
 ## PlantUML
 
@@ -227,7 +228,9 @@ headline gives the span of the plan and the last task.
 | `-- Section --` | `group` of the tasks below |
 | `[A] as [B]`, `... and ...` clauses | aliases; several statements on one line |
 | `today is 2026-10-20` | `today` |
-| `saturday are closed`, colours, resources (`on {Alice}`), lags (`3 days after`), scales | ignored, one warning per kind (durations count calendar days) |
+| `saturday are closed` and `sunday are closed` | `workdays: true`: durations and dependencies count working days |
+| `2026-12-25 is closed`, `2026-12-24 to 2026-12-26 is closed` | `holidays` (with closed weekends; otherwise a warning and they stay working days) |
+| other closed weekdays (`friday are closed`), `... is open`, colours, resources (`on {Alice}`), lags (`3 days after`), scales | ignored, one warning per kind |
 
 ### Activity diagrams (old syntax)
 

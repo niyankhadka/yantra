@@ -116,6 +116,10 @@ prints in colour and carries a visually hidden data table for screen readers.
 - A plain `data` bar chart with no negative values keeps the original HTML bar list.
 - `span: "half"` draws a narrower chart; `caption` adds a note under any chart, gantt or matrix.
   In inspector panels charts are drawn at the panel's width, so they fit without scrolling.
+  On pages, column, bar, line and area charts, gantt plans and matrices also carry narrower
+  drawings (320, 420 and 560 px, inert `<template>`s); the page script swaps in the widest one
+  that fits the block on load and on resize, so phones do not scroll sideways. Without
+  JavaScript, and in print, the static drawing stays.
 - Clicking a legend item (or Enter / Space on it) hides that series, or takes a slice out of
   a pie or donut and redraws the others with their new shares and total. Without JavaScript
   (and in print) the chart is shown as written.

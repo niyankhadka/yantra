@@ -199,7 +199,7 @@ const BLOCKS = {
 
   // Single-series bars without negatives keep the HTML bar list; every other chart is inline SVG (charts.js)
   chart: (b, ctx) => {
-    if (!isSimpleBars(b)) return renderChart(b, { half: ctx.half, width: ctx.width, caption: b.caption ? inline(b.caption) : '' });
+    if (!isSimpleBars(b)) return renderChart(b, { half: ctx.half, width: ctx.width, fit: true, caption: b.caption ? inline(b.caption) : '' });
     const { L } = ctx;
     const data = list(b.data).filter((d) => typeof d.value === 'number');
     const max = Math.max(1e-9, ...data.map((d) => Math.abs(d.value)));
@@ -211,9 +211,9 @@ const BLOCKS = {
       .join('')}</div>`;
   },
 
-  gantt: (b, ctx) => renderGantt(b, { half: ctx.half, width: ctx.width, caption: b.caption ? inline(b.caption) : '' }),
+  gantt: (b, ctx) => renderGantt(b, { half: ctx.half, width: ctx.width, fit: true, caption: b.caption ? inline(b.caption) : '' }),
 
-  matrix: (b, ctx) => renderMatrix(b, { half: ctx.half, width: ctx.width, caption: b.caption ? inline(b.caption) : '' }),
+  matrix: (b, ctx) => renderMatrix(b, { half: ctx.half, width: ctx.width, fit: true, caption: b.caption ? inline(b.caption) : '' }),
 
   code: (b) => `<pre class="p-code"${b.language ? ` data-lang="${h(b.language)}"` : ''}><code>${h(b.code || '')}</code></pre>`,
 

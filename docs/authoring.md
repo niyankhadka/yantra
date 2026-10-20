@@ -407,8 +407,10 @@ Edges take a marker at each end, independent of `style`:
   edge then attaches at that row, on the left or right side facing the other card (both on the
   right when the cards stand one above the other). Point foreign keys at the key they reference
   (`"sourceField": "id", "targetField": "customer_id"`); several edges from one key share its
-  port. An unknown name is an error (`ref/edge-unknown-field`). Without them, edges attach to
-  card sides.
+  port and leave on one trunk before branching. Two edges between the same pair of rows run on
+  separate tracks, and a self-relationship whose row another edge also leaves nests inside it.
+  An unknown name is an error (`ref/edge-unknown-field`). Without them, edges attach to card
+  sides.
 - **End labels**: `sourceLabel` / `targetLabel` put short text beside each end, past its marker:
   multiplicities (`"1"`, `"0..*"`, `"1..*"`) or role names (`"owner"`), up to 16 characters. The
   Markdown export adds them to the Relationship column (`1 → 0..*`).

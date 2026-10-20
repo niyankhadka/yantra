@@ -949,8 +949,8 @@ function parseState(lines, ctx) {
   const composites = new Map(); // raw -> { raw, label, scope (parent), members: keys[] }
   const stack = [];
   const rawEdges = []; // { from, to, label, no }
-  let notes = 0;
-  let inNote = false;
+  const notes = []; // { target, text } (a note can name its state's concurrent region)
+  let inNote = null;
 
   const scope = () => stack[stack.length - 1] || null;
   // [*] is the scope's initial state when a transition leaves it, its final state when one enters it;
@@ -970,12 +970,14 @@ function parseState(lines, ctx) {
   for (const { text: line, no } of lines.slice(1)) {
     let m;
     if (inNote) {
-      if (/^end\s+note$/i.test(line)) inNote = false;
+      if (/^end\s+note$/i.test(line)) inNote = null;
+      else if (!inNote.text) inNote.text = line;
       continue;
     }
-    if ((m = /^note\s+(?:left|right)\s+of\s+[^:]+?(\s*:.*)?$/i.exec(line))) {
-      notes++;
-      if (!m[1]) inNote = true;
+    if ((m = /^note\s+(?:left|right)\s+of\s+([^:]+?)(?:\s*:(.*))?$/i.exec(line))) {
+      const note = { target: m[1].trim(), text: (m[2] || '').trim() };
+      notes.push(note);
+      if (m[2] === undefined) inNote = note;
     } else if ((m = /^direction\s+(TB|TD|BT|LR|RL)$/i.exec(line))) {
       if (stack.length) ignored.add('direction');
       else {
@@ -1029,7 +1031,6 @@ function parseState(lines, ctx) {
     } else warnings.push(`Line ${no}: could not parse "${line}".`);
   }
   ignored.flush(STATE_IGNORED_WHY);
-  if (notes) warnings.push(`Ignored ${notes} note${notes > 1 ? 's' : ''} (notes are not imported; put the text in a state description).`);
   if (stack.length) warnings.push(`${stack.length} composite state${stack.length > 1 ? 's were' : ' was'} not closed with "}".`);
 
   // A composite with members becomes a group. Transitions to it enter at the
@@ -1134,6 +1135,20 @@ function parseState(lines, ctx) {
   const unlabeled = outEdges.filter((e) => !e.label && !dots.has(e.source) && !dots.has(e.target)).length;
   if (unlabeled) warnings.push(`${unlabeled} transition${unlabeled > 1 ? 's have' : ' has'} no label; add ": event" in Mermaid or label them in the JSON.`);
 
+  // A region is named by a note on one of its states, or by the one composite it holds
+  // (a used note is not reported as ignored)
+  function regionTitle(c, i) {
+    const inRegion = (k) => states.get(k)?.scope === c && states.get(k).region === i;
+    const note = notes.find((n) => n.text && inRegion(n.target));
+    if (note) {
+      notes.splice(notes.indexOf(note), 1);
+      return shorten(cleanLabel(note.text).replace(/\n/g, ' '), 40);
+    }
+    const plain = c.members.filter((k) => inRegion(k) && isState(k));
+    const nested = [...groupOf.values()].filter((x) => x.scope === c && x.at === i);
+    return !plain.length && nested.length === 1 ? nested[0].label : null;
+  }
+
   // A composite with concurrent regions (--) keeps no nodes itself: each region is a child
   // group (kind "region") holding its states, and nested composites hang off their region
   const regionId = (c, i) => `${groupIds.get(c.raw)}-region-${i + 1}`;
@@ -1146,8 +1161,9 @@ function parseState(lines, ctx) {
     outGroups.push(g);
     if (!split(c)) continue;
     for (let i = 0; i < c.regions; i++)
-      outGroups.push({ id: regionId(c, i), title: `${c.label} ${i + 1}`, kind: 'region', parent: g.id, nodes: ids(c.members.filter((k) => states.get(k)?.region === i)) });
+      outGroups.push({ id: regionId(c, i), title: regionTitle(c, i) || `${c.label} ${i + 1}`, kind: 'region', parent: g.id, nodes: ids(c.members.filter((k) => states.get(k)?.region === i)) });
   }
+  if (notes.length) warnings.push(`Ignored ${notes.length} note${notes.length > 1 ? 's' : ''} (notes are not imported; put the text in a state description).`);
 
   const real = outNodes.filter((n) => !dots.has(n.id)).length;
   const payload = {

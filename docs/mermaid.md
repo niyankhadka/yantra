@@ -98,7 +98,7 @@ The scenario starts with an overview step and keeps every message as its own ste
 | `state X <<choice>>` | `shape: "choice"`, type `choice` ("Choice") |
 | `state X <<fork>>` / `<<join>>` | a fork / join bar (`shape: "fork"`, type `fork`, "Fork / join"); its transitions need no label |
 | `state C { ... }` | group `C` (nested composites get `parent`); its own `[*]` become `C-start` / `C-end` |
-| `--` inside `state C { ... }` (concurrent regions) | `C` keeps no nodes; each region is a child group `C-region-1`, `C-region-2` ... (`"kind": "region"`, `"parent": "C"`) with that region's states (and its own start / end) |
+| `--` inside `state C { ... }` (concurrent regions) | `C` keeps no nodes; each region is a child group `C-region-1`, `C-region-2` ... (`"kind": "region"`, `"parent": "C"`) with that region's states (and its own start / end). A region is titled by a note on one of its states (`note right of S : Payment`), or by the one composite it holds; otherwise "C 1", "C 2" ... |
 | transition to / from a composite | attached to its entry state (target of its `[*]`) / exit state (source into its `[*]`), with a warning; with regions, to the entry (from the exit) of every region, so a fork fans out into each one. The composite's own start (end) dots are then dropped |
 | `note left of / right of X : text`, `note ... end note` | ignored, with one warning counting the notes |
 | `classDef`, `class`, `:::`, `style`, `scale`, `hide`, `direction` inside a composite | ignored with one warning per kind |
@@ -114,7 +114,7 @@ need no label; the validator does not ask for one.
 | `CUSTOMER {` ... `string id PK "comment"` ... `}` | entity card (type `entity`, icon `database`) with `fields`: `{ name, type, pk/fk/unique, note }` (`PK, FK` lists both) |
 | `CUSTOMER { string id PK; string name }` (one line, `;` optional) | the same card |
 | `EMPLOYEE \|o--o{ EMPLOYEE : manages` | a self-relationship, drawn as a loop on the card |
-| a foreign key named after the other entity (`customer_id`, `customerId`; plural names lose their `s`) | `sourceField` / `targetField`: the edge joins the key rows (`id` ↔ `customer_id`). A self-relationship takes the entity's one foreign key no other relationship explains (`manager_id`). When the rows cannot be routed cleanly the edge falls back to card sides (one warning) |
+| a foreign key named after the other entity (`customer_id`, `customerId`; plural names lose their `s`) | `sourceField` / `targetField`: the edge joins the key rows (`id` ↔ `customer_id`). A self-relationship takes the entity's one foreign key no other relationship explains (`manager_id`). Parallel relationships and self-relationships on a busy key row get their own tracks; only geometry that still cannot be routed falls back to card sides (one warning) |
 | `CUSTOMER \|\|--o{ ORDER : places` | edge `places` with `sourceEnd: "one"`, `targetEnd: "zero-or-many"` |
 | `\|\|`, `\|o` / `o\|`, `}o` / `o{`, `}\|` / `\|{` | `one`, `zero-or-one`, `zero-or-many`, `one-or-many` |
 | `only one to zero or more`, `1+`, `many(0)`, ... | the same cardinalities from the word forms (`optionally to` is dashed) |
@@ -185,7 +185,9 @@ before sharing; the page footer says so.
 | `: 2026-10-06, 2026-10-09` | end dates are exclusive in Mermaid: `days: 3` (`inclusiveEndDates` keeps the last day) |
 | `done`, `crit`, `milestone`, `active` tags | `progress: 100`, `tone: "bad"`, `milestone: true`; `active` has no mark |
 | `h` / `m` durations, `M` / `y` | rounded up to whole days; months count 30 days, years 365 (warning) |
-| `excludes`, `weekend`, `todayMarker`, `axisFormat`, `tickInterval`, `click` | ignored with one warning per kind (durations count calendar days) |
+| `excludes weekends` (or `saturday sunday`), `excludes 2026-12-25` | `workdays: true` and `holidays`: durations and dependencies count working days. Other weekdays, and dates without excluded weekends, still count (warning) |
+| `: after a, until b` | `end`: the day before task `b` starts (resolved on dated plans; otherwise one day, with a warning) |
+| `weekend friday`, `includes`, `todayMarker`, `axisFormat`, `tickInterval`, `click` | ignored with one warning per kind |
 | `pie [showData]`, `title`, `"Label" : 42` | a `chart` block, `kind: "pie"`, slices largest first; above 8 slices the smallest merge into "Other" (warning) |
 | `timeline`, `title`, `period : event : event`, `: event` (continued) | a `timeline` block per `section` (one when there are none); a period with several events joins them in the title, or lists the rest in `text` when long |
 | `quadrantChart`, `x-axis Low --> High`, `y-axis ...` | a `matrix` block (2x2) with `x` / `y` `{ low, high, min: 0, max: 1 }` |

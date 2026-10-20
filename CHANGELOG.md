@@ -13,6 +13,15 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Fixed
 
+- Field-row edges: two edges between the same pair of rows run on separate tracks, and a
+  self-relationship on a row that another edge leaves from the same side nests inside it
+  (both were `geometry/route-failed`). The Mermaid staff schema keeps every key row; the
+  card-side fallback remains only for geometry that still cannot be routed.
+- Answer pages on phones: charts, gantt plans and matrices no longer scroll sideways. Pages
+  carry narrower drawings and the page script swaps in the one that fits (on load and on
+  resize); without JavaScript, and in print, the static drawing stays.
+- `yantra screenshot --width` below 500 px now renders at that width (headless Chrome lays
+  out narrow windows at 500 px; the page is framed at the exact width).
 - Answer pages: the light and dark copies of a diagram no longer share marker, gradient or
   title ids (dark copies could lose their arrowheads); every SVG id is scoped per figure and theme.
 - The viewer bundle is rebuilt whenever its sources change (a content fingerprint in
@@ -30,6 +39,15 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Added
 
+- Several foreign keys referencing one key row leave its port on one shared trunk, then
+  branch from a single spine.
+- Import, gantt working days: Mermaid `excludes weekends` and excluded dates, PlantUML
+  `saturday are closed` / `sunday are closed` and closed dates or date ranges become
+  `workdays: true` and `holidays`; Mermaid `until <task>` ends a task the day before that one
+  starts. Weekdays other than the weekend still warn.
+- Import, Visio: fill (else line) colours become role colours, as for draw.io.
+- Import, Mermaid state diagrams: a concurrent region takes its title from a note on one of
+  its states, or from the one composite state it holds.
 - Charts fit narrow containers: inspector panels draw them at the panel's measured width
   (no sideways scrolling). Legend items toggle a series or a pie / donut slice (the rest is
   redrawn with new shares and total) in the viewer and on pages; without JavaScript the

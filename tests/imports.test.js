@@ -551,7 +551,7 @@ test('PlantUML @startgantt becomes a plan page', () => {
   assert.equal(by('review').after, 'code');
   assert.equal(payload.meta.title, 'Relaunch');
   assert.match(payload.answer.headline, /^The plan runs from 05\/10\/2026 to /);
-  assert.ok(warnings.some((w) => /closed days/.test(w)));
+  assert.ok(warnings.some((w) => /only weekends .*saturday still counts as working/.test(w)));
   assert.deepEqual(lint(payload).errors, []);
 });
 
@@ -665,7 +665,7 @@ test('Visio .vsdx: shapes, glued connectors, master types and pages', () => {
     'Check stock': 'node',
     'In stock?': 'decision',
     'Reserve items': 'node',
-    'Back-order': 'node',
+    'Back-order': 'node-rose',
     'Orders DB': 'store'
   });
   assert.equal(edge(payload, 'in-stock', 'back-order').style, 'dashed');

@@ -1224,6 +1224,8 @@ function fromGantt(body, opts) {
   let title;
   let section;
   let prev = null;
+  const off = new Set(); // closed weekdays
+  const closed = []; // closed dates (day numbers)
   const task = (name) => {
     const key = aliases.get(name.trim()) || name.trim();
     if (!tasks.has(key)) tasks.set(key, { key, title: umlText(key) || 'Task', group: section, after: [] });
@@ -1243,7 +1245,13 @@ function fromGantt(body, opts) {
     } else if ((m = /^today\s+is\s+(.+)$/i.exec(line))) {
       if (/colou?red/i.test(m[1])) ignored.add('colour');
       else today = ganttDate(m[1]);
-    } else if (/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}[-/.]\d)/i.test(line) && /\b(are|is)\s+(closed|open)\b/i.test(line)) ignored.add('closed days');
+    } else if ((m = /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\s+(?:are|is)\s+closed\b/i.exec(line))) off.add(m[1].toLowerCase());
+    else if ((m = /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(?:\s+to\s+(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}))?\s+(?:are|is)\s+closed\b/i.exec(line))) {
+      // a closed date or range of dates: holidays (bounded, a range cannot hang the import)
+      const a = ganttDate(m[1]);
+      const b = m[2] ? ganttDate(m[2]) : a;
+      for (let d = a; d !== null && b !== null && d <= b && d - a < 400; d++) closed.push(d);
+    } else if (/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}[-/.]\d)/i.test(line) && /\b(are|is)\s+open\b/i.test(line)) ignored.add('open days');
     else if ((m = /^(printscale|projectscale|ganttscale|language|hide|show|skinparam|scale|footer|header|caption|legend|<style>|style|zoom|separator)\b/i.exec(line))) ignored.add(m[1].toLowerCase());
     else if ((m = /^(then\s+)?\[([^\]]+)\](?:\s+as\s+\[([^\]]+)\])?\s*(.*)$/i.exec(line))) {
       const t = task(m[2]);
@@ -1275,7 +1283,7 @@ function fromGantt(body, opts) {
   });
   ignored.flush({
     colour: 'colours come from sections',
-    'closed days': 'durations count calendar days',
+    'open days': 'closed days stay closed',
     resources: 'resources are not drawn',
     lag: 'the task starts right after the other one ends',
     'start / end alignment': 'the task keeps its own dates',
@@ -1316,5 +1324,10 @@ function fromGantt(body, opts) {
     warnings.push('Some tasks have dates and others none; add "Project starts YYYY-MM-DD" so undated tasks start with the project.');
     for (const it of items) if (it.start === 0) delete it.start;
   }
-  return ganttPage({ title: opts.title || title, items, today: today !== null ? fmtDay(today) : undefined, source: 'a PlantUML gantt chart', warnings });
+  // Working days: Saturday and Sunday closed together, plus closed dates
+  const workdays = off.has('saturday') && off.has('sunday');
+  const kept = [...off].filter((d) => !(workdays && (d === 'saturday' || d === 'sunday')));
+  if (kept.length) warnings.push(`Gantt: only weekends (Saturday and Sunday together) and dates can be closed; ${kept.join(', ')} still count${kept.length > 1 ? '' : 's'} as working.`);
+  if (closed.length && !workdays) warnings.push('Gantt: closed dates only count together with closed Saturdays and Sundays; they still count as working days.');
+  return ganttPage({ title: opts.title || title, items, today: today !== null ? fmtDay(today) : undefined, workdays, holidays: workdays ? closed : [], source: 'a PlantUML gantt chart', warnings });
 }

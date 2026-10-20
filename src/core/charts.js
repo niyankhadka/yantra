@@ -235,6 +235,26 @@ const widthFor = (opts, full, half) =>
   isNum(opts.width) && opts.width > 0 ? Math.max(240, Math.min(full, Math.floor(opts.width))) : opts.half ? half : full;
 const empty = () => `<p class="p-muted">${h(S.noData)}</p>`;
 
+/** Narrower drawings a page carries for phones (enhanceCharts swaps in the one that fits). */
+export const FIT_WIDTHS = [320, 420, 560];
+
+/**
+ * `opts.fit` (answer pages): the same chart drawn at each FIT_WIDTHS width below
+ * its design width `W`, as inert templates beside the static SVG. The page script
+ * swaps in the widest one that fits a narrow container; without JavaScript, and
+ * in print, the static drawing stays.
+ */
+function fitVariants(render, b, opts, W) {
+  if (!opts.fit || (isNum(opts.width) && opts.width > 0)) return '';
+  return FIT_WIDTHS.filter((w) => w < W)
+    .map((w) => {
+      const html = render(b, { width: w });
+      const at = html.indexOf('<svg class="p-chart-svg"');
+      return at < 0 ? '' : `<template class="p-fit" data-w="${w}">${html.slice(at, html.indexOf('</svg>', at) + 6)}</template>`;
+    })
+    .join('');
+}
+
 // --- chart model -------------------------------------------------------------
 
 /** Categories and series of a chart block, from either form: `data` or `categories` + `series`. */
@@ -275,7 +295,7 @@ export function renderChart(b, opts = {}) {
   const svg = kind === 'line' || kind === 'area' ? lineChart(b, model, kind, W) : bandChart(b, model, kind, W);
   const many = model.series.length > 1;
   const table = srTable(label(kind, b), ['', ...model.series.map((s) => s.name)], model.cats.map((c, j) => [c, ...model.series.map((s) => (s.values[j] === null ? '' : fmtValue(s.values[j], b)))]));
-  return figure(kind, `${many ? legendHtml(model.series, kind === 'line') : ''}<div class="p-scroll">${svg}</div>${table}`, opts.caption);
+  return figure(kind, `${many ? legendHtml(model.series, kind === 'line') : ''}<div class="p-scroll">${svg}${fitVariants(renderChart, b, opts, W)}</div>${table}`, opts.caption);
 }
 
 /** Tag a series mark with its series index (legend toggles hide data-s marks). */
@@ -825,7 +845,7 @@ export function renderGantt(b, opts = {}) {
   const head = [S.task, ...(g.groups.length ? [S.group] : []), S.start, S.end, S.after];
   const table = srTable(title, head, ganttTable(g).map((r) => (g.groups.length ? r : [r[0], ...r.slice(2)])));
   const svg = `${svgOpen(W, H, title, Math.round(W * 0.72))}${out.join('')}</svg>`;
-  return figure('gantt', `<div class="p-scroll">${svg}</div>${table}`, opts.caption);
+  return figure('gantt', `<div class="p-scroll">${svg}${fitVariants(renderGantt, b, opts, W)}</div>${table}`, opts.caption);
 }
 
 /** Gantt rows as text: task, group, start, end (or "Milestone"), after. */
@@ -965,7 +985,7 @@ export function renderMatrix(b, opts = {}) {
   const head = [S.item, ax.label || 'x', ay.label || 'y'];
   const table = srTable(title, head, items.map((it) => [String(it.label ?? ''), String(it.x), String(it.y)]));
   const svg = `${svgOpen(x1 + mr, H, title, Math.round((x1 + mr) * 0.7), 1.1)}${out.join('')}</svg>`;
-  return figure('matrix', `<div class="p-scroll">${svg}</div>${table}`, opts.caption);
+  return figure('matrix', `<div class="p-scroll">${svg}${fitVariants(renderMatrix, b, opts, W)}</div>${table}`, opts.caption);
 }
 
 // --- legend toggles (browser) -------------------------------------------------
@@ -982,6 +1002,60 @@ export function enhanceCharts(root) {
   var NS = 'http://www.w3.org/2000/svg';
   var figs = (root || document).querySelectorAll('figure.p-chart');
   for (var n = 0; n < figs.length; n++) setup(figs[n]);
+  fitAll((root || document).querySelectorAll('figure.p-chart > .p-scroll'));
+
+  // Narrow containers (phones): swap in the widest drawing that fits without
+  // scrolling sideways (template.p-fit, drawn at build time), on load and on
+  // resize; print restores the static drawing.
+  function fitAll(boxes) {
+    var list = [].filter.call(boxes, function (el) { return el.querySelector('template.p-fit') && !el.getAttribute('data-fit'); });
+    if (!list.length) return;
+    var minOf = function (svg) { var m = /min-width:\s*(\d+)/.exec(svg.getAttribute('style') || ''); return m ? +m[1] : 0; };
+    list.forEach(function (el) {
+      var svg = el.querySelector('svg.p-chart-svg');
+      if (!svg) return;
+      el.setAttribute('data-fit', '1');
+      var all = [{ w: Infinity, node: svg }];
+      [].forEach.call(el.querySelectorAll('template.p-fit'), function (t) {
+        var s = t.content.querySelector('svg');
+        if (s) all.push({ w: +t.getAttribute('data-w'), node: s });
+      });
+      el._fits = all;
+    });
+    var show = function (el, pick) {
+      var cur = el.querySelector('svg.p-chart-svg');
+      var next = pick.w === Infinity ? pick.node : (pick.live = pick.live || document.importNode(pick.node, true));
+      if (!cur || cur === next) return;
+      el.replaceChild(next, cur);
+      var fig = el.parentNode;
+      // series hidden from the legend stay hidden in the new drawing
+      [].forEach.call(fig.querySelectorAll('.p-legend li[data-i]'), function (li) {
+        var hide = li.classList.contains('is-off');
+        [].forEach.call(next.querySelectorAll('[data-s="' + li.getAttribute('data-i') + '"]'), function (m) { m.style.display = hide ? 'none' : ''; });
+      });
+      try { el.dispatchEvent(new Event('scroll')); } catch (e) { /* edge fades refresh on the next scroll */ }
+    };
+    var fit = function () {
+      list.forEach(function (el) {
+        if (!el._fits) return;
+        var cw = el.clientWidth;
+        if (!cw) return;
+        // the design drawing while it fits, else the widest narrower one that does, else the narrowest
+        var fits = el._fits.filter(function (f) { return minOf(f.node) <= cw; });
+        var pick = fits.length ? fits.reduce(function (a, b) { return b.w > a.w ? b : a; }) : el._fits.reduce(function (a, b) { return b.w < a.w ? b : a; });
+        show(el, pick);
+      });
+    };
+    var timer = 0;
+    var later = function () { clearTimeout(timer); timer = setTimeout(fit, 120); };
+    fit();
+    if (typeof ResizeObserver === 'function') {
+      var ro = new ResizeObserver(later);
+      list.forEach(function (el) { ro.observe(el); });
+    } else addEventListener('resize', later);
+    addEventListener('beforeprint', function () { list.forEach(function (el) { if (el._fits) show(el, el._fits[0]); }); });
+    addEventListener('afterprint', fit);
+  }
 
   function setup(fig) {
     var legend = fig.querySelector('.p-legend');

@@ -144,7 +144,7 @@ Full rules, budgets, groups, sequence view and validation codes: [`docs/authorin
 | `yantra validate <file> [--json]` | Check schema, references, story and geometry. Exit code 1 on errors. |
 | `yantra build <file> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
 | `yantra export <file> -f svg\|md [--theme dark] [--mode id] [--view flow\|sequence] [--step n] [--level id] [--all-levels]` | Static SVG or Markdown, of the overview or one drill-down level (`--all-levels`: Markdown of every level). |
-| `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). |
+| `yantra screenshot <file.json\|file.html> [--step n] [--theme dark] [--view sequence] [--level id] [--width] [--height]` | PNG via the local Chrome/Edge (`YANTRA_BROWSER` overrides). `--width 390` shows a page at phone width. |
 | `--collapsed id,id` / `--expand-all` | With `build`, `export` and `screenshot`: open with these subtrees or groups folded, or nothing folded, instead of `meta.layout.collapsed`. |
 | `yantra import <file> [-o out.json] [--from mermaid\|drawio\|plantuml] [--page n\|name] [--title "..."] [--all]` | Convert Mermaid (flowchart, sequence, state, ER, class, mind map), draw.io or PlantUML, then validate. |
 | `yantra new <file> [--page]` | Starter diagram or answer page. |
