@@ -7,6 +7,11 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- npm releases use trusted publishing and are staged for approval on npmjs.com; the
+  release workflow no longer needs an npm token.
+
 ## [1.0.0] - 2026-10-20
 
 First public release.
