@@ -1273,8 +1273,13 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     help.classList.toggle('is-open', open);
     help.inert = !open;
     $('btn-help').setAttribute('aria-pressed', String(open));
-    if (open) help.focus({ preventScroll: true });
-    else {
+    if (open) {
+      help.focus({ preventScroll: true });
+      // A slow first paint can leave the panel unfocusable for a frame; try once more
+      requestAnimationFrame(() => {
+        if (this.helpOpen && !help.contains(document.activeElement)) help.focus({ preventScroll: true });
+      });
+    } else {
       const back = this.helpReturn;
       this.helpReturn = null;
       if (refocus && (help.contains(document.activeElement) || document.activeElement === document.body)) (back?.isConnected ? back : $('btn-help')).focus?.();

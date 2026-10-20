@@ -108,6 +108,8 @@ test('? opens the shortcuts side panel; Esc closes it and focus returns', { skip
   await page.eval(`document.getElementById('btn-fit').focus()`);
   await key('?');
   await page.waitFor(`document.getElementById('help').classList.contains('is-open')`);
+  // Focus can land a frame after the panel opens on slow machines
+  await page.waitFor(`document.getElementById('help').contains(document.activeElement)`, 5000).catch(() => {});
   const state = await page.eval(`(() => {
     const help = document.getElementById('help');
     return {
@@ -208,6 +210,7 @@ test('phones (390px): the More menu lists the gallery sections, switches to an a
     await page.eval(`document.getElementById('btn-more').click()`);
     await page.eval(`document.querySelector('#more-menu [data-more="help"]').click()`);
     await page.waitFor(`document.getElementById('help').classList.contains('is-open')`);
+    await page.waitFor(`document.getElementById('help').contains(document.activeElement)`, 5000).catch(() => {});
     assert.equal(await page.eval(`document.getElementById('help').contains(document.activeElement)`), true);
     await page.eval(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
     await page.waitFor(`!document.getElementById('help').classList.contains('is-open')`);
