@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { ROOT, tempDir, removeDir } from './support.js';
+import http from 'node:http';
+import { ROOT, tempDir, removeDir, startBrowser } from './support.js';
+import { findBrowser } from '../lib/browser.js';
 import { lint } from '../src/core/lint.js';
 import { isPage } from '../src/core/page.js';
 import { lintPage } from '../src/core/lint.js';
@@ -84,6 +86,117 @@ test('every page has a title, a description and its canonical URL; the sitemap l
     assert.ok(fs.existsSync(file(rel.endsWith('/') || rel === '' ? `${rel}index.html` : rel)), `sitemap entry ${loc} exists`);
   }
   assert.match(readOut('robots.txt'), /Sitemap: https:\/\/yantra\.nbk\.com\.np\/sitemap\.xml/);
+});
+
+/** Every JSON-LD node of a page (top-level objects and @graph members). */
+function jsonLdOf(html, rel) {
+  const nodes = [];
+  for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    let data;
+    assert.doesNotThrow(() => (data = JSON.parse(m[1])), `${rel}: JSON-LD parses`);
+    assert.equal(data['@context'], 'https://schema.org', `${rel}: JSON-LD context`);
+    nodes.push(...(data['@graph'] || [data]));
+  }
+  return nodes;
+}
+
+test('search engines: unique titles and descriptions within limits, one h1, structured data, dated sitemap', () => {
+  const titles = new Map();
+  const descs = new Map();
+  for (const rel of pages()) {
+    const html = readOut(rel);
+    const title = /<title>([^<]*)<\/title>/.exec(html)[1].replace(/&amp;/g, '&').replace(/&#39;/g, "'");
+    const desc = /<meta name="description" content="([^"]*)"/.exec(html)[1].replace(/&amp;/g, '&').replace(/&#39;/g, "'");
+    assert.ok(title.length <= 60, `${rel}: title is ${title.length} characters (at most 60): ${title}`);
+    assert.ok(desc.length <= 155, `${rel}: description is ${desc.length} characters (at most 155)`);
+    assert.ok(!titles.has(title), `${rel}: title "${title}" also used by ${titles.get(title)}`);
+    assert.ok(!descs.has(desc), `${rel}: description also used by ${descs.get(desc)}`);
+    titles.set(title, rel);
+    descs.set(desc, rel);
+    assert.equal((html.match(/<h1[\s>]/g) || []).length, 1, `${rel}: one h1`);
+    assert.match(html, /<meta property="og:title" content="[^"]+"/, `${rel}: og:title`);
+    assert.match(html, /<meta property="og:image:width" content="1280"/, `${rel}: og:image size`);
+    assert.match(html, /<meta name="twitter:description" content="[^"]+"/, `${rel}: twitter:description`);
+    assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest"/, `${rel}: manifest`);
+    assert.match(html, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png"/, `${rel}: apple-touch-icon`);
+    for (const img of html.matchAll(/<img\b[^>]*>/g)) assert.match(img[0], /\salt="/, `${rel}: every image has alt`);
+    const ld = jsonLdOf(html, rel);
+    if (rel === '404.html') {
+      assert.match(html, /<meta name="robots" content="noindex">/);
+      assert.ok(!/google-site-verification/.test(html));
+      continue;
+    }
+    assert.ok(ld.length, `${rel}: has structured data`);
+    const types = ld.map((n) => n['@type']);
+    assert.ok(types.includes('BreadcrumbList') || rel === 'index.html', `${rel}: breadcrumbs`);
+    for (const b of ld.filter((n) => n['@type'] === 'BreadcrumbList')) {
+      b.itemListElement.forEach((it, i) => {
+        assert.equal(it.position, i + 1);
+        assert.ok(it.name && it.item.startsWith(`${SITE.url}/`), `${rel}: breadcrumb item`);
+      });
+    }
+    if (rel.startsWith('docs/') && rel !== 'docs/index.html') {
+      const a = ld.find((n) => n['@type'] === 'TechArticle');
+      assert.ok(a, `${rel}: TechArticle`);
+      assert.equal(a.url, `${SITE.url}${urlOf(rel)}`);
+      assert.ok(a.headline && a.description && a.author?.name, `${rel}: TechArticle fields`);
+      assert.ok(!Number.isNaN(Date.parse(a.dateModified)), `${rel}: dateModified`);
+      assert.match(html, /<meta property="og:type" content="article">/);
+    }
+  }
+
+  const home = jsonLdOf(readOut('index.html'), 'index.html');
+  const app = home.find((n) => n['@type'] === 'SoftwareApplication');
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
+  assert.equal(app.softwareVersion, pkg.version);
+  assert.equal(app.applicationCategory, 'DeveloperApplication');
+  assert.equal(app.operatingSystem, 'Windows, macOS, Linux');
+  assert.deepEqual(app.offers, { '@type': 'Offer', price: '0', priceCurrency: 'USD' });
+  assert.equal(app.license, 'https://opensource.org/licenses/MIT');
+  assert.equal(app.downloadUrl, 'https://www.npmjs.com/package/@niyankhadka/yantra');
+  assert.ok(!('aggregateRating' in app) && !('review' in app), 'no ratings or reviews');
+  const person = home.find((n) => n['@type'] === 'Person');
+  assert.deepEqual(person.sameAs, ['https://github.com/niyankhadka']);
+  const site = home.find((n) => n['@type'] === 'WebSite');
+  assert.equal(site.potentialAction.target.urlTemplate, `${SITE.url}/docs/?q={search_term_string}`);
+  // FAQ structured data matches the questions shown on the page
+  const faq = home.find((n) => n['@type'] === 'FAQPage');
+  const shown = [...readOut('index.html').matchAll(/<summary>([^<]+)<\/summary>/g)].map((m) => m[1].replace(/&#39;/g, "'"));
+  assert.deepEqual(faq.mainEntity.map((q) => q.name), shown);
+  for (const q of faq.mainEntity) assert.ok(q.acceptedAnswer.text.length > 20 && !/<\w/.test(q.acceptedAnswer.text));
+  const pg = jsonLdOf(readOut('playground/index.html'), 'playground').find((n) => n['@type'] === 'WebApplication');
+  assert.equal(pg.url, `${SITE.url}/playground/`);
+
+  // Sitemap: every indexable page, each with a lastmod date
+  const sitemap = readOut('sitemap.xml');
+  const urls = [...sitemap.matchAll(/<url><loc>([^<]+)<\/loc><lastmod>(\d{4}-\d{2}-\d{2})<\/lastmod><\/url>/g)];
+  assert.equal(urls.length, (sitemap.match(/<url>/g) || []).length, 'every sitemap entry has a lastmod');
+  assert.equal(urls.length, pages().length - 1, 'every page but the 404 is in the sitemap');
+  const manifest = JSON.parse(readOut('manifest.webmanifest'));
+  for (const icon of manifest.icons) assert.ok(fs.existsSync(file(icon.src.slice(1))), `${icon.src} exists`);
+});
+
+test('verification meta tags come only from the build environment', async () => {
+  const { siteFiles } = await import('../site/build/pages.js');
+  const assets = { js: '/x.js', css: [] };
+  const stars = process.env.YANTRA_SITE_STARS;
+  process.env.YANTRA_SITE_STARS = '0';
+  const statics = { files: {}, thumbs: new Proxy({}, { get: () => ({ w: 1, h: 1 }) }) };
+  const before = await siteFiles({ assets, statics });
+  assert.ok(!/google-site-verification|msvalidate/.test(before['index.html']), 'none by default');
+  process.env.YANTRA_SITE_GOOGLE_VERIFICATION = 'test-google-code';
+  process.env.YANTRA_SITE_BING_VERIFICATION = 'TESTBINGCODE';
+  try {
+    const files = await siteFiles({ assets, statics });
+    assert.match(files['index.html'], /<meta name="google-site-verification" content="test-google-code">/);
+    assert.match(files['index.html'], /<meta name="msvalidate\.01" content="TESTBINGCODE">/);
+    assert.ok(!/google-site-verification/.test(files['404.html']), 'not on the noindex 404');
+  } finally {
+    delete process.env.YANTRA_SITE_GOOGLE_VERIFICATION;
+    delete process.env.YANTRA_SITE_BING_VERIFICATION;
+    if (stars === undefined) delete process.env.YANTRA_SITE_STARS;
+    else process.env.YANTRA_SITE_STARS = stars;
+  }
 });
 
 test('no broken internal links, fragments or repository links', () => {
@@ -199,4 +312,62 @@ test('chat packs and the README point to the playground at /playground/', () => 
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
   assert.equal(pkg.homepage, 'https://yantra.nbk.com.np/');
   assert.match(fs.readFileSync(path.join(ROOT, 'python', 'pyproject.toml'), 'utf-8'), /^Homepage = "https:\/\/yantra\.nbk\.com\.np\/"$/m);
+});
+
+/** Serve the built site on a free local port; resolves to { base, close }. */
+function serveOut() {
+  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
+  const server = http.createServer((req, res) => {
+    let f = path.join(OUT, decodeURIComponent(req.url.split(/[?#]/)[0]));
+    if (f.endsWith(path.sep) || f.endsWith('/')) f = path.join(f, 'index.html');
+    if (!f.startsWith(OUT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) {
+      res.statusCode = 404;
+      return res.end();
+    }
+    res.setHeader('Content-Type', types[path.extname(f)] || 'application/octet-stream');
+    fs.createReadStream(f).pipe(res);
+  });
+  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ base: `http://127.0.0.1:${server.address().port}`, close: () => new Promise((r) => server.close(r)) })));
+}
+
+const browserPath = findBrowser();
+test('playground: Copy prompt follows the editor (empty, valid example, findings)', { skip: browserPath ? false : 'no Chrome, Edge or Chromium found', timeout: 120000 }, async () => {
+  const srv = await serveOut();
+  const browser = await startBrowser(browserPath);
+  try {
+    const page = await browser.open(`${srv.base}/playground/#example=oauth-login`);
+    await page.waitFor(`location.href.startsWith(${JSON.stringify(srv.base)}) && document.readyState === "complete" && document.getElementById('src').value.includes('OAuth')`);
+    // Capture the clipboard instead of writing to it
+    await page.eval(`Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { window.__copied = t; } }, configurable: true }); true`);
+    const copy = async () => {
+      await page.eval(`window.__copied = null; document.getElementById('copy-prompt').click(); true`);
+      return page.waitFor('window.__copied');
+    };
+    await page.waitFor(`document.getElementById('copy-label').textContent === 'Copy prompt with this diagram'`);
+    let text = await copy();
+    assert.match(text, /^You can draw with Yantra\./, 'starts with chat/prompt.md');
+    assert.match(text, /## My current diagram\n\n```json\n\{/);
+    assert.match(text, /Change this diagram: <your request here>/);
+    assert.match(await page.eval(`document.getElementById('toast').textContent`), /kB/);
+
+    // The request box replaces the placeholder
+    await page.eval(`document.getElementById('copy-request').value = 'Add a logout step'; true`);
+    assert.match(await copy(), /Change this diagram: Add a logout step/);
+
+    // Findings: an edge to a missing node
+    await page.eval(`const e = document.getElementById('src'); e.value = JSON.stringify({ meta: { title: 'X' }, nodes: [{ id: 'a', data: { title: 'A' } }], edges: [{ id: 'e', source: 'a', target: 'zz' }] }); e.dispatchEvent(new Event('input')); true`);
+    await page.waitFor(`document.getElementById('copy-label').textContent === 'Copy prompt to fix this'`);
+    text = await copy();
+    assert.match(text, /- error `ref\/edge-unknown-target` \(edge e\):/);
+    assert.match(text, /Fix these problems and return the full corrected JSON/);
+    assert.match(text, /Also: Add a logout step/);
+
+    // Empty editor
+    await page.eval(`document.getElementById('copy-request').value = ''; document.getElementById('btn-clear').click(); true`);
+    await page.waitFor(`document.getElementById('copy-label').textContent === 'Copy prompt for your chat'`);
+    assert.ok((await copy()).trimEnd().endsWith('Describe what you want: <your request here>'));
+  } finally {
+    await browser.close();
+    await srv.close();
+  }
 });

@@ -1,5 +1,5 @@
 ---
-description: Make Yantra diagrams and answer pages from Claude.ai, ChatGPT, Gemini or any chat with the playground's copyable prompt, the Claude.ai skill or the custom GPT pack. Nothing to install.
+description: Make Yantra diagrams and answer pages in Claude.ai, ChatGPT, Gemini or any chat with the playground's prompt, the Claude.ai skill or a custom GPT.
 ---
 
 # Use with Claude.ai, ChatGPT and any chat
@@ -22,12 +22,31 @@ keeps working offline once loaded.
 3. The chat answers with one JSON code block. Copy it (the block's copy button is easiest)
    and paste it into the playground's editor. Pasting the whole reply works too: the
    playground takes the JSON out of the surrounding text.
-4. Read the **Validation** list. Errors stop the preview; copy them back to the chat ("fix
-   these: ...") and paste the corrected JSON. Warnings are worth fixing but do not stop it.
+4. Read the **Validation** list. Errors stop the preview: press **Copy prompt to fix this**
+   and paste the result into the chat, which gets the JSON and the findings together. Warnings
+   are worth fixing but do not stop the preview.
 
 Then download what you need: **Standalone HTML** (the interactive file, the same as
 `yantra build`), **SVG** or **PNG** (diagrams), **Markdown** (for a ticket or wiki) or the
 **JSON** to keep and edit later.
+
+## What the Copy prompt button copies
+
+The button changes with the editor, so one click always gives the chat what it needs:
+
+- **Empty editor** - *Copy prompt for your chat*: the instructions, then "Describe what you
+  want: `<your request here>`".
+- **A valid diagram or page** (an example or your own) - *Copy prompt with this diagram* (or
+  *page*): the instructions, the JSON, then "Change this diagram: `<your request here>`".
+  Use it to keep working on a result in a new chat.
+- **JSON with errors or warnings** - *Copy prompt to fix this*: the instructions, the JSON,
+  the first 20 findings with their codes, then "Fix these problems and return the full
+  corrected JSON".
+
+The arrow beside the button opens a **What do you want?** box. Type your request there and it
+replaces the placeholder, so the chat can start straight away. **Instructions only** copies
+the instructions without the JSON, for very large diagrams that a chat may cut short (the
+playground warns when a prompt is over 60,000 characters).
 
 **Load an example** in the playground opens any gallery example. It helps to show a chat what
 you want: "make one like this, about our support process".

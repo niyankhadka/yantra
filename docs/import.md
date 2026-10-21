@@ -1,5 +1,8 @@
 # Importing draw.io, PlantUML and Visio
 
+Turn draw.io, Visio and PlantUML files into Yantra diagrams and answer pages with
+`yantra import`, then review the warnings and add a walkthrough.
+
 Besides Mermaid ([`mermaid.md`](mermaid.md)), Yantra imports **draw.io / diagrams.net** files
 (also PNG exports with the diagram embedded), **Visio** `.vsdx` files and **PlantUML**
 sequence, component / deployment / use-case, activity (new and old syntax), state, class,

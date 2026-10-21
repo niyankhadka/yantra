@@ -19,19 +19,22 @@ export const SITE = {
   npm: 'https://www.npmjs.com/package/@niyankhadka/yantra',
   pypi: 'https://pypi.org/project/niyankhadka-yantra/',
   sponsor: 'https://buymeacoffee.com/niyankhadka',
-  maintainer: 'niyankhadka'
+  maintainer: 'niyankhadka',
+  maintainerUrl: 'https://github.com/niyankhadka',
+  description: pkg.description,
+  keywords: pkg.keywords
 };
 
 /** Guides, in reading order. `file` is relative to the repository root. */
 export const GUIDES = [
-  { slug: 'first-diagram', file: 'site/guides/first-diagram.md', nav: 'Install and your first diagram' },
-  { slug: 'coding-agents', file: 'site/guides/coding-agents.md', nav: 'Diagrams from your codebase' },
-  { slug: 'answer-pages', file: 'site/guides/answer-pages.md', nav: 'One-page answers and charts' },
-  { slug: 'import', file: 'site/guides/import.md', nav: 'Import Mermaid, PlantUML, draw.io, Visio' },
-  { slug: 'chat', file: 'site/guides/chat.md', nav: 'Use with Claude.ai, ChatGPT, any chat' },
-  { slug: 'python', file: 'site/guides/python.md', nav: 'Python SDK' },
-  { slug: 'sharing', file: 'site/guides/sharing.md', nav: 'Embedding and sharing' },
-  { slug: 'self-hosting', file: 'site/guides/self-hosting.md', nav: 'Releases and self-hosting' }
+  { slug: 'first-diagram', file: 'site/guides/first-diagram.md', nav: 'Install and your first diagram', related: ['coding-agents', 'chat', 'sharing'] },
+  { slug: 'coding-agents', file: 'site/guides/coding-agents.md', nav: 'Diagrams from your codebase', related: ['first-diagram', 'answer-pages', 'self-hosting'] },
+  { slug: 'answer-pages', file: 'site/guides/answer-pages.md', nav: 'One-page answers and charts', related: ['first-diagram', 'chat', 'sharing'] },
+  { slug: 'import', file: 'site/guides/import.md', nav: 'Import Mermaid, PlantUML, draw.io, Visio', related: ['first-diagram', 'python', 'sharing'] },
+  { slug: 'chat', file: 'site/guides/chat.md', nav: 'Use with Claude.ai, ChatGPT, any chat', related: ['answer-pages', 'coding-agents', 'self-hosting'] },
+  { slug: 'python', file: 'site/guides/python.md', nav: 'Python SDK', related: ['first-diagram', 'import', 'answer-pages'] },
+  { slug: 'sharing', file: 'site/guides/sharing.md', nav: 'Embedding and sharing', related: ['first-diagram', 'answer-pages', 'self-hosting'] },
+  { slug: 'self-hosting', file: 'site/guides/self-hosting.md', nav: 'Releases and self-hosting', related: ['coding-agents', 'chat', 'sharing'] }
 ];
 
 /** Reference pages from docs/ in this order, then any other docs/*.md, then the changelog. */

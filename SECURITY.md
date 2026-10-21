@@ -1,5 +1,7 @@
 # Security policy
 
+How to report a vulnerability in Yantra privately, and what is in scope.
+
 ## Supported versions
 
 Security fixes go into the latest release. Older major versions are not patched.
@@ -30,9 +32,12 @@ Areas where a report is especially useful:
 - **Built HTML files**: a payload or imported diagram that injects script into the
   generated page or escapes the sandboxed viewer used by answer pages.
 - **MCP server**: reading or writing files outside `YANTRA_INPUT_ROOT` /
-  `YANTRA_OUTPUT_ROOT`, or with extensions other than the allowed ones.
-- **Importers**: Mermaid, draw.io or PlantUML input that crashes the process, hangs it, or
-  exhausts memory far beyond the input size.
+  `YANTRA_OUTPUT_ROOT`, or with extensions other than the allowed ones; with `--http`,
+  requests that get past the `Origin`, `Host` or bearer-token checks
+  ([remote MCP security model](docs/remote-mcp.md)).
+- **Importers**: Mermaid, draw.io, PlantUML or Visio input that crashes the process, hangs
+  it, or exhausts memory far beyond the input size.
+- **Playground and website**: script injection through pasted JSON or a link.
 - **Page `src` references**: loading files outside the page's folder.
 
 Out of scope: problems that need an attacker to already control the local machine, the

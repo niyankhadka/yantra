@@ -11,13 +11,14 @@ requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "niyankhadka" }]
-keywords = ["diagram", "diagrams", "architecture", "sequence diagram", "flowchart", "walkthrough", "visualization", "html", "mermaid", "drawio", "plantuml"]
+keywords = ["diagram", "architecture diagram", "sequence diagram", "flowchart", "er diagram", "state machine", "mind map", "interactive", "walkthrough", "documentation", "mermaid", "plantuml", "drawio", "svg", "html", "offline"]
 dependencies = []
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Education",
     "Topic :: Documentation",
+    "Topic :: Scientific/Engineering :: Visualization",
     "Topic :: Multimedia :: Graphics :: Presentation",
     "Topic :: Software Development :: Documentation",
     "Programming Language :: Python :: 3",
@@ -35,7 +36,8 @@ Homepage = "https://yantra.nbk.com.np/"
 Documentation = "https://yantra.nbk.com.np/docs/guides/python/"
 Source = "https://github.com/niyankhadka/yantra"
 Issues = "https://github.com/niyankhadka/yantra/issues"
-Changelog = "https://github.com/niyankhadka/yantra/blob/main/CHANGELOG.md"
+Changelog = "https://yantra.nbk.com.np/docs/changelog/"
+Funding = "https://buymeacoffee.com/niyankhadka"
 
 [tool.setuptools]
 packages = ["yantra"]

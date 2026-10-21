@@ -1,7 +1,9 @@
 # Authoring Yantra diagrams
 
-This is the contract for anyone (person or agent) writing a Yantra payload. The schema is
-`schemas/yantra-payload.schema.json`; this page explains how to use it well.
+How to write a Yantra diagram by hand or with an agent: workflow, budgets, groups, trees,
+sequence views, data models, languages and validation codes. The schema is
+[`schemas/yantra-payload.schema.json`](../schemas/yantra-payload.schema.json); this page
+explains how to use it well.
 
 ## Workflow
 

@@ -300,7 +300,22 @@ export default {
   'play.auto': '内容と同じ',
   'play.docs': 'ドキュメント',
   'play.findings': '検証',
-  'play.noFindings': 'エラーも警告もありません。'
+  'play.noFindings': 'エラーも警告もありません。',
+  'play.copyWithDiagram': 'この図を含めてプロンプトをコピー',
+  'play.copyWithPage': 'このページを含めてプロンプトをコピー',
+  'play.copyToFix': '修正用のプロンプトをコピー',
+  'play.copyTipNew': 'あらゆる AI チャットで使える Yantra の指示をコピーします。依頼を書き添えてください。',
+  'play.copyTipEdit': '指示、エディターの JSON、依頼内容をコピーし、チャットで変更できるようにします。',
+  'play.copyTipFix': '指示、JSON、検証結果をコピーし、チャットで修正できるようにします。',
+  'play.copyOptions': 'プロンプトのオプション',
+  'play.request': '何をしたいですか？（任意）',
+  'play.requestHint': '例：返金のステップを追加して',
+  'play.copyNow': 'プロンプトをコピー',
+  'play.instructionsOnly': '指示のみ',
+  'play.copiedNew': '指示をコピーしました（{size}）。チャットに貼り付けて、やりたいことを伝えてください。',
+  'play.copiedEdit': '指示と JSON をコピーしました（{size}）。チャットに貼り付けてください。',
+  'play.copiedFix': '指示、JSON、検証結果をコピーしました（{size}）。チャットに貼り付けてください。',
+  'play.copiedLarge': 'コピーしました（{size}）が、長いため一部のチャットでは途中で切れます。入りきらない場合は「指示のみ」を使ってください。'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

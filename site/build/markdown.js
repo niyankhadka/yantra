@@ -31,6 +31,20 @@ const stripTags = (html) =>
     .replace(/&#39;/g, "'")
     .replace(/&amp;/g, '&');
 
+/** Longest description of at most `max` characters: whole sentences when they fit, else cut at a word. */
+export function clampDescription(text, max = 155) {
+  const t = String(text).replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  // Sentence ends: . ! ? before a space and a capital, digit or quote (not "draw.io", "Claude.ai")
+  let out = '';
+  for (const m of t.matchAll(/[.!?](?=\s+["'“(\p{Lu}\d])/gu)) {
+    if (m.index + 1 > max) break;
+    out = t.slice(0, m.index + 1);
+  }
+  if (out.length >= 60) return out;
+  return `${t.slice(0, max - 1).replace(/[\s,;:(]+\S*$/, '')}…`;
+}
+
 /** Leading `---` block of `key: value` lines (guides use it for the page description). */
 export function frontMatter(source) {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(source);
@@ -137,7 +151,7 @@ export function renderMarkdown(source, fromRel) {
     const p = /<p>([\s\S]*?)<\/p>/.exec(html);
     description = p ? stripTags(p[1]).replace(/\s+/g, ' ').trim() : title;
   }
-  if (description.length > 160) description = `${description.slice(0, 157).replace(/\s+\S*$/, '')}…`;
+  description = clampDescription(description);
 
   // Search sections: text between h2/h3 headings
   const sections = [];

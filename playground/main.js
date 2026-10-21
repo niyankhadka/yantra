@@ -17,6 +17,7 @@ import { renderSvg } from '../src/core/svg.js';
 import { sceneForView } from '../src/core/sequence.js';
 import { embedPayload, pageHtml, withPrelude } from '../src/core/standalone.js';
 import PROMPT from '../chat/prompt.md?raw';
+import { buildPrompt } from './prompt.js';
 import LOGO_LIGHT from '../src/assets/logo-light.svg?raw';
 import LOGO_DARK from '../src/assets/logo-dark.svg?raw';
 
@@ -175,11 +176,13 @@ function check() {
     state.payload = state.report = null;
     $('status').textContent = '';
     $('findings').replaceChildren();
+    syncCopyButton();
     return render();
   }
   if (parsed.error) {
     state.payload = null;
     showJsonError(parsed.error);
+    syncCopyButton();
     return render();
   }
   if (parsed.extracted !== undefined) {
@@ -194,6 +197,7 @@ function check() {
     state.report = { valid: false, errors: [{ code: 'playground/lint-failed', message: String(err?.message || err) }], warnings: [] };
   }
   showFindings();
+  syncCopyButton();
   if (state.report.valid) state.good = state.payload;
   render();
 }
@@ -336,22 +340,112 @@ async function openExample(id) {
 }
 
 // --- chrome --------------------------------------------------------------------
-function toast(msg) {
+function toast(msg, ms = 3200) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.add('is-on');
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove('is-on'), 3200);
+  toast.timer = setTimeout(() => t.classList.remove('is-on'), ms);
 }
 
-async function copyPrompt() {
+// --- copy prompt: the instructions plus what the editor holds (playground/prompt.js) ---
+/** The prompt for the editor as it is now (parsed and checked afresh, not waiting for the debounce). */
+function currentPrompt(opts = {}) {
+  const text = $('src').value;
+  const parsed = extractJson(text);
+  let report = null;
+  if (parsed.value !== undefined) {
+    try {
+      report = lint(parsed.value);
+    } catch (err) {
+      report = { errors: [{ code: 'playground/lint-failed', message: String(err?.message || err) }], warnings: [] };
+    }
+  }
+  return buildPrompt({ instructions: PROMPT, text, value: parsed.value, jsonError: parsed.error, report, request: $('copy-request').value, ...opts });
+}
+
+/** What the button copies now: 'new' (empty editor), 'diagram' / 'page' (valid JSON) or 'fix'. */
+function copyMode() {
+  if (!$('src').value.trim()) return 'new';
+  if (!state.payload || !state.report) return 'fix';
+  if (state.report.errors.length || state.report.warnings.length) return 'fix';
+  return isPage(state.payload) ? 'page' : 'diagram';
+}
+
+const COPY_TEXT = { new: ['play.copyPrompt', 'play.copyTipNew'], diagram: ['play.copyWithDiagram', 'play.copyTipEdit'], page: ['play.copyWithPage', 'play.copyTipEdit'], fix: ['play.copyToFix', 'play.copyTipFix'] };
+
+function syncCopyButton() {
+  const [label, tip] = COPY_TEXT[copyMode()];
+  $('copy-label').textContent = L.t(label);
+  $('copy-prompt').title = L.t(tip);
+  $('copy-what').textContent = L.t(tip);
+}
+
+function sizeOf(text) {
+  const kb = new TextEncoder().encode(text).length / 1024;
+  return L.num(kb < 10 ? Math.round(kb * 10) / 10 : Math.round(kb), { style: 'unit', unit: 'kilobyte', unitDisplay: 'short', maximumFractionDigits: 1 });
+}
+
+async function copyPrompt(opts = {}) {
+  const p = currentPrompt(opts);
+  const size = sizeOf(p.text);
+  const done = p.large ? 'play.copiedLarge' : { new: 'play.copiedNew', edit: 'play.copiedEdit', fix: 'play.copiedFix' }[p.mode];
   try {
-    await navigator.clipboard.writeText(PROMPT);
-    toast(L.t('play.promptCopied'));
+    await navigator.clipboard.writeText(p.text);
+    toast(L.t(done, { size }), p.large ? 7000 : 3600);
   } catch {
-    download('yantra-prompt.md', PROMPT, 'text/markdown');
+    download('yantra-prompt.md', p.text, 'text/markdown');
     toast(L.t('play.promptSaved'));
   }
+}
+
+/** The options popover sits under the button pair, inside the window. */
+function placePopover() {
+  const pop = $('copy-pop');
+  const r = document.querySelector('.pg-copy').getBoundingClientRect();
+  const width = Math.min(360, innerWidth - 24);
+  const rtl = document.documentElement.dir === 'rtl';
+  const left = rtl ? r.left : r.right - width;
+  pop.style.width = `${width}px`;
+  pop.style.top = `${Math.round(r.bottom + 6)}px`;
+  pop.style.left = `${Math.round(Math.max(12, Math.min(left, innerWidth - width - 12)))}px`;
+}
+
+function bindCopy() {
+  const pop = $('copy-pop');
+  $('copy-prompt').addEventListener('click', () => copyPrompt());
+  if (!('popover' in HTMLElement.prototype)) {
+    $('copy-more').hidden = true; // older browsers: the one-click button only
+    return;
+  }
+  pop.addEventListener('beforetoggle', (e) => {
+    if (e.newState === 'open') {
+      syncCopyButton();
+      placePopover();
+    }
+  });
+  pop.addEventListener('toggle', (e) => {
+    $('copy-more').setAttribute('aria-expanded', String(e.newState === 'open'));
+    if (e.newState === 'open') $('copy-request').focus();
+  });
+  addEventListener('resize', () => pop.matches(':popover-open') && placePopover());
+  const close = () => pop.hidePopover?.();
+  $('copy-go').addEventListener('click', () => {
+    close();
+    copyPrompt();
+  });
+  $('copy-plain').addEventListener('click', () => {
+    close();
+    copyPrompt({ instructionsOnly: true });
+  });
+  // Ctrl/Cmd+Enter in the request copies
+  $('copy-request').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      close();
+      copyPrompt();
+    }
+  });
 }
 
 function fillLintLanguages() {
@@ -400,7 +494,7 @@ function bind() {
     e.target.value = '';
     if (id) await openExample(id);
   });
-  $('copy-prompt').addEventListener('click', copyPrompt);
+  bindCopy();
   $('lint-lang').addEventListener('change', showFindings);
   $('btn-theme').addEventListener('click', () => {
     const next = theme() === 'dark' ? 'light' : 'dark';

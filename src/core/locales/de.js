@@ -300,7 +300,22 @@ export default {
   'play.auto': 'Wie im Inhalt',
   'play.docs': 'Dokumentation',
   'play.findings': 'Prüfung',
-  'play.noFindings': 'Keine Fehler oder Warnungen.'
+  'play.noFindings': 'Keine Fehler oder Warnungen.',
+  'play.copyWithDiagram': 'Prompt mit diesem Diagramm kopieren',
+  'play.copyWithPage': 'Prompt mit dieser Seite kopieren',
+  'play.copyToFix': 'Prompt zum Beheben kopieren',
+  'play.copyTipNew': 'Kopiert die Yantra-Anweisungen für jeden KI-Chat, bereit für deine Anfrage.',
+  'play.copyTipEdit': 'Kopiert die Anweisungen, das JSON im Editor und deine Anfrage, damit der Chat es ändern kann.',
+  'play.copyTipFix': 'Kopiert die Anweisungen, das JSON und seine Prüfergebnisse, damit der Chat sie beheben kann.',
+  'play.copyOptions': 'Prompt-Optionen',
+  'play.request': 'Was möchtest du? (optional)',
+  'play.requestHint': 'Zum Beispiel: Füge einen Schritt für Erstattungen hinzu',
+  'play.copyNow': 'Prompt kopieren',
+  'play.instructionsOnly': 'Nur Anweisungen',
+  'play.copiedNew': 'Anweisungen kopiert ({size}). Füge sie in deinen Chat ein und sag, was du möchtest.',
+  'play.copiedEdit': 'Anweisungen und JSON kopiert ({size}). Füge sie in deinen Chat ein.',
+  'play.copiedFix': 'Anweisungen, JSON und Prüfergebnisse kopiert ({size}). Füge sie in deinen Chat ein.',
+  'play.copiedLarge': 'Kopiert ({size}), aber es ist lang und manche Chats kürzen lange Nachrichten. Wenn es nicht passt, nimm Nur Anweisungen.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -1,8 +1,8 @@
 # Using Yantra with coding agents
 
-Yantra works with any agent that can run a command or call an MCP server. The quickest setup
-is `yantra init` in your project; this page explains what it writes and how to set each
-agent up by hand.
+Set up Claude Code, Cursor, Codex, Antigravity or any agent that can run a command or call an
+MCP server to write, validate and build Yantra diagrams. The quickest setup is `yantra init`
+in your project; this page explains what it writes and how to set each agent up by hand.
 
 ## `yantra init`
 

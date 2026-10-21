@@ -300,7 +300,22 @@ export default {
   'play.auto': '내용과 같은 언어',
   'play.docs': '문서',
   'play.findings': '검사',
-  'play.noFindings': '오류나 경고가 없습니다.'
+  'play.noFindings': '오류나 경고가 없습니다.',
+  'play.copyWithDiagram': '이 다이어그램과 함께 프롬프트 복사',
+  'play.copyWithPage': '이 페이지와 함께 프롬프트 복사',
+  'play.copyToFix': '수정용 프롬프트 복사',
+  'play.copyTipNew': '모든 AI 채팅에서 쓸 수 있는 Yantra 지침을 복사합니다. 요청을 덧붙이면 됩니다.',
+  'play.copyTipEdit': '지침, 편집기의 JSON, 요청을 복사해 채팅이 이를 수정할 수 있게 합니다.',
+  'play.copyTipFix': '지침, JSON, 검증 결과를 복사해 채팅이 문제를 고칠 수 있게 합니다.',
+  'play.copyOptions': '프롬프트 옵션',
+  'play.request': '무엇을 원하시나요? (선택)',
+  'play.requestHint': '예: 환불 단계를 추가해 줘',
+  'play.copyNow': '프롬프트 복사',
+  'play.instructionsOnly': '지침만',
+  'play.copiedNew': '지침을 복사했습니다({size}). 채팅에 붙여 넣고 원하는 내용을 말하세요.',
+  'play.copiedEdit': '지침과 JSON을 복사했습니다({size}). 채팅에 붙여 넣으세요.',
+  'play.copiedFix': '지침, JSON, 검증 결과를 복사했습니다({size}). 채팅에 붙여 넣으세요.',
+  'play.copiedLarge': '복사했습니다({size}). 다만 길어서 일부 채팅에서는 긴 메시지가 잘립니다. 들어가지 않으면 지침만을 사용하세요.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

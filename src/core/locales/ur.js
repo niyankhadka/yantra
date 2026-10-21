@@ -300,7 +300,22 @@ export default {
   'play.auto': 'مواد والی زبان',
   'play.docs': 'دستاویزات',
   'play.findings': 'جانچ',
-  'play.noFindings': 'کوئی غلطی یا انتباہ نہیں۔'
+  'play.noFindings': 'کوئی غلطی یا انتباہ نہیں۔',
+  'play.copyWithDiagram': 'اس خاکے کے ساتھ پرامپٹ کاپی کریں',
+  'play.copyWithPage': 'اس صفحے کے ساتھ پرامپٹ کاپی کریں',
+  'play.copyToFix': 'درست کروانے کے لیے پرامپٹ کاپی کریں',
+  'play.copyTipNew': 'کسی بھی AI چیٹ کے لیے Yantra کی ہدایات کاپی کرتا ہے، آپ کی درخواست کے لیے تیار۔',
+  'play.copyTipEdit': 'ہدایات، ایڈیٹر کا JSON اور آپ کی درخواست کاپی کرتا ہے، تاکہ چیٹ اسے بدل سکے۔',
+  'play.copyTipFix': 'ہدایات، JSON اور اس کی جانچ کے نتائج کاپی کرتا ہے، تاکہ چیٹ انہیں درست کر سکے۔',
+  'play.copyOptions': 'پرامپٹ کے اختیارات',
+  'play.request': 'آپ کیا چاہتے ہیں؟ (اختیاری)',
+  'play.requestHint': 'مثلاً: رقم کی واپسی کے لیے ایک مرحلہ شامل کریں',
+  'play.copyNow': 'پرامپٹ کاپی کریں',
+  'play.instructionsOnly': 'صرف ہدایات',
+  'play.copiedNew': 'ہدایات کاپی ہو گئیں ({size})۔ انہیں اپنی چیٹ میں چسپاں کریں اور بتائیں کہ آپ کیا چاہتے ہیں۔',
+  'play.copiedEdit': 'ہدایات اور JSON کاپی ہو گئے ({size})۔ انہیں اپنی چیٹ میں چسپاں کریں۔',
+  'play.copiedFix': 'ہدایات، JSON اور نتائج کاپی ہو گئے ({size})۔ انہیں اپنی چیٹ میں چسپاں کریں۔',
+  'play.copiedLarge': 'کاپی ہو گیا ({size})، لیکن یہ لمبا ہے اور کچھ چیٹس لمبے پیغامات کاٹ دیتی ہیں۔ اگر نہ سمائے تو صرف ہدایات استعمال کریں۔'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -1,5 +1,8 @@
 # Remote MCP server (Streamable HTTP)
 
+Serve Yantra's MCP tools over HTTP with `yantra mcp --http`, for Claude.ai and ChatGPT
+connectors and other clients that reach a server by URL. You host it; the project runs none.
+
 `yantra mcp` speaks MCP over stdio, for clients that start it on your machine (Claude Code,
 Claude Desktop, Cursor, Codex: see [agents.md](agents.md)). `yantra mcp --http` serves the
 same tools over **Streamable HTTP**, the MCP transport for servers reached by URL, such as

@@ -1,5 +1,8 @@
 # Contributor Covenant Code of Conduct
 
+Yantra follows the Contributor Covenant, version 2.1, reproduced below. To report a concern,
+see [Enforcement](#enforcement).
+
 ## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our

@@ -1,8 +1,15 @@
 # Yantra Python SDK
 
-Build Yantra step-by-step diagrams and one-page answers from Python. The SDK writes the JSON
-payload (see `schemas/`); the Yantra CLI validates it and compiles a single offline HTML file.
-No third-party Python dependencies; Python >= 3.9.
+Build [Yantra](https://yantra.nbk.com.np/) step-by-step diagrams and one-page answers from
+Python. The SDK writes the JSON payload; the Yantra CLI validates it and compiles a single
+offline HTML file with automatic layout and a walkthrough. No third-party Python
+dependencies; Python 3.9 or later.
+
+[Website](https://yantra.nbk.com.np/) ·
+[Python guide](https://yantra.nbk.com.np/docs/guides/python/) ·
+[Authoring reference](https://yantra.nbk.com.np/docs/authoring/) ·
+[Source](https://github.com/niyankhadka/yantra) ·
+[Changelog](https://yantra.nbk.com.np/docs/changelog/)
 
 > **Node.js 20.19 or later is required** to validate, build HTML or import. Building payloads
 > (`to_dict()`, `save_json()`) works without it.
@@ -210,3 +217,8 @@ the common validation messages in the diagram language (codes unchanged, English
 
 Examples: `python python/example.py [out-dir]`, `python python/example_page.py [out-dir]`
 (default: the OS temp dir). Tests: `python -m unittest discover -s python/tests -v`.
+
+## Licence
+
+MIT, like the rest of [Yantra](https://github.com/niyankhadka/yantra/blob/main/LICENSE). The Yantra name and logo are
+covered by the [trademark policy](https://github.com/niyankhadka/yantra/blob/main/TRADEMARKS.md).

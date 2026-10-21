@@ -1,14 +1,16 @@
 # Architecture
 
+How Yantra turns a JSON payload into a diagram: the shared geometry core, the viewer, the
+standalone build and the tests, and where each part lives.
+
 ```
 payload.json ──► src/core ─────────────────────────────► scene ──► browser renderer (src/app)
                  normalize → measure → autoLayout              ├─► renderSvg  (CLI export, PNG)
                  → routeEdges → placeLabels → computeScene     └─► lint       (validator)
 ```
 
-Everything that decides geometry lives in `src/core/` and has no DOM dependency, so the
-browser, the CLI, the MCP server and the tests all compute the **same** scene. What the
-validator checks is exactly what the viewer draws.
+`src/core/` has no DOM dependency, so the browser, the CLI, the MCP server and the tests all
+compute the **same** scene. What the validator checks is exactly what the viewer draws.
 
 ## Core modules
 

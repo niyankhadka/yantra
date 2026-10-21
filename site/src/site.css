@@ -1743,6 +1743,18 @@ kbd {
   }
 }
 
+/* related guides at the end of a guide */
+.related {
+  margin-top: 40px;
+}
+
+.prose .related h2 {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  font-size: 1.1rem;
+}
+
 /* docs overview cards */
 .cards {
   display: grid;

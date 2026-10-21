@@ -329,7 +329,22 @@ const en = {
   'play.auto': 'Same as the payload',
   'play.docs': 'Docs',
   'play.findings': 'Validation',
-  'play.noFindings': 'No errors or warnings.'
+  'play.noFindings': 'No errors or warnings.',
+  'play.copyWithDiagram': 'Copy prompt with this diagram',
+  'play.copyWithPage': 'Copy prompt with this page',
+  'play.copyToFix': 'Copy prompt to fix this',
+  'play.copyTipNew': 'Copies the Yantra instructions for any AI chat, ready for your request.',
+  'play.copyTipEdit': 'Copies the instructions, the JSON in the editor and your request, so the chat can change it.',
+  'play.copyTipFix': 'Copies the instructions, the JSON and its validation findings, so the chat can fix them.',
+  'play.copyOptions': 'Prompt options',
+  'play.request': 'What do you want? (optional)',
+  'play.requestHint': 'For example: add a step for refunds',
+  'play.copyNow': 'Copy prompt',
+  'play.instructionsOnly': 'Instructions only',
+  'play.copiedNew': 'Copied the instructions ({size}). Paste them into your chat and say what you want.',
+  'play.copiedEdit': 'Copied the instructions and the JSON ({size}). Paste them into your chat.',
+  'play.copiedFix': 'Copied the instructions, the JSON and its findings ({size}). Paste them into your chat.',
+  'play.copiedLarge': 'Copied ({size}), but it is long and some chats cut long messages. If it does not fit, use Instructions only.'
 };
 
 /** Every shipped language, in table order; each table has exactly the keys of `en` (a test checks this). */

@@ -12,6 +12,15 @@ All notable changes to Yantra are documented here. The format follows
 - The Yantra website, https://yantra.nbk.com.np/ (`site/`, `npm run build:site`): a landing
   page with a live demo, the docs rendered from `docs/*.md` with search, eight step-by-step
   guides (`site/guides/`), a 404 page, a sitemap and social cards.
+- The playground's **Copy prompt** follows the editor: with an empty editor it copies the
+  instructions and a request line; with valid JSON it adds the diagram or page and asks for
+  a change; with findings it adds them and asks for a fix. An options box takes the request
+  and offers **Instructions only** (`playground/prompt.js`, docs/chat.md).
+- Website search-engine support: a unique title and description per page, JSON-LD
+  structured data (software, website with docs search, FAQ, articles and breadcrumbs), a
+  sitemap with `lastmod` dates, a web manifest and touch icons, related guides at the end of
+  each guide, `/docs/?q=` to open the docs search, and optional Google and Bing verification
+  tags from `YANTRA_SITE_GOOGLE_VERIFICATION` / `YANTRA_SITE_BING_VERIFICATION`.
 
 ### Fixed
 
@@ -20,6 +29,10 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Changed
 
+- The README is reorganised around a gallery of diagram kinds and links to the website docs;
+  its images use absolute URLs so they show on npm. The contributing, support, security,
+  trademark and Python SDK pages and the docs intros are tidied, and the npm keywords and
+  PyPI metadata are updated.
 - The playground moved to https://yantra.nbk.com.np/playground/; old `/#example=...` links
   are forwarded there. The chat packs, README and docs link to the new address.
 - `package.json` `homepage` and the Python package's Homepage and Documentation URLs point to

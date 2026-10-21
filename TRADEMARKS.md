@@ -1,5 +1,7 @@
 # Trademarks
 
+How you may use the Yantra name and logo.
+
 Yantra's source code is released under the [MIT licence](LICENSE). The licence covers the
 code; it does not grant rights to the **Yantra name**, the **Yantra logo** or the "Made with
 Yantra" badge artwork (together, the "marks"). This page explains how you may use them.

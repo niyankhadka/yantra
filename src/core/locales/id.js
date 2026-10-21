@@ -300,7 +300,22 @@ export default {
   'play.auto': 'Sama dengan konten',
   'play.docs': 'Dokumentasi',
   'play.findings': 'Validasi',
-  'play.noFindings': 'Tidak ada galat atau peringatan.'
+  'play.noFindings': 'Tidak ada galat atau peringatan.',
+  'play.copyWithDiagram': 'Salin prompt dengan diagram ini',
+  'play.copyWithPage': 'Salin prompt dengan halaman ini',
+  'play.copyToFix': 'Salin prompt untuk memperbaikinya',
+  'play.copyTipNew': 'Menyalin instruksi Yantra untuk chat AI apa pun, siap untuk permintaan Anda.',
+  'play.copyTipEdit': 'Menyalin instruksi, JSON di editor, dan permintaan Anda, agar chat dapat mengubahnya.',
+  'play.copyTipFix': 'Menyalin instruksi, JSON, dan hasil validasinya, agar chat dapat memperbaikinya.',
+  'play.copyOptions': 'Opsi prompt',
+  'play.request': 'Apa yang Anda inginkan? (opsional)',
+  'play.requestHint': 'Misalnya: tambahkan langkah untuk pengembalian dana',
+  'play.copyNow': 'Salin prompt',
+  'play.instructionsOnly': 'Instruksi saja',
+  'play.copiedNew': 'Instruksi disalin ({size}). Tempel ke chat Anda dan sebutkan yang Anda inginkan.',
+  'play.copiedEdit': 'Instruksi dan JSON disalin ({size}). Tempel ke chat Anda.',
+  'play.copiedFix': 'Instruksi, JSON, dan hasil validasi disalin ({size}). Tempel ke chat Anda.',
+  'play.copiedLarge': 'Disalin ({size}), tetapi panjang dan beberapa chat memotong pesan panjang. Jika tidak muat, gunakan Instruksi saja.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

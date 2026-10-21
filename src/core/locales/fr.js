@@ -300,7 +300,22 @@ export default {
   'play.auto': 'Celle du contenu',
   'play.docs': 'Documentation',
   'play.findings': 'Validation',
-  'play.noFindings': 'Aucune erreur ni avertissement.'
+  'play.noFindings': 'Aucune erreur ni avertissement.',
+  'play.copyWithDiagram': 'Copier l’invite avec ce diagramme',
+  'play.copyWithPage': 'Copier l’invite avec cette page',
+  'play.copyToFix': 'Copier l’invite pour corriger',
+  'play.copyTipNew': 'Copie les instructions Yantra pour n’importe quel chat d’IA, prêtes pour votre demande.',
+  'play.copyTipEdit': 'Copie les instructions, le JSON de l’éditeur et votre demande, pour que le chat le modifie.',
+  'play.copyTipFix': 'Copie les instructions, le JSON et ses résultats de validation, pour que le chat les corrige.',
+  'play.copyOptions': 'Options de l’invite',
+  'play.request': 'Que voulez-vous ? (facultatif)',
+  'play.requestHint': 'Par exemple : ajoutez une étape pour les remboursements',
+  'play.copyNow': 'Copier l’invite',
+  'play.instructionsOnly': 'Instructions seules',
+  'play.copiedNew': 'Instructions copiées ({size}). Collez-les dans votre chat et dites ce que vous voulez.',
+  'play.copiedEdit': 'Instructions et JSON copiés ({size}). Collez-les dans votre chat.',
+  'play.copiedFix': 'Instructions, JSON et résultats copiés ({size}). Collez-les dans votre chat.',
+  'play.copiedLarge': 'Copié ({size}), mais c’est long et certains chats coupent les longs messages. Si cela ne passe pas, utilisez Instructions seules.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

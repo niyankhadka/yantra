@@ -1,5 +1,5 @@
 ---
-description: How Yantra releases work, how to pin a version in a project or CI, and how to host the MCP server over HTTP for Claude.ai and ChatGPT connectors, or this website and playground yourself.
+description: How Yantra releases work, how to pin a version, and how to host the MCP server over HTTP for Claude.ai and ChatGPT, or this website, yourself.
 ---
 
 # Releases and self-hosting
@@ -75,6 +75,14 @@ rendered on request.
 
 The docs pages are generated from the repository's `docs/*.md` and `site/guides/*.md`, so a
 fork's site always documents the fork.
+
+Search engines: every page has its own title, description, canonical URL and structured
+data, and `sitemap.xml` dates each page by the last commit of its source file (a full clone
+gives real dates; a shallow one gives the date of its single commit). To prove ownership to
+Google Search Console or Bing Webmaster Tools, set `YANTRA_SITE_GOOGLE_VERIFICATION` or
+`YANTRA_SITE_BING_VERIFICATION` to the code the tool gives you when you build. The Pages
+workflow reads them from repository variables of the same names (**Settings > Secrets and
+variables > Actions > Variables**); unset, no verification tag is written.
 
 ## Offline and air-gapped use
 
