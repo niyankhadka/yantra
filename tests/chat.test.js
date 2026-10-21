@@ -98,18 +98,21 @@ test('playground strings exist in the string table, and it copies the chat promp
   assert.match(main, /from '\.\.\/src\/core\/standalone\.js'/, 'built files are assembled by the shared core module');
 });
 
-test('the Pages workflow deploys the playground from main only and publishes nothing', () => {
+test('the Pages workflow deploys the site from main only and publishes nothing', () => {
   const yml = read('.github/workflows/pages.yml');
   assert.match(yml, /on:\n  push:\n    branches: \[main\]\n  workflow_dispatch:\n/);
   assert.ok(!/pull_request/.test(yml), 'never runs on pull requests');
   assert.ok(!/npm publish|stage publish|pypi|twine/i.test(yml), 'publishes no packages');
-  assert.match(yml, /npm run build:playground/);
+  assert.match(yml, /npm run build:site/);
   assert.match(yml, /path: dist-pages/);
   assert.match(yml, /pages: write\n\s+id-token: write/);
   assert.match(yml, /needs: build/, 'deploys only what the build job uploaded');
   const pkg = JSON.parse(read('package.json'));
-  assert.match(pkg.scripts['build:playground'], /playground\/vite\.config\.js/);
-  assert.match(read('playground/vite.config.js'), /YANTRA_PLAYGROUND_BASE \|\| '\/'/, 'served from the root of yantra.nbk.com.np');
+  assert.match(pkg.scripts['build:site'], /site\/vite\.config\.js/);
+  assert.equal(pkg.scripts['build:playground'], 'npm run build:site', 'the playground is built as part of the site');
+  const config = read('site/vite.config.js');
+  assert.match(config, /base: '\/'/, 'served from the root of yantra.nbk.com.np');
+  assert.match(config, /playground', 'index\.html'/, 'the playground is an entry of the site build');
 });
 
 test('docs quote the current size of the GPT instructions', () => {

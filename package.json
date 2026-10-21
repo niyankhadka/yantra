@@ -22,7 +22,7 @@
   ],
   "license": "MIT",
   "author": "niyankhadka",
-  "homepage": "https://github.com/niyankhadka/yantra#readme",
+  "homepage": "https://yantra.nbk.com.np/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/niyankhadka/yantra.git"
@@ -55,9 +55,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "dev:playground": "vite --config playground/vite.config.js",
-    "build:playground": "vite build --config playground/vite.config.js",
-    "preview:playground": "vite preview --config playground/vite.config.js",
+    "dev:site": "vite --config site/vite.config.js",
+    "build:site": "vite build --config site/vite.config.js",
+    "preview:site": "vite preview --config site/vite.config.js",
+    "dev:playground": "vite --config site/vite.config.js --open /playground/",
+    "build:playground": "npm run build:site",
+    "preview:playground": "npm run preview:site",
     "validate": "node bin/yantra.js validate",
     "test": "node --test",
     "mcp": "node mcp/server.js",
@@ -66,6 +69,7 @@
     "pack:gpt": "node scripts/pack-chat.js gpt"
   },
   "devDependencies": {
+    "marked": "18.1.0",
     "vite": "^8.3.5"
   }
 }

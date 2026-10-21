@@ -1,6 +1,6 @@
 name: Pages
 
-# Builds the playground (playground/, `npm run build:playground`) and deploys it to
+# Builds the website (site/ and playground/, `npm run build:site`) and deploys it to
 # GitHub Pages (Settings > Pages > Source: GitHub Actions). Runs on pushes to main and by
 # hand only (never on pull requests) and publishes no packages.
 on:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build playground
+    name: Build site
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,8 +29,8 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: actions/configure-pages@v5
-      - name: Build the playground into dist-pages/
-        run: npm run build:playground
+      - name: Build the site into dist-pages/
+        run: npm run build:site
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist-pages

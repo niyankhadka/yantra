@@ -38,7 +38,10 @@ Using Yantra in another project: `npx @niyankhadka/yantra init` installs the por
   shell across interactive embeds; logos from `src/assets/`) and headless screenshots.
 - `bin/yantra.js` - CLI. `mcp/` - MCP server: `server.js` (stdio, or `--http`), `http.js`
   (Streamable HTTP, `docs/remote-mcp.md`), `tools.js` (the tools, shared). `python/` - Python SDK.
-- `playground/` - browser playground for JSON from AI chats (GitHub Pages, `npm run build:playground`);
+- `site/` - the website (https://yantra.nbk.com.np/): `site/vite.config.js` builds the landing page,
+  the docs (from `docs/*.md` and `site/guides/*.md`) and `playground/` (served at `/playground/`) into
+  `dist-pages/` (`npm run build:site`, `npm run dev:site`); `tests/site.test.js` checks every link.
+- `playground/` - browser playground for JSON from AI chats;
   `chat/` - chat packs (prompt, Claude.ai skill, custom GPT; `npm run pack:skill`). See `docs/chat.md`.
 - `npm test` must pass; every file in `examples/` must validate with zero warnings. CI:
   `.github/workflows/ci.yml` (Node 20/22/24, Windows, Python 3.9/3.12).
