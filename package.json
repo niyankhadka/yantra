@@ -39,6 +39,7 @@
     "mcp/",
     "src/",
     "schemas/",
+    "skills/",
     "docs/*.md",
     "examples/",
     "dist/",

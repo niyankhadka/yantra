@@ -7,6 +7,8 @@
  *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id] [--collapsed id,id | --expand-all | --depth n] [--focus group]
  *   yantra import <file.mmd|file.md|file.drawio|file.puml|file.vsdx|file.drawio.png> [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n] [--title "..."] [--all]
  *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp   yantra dev
+ *   yantra init [--claude] [--cursor] [--codex] [--antigravity] [--all] [--dir path] [--force] [--dry-run] [--json]
+ *   yantra schema [diagram|page]   yantra docs [authoring|pages|mermaid|import|agents]
  * Works with diagrams and with one-page answers ({ "kind": "page" }).
  */
 import fs from 'node:fs';
@@ -25,6 +27,7 @@ import { foldsForDepth } from '../src/core/nesting.js';
 import { buildAny, resolveAny, readLogos, ROOT } from '../lib/build.js';
 import { screenshot } from '../lib/browser.js';
 import { fileIncluder } from '../lib/includes.js';
+import { init, formatInit, AGENTS } from '../lib/init.js';
 
 const HELP = `Yantra - interactive, step-by-step diagrams
 
@@ -38,6 +41,12 @@ Usage
   yantra new <file.json> [--page]              Write a starter diagram (or answer page)
   yantra import <file>                         Convert Mermaid (.mmd/.md; diagrams, or gantt / pie / timeline / quadrant pages), draw.io (.drawio/.xml/.png), PlantUML (.puml) or Visio (.vsdx)  [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n|name] [--title "..."] [--all]
   yantra examples [name] [-o file]             List built-in examples, or copy one
+  yantra schema [diagram|page]                 Print the JSON Schema for diagrams (default) or answer pages
+  yantra docs [authoring|pages|mermaid|import|agents]  Print a guide (default: authoring)
+  yantra init [agents] [--dir path]            Set up a project for coding agents: skill, MCP server, rules
+                                               agents: --claude --cursor --codex --antigravity or --all
+                                               (none: the agents whose folders exist, else --claude)
+                                               [--force] [--dry-run] [--json] [--windows | --posix]
   yantra mcp                                   Start the MCP server (stdio)
   yantra dev                                   Start the live editor at http://localhost:3000
 
@@ -68,7 +77,7 @@ function parse(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang', 'collapsed', 'depth', 'focus'].includes(key)) out[key] = argv[++i];
+      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang', 'collapsed', 'depth', 'focus', 'dir'].includes(key)) out[key] = argv[++i];
       else out[key] = true;
     } else out._.push(a);
   }
@@ -325,6 +334,36 @@ try {
         if (!report.valid) failed = true;
       });
       process.exit(failed ? 1 : 0);
+      break;
+    }
+
+    case 'schema': {
+      const kind = input || 'diagram';
+      if (!['diagram', 'page'].includes(kind)) fail(`Unknown schema "${kind}" (use diagram or page).`);
+      process.stdout.write(fs.readFileSync(path.join(ROOT, 'schemas', kind === 'page' ? 'yantra-page.schema.json' : 'yantra-payload.schema.json'), 'utf-8'));
+      break;
+    }
+
+    case 'docs': {
+      const DOCS = ['authoring', 'pages', 'mermaid', 'import', 'agents'];
+      const name = input || 'authoring';
+      if (!DOCS.includes(name)) fail(`Unknown guide "${name}" (use ${DOCS.join(', ')}).`);
+      process.stdout.write(fs.readFileSync(path.join(ROOT, 'docs', `${name}.md`), 'utf-8'));
+      break;
+    }
+
+    case 'init': {
+      if (input) fail(`Unexpected argument "${input}". Use --dir <path> to choose the project folder.`);
+      if (args.dir === true) fail('--dir needs a folder.');
+      if (args.windows && args.posix) fail('Use one of --windows and --posix.');
+      const known = new Set(['_', ...AGENTS, 'all', 'dir', 'force', 'dry-run', 'json', 'windows', 'posix']);
+      const extra = Object.keys(args).find((k) => !known.has(k));
+      if (extra) fail(`Unknown option --${extra} for init. Run \`yantra help\`.`);
+      const agents = args.all ? AGENTS : AGENTS.filter((a) => args[a]);
+      const res = init({ dir: args.dir, agents, force: !!args.force, dryRun: !!args['dry-run'], windows: args.windows ? true : args.posix ? false : undefined });
+      if (args.json) console.log(JSON.stringify({ ...res, dryRun: !!args['dry-run'] }, null, 2));
+      else console.log(formatInit(res, { dryRun: !!args['dry-run'] }));
+      process.exit(res.ok ? 0 : 1);
       break;
     }
 

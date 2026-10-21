@@ -33,7 +33,8 @@ test('files covers everything the builder, CLI and MCP server read at run time',
     'bin/yantra.js', 'lib/build.js', 'lib/browser.js', 'mcp/server.js', 'dist/index.html',
     'src/assets/logo-light.svg', 'src/core/import.js', 'src/core/drawio.js', 'src/core/plantuml.js',
     'schemas/yantra-payload.schema.json', 'schemas/yantra-page.schema.json',
-    'docs/authoring.md', 'docs/pages.md', 'examples/oauth-login.json', 'examples/drawio/order-platform.drawio',
+    'docs/authoring.md', 'docs/pages.md', 'docs/mermaid.md', 'docs/import.md', 'examples/oauth-login.json', 'examples/drawio/order-platform.drawio',
+    'lib/init.js', 'skills/yantra/SKILL.md',
     ...sources
   ];
   assert.match(build, /path\.join\(ROOT, 'dist'\)/);
@@ -41,7 +42,7 @@ test('files covers everything the builder, CLI and MCP server read at run time',
   for (const rel of ['tests/core.test.js', 'python/pyproject.toml', 'node_modules/vite/package.json', 'docs/images/walkthrough.png'])
     assert.ok(!shipped(rel), `${rel} should not ship`);
   // Every relative module imported by shipped code is shipped too
-  for (const entry of ['bin/yantra.js', 'mcp/server.js', 'lib/build.js']) {
+  for (const entry of ['bin/yantra.js', 'mcp/server.js', 'lib/build.js', 'lib/init.js']) {
     for (const m of read(entry).matchAll(/from '(\.\.?\/[^']+)'/g)) {
       const rel = path.relative(ROOT, path.resolve(ROOT, path.dirname(entry), m[1])).replace(/\\/g, '/');
       assert.ok(shipped(rel), `${entry} imports ${rel}, which is not shipped`);
@@ -53,7 +54,7 @@ test('npm pack lists the expected files', { timeout: 120000 }, () => {
   const res = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf-8', shell: true });
   if (res.status !== 0) return; // npm unavailable: covered by the static check above
   const files = JSON.parse(res.stdout)[0].files.map((f) => f.path.replace(/\\/g, '/'));
-  for (const f of ['bin/yantra.js', 'lib/build.js', 'mcp/server.js', 'src/core/lint.js', 'schemas/yantra-payload.schema.json', 'README.md', 'LICENSE', 'CHANGELOG.md'])
+  for (const f of ['bin/yantra.js', 'lib/build.js', 'mcp/server.js', 'src/core/lint.js', 'schemas/yantra-payload.schema.json', 'skills/yantra/SKILL.md', 'lib/init.js', 'README.md', 'LICENSE', 'CHANGELOG.md'])
     assert.ok(files.includes(f), f);
   assert.ok(!files.some((f) => /^(tests|python|\.github|\.claude|\.agents|node_modules|docs\/images)\//.test(f)), 'dev-only folders are not packed');
 });
