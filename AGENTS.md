@@ -38,7 +38,7 @@ Using Yantra in another project: `npx @niyankhadka/yantra init` installs the por
   shell across interactive embeds; logos from `src/assets/`) and headless screenshots.
 - `bin/yantra.js` - CLI. `mcp/server.js` - MCP server. `python/` - Python SDK.
 - `npm test` must pass; every file in `examples/` must validate with zero warnings. CI:
-  `.github/workflows/ci.yml` (Node 18/20/22, Windows, Python 3.9/3.12).
+  `.github/workflows/ci.yml` (Node 20/22/24, Windows, Python 3.9/3.12).
 - After editing the skill, copy `.claude/skills/yantra/SKILL.md` to `.agents/skills/yantra/SKILL.md`
   (a test checks they match).
 - Contributing, releases and security: `CONTRIBUTING.md`, `CHANGELOG.md`, `SECURITY.md`,

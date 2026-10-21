@@ -7,7 +7,7 @@ Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md); for ques
 
 ## Setup
 
-You need Node.js 18 or later; Python 3.9 or later only for the Python SDK.
+You need Node.js 20.19 or later (22.12 or later on Node 22); Python 3.9 or later only for the Python SDK.
 
 ```bash
 git clone https://github.com/niyankhadka/yantra.git
@@ -30,7 +30,7 @@ npm run build                                     # viewer bundle builds
 ```
 
 Both suites must pass on every pull request; CI runs them on Linux and Windows with
-Node 18, 20 and 22 and Python 3.9 and 3.12.
+Node 20, 22 and 24 and Python 3.9 and 3.12.
 
 ## Rules that the tests enforce
 

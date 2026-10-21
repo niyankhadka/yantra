@@ -87,9 +87,6 @@ export default defineConfig({
     // stays in a separate chunk that built files never load.
     cssCodeSplit: false,
     modulePreload: false,
-    assetsInlineLimit: 100000000,
-    rollupOptions: {
-      output: { manualChunks: undefined }
-    }
+    assetsInlineLimit: 100000000
   }
 });

@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml"><img src="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue.svg" alt="Licence: MIT"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D18-339933.svg" alt="Node.js 18 or later">
+  <img src="https://img.shields.io/badge/node-%3E%3D20.19-339933.svg" alt="Node.js 20.19 or later">
   <a href="https://www.npmjs.com/package/@niyankhadka/yantra"><img src="https://img.shields.io/npm/v/@niyankhadka/yantra.svg" alt="npm"></a>
   <a href="https://pypi.org/project/niyankhadka-yantra/"><img src="https://img.shields.io/pypi/v/niyankhadka-yantra.svg" alt="PyPI"></a>
 </p>
@@ -120,7 +120,7 @@ to generate diagrams from scripts and coding agents.
 
 ## Quick start
 
-Yantra needs **Node.js 18 or later**.
+Yantra needs **Node.js 20.19 or later** (22.12 or later on Node 22).
 
 ```bash
 npm i -g @niyankhadka/yantra      # the `yantra` command; ships a prebuilt viewer
@@ -295,7 +295,7 @@ forces it. Importers keep up to six levels of nested groups.
 | `yantra schema [diagram\|page]` | Print the JSON Schema for diagrams or answer pages. |
 | `yantra docs [authoring\|pages\|mermaid\|import\|agents]` | Print a guide. |
 | `yantra mcp` | Start the MCP server on stdio. |
-| `yantra dev` | Start the live viewer at http://localhost:3000 (from a clone, after `npm install`). |
+| `yantra dev` | Start the live viewer at http://localhost:3000 (from a clone after `npm install`, or with `vite` installed next to the package). |
 
 <details>
 <summary>All options</summary>
@@ -485,8 +485,8 @@ pip install -e python/
 python -m unittest discover -s python/tests -v    # Python SDK
 ```
 
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the tests on Node 18, 20
-and 22 on Linux and Node 22 on Windows, validates and builds every example, and runs the
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the tests on Node 20, 22
+and 24 on Linux and Node 24 on Windows, validates and builds every example, and runs the
 Python SDK tests on Python 3.9 and 3.12. Geometry logic lives only in `src/core/`; the
 viewer, CLI and MCP server all call it.
 

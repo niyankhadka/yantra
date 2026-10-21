@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { lint } from '../src/core/lint.js';
 import { localizeFindings } from '../src/core/lintmessages.js';
 import { renderSvg } from '../src/core/svg.js';
@@ -373,8 +374,12 @@ try {
     }
 
     case 'dev': {
-      const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
-      if (!fs.existsSync(vite)) fail('Vite is not installed. Run `npm install` first.');
+      // A clone has Vite in node_modules/; an installed package finds one installed next to it
+      let vite = null;
+      try {
+        vite = path.join(path.dirname(createRequire(path.join(ROOT, 'package.json')).resolve('vite/package.json')), 'bin', 'vite.js');
+      } catch {}
+      if (!vite || !fs.existsSync(vite)) fail('Vite is not installed. Run `npm install` in a Yantra clone, or `npm i -D vite` next to an installed Yantra.');
       spawnSync(process.execPath, [vite], { cwd: ROOT, stdio: 'inherit' });
       break;
     }

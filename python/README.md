@@ -4,7 +4,7 @@ Build Yantra step-by-step diagrams and one-page answers from Python. The SDK wri
 payload (see `schemas/`); the Yantra CLI validates it and compiles a single offline HTML file.
 No third-party Python dependencies; Python >= 3.9.
 
-> **Node.js 18 or later is required** to validate, build HTML or import. Building payloads
+> **Node.js 20.19 or later is required** to validate, build HTML or import. Building payloads
 > (`to_dict()`, `save_json()`) works without it.
 
 ```bash

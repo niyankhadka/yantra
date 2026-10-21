@@ -44,7 +44,7 @@ class MetadataTests(unittest.TestCase):
         self.assertTrue((ROOT / "python" / "LICENSE").exists())
         for key in ("keywords", "classifiers", "[project.urls]", "Homepage", "Issues"):
             self.assertIn(key, PYPROJECT)
-        self.assertIn("Node.js >= 18", _field("description"))
+        self.assertIn("Node.js >= 20.19", _field("description"))
 
     def test_pyproject_parses(self) -> None:
         try:
@@ -70,7 +70,7 @@ class DiscoveryTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"YANTRA_CLI": str(ROOT / "nope" / "yantra.js")}):
             with self.assertRaises(YantraError) as ctx:
                 cli_command()
-        self.assertIn("Node.js >= 18", str(ctx.exception))
+        self.assertIn("Node.js >= 20.19", str(ctx.exception))
 
     def test_npx_fallback_and_opt_out(self) -> None:
         def which(name: str):

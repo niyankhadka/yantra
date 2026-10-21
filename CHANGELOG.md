@@ -24,6 +24,16 @@ All notable changes to Yantra are documented here. The format follows
   the schemas and guides, for agents without the MCP server.
 - Python SDK: `yantra.init_project(path, agents=[...])`.
 
+### Changed
+
+- Requires Node.js 20.19 or later (22.12 or later on Node 22); Node.js 18 reached end of
+  life. CI tests Node 20, 22 and 24.
+- The viewer is built with Vite 8.
+
+### Fixed
+
+- `yantra dev` from an installed package uses a Vite installed next to it.
+
 ## [1.0.1] - 2026-10-20
 
 ### Changed

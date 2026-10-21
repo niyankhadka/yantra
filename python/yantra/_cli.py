@@ -1,6 +1,6 @@
 """Bridge to the Yantra Node CLI (`bin/yantra.js`).
 
-Producing HTML (and validating) needs Node.js >= 18; the SDK itself is pure Python.
+Producing HTML (and validating) needs Node.js >= 20.19; the SDK itself is pure Python.
 
 Discovery order:
 
@@ -30,7 +30,7 @@ __all__ = ["YantraError", "cli_command", "run_cli", "validate_payload", "build_p
 AGENTS = ("claude", "cursor", "codex", "antigravity")
 
 NPM_PACKAGE = "@niyankhadka/yantra"
-NODE_HINT = ("Yantra needs Node.js >= 18 to validate and build HTML (https://nodejs.org). Then either "
+NODE_HINT = ("Yantra needs Node.js >= 20.19 to validate and build HTML (https://nodejs.org). Then either "
              "`npm i -g @niyankhadka/yantra`, run from a Yantra checkout, or set YANTRA_CLI to the path of bin/yantra.js.")
 
 

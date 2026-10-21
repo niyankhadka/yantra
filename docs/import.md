@@ -46,7 +46,7 @@ validation reports errors.
   `fromDrawio(text, { title, page })` / `fromPlantUml(text, { title, include?, path? })` /
   `fromVisio(bytes, { title, page })`.
 - **Python**: `yantra.import_diagram("model.drawio", format=None, page=None, title=None)` (also `.vsdx`, `.drawio.png`)
-  returns the payload as a dict (runs the CLI, so Node.js >= 18 is needed).
+  returns the payload as a dict (runs the CLI, so Node.js >= 20.19 is needed).
 
 Samples: `examples/drawio/` (plain, compressed, an ER schema, `payment-services.drawio` with
 fill colours and cloud icons, `support-triage.drawio.png`), `examples/visio/order-approval.vsdx`
