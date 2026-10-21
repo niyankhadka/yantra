@@ -1,11 +1,11 @@
 /**
- * The hosted playground (GitHub Pages, https://niyankhadka.github.io/yantra/):
- *   npm run dev:playground     http://localhost:3001/yantra/
+ * The hosted playground (GitHub Pages, https://yantra.nbk.com.np/):
+ *   npm run dev:playground     http://localhost:3001/
  *   npm run build:playground   -> dist-pages/ (static files, no backend)
  * It reuses src/core and adds two generated files: viewer-shell.html (the
  * single-file viewer from lib/build.js appShell(), which the page fills with a
  * payload exactly as `yantra build` does) and sw.js (an offline cache of the site).
- * YANTRA_PLAYGROUND_BASE overrides the base path (default /yantra/).
+ * YANTRA_PLAYGROUND_BASE overrides the base path (default /, the site root).
  */
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -94,7 +94,7 @@ self.addEventListener('fetch', (e) => {
 
 export default defineConfig({
   root: path.join(ROOT, 'playground'),
-  base: process.env.YANTRA_PLAYGROUND_BASE || '/yantra/',
+  base: process.env.YANTRA_PLAYGROUND_BASE || '/',
   publicDir: false,
   plugins: [inlineRefs(), playgroundFiles()],
   server: { port: 3001, fs: { allow: [ROOT] } },

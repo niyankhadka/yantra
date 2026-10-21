@@ -177,7 +177,7 @@ Desktop: [`docs/agents.md`](docs/agents.md).
 ## Use with AI chats
 
 No install needed: any chat (Claude.ai, ChatGPT, Gemini, others) can write Yantra JSON, and
-the [**playground**](https://niyankhadka.github.io/yantra/) turns it into the interactive
+the [**playground**](https://yantra.nbk.com.np/) turns it into the interactive
 result in your browser.
 
 1. In the playground, press **Copy prompt for your chat** and paste it into your chat (or
