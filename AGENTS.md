@@ -22,6 +22,9 @@ import) and `docs/import.md` (draw.io and PlantUML import).
 Schemas: `schemas/yantra-payload.schema.json`, `schemas/yantra-page.schema.json`.
 MCP server: `node mcp/server.js` (registered in `.mcp.json` and `.agents/mcp_config.json`).
 Python SDK: `pip install -e python/` (see `python/README.md`).
+Using Yantra in another project: `npx @niyankhadka/yantra init` installs the portable skill
+(`skills/yantra/SKILL.md`), the MCP server entry and rules there (`lib/init.js`,
+`docs/agents.md`). Keep the portable skill free of repo-only paths (a test checks).
 
 ## Working on Yantra itself
 

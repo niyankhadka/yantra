@@ -11,6 +11,18 @@ All notable changes to Yantra are documented here. The format follows
 
 - `TRADEMARKS.md`: the code is MIT; the Yantra name and logo follow the trademark policy.
 - A Sponsor button (Buy Me a Coffee) and a "Support the project" section in the README.
+- `yantra init` sets up a project for coding agents in one step: the portable Yantra skill
+  (`/yantra`, and automatic use for diagram requests), the MCP server
+  (`npx -y @niyankhadka/yantra mcp`, `cmd /c npx` on Windows) and short rules, for Claude
+  Code, Cursor, Codex and Antigravity (`--claude`, `--cursor`, `--codex`, `--antigravity`,
+  `--all`). Existing files are kept unless `--force`, MCP configs are merged, `AGENTS.md`
+  gets a marked section, and `--dry-run` previews. See `docs/agents.md`.
+- A portable skill in `skills/yantra/SKILL.md` (shipped in the npm package) with guidance for
+  diagrams drawn from a codebase: architecture with drill-down, ERDs from the schema,
+  sequence diagrams for auth and payment flows.
+- `yantra schema [diagram|page]` and `yantra docs [authoring|pages|mermaid|import|agents]` print
+  the schemas and guides, for agents without the MCP server.
+- Python SDK: `yantra.init_project(path, agents=[...])`.
 
 ## [1.0.1] - 2026-10-20
 

@@ -50,6 +50,7 @@ to generate diagrams from scripts and coding agents.
 
 - [Features](#features)
 - [Quick start](#quick-start)
+- [Use in your project](#use-in-your-project)
 - [Pick your output](#pick-your-output)
 - [A diagram in 20 lines](#a-diagram-in-20-lines)
 - [Diagram kinds](#diagram-kinds)
@@ -140,6 +141,37 @@ cd yantra
 npm install
 npm run dev                       # viewer with every example at http://localhost:3000
 ```
+
+## Use in your project
+
+One command sets up your coding agent to make Yantra diagrams in your own repository:
+
+```bash
+npx @niyankhadka/yantra init          # agents whose folders exist here, else Claude Code
+npx @niyankhadka/yantra init --all    # Claude Code, Cursor, Codex and Antigravity
+```
+
+| Agent | Files `init` writes | Use it |
+|---|---|---|
+| Claude Code (`--claude`) | `.claude/skills/yantra/SKILL.md`, `yantra` server in `.mcp.json` | `/yantra`, or ask for a diagram |
+| Cursor (`--cursor`) | `.cursor/rules/yantra.mdc`, `yantra` server in `.cursor/mcp.json` (the skill comes from `.claude/skills` or `.agents/skills`, else `.cursor/skills`) | `/yantra`, or ask for a diagram |
+| Codex (`--codex`) | `.agents/skills/yantra/SKILL.md`, a Yantra section in `AGENTS.md`, `yantra` server in `.codex/config.toml` | `$yantra`, or ask for a diagram |
+| Antigravity (`--antigravity`) | `.agents/skills/yantra/SKILL.md`, `.agents/rules/yantra.md`, `yantra` server in `.agents/mcp_config.json` | ask for a diagram |
+
+The skill's description lists what it is for (diagram, visualise, architecture, flow,
+sequence, ERD, state machine, org chart, mind map, explainer, step by step, one-page answer,
+Mermaid, PlantUML and draw.io import), so agents pick it up without being told. It reads the
+code before drawing (routes, services, schema, migrations), uses a sequence diagram for auth
+and payment flows, an ERD for the schema, an overview with drill-down for big systems, and
+keeps sources and HTML in `docs/diagrams/`.
+
+`init` writes only inside the project (`--dir path` picks another folder), never overwrites a
+file it did not write (`--force` replaces the Yantra parts), merges MCP configs so other
+servers stay, and is safe to run again. `--dry-run` shows what it would do. The MCP server runs
+through `npx -y @niyankhadka/yantra mcp`; on Windows `init` writes `cmd /c npx ...`, because
+agents cannot start the `npx` shim directly there (`--posix` or `--windows` picks the form,
+for a team that shares the file across systems). Manual setup for every agent and Claude
+Desktop: [`docs/agents.md`](docs/agents.md).
 
 ## Pick your output
 
@@ -259,6 +291,9 @@ forces it. Importers keep up to six levels of nested groups.
 | `yantra new <file.json> [--page]` | Write a starter diagram or answer page. |
 | `yantra import <file> [-o out.json]` | Convert Mermaid, PlantUML, draw.io or Visio, then validate. |
 | `yantra examples [name] [-o file]` | List the built-in examples, or copy one. |
+| `yantra init [--claude] [--cursor] [--codex] [--antigravity] [--all]` | Set up a project for coding agents: skill, MCP server, rules ([Use in your project](#use-in-your-project)). `[--dir path] [--force] [--dry-run] [--json] [--windows\|--posix]` |
+| `yantra schema [diagram\|page]` | Print the JSON Schema for diagrams or answer pages. |
+| `yantra docs [authoring\|pages\|mermaid\|import\|agents]` | Print a guide. |
 | `yantra mcp` | Start the MCP server on stdio. |
 | `yantra dev` | Start the live viewer at http://localhost:3000 (from a clone, after `npm install`). |
 
@@ -319,10 +354,12 @@ File access is sandboxed: tools read `filePath` only inside `YANTRA_INPUT_ROOT` 
 `outputPath` only inside `YANTRA_OUTPUT_ROOT` (both default to the server's working
 directory), with fixed extensions.
 
-**Agent skill.** The authoring workflow for coding agents is in
-[`.claude/skills/yantra/SKILL.md`](.claude/skills/yantra/SKILL.md), with an identical copy in
-[`.agents/skills/yantra/SKILL.md`](.agents/skills/yantra/SKILL.md) and repository guidance in
-[`AGENTS.md`](AGENTS.md). Architecture notes: [`docs/architecture.md`](docs/architecture.md).
+**Agent skill.** `yantra init` installs the portable skill
+([`skills/yantra/SKILL.md`](skills/yantra/SKILL.md)) and this server in your project; see
+[Use in your project](#use-in-your-project) and [`docs/agents.md`](docs/agents.md). The skill
+for working on Yantra itself is [`.claude/skills/yantra/SKILL.md`](.claude/skills/yantra/SKILL.md),
+with an identical copy in [`.agents/skills/yantra/SKILL.md`](.agents/skills/yantra/SKILL.md) and
+repository guidance in [`AGENTS.md`](AGENTS.md). Architecture notes: [`docs/architecture.md`](docs/architecture.md).
 
 ## Python SDK
 
@@ -425,14 +462,15 @@ support the project and help others find it.
 ```
 bin/yantra.js        CLI
 mcp/server.js        MCP server (stdio)
-lib/                 Node only: standalone HTML builder, headless screenshots
+lib/                 Node only: standalone HTML builder, headless screenshots, yantra init
+skills/yantra/       Portable agent skill that yantra init installs in other projects
 src/core/            Shared engine: model, layout, routing, lint, pages, charts, importers, i18n
 src/app/             Browser viewer
 src/styles/          Viewer CSS
 src/assets/          Logos
 schemas/             JSON Schemas for diagrams and answer pages
 examples/            Example diagrams and pages, and import samples
-docs/                Authoring, pages, import and architecture guides
+docs/                Authoring, pages, import, agent setup and architecture guides
 python/              Python SDK (niyankhadka-yantra)
 tests/               Node test suite
 ```
