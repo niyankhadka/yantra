@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yantra Playground</title>
+  <meta name="description" content="Paste Yantra JSON from any AI chat to check it, see the interactive diagram or answer page, and download it as one offline HTML file. Runs entirely in your browser." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231c1e23'/%3E%3Cpath d='M9 9l7 8 7-8M16 17v7' stroke='%23fff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script>
+    // Theme before first paint: #theme= > saved > system
+    (function () {
+      var m = /theme=(light|dark)/.exec(location.hash);
+      var saved = null;
+      try { saved = localStorage.getItem('yantra:theme'); } catch (e) {}
+      var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', m ? m[1] : saved || (dark ? 'dark' : 'light'));
+    })();
+  </script>
+</head>
+<body>
+  <header class="pg-bar">
+    <a class="pg-brand" href="https://github.com/niyankhadka/yantra" target="_blank" rel="noopener noreferrer">
+      <span id="brand-logo" class="pg-logo" aria-hidden="true"></span>
+      <span class="pg-name">Yantra</span>
+      <span class="pg-sub" data-i18n="play.title">Playground</span>
+    </a>
+    <span class="pg-spacer"></span>
+    <select id="example" class="pg-select" aria-label="Load an example" data-i18n-label="play.examples">
+      <option value="" data-i18n="play.examples">Load an example</option>
+    </select>
+    <button id="copy-prompt" class="pg-btn pg-primary" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+      <span data-i18n="play.copyPrompt">Copy prompt for your chat</span>
+    </button>
+    <a class="pg-btn pg-ghost" href="https://github.com/niyankhadka/yantra/blob/main/docs/chat.md" target="_blank" rel="noopener noreferrer" data-i18n="play.docs">Docs</a>
+    <button id="btn-theme" class="pg-icon" type="button" title="Light / dark" aria-label="Toggle theme" data-i18n-tip="theme.title" data-i18n-label="theme.toggle">
+      <svg class="pg-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="pg-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+    </button>
+  </header>
+
+  <main class="pg-main">
+    <section class="pg-pane pg-editor" aria-labelledby="editor-title">
+      <div class="pg-head">
+        <h2 id="editor-title"><label for="src" data-i18n="play.editor">Yantra JSON</label></h2>
+        <span class="pg-spacer"></span>
+        <button id="btn-format" class="pg-btn pg-small" type="button" data-i18n="play.format">Format</button>
+        <button id="btn-clear" class="pg-btn pg-small" type="button" data-i18n="play.clear">Clear</button>
+      </div>
+      <p class="pg-intro" data-i18n="play.intro">Paste Yantra JSON from any AI chat to check it, see it and download it. Everything runs in your browser.</p>
+      <textarea id="src" class="pg-src" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" placeholder="Paste a diagram or an answer page here" data-i18n-placeholder="play.placeholder" aria-describedby="status"></textarea>
+      <div class="pg-findings-head">
+        <h3 data-i18n="play.findings">Validation</h3>
+        <span id="status" class="pg-status" role="status" aria-live="polite"></span>
+        <span class="pg-spacer"></span>
+        <label class="pg-lang"><span data-i18n="play.messages">Message language</span>
+          <select id="lint-lang" class="pg-select pg-small"></select>
+        </label>
+      </div>
+      <ul id="findings" class="pg-findings"></ul>
+    </section>
+
+    <section class="pg-pane pg-preview" aria-labelledby="preview-title">
+      <div class="pg-head">
+        <h2 id="preview-title" data-i18n="play.preview">Preview</h2>
+        <span class="pg-spacer"></span>
+        <div class="pg-downloads" role="group" aria-label="Download" data-i18n-label="play.download">
+          <span class="pg-dl-label" data-i18n="play.download">Download</span>
+          <button class="pg-btn pg-small" type="button" data-dl="html" data-i18n="export.html">Standalone HTML</button>
+          <button class="pg-btn pg-small" type="button" data-dl="svg" data-i18n="export.svg">SVG vector</button>
+          <button class="pg-btn pg-small" type="button" data-dl="png" data-i18n="export.png">PNG image</button>
+          <button class="pg-btn pg-small" type="button" data-dl="md" data-i18n="export.md">Markdown spec</button>
+          <button class="pg-btn pg-small" type="button" data-dl="json" data-i18n="play.json">JSON file</button>
+        </div>
+      </div>
+      <p id="stale" class="pg-note" hidden></p>
+      <div class="pg-frame-wrap">
+        <iframe id="frame" class="pg-frame" title="Preview" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads"></iframe>
+        <p id="placeholder" class="pg-placeholder" data-i18n="play.empty">Paste JSON or load an example to begin.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="pg-toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -44,7 +44,7 @@ class MetadataTests(unittest.TestCase):
         self.assertTrue((ROOT / "python" / "LICENSE").exists())
         for key in ("keywords", "classifiers", "[project.urls]", "Homepage", "Issues"):
             self.assertIn(key, PYPROJECT)
-        self.assertIn("Node.js >= 18", _field("description"))
+        self.assertIn("Node.js >= 20.19", _field("description"))
 
     def test_pyproject_parses(self) -> None:
         try:
@@ -70,7 +70,7 @@ class DiscoveryTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"YANTRA_CLI": str(ROOT / "nope" / "yantra.js")}):
             with self.assertRaises(YantraError) as ctx:
                 cli_command()
-        self.assertIn("Node.js >= 18", str(ctx.exception))
+        self.assertIn("Node.js >= 20.19", str(ctx.exception))
 
     def test_npx_fallback_and_opt_out(self) -> None:
         def which(name: str):
@@ -103,3 +103,24 @@ class ImportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAS_NODE, "Node.js and node_modules are required")
+class InitProjectTests(unittest.TestCase):
+    def test_init_project_writes_and_reports(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            dry = yantra.init_project(tmp, agents=["claude", "cursor"], dry_run=True, windows=False)
+            self.assertEqual(dry["agents"], ["claude", "cursor"])
+            self.assertEqual(os.listdir(tmp), [])
+            res = yantra.init_project(tmp, agents="claude", windows=False)
+            self.assertTrue(res["ok"])
+            self.assertTrue((Path(tmp) / ".claude" / "skills" / "yantra" / "SKILL.md").exists())
+            mcp = __import__("json").loads((Path(tmp) / ".mcp.json").read_text(encoding="utf-8"))
+            self.assertEqual(mcp["mcpServers"]["yantra"]["args"], ["-y", "@niyankhadka/yantra", "mcp"])
+            again = yantra.init_project(tmp, agents=["claude"], windows=False)
+            self.assertEqual({f["action"] for f in again["files"]}, {"unchanged"})
+
+    def test_unknown_agent(self) -> None:
+        with self.assertRaises(YantraError):
+            yantra.init_project(".", agents=["vim"])

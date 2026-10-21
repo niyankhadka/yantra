@@ -10,7 +10,8 @@ skill in `.claude/skills/yantra/`; the MCP server is registered in `.mcp.json`.
 - Build single-file HTML: `node bin/yantra.js build <file.json> [-o out.html]`
 - Screenshot for review: `node bin/yantra.js screenshot <file.json> [--step n] [--theme dark] [--view sequence]`
 - Import Mermaid / draw.io / PlantUML: `node bin/yantra.js import <file.mmd|file.md|file.drawio|file.puml> [-o out.json] [--from ...] [--page n]` (`docs/import.md`)
-- MCP server: `node mcp/server.js`
+- MCP server: `node mcp/server.js` (Streamable HTTP: `--http [--port 8787]`, `docs/remote-mcp.md`)
+- Playground: `npm run dev:playground` / `npm run build:playground` (-> dist-pages/); chat packs: `npm run pack:skill`, `npm run pack:gpt`
 
 ## Rules
 - Answer pages (`"kind": "page"`) follow `schemas/yantra-page.schema.json` and `docs/pages.md`:

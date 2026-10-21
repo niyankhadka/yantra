@@ -4,7 +4,7 @@ Build Yantra step-by-step diagrams and one-page answers from Python. The SDK wri
 payload (see `schemas/`); the Yantra CLI validates it and compiles a single offline HTML file.
 No third-party Python dependencies; Python >= 3.9.
 
-> **Node.js 18 or later is required** to validate, build HTML or import. Building payloads
+> **Node.js 20.19 or later is required** to validate, build HTML or import. Building payloads
 > (`to_dict()`, `save_json()`) works without it.
 
 ```bash
@@ -161,6 +161,18 @@ payload = import_diagram("architecture.drawio", page=2)    # also .mmd, .md, .pu
 ```
 
 Returns the payload dict produced by `yantra import` (see `docs/import.md`).
+
+## Set up a project for coding agents
+
+```python
+import yantra
+
+report = yantra.init_project("path/to/project", agents=["claude", "cursor"])  # dry_run=True previews
+```
+
+Runs `yantra init` (skill, MCP server entry and rules for Claude Code, Cursor, Codex or
+Antigravity; see `docs/agents.md`) and returns its report: `files` lists each path with its
+`action` (`created`, `merged`, `unchanged`, `skipped`, ...).
 
 ## Answer page
 

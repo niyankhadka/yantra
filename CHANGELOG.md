@@ -7,6 +7,53 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-21
+
+Requires Node.js 20.19 or later (22.12 or later on Node 22); Node 18 is no longer supported.
+
+### Added
+
+- `TRADEMARKS.md`: the code is MIT; the Yantra name and logo follow the trademark policy.
+- A Sponsor button (Buy Me a Coffee) and a "Support the project" section in the README.
+- `yantra init` sets up a project for coding agents in one step: the portable Yantra skill
+  (`/yantra`, and automatic use for diagram requests), the MCP server
+  (`npx -y @niyankhadka/yantra mcp`, `cmd /c npx` on Windows) and short rules, for Claude
+  Code, Cursor, Codex and Antigravity (`--claude`, `--cursor`, `--codex`, `--antigravity`,
+  `--all`). Existing files are kept unless `--force`, MCP configs are merged, `AGENTS.md`
+  gets a marked section, and `--dry-run` previews. See `docs/agents.md`.
+- A portable skill in `skills/yantra/SKILL.md` (shipped in the npm package) with guidance for
+  diagrams drawn from a codebase: architecture with drill-down, ERDs from the schema,
+  sequence diagrams for auth and payment flows.
+- `yantra schema [diagram|page]` and `yantra docs [authoring|pages|mermaid|import|agents]` print
+  the schemas and guides, for agents without the MCP server.
+- Python SDK: `yantra.init_project(path, agents=[...])`.
+- A browser playground for JSON written by AI chats (`playground/`, deployed to GitHub Pages
+  at https://niyankhadka.github.io/yantra/ by `.github/workflows/pages.yml`): paste a diagram
+  or answer page, see the validation findings (translatable) and the live result, and download
+  standalone HTML, SVG, PNG, Markdown or JSON. It runs offline once loaded, has a "Copy prompt
+  for your chat" button and loads any gallery example.
+- Chat packs in `chat/`: a copyable prompt for any chat, a Claude.ai skill
+  (`npm run pack:skill` writes `dist-chat/yantra-skill.zip`) and a custom GPT pack
+  (instructions, conversation starters, knowledge files; `npm run pack:gpt`). See `docs/chat.md`.
+- `yantra mcp --http [--port 8787] [--host 127.0.0.1]`: the MCP server over Streamable HTTP
+  for clients that connect by URL. Binds localhost, checks `Origin` and `Host`, takes an
+  optional bearer token (`YANTRA_MCP_TOKEN`) and has no file access unless
+  `YANTRA_INPUT_ROOT` / `YANTRA_OUTPUT_ROOT` are set; `yantra_build` then returns the HTML
+  as an embedded resource. Deploy guide and security model: `docs/remote-mcp.md`.
+
+### Changed
+
+- The single-file HTML assembly moved from `lib/build.js` to `src/core/standalone.js`, so the
+  playground builds the same file in the browser. The MCP tools moved to `mcp/tools.js`,
+  shared by both transports.
+- Requires Node.js 20.19 or later (22.12 or later on Node 22); Node.js 18 reached end of
+  life. CI tests Node 20, 22 and 24.
+- The viewer is built with Vite 8.
+
+### Fixed
+
+- `yantra dev` from an installed package uses a Vite installed next to it.
+
 ## [1.0.1] - 2026-10-20
 
 ### Changed
@@ -270,6 +317,7 @@ First public release.
 - CLI (`validate`, `build`, `export`, `screenshot`, `import`, `new`, `examples`, `mcp`,
   `dev`), an MCP server with sandboxed file access, an agent skill and a Python SDK.
 
-[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/niyankhadka/yantra/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/niyankhadka/yantra/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/niyankhadka/yantra/releases/tag/v1.0.0

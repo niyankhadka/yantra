@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml"><img src="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue.svg" alt="Licence: MIT"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D18-339933.svg" alt="Node.js 18 or later">
+  <img src="https://img.shields.io/badge/node-%3E%3D20.19-339933.svg" alt="Node.js 20.19 or later">
   <a href="https://www.npmjs.com/package/@niyankhadka/yantra"><img src="https://img.shields.io/npm/v/@niyankhadka/yantra.svg" alt="npm"></a>
   <a href="https://pypi.org/project/niyankhadka-yantra/"><img src="https://img.shields.io/pypi/v/niyankhadka-yantra.svg" alt="PyPI"></a>
 </p>
@@ -50,6 +50,8 @@ to generate diagrams from scripts and coding agents.
 
 - [Features](#features)
 - [Quick start](#quick-start)
+- [Use in your project](#use-in-your-project)
+- [Use with AI chats](#use-with-ai-chats)
 - [Pick your output](#pick-your-output)
 - [A diagram in 20 lines](#a-diagram-in-20-lines)
 - [Diagram kinds](#diagram-kinds)
@@ -64,6 +66,7 @@ to generate diagrams from scripts and coding agents.
 - [Project layout](#project-layout)
 - [Development](#development)
 - [Contributing, support and security](#contributing-support-and-security)
+- [Support the project](#support-the-project)
 
 ## Features
 
@@ -118,7 +121,7 @@ to generate diagrams from scripts and coding agents.
 
 ## Quick start
 
-Yantra needs **Node.js 18 or later**.
+Yantra needs **Node.js 20.19 or later** (22.12 or later on Node 22).
 
 ```bash
 npm i -g @niyankhadka/yantra      # the `yantra` command; ships a prebuilt viewer
@@ -139,6 +142,58 @@ cd yantra
 npm install
 npm run dev                       # viewer with every example at http://localhost:3000
 ```
+
+## Use in your project
+
+One command sets up your coding agent to make Yantra diagrams in your own repository:
+
+```bash
+npx @niyankhadka/yantra init          # agents whose folders exist here, else Claude Code
+npx @niyankhadka/yantra init --all    # Claude Code, Cursor, Codex and Antigravity
+```
+
+| Agent | Files `init` writes | Use it |
+|---|---|---|
+| Claude Code (`--claude`) | `.claude/skills/yantra/SKILL.md`, `yantra` server in `.mcp.json` | `/yantra`, or ask for a diagram |
+| Cursor (`--cursor`) | `.cursor/rules/yantra.mdc`, `yantra` server in `.cursor/mcp.json` (the skill comes from `.claude/skills` or `.agents/skills`, else `.cursor/skills`) | `/yantra`, or ask for a diagram |
+| Codex (`--codex`) | `.agents/skills/yantra/SKILL.md`, a Yantra section in `AGENTS.md`, `yantra` server in `.codex/config.toml` | `$yantra`, or ask for a diagram |
+| Antigravity (`--antigravity`) | `.agents/skills/yantra/SKILL.md`, `.agents/rules/yantra.md`, `yantra` server in `.agents/mcp_config.json` | ask for a diagram |
+
+The skill's description lists what it is for (diagram, visualise, architecture, flow,
+sequence, ERD, state machine, org chart, mind map, explainer, step by step, one-page answer,
+Mermaid, PlantUML and draw.io import), so agents pick it up without being told. It reads the
+code before drawing (routes, services, schema, migrations), uses a sequence diagram for auth
+and payment flows, an ERD for the schema, an overview with drill-down for big systems, and
+keeps sources and HTML in `docs/diagrams/`.
+
+`init` writes only inside the project (`--dir path` picks another folder), never overwrites a
+file it did not write (`--force` replaces the Yantra parts), merges MCP configs so other
+servers stay, and is safe to run again. `--dry-run` shows what it would do. The MCP server runs
+through `npx -y @niyankhadka/yantra mcp`; on Windows `init` writes `cmd /c npx ...`, because
+agents cannot start the `npx` shim directly there (`--posix` or `--windows` picks the form,
+for a team that shares the file across systems). Manual setup for every agent and Claude
+Desktop: [`docs/agents.md`](docs/agents.md).
+
+## Use with AI chats
+
+No install needed: any chat (Claude.ai, ChatGPT, Gemini, others) can write Yantra JSON, and
+the [**playground**](https://niyankhadka.github.io/yantra/) turns it into the interactive
+result in your browser.
+
+1. In the playground, press **Copy prompt for your chat** and paste it into your chat (or
+   copy [`chat/prompt.md`](chat/prompt.md)).
+2. Ask for a diagram or a one-page answer. The chat replies with a JSON block.
+3. Paste the block into the playground: it validates it, shows
+   the diagram or page, and downloads standalone HTML, SVG, PNG, Markdown or the JSON.
+   Nothing leaves your browser, and it works offline once loaded.
+
+| Chat | Setup | Guide |
+|---|---|---|
+| Any chat | the copyable prompt | [`docs/chat.md`](docs/chat.md#any-chat) |
+| Claude.ai | upload the skill: `npm run pack:skill` writes `dist-chat/yantra-skill.zip` | [`docs/chat.md`](docs/chat.md#claudeai-skill) |
+| ChatGPT | a custom GPT from [`chat/chatgpt/`](chat/chatgpt/) (`npm run pack:gpt` gathers the files) | [`docs/chat.md`](docs/chat.md#chatgpt-custom-gpt) |
+| Claude Desktop | the local MCP server through `npx`, with input and output folders | [`docs/chat.md`](docs/chat.md#claude-desktop), [`docs/agents.md`](docs/agents.md#claude-desktop) |
+| Claude.ai or ChatGPT connectors | a remote MCP server you host: `yantra mcp --http` | [`docs/remote-mcp.md`](docs/remote-mcp.md) |
 
 ## Pick your output
 
@@ -258,8 +313,11 @@ forces it. Importers keep up to six levels of nested groups.
 | `yantra new <file.json> [--page]` | Write a starter diagram or answer page. |
 | `yantra import <file> [-o out.json]` | Convert Mermaid, PlantUML, draw.io or Visio, then validate. |
 | `yantra examples [name] [-o file]` | List the built-in examples, or copy one. |
-| `yantra mcp` | Start the MCP server on stdio. |
-| `yantra dev` | Start the live viewer at http://localhost:3000 (from a clone, after `npm install`). |
+| `yantra init [--claude] [--cursor] [--codex] [--antigravity] [--all]` | Set up a project for coding agents: skill, MCP server, rules ([Use in your project](#use-in-your-project)). `[--dir path] [--force] [--dry-run] [--json] [--windows\|--posix]` |
+| `yantra schema [diagram\|page]` | Print the JSON Schema for diagrams or answer pages. |
+| `yantra docs [authoring\|pages\|mermaid\|import\|agents]` | Print a guide. |
+| `yantra mcp [--http]` | Start the MCP server on stdio, or over Streamable HTTP with `--http [--port 8787] [--host 127.0.0.1]` ([`docs/remote-mcp.md`](docs/remote-mcp.md)). |
+| `yantra dev` | Start the live viewer at http://localhost:3000 (from a clone after `npm install`, or with `vite` installed next to the package). |
 
 <details>
 <summary>All options</summary>
@@ -318,10 +376,17 @@ File access is sandboxed: tools read `filePath` only inside `YANTRA_INPUT_ROOT` 
 `outputPath` only inside `YANTRA_OUTPUT_ROOT` (both default to the server's working
 directory), with fixed extensions.
 
-**Agent skill.** The authoring workflow for coding agents is in
-[`.claude/skills/yantra/SKILL.md`](.claude/skills/yantra/SKILL.md), with an identical copy in
-[`.agents/skills/yantra/SKILL.md`](.agents/skills/yantra/SKILL.md) and repository guidance in
-[`AGENTS.md`](AGENTS.md). Architecture notes: [`docs/architecture.md`](docs/architecture.md).
+`yantra mcp --http` serves the same tools over Streamable HTTP for clients that connect by
+URL. It binds `127.0.0.1`, checks `Origin` and `Host`, takes an optional bearer token and has
+no file access unless a root is set: payloads in, HTML, SVG, Markdown or payloads out. Deploy
+guide and security model: [`docs/remote-mcp.md`](docs/remote-mcp.md).
+
+**Agent skill.** `yantra init` installs the portable skill
+([`skills/yantra/SKILL.md`](skills/yantra/SKILL.md)) and this server in your project; see
+[Use in your project](#use-in-your-project) and [`docs/agents.md`](docs/agents.md). The skill
+for working on Yantra itself is [`.claude/skills/yantra/SKILL.md`](.claude/skills/yantra/SKILL.md),
+with an identical copy in [`.agents/skills/yantra/SKILL.md`](.agents/skills/yantra/SKILL.md) and
+repository guidance in [`AGENTS.md`](AGENTS.md). Architecture notes: [`docs/architecture.md`](docs/architecture.md).
 
 ## Python SDK
 
@@ -416,19 +481,25 @@ toolbar, the badge and the tab icon, and are embedded in built HTML, SVG exports
 pages. Use a square `viewBox` without a fixed `width` or `height`. `meta.watermark: false`
 hides the "Made with Yantra" badge; a string renames it.
 
+The badge links back to this repository. It's optional, but keeping it is a simple way to
+support the project and help others find it.
+
 ## Project layout
 
 ```
 bin/yantra.js        CLI
-mcp/server.js        MCP server (stdio)
-lib/                 Node only: standalone HTML builder, headless screenshots
+mcp/                 MCP server: stdio (server.js), Streamable HTTP (http.js), tools (tools.js)
+lib/                 Node only: standalone HTML builder, headless screenshots, yantra init
+skills/yantra/       Portable agent skill that yantra init installs in other projects
+playground/          Browser playground for JSON from AI chats (GitHub Pages)
+chat/                Chat packs: copyable prompt, Claude.ai skill, custom GPT instructions
 src/core/            Shared engine: model, layout, routing, lint, pages, charts, importers, i18n
 src/app/             Browser viewer
 src/styles/          Viewer CSS
 src/assets/          Logos
 schemas/             JSON Schemas for diagrams and answer pages
 examples/            Example diagrams and pages, and import samples
-docs/                Authoring, pages, import and architecture guides
+docs/                Authoring, pages, import, agent setup and architecture guides
 python/              Python SDK (niyankhadka-yantra)
 tests/               Node test suite
 ```
@@ -439,13 +510,18 @@ tests/               Node test suite
 npm install
 npm test                                          # Node suite (node --test)
 npm run build                                     # viewer bundle into dist/
+npm run dev:playground                            # playground at http://localhost:3001/yantra/
+npm run build:playground                          # playground into dist-pages/
+npm run pack:skill                                # Claude.ai skill into dist-chat/
 pip install -e python/
 python -m unittest discover -s python/tests -v    # Python SDK
 ```
 
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the tests on Node 18, 20
-and 22 on Linux and Node 22 on Windows, validates and builds every example, and runs the
-Python SDK tests on Python 3.9 and 3.12. Geometry logic lives only in `src/core/`; the
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the tests on Node 20, 22
+and 24 on Linux and Node 24 on Windows, validates and builds every example, and runs the
+Python SDK tests on Python 3.9 and 3.12. Pushes to `main` deploy the playground to GitHub Pages
+([`.github/workflows/pages.yml`](.github/workflows/pages.yml)) once Settings > Pages > Source
+is set to GitHub Actions. Geometry logic lives only in `src/core/`; the
 viewer, CLI and MCP server all call it.
 
 ## Contributing, support and security
@@ -456,6 +532,12 @@ viewer, CLI and MCP server all call it.
 - [Security policy](SECURITY.md): report vulnerabilities privately.
 - [Changelog](CHANGELOG.md): what changed in each release.
 
+## Support the project
+
+If Yantra is useful to you, you can [buy me a coffee](https://buymeacoffee.com/niyankhadka),
+star the repository, or keep the "Made with Yantra" badge in your diagrams.
+
 ## Licence
 
-[MIT](LICENSE) © niyankhadka
+[MIT](LICENSE) © niyankhadka. The licence covers the code; the Yantra name and logo are
+covered by the [trademark policy](TRADEMARKS.md).

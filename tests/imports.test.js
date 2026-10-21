@@ -643,7 +643,7 @@ test('draw.io PNG export: the embedded diagram is read from the tEXt or zTXt chu
     const len = Buffer.alloc(4);
     len.writeUInt32BE(data.length);
     const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type), data])));
+    crc.writeUInt32BE(zlib.crc32(Buffer.concat([Buffer.from(type), data])));
     return Buffer.concat([len, Buffer.from(type), data, crc]);
   };
   const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]);
@@ -674,16 +674,6 @@ test('Visio .vsdx: shapes, glued connectors, master types and pages', () => {
   assert.throws(() => fromVisio(bytes, { page: 3 }), /No page "3"/);
   assert.throws(() => importText(Buffer.from('PK\x03\x04 not really a zip')), /not a zip archive|end of central directory/);
 });
-
-/** CRC-32 for hand-built PNG chunks (zlib.crc32 needs Node 20.15+). */
-function crc32(buf) {
-  let c = ~0;
-  for (const byte of buf) {
-    c ^= byte;
-    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
-  }
-  return ~c >>> 0;
-}
 
 test('CLI and MCP import binary files and resolve includes inside the root', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yantra-bin-'));
