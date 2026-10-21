@@ -106,7 +106,7 @@ test('the Pages workflow deploys the playground from main only and publishes not
   assert.match(yml, /npm run build:playground/);
   assert.match(yml, /path: dist-pages/);
   assert.match(yml, /pages: write\n\s+id-token: write/);
-  assert.match(yml, /if: needs\.build\.outputs\.enabled == 'true'/, 'skips the deploy until Pages is enabled');
+  assert.match(yml, /needs: build/, 'deploys only what the build job uploaded');
   const pkg = JSON.parse(read('package.json'));
   assert.match(pkg.scripts['build:playground'], /playground\/vite\.config\.js/);
   assert.match(read('playground/vite.config.js'), /\/yantra\//, 'base path for niyankhadka.github.io/yantra/');

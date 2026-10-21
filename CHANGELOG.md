@@ -7,6 +7,11 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The Pages workflow deploys the playground; its Pages check skipped the deploy even when
+  Pages was enabled.
+
 ## [1.1.0] - 2026-10-21
 
 Requires Node.js 20.19 or later (22.12 or later on Node 22); Node 18 is no longer supported.

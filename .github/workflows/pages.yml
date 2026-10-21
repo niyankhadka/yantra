@@ -1,9 +1,8 @@
 name: Pages
 
 # Builds the playground (playground/, `npm run build:playground`) and deploys it to
-# GitHub Pages: https://niyankhadka.github.io/yantra/. Runs on pushes to main only
-# (never on pull requests) and publishes no packages. Until Pages is enabled with
-# Settings > Pages > Source: GitHub Actions, the check below skips the build and deploy.
+# GitHub Pages (Settings > Pages > Source: GitHub Actions). Runs on pushes to main and by
+# hand only (never on pull requests) and publishes no packages.
 on:
   push:
     branches: [main]
@@ -22,52 +21,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pages: read
-    outputs:
-      enabled: ${{ steps.pages.outputs.enabled }}
     steps:
-      - name: Check that Pages deploys from GitHub Actions
-        id: pages
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if out=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq .build_type 2>&1); then
-            if [ "$out" = "workflow" ]; then
-              echo "enabled=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "enabled=false" >> "$GITHUB_OUTPUT"
-              echo "::notice::GitHub Pages builds from a branch ($out); set Settings > Pages > Source to GitHub Actions to deploy the playground."
-            fi
-          elif echo "$out" | grep -q "404"; then
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::GitHub Pages is not enabled; skipping. Enable it once: Settings > Pages > Source: GitHub Actions."
-          else
-            # Unknown answer (permissions, outage): try, and let configure-pages report it
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          fi
-      - if: steps.pages.outputs.enabled == 'true'
-        uses: actions/checkout@v7
-      - if: steps.pages.outputs.enabled == 'true'
-        uses: actions/setup-node@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      - if: steps.pages.outputs.enabled == 'true'
-        run: npm ci
-      - if: steps.pages.outputs.enabled == 'true'
-        uses: actions/configure-pages@v5
-      - if: steps.pages.outputs.enabled == 'true'
-        name: Build the playground into dist-pages/
+      - run: npm ci
+      - uses: actions/configure-pages@v5
+      - name: Build the playground into dist-pages/
         run: npm run build:playground
-      - if: steps.pages.outputs.enabled == 'true'
-        uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: dist-pages
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: needs.build.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write
