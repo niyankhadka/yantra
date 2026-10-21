@@ -55,10 +55,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "dev:playground": "vite --config playground/vite.config.js",
+    "build:playground": "vite build --config playground/vite.config.js",
+    "preview:playground": "vite preview --config playground/vite.config.js",
     "validate": "node bin/yantra.js validate",
     "test": "node --test",
     "mcp": "node mcp/server.js",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "pack:skill": "node scripts/pack-chat.js skill",
+    "pack:gpt": "node scripts/pack-chat.js gpt"
   },
   "devDependencies": {
     "vite": "^8.3.5"

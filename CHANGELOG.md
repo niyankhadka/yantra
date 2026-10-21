@@ -23,6 +23,25 @@ All notable changes to Yantra are documented here. The format follows
 - `yantra schema [diagram|page]` and `yantra docs [authoring|pages|mermaid|import|agents]` print
   the schemas and guides, for agents without the MCP server.
 - Python SDK: `yantra.init_project(path, agents=[...])`.
+- A browser playground for JSON written by AI chats (`playground/`, deployed to GitHub Pages
+  at https://niyankhadka.github.io/yantra/ by `.github/workflows/pages.yml`): paste a diagram
+  or answer page, see the validation findings (translatable) and the live result, and download
+  standalone HTML, SVG, PNG, Markdown or JSON. It runs offline once loaded, has a "Copy prompt
+  for your chat" button and loads any gallery example.
+- Chat packs in `chat/`: a copyable prompt for any chat, a Claude.ai skill
+  (`npm run pack:skill` writes `dist-chat/yantra-skill.zip`) and a custom GPT pack
+  (instructions, conversation starters, knowledge files; `npm run pack:gpt`). See `docs/chat.md`.
+- `yantra mcp --http [--port 8787] [--host 127.0.0.1]`: the MCP server over Streamable HTTP
+  for clients that connect by URL. Binds localhost, checks `Origin` and `Host`, takes an
+  optional bearer token (`YANTRA_MCP_TOKEN`) and has no file access unless
+  `YANTRA_INPUT_ROOT` / `YANTRA_OUTPUT_ROOT` are set; `yantra_build` then returns the HTML
+  as an embedded resource. Deploy guide and security model: `docs/remote-mcp.md`.
+
+### Changed
+
+- The single-file HTML assembly moved from `lib/build.js` to `src/core/standalone.js`, so the
+  playground builds the same file in the browser. The MCP tools moved to `mcp/tools.js`,
+  shared by both transports.
 
 ### Changed
 

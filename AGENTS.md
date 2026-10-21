@@ -36,7 +36,10 @@ Using Yantra in another project: `npx @niyankhadka/yantra init` installs the por
   must match `CARD` in `src/core/layout.js`.
 - `lib/` - Node-only: standalone HTML builder (both kinds; answer pages share one viewer
   shell across interactive embeds; logos from `src/assets/`) and headless screenshots.
-- `bin/yantra.js` - CLI. `mcp/server.js` - MCP server. `python/` - Python SDK.
+- `bin/yantra.js` - CLI. `mcp/` - MCP server: `server.js` (stdio, or `--http`), `http.js`
+  (Streamable HTTP, `docs/remote-mcp.md`), `tools.js` (the tools, shared). `python/` - Python SDK.
+- `playground/` - browser playground for JSON from AI chats (GitHub Pages, `npm run build:playground`);
+  `chat/` - chat packs (prompt, Claude.ai skill, custom GPT; `npm run pack:skill`). See `docs/chat.md`.
 - `npm test` must pass; every file in `examples/` must validate with zero warnings. CI:
   `.github/workflows/ci.yml` (Node 20/22/24, Windows, Python 3.9/3.12).
 - After editing the skill, copy `.claude/skills/yantra/SKILL.md` to `.agents/skills/yantra/SKILL.md`

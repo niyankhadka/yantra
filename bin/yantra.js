@@ -6,7 +6,7 @@
  *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels] [--collapsed id,id | --expand-all | --depth n]
  *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id] [--collapsed id,id | --expand-all | --depth n] [--focus group]
  *   yantra import <file.mmd|file.md|file.drawio|file.puml|file.vsdx|file.drawio.png> [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n] [--title "..."] [--all]
- *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp   yantra dev
+ *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp [--http]   yantra dev
  *   yantra init [--claude] [--cursor] [--codex] [--antigravity] [--all] [--dir path] [--force] [--dry-run] [--json]
  *   yantra schema [diagram|page]   yantra docs [authoring|pages|mermaid|import|agents]
  * Works with diagrams and with one-page answers ({ "kind": "page" }).
@@ -48,7 +48,7 @@ Usage
                                                agents: --claude --cursor --codex --antigravity or --all
                                                (none: the agents whose folders exist, else --claude)
                                                [--force] [--dry-run] [--json] [--windows | --posix]
-  yantra mcp                                   Start the MCP server (stdio)
+  yantra mcp [--http]                          Start the MCP server (stdio; --http: Streamable HTTP  [--port 8787] [--host 127.0.0.1])
   yantra dev                                   Start the live editor at http://localhost:3000
 
 Options

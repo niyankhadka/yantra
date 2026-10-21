@@ -42,7 +42,7 @@ test('files covers everything the builder, CLI and MCP server read at run time',
   for (const rel of ['tests/core.test.js', 'python/pyproject.toml', 'node_modules/vite/package.json', 'docs/images/walkthrough.png'])
     assert.ok(!shipped(rel), `${rel} should not ship`);
   // Every relative module imported by shipped code is shipped too
-  for (const entry of ['bin/yantra.js', 'mcp/server.js', 'lib/build.js', 'lib/init.js']) {
+  for (const entry of ['bin/yantra.js', 'mcp/server.js', 'mcp/tools.js', 'mcp/http.js', 'lib/build.js', 'lib/init.js']) {
     for (const m of read(entry).matchAll(/from '(\.\.?\/[^']+)'/g)) {
       const rel = path.relative(ROOT, path.resolve(ROOT, path.dirname(entry), m[1])).replace(/\\/g, '/');
       assert.ok(shipped(rel), `${entry} imports ${rel}, which is not shipped`);

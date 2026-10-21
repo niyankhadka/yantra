@@ -43,7 +43,7 @@ test('portable skill: valid frontmatter, trigger keywords, no repo-only paths', 
   for (const tool of ['yantra_get_schema', 'yantra_list_examples', 'yantra_get_example', 'yantra_validate', 'yantra_build', 'yantra_screenshot', 'npx -y @niyankhadka/yantra'])
     assert.ok(text.includes(tool), `skill mentions ${tool}`);
   // Every MCP tool the skill names exists
-  const server = fs.readFileSync(path.join(ROOT, 'mcp', 'server.js'), 'utf-8');
+  const server = fs.readFileSync(path.join(ROOT, 'mcp', 'tools.js'), 'utf-8');
   for (const [name] of text.matchAll(/yantra_[a-z_]+/g)) assert.ok(server.includes(`'${name}'`), `${name} is an MCP tool`);
 });
 

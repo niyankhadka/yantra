@@ -159,3 +159,7 @@ __pycache__/
 
 # Viewer build lock (lib/build.js)
 .yantra-build.lock/
+
+# Playground build (GitHub Pages) and chat packs
+dist-pages
+dist-chat
