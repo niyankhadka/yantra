@@ -7,6 +7,11 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-21
+
+The website, a context-aware Copy prompt in the playground and search-engine setup, plus
+README, keyword and link updates for the npm and PyPI pages.
+
 ### Added
 
 - The Yantra website, https://yantra.nbk.com.np/ (`site/`, `npm run build:site`): a landing
@@ -22,11 +27,6 @@ All notable changes to Yantra are documented here. The format follows
   each guide, `/docs/?q=` to open the docs search, and optional Google and Bing verification
   tags from `YANTRA_SITE_GOOGLE_VERIFICATION` / `YANTRA_SITE_BING_VERIFICATION`.
 
-### Fixed
-
-- The Pages workflow deploys the playground; its Pages check skipped the deploy even when
-  Pages was enabled.
-
 ### Changed
 
 - The README is reorganised around a gallery of diagram kinds and links to the website docs;
@@ -39,6 +39,11 @@ All notable changes to Yantra are documented here. The format follows
   the website.
 - `npm run build:playground` builds the whole site (`site/vite.config.js`, which replaces
   `playground/vite.config.js`); the Pages workflow runs `npm run build:site`.
+
+### Fixed
+
+- The Pages workflow deploys the playground; its Pages check skipped the deploy even when
+  Pages was enabled.
 
 ## [1.1.0] - 2026-10-21
 
@@ -350,7 +355,8 @@ First public release.
 - CLI (`validate`, `build`, `export`, `screenshot`, `import`, `new`, `examples`, `mcp`,
   `dev`), an MCP server with sandboxed file access, an agent skill and a Python SDK.
 
-[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/niyankhadka/yantra/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/niyankhadka/yantra/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/niyankhadka/yantra/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/niyankhadka/yantra/releases/tag/v1.0.0
