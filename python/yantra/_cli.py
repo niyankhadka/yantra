@@ -25,7 +25,9 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 __all__ = ["YantraError", "cli_command", "run_cli", "validate_payload", "build_payload", "export_payload", "import_diagram",
-           "NPM_PACKAGE"]
+           "init_project", "AGENTS", "NPM_PACKAGE"]
+
+AGENTS = ("claude", "cursor", "codex", "antigravity")
 
 NPM_PACKAGE = "@niyankhadka/yantra"
 NODE_HINT = ("Yantra needs Node.js >= 18 to validate and build HTML (https://nodejs.org). Then either "
@@ -197,3 +199,31 @@ def import_diagram(source: str, format: Optional[str] = None, page: Optional[Any
         if not os.path.exists(out):
             raise YantraError(f"yantra import failed:\n{res.stderr or res.stdout}")
         return json.loads(Path(out).read_text(encoding="utf-8"))
+
+
+def init_project(path: str = ".", agents: Optional[Iterable[str]] = None, force: bool = False,
+                 dry_run: bool = False, windows: Optional[bool] = None) -> Dict[str, Any]:
+    """Set up a project for coding agents (``yantra init``): the Yantra skill, MCP server entry
+    and rules for each agent in `agents` (``"claude"``, ``"cursor"``, ``"codex"``,
+    ``"antigravity"``; default: the agents whose folders exist, else Claude Code).
+
+    Writes only inside `path`; existing files are kept unless `force`. `windows` picks the
+    ``cmd /c npx`` launch form (default: the current platform). Returns the report:
+    ``{"dir", "agents", "files": [{"path", "agent", "action"}], "notes", "ok"}``.
+    """
+    names = [agents] if isinstance(agents, str) else list(agents or [])
+    unknown = [a for a in names if a not in AGENTS]
+    if unknown:
+        raise YantraError(f"unknown agent {unknown[0]!r} (use {', '.join(AGENTS)})")
+    args = ["init", "--dir", os.path.abspath(path), "--json"] + [f"--{a}" for a in names]
+    if force:
+        args.append("--force")
+    if dry_run:
+        args.append("--dry-run")
+    if windows is not None:
+        args.append("--windows" if windows else "--posix")
+    res = run_cli(args, check=False)
+    try:
+        return json.loads(res.stdout)
+    except json.JSONDecodeError as exc:
+        raise YantraError(f"yantra init failed:\n{res.stderr or res.stdout}") from exc
