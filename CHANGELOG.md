@@ -12,6 +12,10 @@ All notable changes to Yantra are documented here. The format follows
 - The Pages workflow deploys the playground; its Pages check skipped the deploy even when
   Pages was enabled.
 
+### Changed
+
+- The playground moved to its own address, https://yantra.nbk.com.np/, served from the site root.
+
 ## [1.1.0] - 2026-10-21
 
 Requires Node.js 20.19 or later (22.12 or later on Node 22); Node 18 is no longer supported.
@@ -33,7 +37,7 @@ Requires Node.js 20.19 or later (22.12 or later on Node 22); Node 18 is no longe
   the schemas and guides, for agents without the MCP server.
 - Python SDK: `yantra.init_project(path, agents=[...])`.
 - A browser playground for JSON written by AI chats (`playground/`, deployed to GitHub Pages
-  at https://niyankhadka.github.io/yantra/ by `.github/workflows/pages.yml`): paste a diagram
+  at https://yantra.nbk.com.np/ by `.github/workflows/pages.yml`): paste a diagram
   or answer page, see the validation findings (translatable) and the live result, and download
   standalone HTML, SVG, PNG, Markdown or JSON. It runs offline once loaded, has a "Copy prompt
   for your chat" button and loads any gallery example.

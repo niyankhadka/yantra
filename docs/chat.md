@@ -2,7 +2,7 @@
 
 A chat app cannot run Yantra, but it can write the JSON that Yantra draws. The pieces:
 
-- **Playground**, https://niyankhadka.github.io/yantra/: paste the JSON, see the findings and
+- **Playground**, https://yantra.nbk.com.np/: paste the JSON, see the findings and
   the interactive diagram or page, download it. It runs in the browser (no server, nothing
   uploaded) and keeps working offline once loaded.
 - **Packs** in [`chat/`](../chat/): a prompt for any chat, a skill for Claude.ai and the
@@ -63,7 +63,7 @@ Files: [`chat/chatgpt/`](../chat/chatgpt/). `npm run pack:gpt` gathers everythin
 1. In ChatGPT, create a GPT (Explore GPTs > Create) and open **Configure**.
 2. **Name**: Yantra diagrams. **Description**: "Interactive step-by-step diagrams and
    one-page answers as Yantra JSON."
-3. **Instructions**: paste [`instructions.md`](../chat/chatgpt/instructions.md) (5,296
+3. **Instructions**: paste [`instructions.md`](../chat/chatgpt/instructions.md) (5,274
    characters; the field takes 8,000).
 4. **Conversation starters**: the lines of
    [`conversation-starters.md`](../chat/chatgpt/conversation-starters.md).
