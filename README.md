@@ -12,6 +12,7 @@
 </p>
 
 <p align="center">
+  <a href="https://yantra.nbk.com.np/"><img src="https://img.shields.io/badge/website-yantra.nbk.com.np-2f5bd3.svg" alt="Website"></a>
   <a href="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml"><img src="https://github.com/niyankhadka/yantra/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-blue.svg" alt="Licence: MIT"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D20.19-339933.svg" alt="Node.js 20.19 or later">
@@ -30,6 +31,8 @@ reports. You never place a card by hand, a validator catches overlaps and broken
 before anyone sees them, and the output is one file you can email, attach to a ticket or
 open from a USB stick. The CLI, an MCP server, an agent skill and a Python SDK make it easy
 to generate diagrams from scripts and coding agents.
+
+Website, guides and the playground: **https://yantra.nbk.com.np/**.
 
 <p align="center">
   <img src="docs/images/walkthrough.png" alt="A cloud architecture diagram at step 3 of its walkthrough: two cards are highlighted, the rest are dimmed, and the storyboard below describes the step" width="900">
@@ -177,7 +180,7 @@ Desktop: [`docs/agents.md`](docs/agents.md).
 ## Use with AI chats
 
 No install needed: any chat (Claude.ai, ChatGPT, Gemini, others) can write Yantra JSON, and
-the [**playground**](https://yantra.nbk.com.np/) turns it into the interactive
+the [**playground**](https://yantra.nbk.com.np/playground/) turns it into the interactive
 result in your browser.
 
 1. In the playground, press **Copy prompt for your chat** and paste it into your chat (or
@@ -491,7 +494,8 @@ bin/yantra.js        CLI
 mcp/                 MCP server: stdio (server.js), Streamable HTTP (http.js), tools (tools.js)
 lib/                 Node only: standalone HTML builder, headless screenshots, yantra init
 skills/yantra/       Portable agent skill that yantra init installs in other projects
-playground/          Browser playground for JSON from AI chats (GitHub Pages)
+playground/          Browser playground for JSON from AI chats
+site/                Website (yantra.nbk.com.np): landing page, docs build, guides
 chat/                Chat packs: copyable prompt, Claude.ai skill, custom GPT instructions
 src/core/            Shared engine: model, layout, routing, lint, pages, charts, importers, i18n
 src/app/             Browser viewer
@@ -510,8 +514,8 @@ tests/               Node test suite
 npm install
 npm test                                          # Node suite (node --test)
 npm run build                                     # viewer bundle into dist/
-npm run dev:playground                            # playground at http://localhost:3001/yantra/
-npm run build:playground                          # playground into dist-pages/
+npm run dev:site                                  # website and playground at http://localhost:3001/
+npm run build:site                                # website (landing, docs, playground) into dist-pages/
 npm run pack:skill                                # Claude.ai skill into dist-chat/
 pip install -e python/
 python -m unittest discover -s python/tests -v    # Python SDK
@@ -519,7 +523,7 @@ python -m unittest discover -s python/tests -v    # Python SDK
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the tests on Node 20, 22
 and 24 on Linux and Node 24 on Windows, validates and builds every example, and runs the
-Python SDK tests on Python 3.9 and 3.12. Pushes to `main` deploy the playground to GitHub Pages
+Python SDK tests on Python 3.9 and 3.12. Pushes to `main` deploy the website and playground to GitHub Pages
 ([`.github/workflows/pages.yml`](.github/workflows/pages.yml)) once Settings > Pages > Source
 is set to GitHub Actions. Geometry logic lives only in `src/core/`; the
 viewer, CLI and MCP server all call it.

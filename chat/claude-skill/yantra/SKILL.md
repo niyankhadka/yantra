@@ -16,7 +16,7 @@ it. (In a coding agent, the `yantra` skill shipped in the npm package runs the C
    payload: valid JSON, no comments, no trailing commas, nothing else in the block.
 2. After the block, list the walkthrough steps (diagram) or repeat the headline (page), and
    tell the user how to see it:
-   - paste the JSON into the playground, https://yantra.nbk.com.np/ (checks it,
+   - paste the JSON into the playground, https://yantra.nbk.com.np/playground/ (checks it,
      shows the result, downloads HTML, SVG, PNG or Markdown; nothing leaves the browser), or
    - save it as `file.json` and run `npx -y @niyankhadka/yantra build file.json`.
 3. If a code execution tool with npm access is available, you may run

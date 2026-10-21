@@ -27,7 +27,7 @@ yantra import diagram.txt --from plantuml      # force the format: mermaid | dra
 `--from` wins; otherwise the extension (`.vsdx` → Visio; `.drawio`, `.dio`, `.drawio.xml`,
 `.drawio.svg`, `.drawio.png` → draw.io; `.puml` & co. → PlantUML; `.mmd` → Mermaid), then
 the content (`<mxfile>` / `<mxGraphModel>` → draw.io, `@startuml` / `@startgantt` or a
-```plantuml fence → PlantUML), else Mermaid. Chart-like sources (Mermaid gantt / pie /
+`plantuml` code fence → PlantUML), else Mermaid. Chart-like sources (Mermaid gantt / pie /
 timeline / quadrantChart, PlantUML `@startgantt`) become answer pages (`"kind": "page"`).
 
 The command prints import warnings, writes the JSON, validates it and exits 1 only if

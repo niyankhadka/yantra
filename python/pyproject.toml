@@ -31,8 +31,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/niyankhadka/yantra"
-Documentation = "https://github.com/niyankhadka/yantra/blob/main/python/README.md"
+Homepage = "https://yantra.nbk.com.np/"
+Documentation = "https://yantra.nbk.com.np/docs/guides/python/"
 Source = "https://github.com/niyankhadka/yantra"
 Issues = "https://github.com/niyankhadka/yantra/issues"
 Changelog = "https://github.com/niyankhadka/yantra/blob/main/CHANGELOG.md"

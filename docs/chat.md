@@ -2,7 +2,7 @@
 
 A chat app cannot run Yantra, but it can write the JSON that Yantra draws. The pieces:
 
-- **Playground**, https://yantra.nbk.com.np/: paste the JSON, see the findings and
+- **Playground**, https://yantra.nbk.com.np/playground/: paste the JSON, see the findings and
   the interactive diagram or page, download it. It runs in the browser (no server, nothing
   uploaded) and keeps working offline once loaded.
 - **Packs** in [`chat/`](../chat/): a prompt for any chat, a skill for Claude.ai and the
@@ -63,7 +63,7 @@ Files: [`chat/chatgpt/`](../chat/chatgpt/). `npm run pack:gpt` gathers everythin
 1. In ChatGPT, create a GPT (Explore GPTs > Create) and open **Configure**.
 2. **Name**: Yantra diagrams. **Description**: "Interactive step-by-step diagrams and
    one-page answers as Yantra JSON."
-3. **Instructions**: paste [`instructions.md`](../chat/chatgpt/instructions.md) (5,274
+3. **Instructions**: paste [`instructions.md`](../chat/chatgpt/instructions.md) (5,296
    characters; the field takes 8,000).
 4. **Conversation starters**: the lines of
    [`conversation-starters.md`](../chat/chatgpt/conversation-starters.md).
@@ -121,16 +121,18 @@ model: [remote-mcp.md](remote-mcp.md).
 
 ## Hosting the playground
 
-The playground is a static site built from [`playground/`](../playground/):
+The playground ([`playground/`](../playground/)) is part of the Yantra website, a static
+site built by [`site/vite.config.js`](../site/vite.config.js): the landing page at `/`, the
+docs at `/docs/` (rendered from `docs/*.md` and `site/guides/*.md`) and the playground at
+`/playground/`.
 
 ```bash
-npm run dev:playground      # http://localhost:3001/yantra/
-npm run build:playground    # dist-pages/
-npm run preview:playground  # serve dist-pages/ at http://localhost:4174/yantra/
+npm run dev:site            # http://localhost:3001/ (playground at /playground/)
+npm run build:site          # dist-pages/ (npm run build:playground does the same)
+npm run preview:site        # serve dist-pages/ at http://localhost:4174/
 ```
 
 [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) builds it on every push to
-`main` and deploys it to GitHub Pages. Enable that once in the repository: **Settings >
-Pages > Build and deployment > Source: GitHub Actions**. Until then the workflow skips the
-build and the deploy with a notice. For another host or path, set
-`YANTRA_PLAYGROUND_BASE` (default `/yantra/`) when building and serve `dist-pages/` as static files.
+`main` and deploys it to GitHub Pages (**Settings > Pages > Build and deployment > Source:
+GitHub Actions**), served at https://yantra.nbk.com.np/. For another host, serve
+`dist-pages/` as static files from the root of a domain or subdomain.

@@ -7,6 +7,12 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The Yantra website, https://yantra.nbk.com.np/ (`site/`, `npm run build:site`): a landing
+  page with a live demo, the docs rendered from `docs/*.md` with search, eight step-by-step
+  guides (`site/guides/`), a 404 page, a sitemap and social cards.
+
 ### Fixed
 
 - The Pages workflow deploys the playground; its Pages check skipped the deploy even when
@@ -14,7 +20,12 @@ All notable changes to Yantra are documented here. The format follows
 
 ### Changed
 
-- The playground moved to its own address, https://yantra.nbk.com.np/, served from the site root.
+- The playground moved to https://yantra.nbk.com.np/playground/; old `/#example=...` links
+  are forwarded there. The chat packs, README and docs link to the new address.
+- `package.json` `homepage` and the Python package's Homepage and Documentation URLs point to
+  the website.
+- `npm run build:playground` builds the whole site (`site/vite.config.js`, which replaces
+  `playground/vite.config.js`); the Pages workflow runs `npm run build:site`.
 
 ## [1.1.0] - 2026-10-21
 
