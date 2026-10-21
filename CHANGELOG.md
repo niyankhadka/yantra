@@ -7,6 +7,10 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-21
+
+Requires Node.js 20.19 or later (22.12 or later on Node 22); Node 18 is no longer supported.
+
 ### Added
 
 - `TRADEMARKS.md`: the code is MIT; the Yantra name and logo follow the trademark policy.
@@ -42,9 +46,6 @@ All notable changes to Yantra are documented here. The format follows
 - The single-file HTML assembly moved from `lib/build.js` to `src/core/standalone.js`, so the
   playground builds the same file in the browser. The MCP tools moved to `mcp/tools.js`,
   shared by both transports.
-
-### Changed
-
 - Requires Node.js 20.19 or later (22.12 or later on Node 22); Node.js 18 reached end of
   life. CI tests Node 20, 22 and 24.
 - The viewer is built with Vite 8.
@@ -316,6 +317,7 @@ First public release.
 - CLI (`validate`, `build`, `export`, `screenshot`, `import`, `new`, `examples`, `mcp`,
   `dev`), an MCP server with sandboxed file access, an agent skill and a Python SDK.
 
-[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/niyankhadka/yantra/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/niyankhadka/yantra/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/niyankhadka/yantra/releases/tag/v1.0.0
