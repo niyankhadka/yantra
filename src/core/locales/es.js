@@ -300,7 +300,22 @@ export default {
   'play.auto': 'El del contenido',
   'play.docs': 'Documentación',
   'play.findings': 'Validación',
-  'play.noFindings': 'Sin errores ni avisos.'
+  'play.noFindings': 'Sin errores ni avisos.',
+  'play.copyWithDiagram': 'Copiar instrucciones con este diagrama',
+  'play.copyWithPage': 'Copiar instrucciones con esta página',
+  'play.copyToFix': 'Copiar instrucciones para corregirlo',
+  'play.copyTipNew': 'Copia las instrucciones de Yantra para cualquier chat de IA, listas para tu petición.',
+  'play.copyTipEdit': 'Copia las instrucciones, el JSON del editor y tu petición, para que el chat pueda cambiarlo.',
+  'play.copyTipFix': 'Copia las instrucciones, el JSON y sus avisos de validación, para que el chat pueda corregirlos.',
+  'play.copyOptions': 'Opciones de las instrucciones',
+  'play.request': '¿Qué quieres? (opcional)',
+  'play.requestHint': 'Por ejemplo: añade un paso para los reembolsos',
+  'play.copyNow': 'Copiar instrucciones',
+  'play.instructionsOnly': 'Solo las instrucciones',
+  'play.copiedNew': 'Instrucciones copiadas ({size}). Pégalas en tu chat y di lo que quieres.',
+  'play.copiedEdit': 'Instrucciones y JSON copiados ({size}). Pégalos en tu chat.',
+  'play.copiedFix': 'Instrucciones, JSON y avisos copiados ({size}). Pégalos en tu chat.',
+  'play.copiedLarge': 'Copiado ({size}), pero es largo y algunos chats cortan los mensajes largos. Si no cabe, usa Solo las instrucciones.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

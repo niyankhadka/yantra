@@ -316,7 +316,22 @@ export default {
   'play.auto': 'لغة المحتوى نفسها',
   'play.docs': 'التوثيق',
   'play.findings': 'التحقق',
-  'play.noFindings': 'لا أخطاء ولا تحذيرات.'
+  'play.noFindings': 'لا أخطاء ولا تحذيرات.',
+  'play.copyWithDiagram': 'نسخ التعليمات مع هذا المخطط',
+  'play.copyWithPage': 'نسخ التعليمات مع هذه الصفحة',
+  'play.copyToFix': 'نسخ التعليمات لإصلاحه',
+  'play.copyTipNew': 'ينسخ تعليمات Yantra لأي محادثة ذكاء اصطناعي، جاهزة لطلبك.',
+  'play.copyTipEdit': 'ينسخ التعليمات وJSON المحرر وطلبك، لكي تعدّله المحادثة.',
+  'play.copyTipFix': 'ينسخ التعليمات وJSON ونتائج التحقق منه، لكي تصلحها المحادثة.',
+  'play.copyOptions': 'خيارات التعليمات',
+  'play.request': 'ماذا تريد؟ (اختياري)',
+  'play.requestHint': 'مثلًا: أضف خطوة لاسترداد المبالغ',
+  'play.copyNow': 'نسخ التعليمات',
+  'play.instructionsOnly': 'التعليمات فقط',
+  'play.copiedNew': 'نُسخت التعليمات ({size}). الصقها في محادثتك وقل ما تريد.',
+  'play.copiedEdit': 'نُسخت التعليمات وJSON ({size}). الصقها في محادثتك.',
+  'play.copiedFix': 'نُسخت التعليمات وJSON ونتائج التحقق ({size}). الصقها في محادثتك.',
+  'play.copiedLarge': 'نُسخ ({size})، لكنه طويل وبعض المحادثات تقطع الرسائل الطويلة. إن لم يتسع، فاستخدم التعليمات فقط.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

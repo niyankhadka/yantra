@@ -25,12 +25,32 @@ App menus change often. Where a step names a menu, check the app's current help 
 3. The chat answers with one ```json block. Copy it (the copy button of the code block is
    easiest) and paste it into the playground. Pasting the whole reply also works: the
    playground takes the JSON out of the surrounding text.
-4. Read the **Validation** list. If there are errors, copy them back into the chat ("fix
-   these: ...") and paste the corrected JSON. Warnings are worth fixing but do not stop the
-   preview.
+4. Read the **Validation** list. If there are errors, press **Copy prompt to fix this** and
+   paste the result into the chat: it carries the JSON and the findings. Warnings are worth
+   fixing but do not stop the preview.
 5. Download what you need: **Standalone HTML** (the interactive file, works offline, same
    as `yantra build`), **SVG** or **PNG** (diagrams), **Markdown** (to paste into a ticket or
    wiki) or the **JSON** to keep.
+
+### What "Copy prompt" copies
+
+The button follows the editor. Every prompt starts with the instructions of
+[`chat/prompt.md`](../chat/prompt.md) (the playground bundles that file when it is built);
+what follows depends on what the editor holds:
+
+| Editor | Button | Copied after the instructions |
+| --- | --- | --- |
+| Empty | Copy prompt for your chat | `Describe what you want: <your request here>` |
+| Valid JSON, no findings | Copy prompt with this diagram (or page) | The JSON in a fenced block, then `Change this diagram: <your request here>` ("answer page" for `"kind": "page"`) |
+| JSON with errors or warnings, or text that is not JSON | Copy prompt to fix this | The JSON (or the text as it is), the findings (level, code, location and message; the first 20), then "Fix these problems and return the full corrected JSON" |
+
+The arrow next to the button opens a **What do you want?** box: its text replaces
+`<your request here>` (with findings, it is added as "Also: ..."), and **Instructions only**
+copies the instructions alone. Ctrl+Enter (Cmd+Enter on a Mac) in the box copies. A
+notice says what was copied and its size. JSON over 40,000 characters is copied without
+indentation, and a prompt over 60,000 characters is still copied but flagged, because some
+chats cut long messages: use **Instructions only** and paste the JSON separately if it does
+not fit. The parts after the instructions are in English, whatever the interface language.
 
 To build on your own machine instead: save the block as `diagram.json` and run
 `npx -y @niyankhadka/yantra build diagram.json` (Node.js 20.19 or later).

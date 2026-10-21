@@ -153,6 +153,67 @@ textarea {
   padding-inline-end: 6px;
 }
 
+/* --- copy prompt: the button, its options arrow and the options popover --- */
+.pg-copy {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.pg-copy > .pg-btn:first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.pg-copy > .pg-caret {
+  padding: 0 8px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-inline-start-color: color-mix(in srgb, var(--y-accent-ink) 35%, var(--y-accent));
+}
+
+.pg-pop {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--y-border);
+  border-radius: 10px;
+  background: var(--y-surface);
+  color: var(--y-ink);
+  box-shadow: var(--y-shadow-lg, 0 12px 32px rgb(0 0 0 / 0.18));
+}
+
+.pg-pop label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pg-request {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid var(--y-border);
+  border-radius: 8px;
+  background: var(--y-bg);
+  color: var(--y-ink);
+  font-size: 13px;
+}
+
+.pg-pop-note {
+  margin: 8px 0 10px;
+  color: var(--y-ink-3);
+  font-size: 12.5px;
+}
+
+.pg-pop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* --- panes --------------------------------------------------------------- */
 .pg-main {
   flex: 1;
@@ -421,10 +482,14 @@ textarea {
     max-width: none;
   }
 
-  .pg-primary {
+  .pg-bar > .pg-copy {
     flex: 1 1 100%;
-    justify-content: center;
     order: 5;
+  }
+
+  .pg-copy > .pg-btn:first-child {
+    flex: 1;
+    justify-content: center;
   }
 
   .pg-sub {

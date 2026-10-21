@@ -306,7 +306,22 @@ export default {
   'play.auto': 'כמו בתוכן',
   'play.docs': 'תיעוד',
   'play.findings': 'בדיקה',
-  'play.noFindings': 'אין שגיאות או אזהרות.'
+  'play.noFindings': 'אין שגיאות או אזהרות.',
+  'play.copyWithDiagram': 'העתקת הנחיה עם התרשים הזה',
+  'play.copyWithPage': 'העתקת הנחיה עם הדף הזה',
+  'play.copyToFix': 'העתקת הנחיה לתיקון',
+  'play.copyTipNew': 'מעתיק את הנחיות Yantra לכל צ׳אט AI, מוכנות לבקשה שלכם.',
+  'play.copyTipEdit': 'מעתיק את ההנחיות, את ה-JSON שבעורך ואת הבקשה שלכם, כדי שהצ׳אט ישנה אותו.',
+  'play.copyTipFix': 'מעתיק את ההנחיות, את ה-JSON ואת ממצאי הבדיקה שלו, כדי שהצ׳אט יתקן אותם.',
+  'play.copyOptions': 'אפשרויות ההנחיה',
+  'play.request': 'מה תרצו? (רשות)',
+  'play.requestHint': 'לדוגמה: הוסיפו שלב להחזרים',
+  'play.copyNow': 'העתקת הנחיה',
+  'play.instructionsOnly': 'הנחיות בלבד',
+  'play.copiedNew': 'ההנחיות הועתקו ({size}). הדביקו אותן בצ׳אט ואמרו מה תרצו.',
+  'play.copiedEdit': 'ההנחיות וה-JSON הועתקו ({size}). הדביקו אותם בצ׳אט.',
+  'play.copiedFix': 'ההנחיות, ה-JSON והממצאים הועתקו ({size}). הדביקו אותם בצ׳אט.',
+  'play.copiedLarge': 'הועתק ({size}), אבל הטקסט ארוך ויש צ׳אטים שקוטעים הודעות ארוכות. אם הוא לא נכנס, השתמשו בהנחיות בלבד.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -12,6 +12,10 @@ All notable changes to Yantra are documented here. The format follows
 - The Yantra website, https://yantra.nbk.com.np/ (`site/`, `npm run build:site`): a landing
   page with a live demo, the docs rendered from `docs/*.md` with search, eight step-by-step
   guides (`site/guides/`), a 404 page, a sitemap and social cards.
+- The playground's **Copy prompt** follows the editor: with an empty editor it copies the
+  instructions and a request line; with valid JSON it adds the diagram or page and asks for
+  a change; with findings it adds them and asks for a fix. An options box takes the request
+  and offers **Instructions only** (`playground/prompt.js`, docs/chat.md).
 
 ### Fixed
 

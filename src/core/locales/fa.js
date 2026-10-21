@@ -300,7 +300,22 @@ export default {
   'play.auto': 'همان زبان محتوا',
   'play.docs': 'مستندات',
   'play.findings': 'اعتبارسنجی',
-  'play.noFindings': 'هیچ خطا یا هشداری نیست.'
+  'play.noFindings': 'هیچ خطا یا هشداری نیست.',
+  'play.copyWithDiagram': 'کپی دستور همراه این نمودار',
+  'play.copyWithPage': 'کپی دستور همراه این صفحه',
+  'play.copyToFix': 'کپی دستور برای رفع مشکل',
+  'play.copyTipNew': 'دستورهای Yantra را برای هر گفت‌وگوی هوش مصنوعی کپی می‌کند، آماده برای درخواست شما.',
+  'play.copyTipEdit': 'دستورها، JSON ویرایشگر و درخواست شما را کپی می‌کند تا گفت‌وگو آن را تغییر دهد.',
+  'play.copyTipFix': 'دستورها، JSON و نتایج اعتبارسنجی آن را کپی می‌کند تا گفت‌وگو آن‌ها را رفع کند.',
+  'play.copyOptions': 'گزینه‌های دستور',
+  'play.request': 'چه می‌خواهید؟ (اختیاری)',
+  'play.requestHint': 'برای نمونه: یک مرحله برای بازپرداخت اضافه کن',
+  'play.copyNow': 'کپی دستور',
+  'play.instructionsOnly': 'فقط دستورها',
+  'play.copiedNew': 'دستورها کپی شد ({size}). آن‌ها را در گفت‌وگو بچسبانید و بگویید چه می‌خواهید.',
+  'play.copiedEdit': 'دستورها و JSON کپی شد ({size}). آن‌ها را در گفت‌وگو بچسبانید.',
+  'play.copiedFix': 'دستورها، JSON و نتایج کپی شد ({size}). آن‌ها را در گفت‌وگو بچسبانید.',
+  'play.copiedLarge': 'کپی شد ({size})، اما طولانی است و برخی گفت‌وگوها پیام‌های طولانی را کوتاه می‌کنند. اگر جا نشد، از فقط دستورها استفاده کنید.'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

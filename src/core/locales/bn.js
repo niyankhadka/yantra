@@ -300,7 +300,22 @@ export default {
   'play.auto': 'বিষয়বস্তুর ভাষা',
   'play.docs': 'ডকুমেন্টেশন',
   'play.findings': 'যাচাই',
-  'play.noFindings': 'কোনো ত্রুটি বা সতর্কতা নেই।'
+  'play.noFindings': 'কোনো ত্রুটি বা সতর্কতা নেই।',
+  'play.copyWithDiagram': 'এই ডায়াগ্রামসহ প্রম্পট কপি করুন',
+  'play.copyWithPage': 'এই পৃষ্ঠাসহ প্রম্পট কপি করুন',
+  'play.copyToFix': 'এটি ঠিক করাতে প্রম্পট কপি করুন',
+  'play.copyTipNew': 'যেকোনো AI চ্যাটের জন্য Yantra নির্দেশনা কপি করে, আপনার অনুরোধের জন্য প্রস্তুত।',
+  'play.copyTipEdit': 'নির্দেশনা, এডিটরের JSON এবং আপনার অনুরোধ কপি করে, যাতে চ্যাট এটি বদলাতে পারে।',
+  'play.copyTipFix': 'নির্দেশনা, JSON এবং এর যাচাইয়ের ফলাফল কপি করে, যাতে চ্যাট সেগুলো ঠিক করতে পারে।',
+  'play.copyOptions': 'প্রম্পটের বিকল্প',
+  'play.request': 'আপনি কী চান? (ঐচ্ছিক)',
+  'play.requestHint': 'যেমন: ফেরতের জন্য একটি ধাপ যোগ করুন',
+  'play.copyNow': 'প্রম্পট কপি করুন',
+  'play.instructionsOnly': 'শুধু নির্দেশনা',
+  'play.copiedNew': 'নির্দেশনা কপি হয়েছে ({size})। এগুলো আপনার চ্যাটে পেস্ট করে বলুন আপনি কী চান।',
+  'play.copiedEdit': 'নির্দেশনা ও JSON কপি হয়েছে ({size})। এগুলো আপনার চ্যাটে পেস্ট করুন।',
+  'play.copiedFix': 'নির্দেশনা, JSON ও ফলাফল কপি হয়েছে ({size})। এগুলো আপনার চ্যাটে পেস্ট করুন।',
+  'play.copiedLarge': 'কপি হয়েছে ({size}), কিন্তু এটি দীর্ঘ এবং কিছু চ্যাট দীর্ঘ বার্তা কেটে দেয়। না আঁটলে শুধু নির্দেশনা ব্যবহার করুন।'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -300,7 +300,22 @@ export default {
   'play.auto': 'सामग्रीकै भाषा',
   'play.docs': 'कागजात',
   'play.findings': 'जाँच',
-  'play.noFindings': 'कुनै त्रुटि वा चेतावनी छैन।'
+  'play.noFindings': 'कुनै त्रुटि वा चेतावनी छैन।',
+  'play.copyWithDiagram': 'यो रेखाचित्रसहित प्रम्प्ट कपी गर्नुहोस्',
+  'play.copyWithPage': 'यो पृष्ठसहित प्रम्प्ट कपी गर्नुहोस्',
+  'play.copyToFix': 'यसलाई सच्याउन प्रम्प्ट कपी गर्नुहोस्',
+  'play.copyTipNew': 'कुनै पनि AI च्याटका लागि Yantra निर्देशन कपी गर्छ, तपाईंको अनुरोधका लागि तयार।',
+  'play.copyTipEdit': 'निर्देशन, सम्पादकको JSON र तपाईंको अनुरोध कपी गर्छ, ताकि च्याटले त्यसलाई बदल्न सकोस्।',
+  'play.copyTipFix': 'निर्देशन, JSON र त्यसका प्रमाणीकरण नतिजा कपी गर्छ, ताकि च्याटले तिनलाई सच्याउन सकोस्।',
+  'play.copyOptions': 'प्रम्प्टका विकल्प',
+  'play.request': 'तपाईं के चाहनुहुन्छ? (ऐच्छिक)',
+  'play.requestHint': 'उदाहरण: फिर्ताका लागि एउटा चरण थप्नुहोस्',
+  'play.copyNow': 'प्रम्प्ट कपी गर्नुहोस्',
+  'play.instructionsOnly': 'निर्देशन मात्र',
+  'play.copiedNew': 'निर्देशन कपी भयो ({size})। यसलाई आफ्नो च्याटमा टाँस्नुहोस् र के चाहनुहुन्छ भन्नुहोस्।',
+  'play.copiedEdit': 'निर्देशन र JSON कपी भयो ({size})। यसलाई आफ्नो च्याटमा टाँस्नुहोस्।',
+  'play.copiedFix': 'निर्देशन, JSON र नतिजा कपी भयो ({size})। यसलाई आफ्नो च्याटमा टाँस्नुहोस्।',
+  'play.copiedLarge': 'कपी भयो ({size}), तर यो लामो छ र केही च्याटले लामा सन्देश काट्छन्। नअटेमा निर्देशन मात्र प्रयोग गर्नुहोस्।'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

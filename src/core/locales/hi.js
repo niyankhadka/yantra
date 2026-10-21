@@ -300,7 +300,22 @@ export default {
   'play.auto': 'सामग्री वाली भाषा',
   'play.docs': 'दस्तावेज़',
   'play.findings': 'जाँच',
-  'play.noFindings': 'कोई त्रुटि या चेतावनी नहीं।'
+  'play.noFindings': 'कोई त्रुटि या चेतावनी नहीं।',
+  'play.copyWithDiagram': 'इस आरेख के साथ प्रॉम्प्ट कॉपी करें',
+  'play.copyWithPage': 'इस पृष्ठ के साथ प्रॉम्प्ट कॉपी करें',
+  'play.copyToFix': 'इसे ठीक कराने के लिए प्रॉम्प्ट कॉपी करें',
+  'play.copyTipNew': 'किसी भी AI चैट के लिए Yantra निर्देश कॉपी करता है, आपके अनुरोध के लिए तैयार।',
+  'play.copyTipEdit': 'निर्देश, संपादक का JSON और आपका अनुरोध कॉपी करता है, ताकि चैट उसे बदल सके।',
+  'play.copyTipFix': 'निर्देश, JSON और उसके सत्यापन परिणाम कॉपी करता है, ताकि चैट उन्हें ठीक कर सके।',
+  'play.copyOptions': 'प्रॉम्प्ट विकल्प',
+  'play.request': 'आप क्या चाहते हैं? (वैकल्पिक)',
+  'play.requestHint': 'उदाहरण: रिफ़ंड के लिए एक चरण जोड़ें',
+  'play.copyNow': 'प्रॉम्प्ट कॉपी करें',
+  'play.instructionsOnly': 'केवल निर्देश',
+  'play.copiedNew': 'निर्देश कॉपी हो गए ({size})। इन्हें अपनी चैट में चिपकाएँ और बताएँ कि आप क्या चाहते हैं।',
+  'play.copiedEdit': 'निर्देश और JSON कॉपी हो गए ({size})। इन्हें अपनी चैट में चिपकाएँ।',
+  'play.copiedFix': 'निर्देश, JSON और परिणाम कॉपी हो गए ({size})। इन्हें अपनी चैट में चिपकाएँ।',
+  'play.copiedLarge': 'कॉपी हो गया ({size}), पर यह लंबा है और कुछ चैट लंबे संदेश काट देती हैं। न समाए तो केवल निर्देश चुनें।'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

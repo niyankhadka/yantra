@@ -300,7 +300,22 @@ export default {
   'play.auto': '與內容相同',
   'play.docs': '文件',
   'play.findings': '驗證',
-  'play.noFindings': '沒有錯誤或警告。'
+  'play.noFindings': '沒有錯誤或警告。',
+  'play.copyWithDiagram': '複製提示詞（含此圖表）',
+  'play.copyWithPage': '複製提示詞（含此頁面）',
+  'play.copyToFix': '複製提示詞以修正問題',
+  'play.copyTipNew': '複製適用於任何 AI 聊天的 Yantra 說明，可直接附上你的請求。',
+  'play.copyTipEdit': '複製說明、編輯器中的 JSON 和你的請求，讓聊天助理修改它。',
+  'play.copyTipFix': '複製說明、JSON 及其驗證結果，讓聊天助理修正這些問題。',
+  'play.copyOptions': '提示詞選項',
+  'play.request': '你想要什麼？（選填）',
+  'play.requestHint': '例如：加入一個退款步驟',
+  'play.copyNow': '複製提示詞',
+  'play.instructionsOnly': '僅複製說明',
+  'play.copiedNew': '已複製說明（{size}）。貼到聊天中，並說明你想要什麼。',
+  'play.copiedEdit': '已複製說明和 JSON（{size}）。貼到聊天中即可。',
+  'play.copiedFix': '已複製說明、JSON 和驗證結果（{size}）。貼到聊天中即可。',
+  'play.copiedLarge': '已複製（{size}），但內容較長，有些聊天會截斷長訊息。如果放不下，請使用「僅複製說明」。'
 };
 
 /** Validator messages for ../lintmessages.js (codes and placeholders as in LINT_EN there). */

@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { ROOT, tempDir, removeDir } from './support.js';
+import http from 'node:http';
+import { ROOT, tempDir, removeDir, startBrowser } from './support.js';
+import { findBrowser } from '../lib/browser.js';
 import { lint } from '../src/core/lint.js';
 import { isPage } from '../src/core/page.js';
 import { lintPage } from '../src/core/lint.js';
@@ -199,4 +201,62 @@ test('chat packs and the README point to the playground at /playground/', () => 
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
   assert.equal(pkg.homepage, 'https://yantra.nbk.com.np/');
   assert.match(fs.readFileSync(path.join(ROOT, 'python', 'pyproject.toml'), 'utf-8'), /^Homepage = "https:\/\/yantra\.nbk\.com\.np\/"$/m);
+});
+
+/** Serve the built site on a free local port; resolves to { base, close }. */
+function serveOut() {
+  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
+  const server = http.createServer((req, res) => {
+    let f = path.join(OUT, decodeURIComponent(req.url.split(/[?#]/)[0]));
+    if (f.endsWith(path.sep) || f.endsWith('/')) f = path.join(f, 'index.html');
+    if (!f.startsWith(OUT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) {
+      res.statusCode = 404;
+      return res.end();
+    }
+    res.setHeader('Content-Type', types[path.extname(f)] || 'application/octet-stream');
+    fs.createReadStream(f).pipe(res);
+  });
+  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ base: `http://127.0.0.1:${server.address().port}`, close: () => new Promise((r) => server.close(r)) })));
+}
+
+const browserPath = findBrowser();
+test('playground: Copy prompt follows the editor (empty, valid example, findings)', { skip: browserPath ? false : 'no Chrome, Edge or Chromium found', timeout: 120000 }, async () => {
+  const srv = await serveOut();
+  const browser = await startBrowser(browserPath);
+  try {
+    const page = await browser.open(`${srv.base}/playground/#example=oauth-login`);
+    await page.waitFor(`location.href.startsWith(${JSON.stringify(srv.base)}) && document.readyState === "complete" && document.getElementById('src').value.includes('OAuth')`);
+    // Capture the clipboard instead of writing to it
+    await page.eval(`Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { window.__copied = t; } }, configurable: true }); true`);
+    const copy = async () => {
+      await page.eval(`window.__copied = null; document.getElementById('copy-prompt').click(); true`);
+      return page.waitFor('window.__copied');
+    };
+    await page.waitFor(`document.getElementById('copy-label').textContent === 'Copy prompt with this diagram'`);
+    let text = await copy();
+    assert.match(text, /^You can draw with Yantra\./, 'starts with chat/prompt.md');
+    assert.match(text, /## My current diagram\n\n```json\n\{/);
+    assert.match(text, /Change this diagram: <your request here>/);
+    assert.match(await page.eval(`document.getElementById('toast').textContent`), /kB/);
+
+    // The request box replaces the placeholder
+    await page.eval(`document.getElementById('copy-request').value = 'Add a logout step'; true`);
+    assert.match(await copy(), /Change this diagram: Add a logout step/);
+
+    // Findings: an edge to a missing node
+    await page.eval(`const e = document.getElementById('src'); e.value = JSON.stringify({ meta: { title: 'X' }, nodes: [{ id: 'a', data: { title: 'A' } }], edges: [{ id: 'e', source: 'a', target: 'zz' }] }); e.dispatchEvent(new Event('input')); true`);
+    await page.waitFor(`document.getElementById('copy-label').textContent === 'Copy prompt to fix this'`);
+    text = await copy();
+    assert.match(text, /- error `ref\/edge-unknown-target` \(edge e\):/);
+    assert.match(text, /Fix these problems and return the full corrected JSON/);
+    assert.match(text, /Also: Add a logout step/);
+
+    // Empty editor
+    await page.eval(`document.getElementById('copy-request').value = ''; document.getElementById('btn-clear').click(); true`);
+    await page.waitFor(`document.getElementById('copy-label').textContent === 'Copy prompt for your chat'`);
+    assert.ok((await copy()).trimEnd().endsWith('Describe what you want: <your request here>'));
+  } finally {
+    await browser.close();
+    await srv.close();
+  }
 });
