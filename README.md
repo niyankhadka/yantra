@@ -64,6 +64,7 @@ to generate diagrams from scripts and coding agents.
 - [Project layout](#project-layout)
 - [Development](#development)
 - [Contributing, support and security](#contributing-support-and-security)
+- [Support the project](#support-the-project)
 
 ## Features
 
@@ -416,6 +417,9 @@ toolbar, the badge and the tab icon, and are embedded in built HTML, SVG exports
 pages. Use a square `viewBox` without a fixed `width` or `height`. `meta.watermark: false`
 hides the "Made with Yantra" badge; a string renames it.
 
+The badge links back to this repository. It's optional, but keeping it is a simple way to
+support the project and help others find it.
+
 ## Project layout
 
 ```
@@ -456,6 +460,12 @@ viewer, CLI and MCP server all call it.
 - [Security policy](SECURITY.md): report vulnerabilities privately.
 - [Changelog](CHANGELOG.md): what changed in each release.
 
+## Support the project
+
+If Yantra is useful to you, you can [buy me a coffee](https://buymeacoffee.com/niyankhadka),
+star the repository, or keep the "Made with Yantra" badge in your diagrams.
+
 ## Licence
 
-[MIT](LICENSE) © niyankhadka
+[MIT](LICENSE) © niyankhadka. The licence covers the code; the Yantra name and logo are
+covered by the [trademark policy](TRADEMARKS.md).

@@ -7,6 +7,11 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `TRADEMARKS.md`: the code is MIT; the Yantra name and logo follow the trademark policy.
+- A Sponsor button (Buy Me a Coffee) and a "Support the project" section in the README.
+
 ## [1.0.1] - 2026-10-20
 
 ### Changed
