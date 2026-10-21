@@ -196,6 +196,13 @@ if (input) {
   const start = () => (ready ||= import('./search.js').then((m) => m.attach(input, document.getElementById('search-results'))));
   input.addEventListener('focus', start, { once: true });
   input.addEventListener('input', start, { once: true });
+  // /docs/?q=term opens the docs with that search (the site's SearchAction in its structured data)
+  const q = new URLSearchParams(location.search).get('q');
+  if (q && q.trim()) {
+    input.value = q.trim().slice(0, 100);
+    if (menu && getComputedStyle(menu).display !== 'none' && !nav.classList.contains('is-open')) menu.click();
+    start();
+  }
   document.addEventListener('keydown', (e) => {
     if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target;

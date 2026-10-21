@@ -1,6 +1,8 @@
 # Using Yantra from AI chats
 
-A chat app cannot run Yantra, but it can write the JSON that Yantra draws. The pieces:
+Use Yantra from Claude.ai, ChatGPT, Gemini or any other chat: the chat writes the JSON and
+the playground validates, previews and downloads it. A chat app cannot run Yantra itself, so
+these are the pieces:
 
 - **Playground**, https://yantra.nbk.com.np/playground/: paste the JSON, see the findings and
   the interactive diagram or page, download it. It runs in the browser (no server, nothing

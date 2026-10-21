@@ -1,5 +1,5 @@
 ---
-description: Make Yantra diagrams and answer pages from Claude.ai, ChatGPT, Gemini or any chat with the playground's copyable prompt, the Claude.ai skill or the custom GPT pack. Nothing to install.
+description: Make Yantra diagrams and answer pages in Claude.ai, ChatGPT, Gemini or any chat with the playground's prompt, the Claude.ai skill or a custom GPT.
 ---
 
 # Use with Claude.ai, ChatGPT and any chat

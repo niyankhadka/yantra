@@ -2,22 +2,27 @@
   "name": "@niyankhadka/yantra",
   "version": "1.1.0",
   "type": "module",
-  "description": "Interactive, step-by-step diagrams with automatic layout, orthogonal routing and a geometry validator. Single-file offline HTML output.",
+  "description": "Interactive, step-by-step diagrams and one-page answers from JSON: automatic layout, orthogonal edge routing and a validator. One offline HTML file; CLI, MCP server and browser playground.",
   "keywords": [
     "diagram",
-    "diagrams",
-    "architecture",
+    "architecture-diagram",
     "sequence-diagram",
     "flowchart",
+    "er-diagram",
+    "state-machine",
+    "mind-map",
     "interactive",
     "walkthrough",
-    "visualization",
+    "documentation",
     "mermaid",
-    "drawio",
     "plantuml",
-    "offline",
+    "drawio",
+    "visio",
+    "svg",
     "html",
+    "offline",
     "mcp",
+    "mcp-server",
     "cli"
   ],
   "license": "MIT",
@@ -29,6 +34,10 @@
   },
   "bugs": {
     "url": "https://github.com/niyankhadka/yantra/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://buymeacoffee.com/niyankhadka"
   },
   "bin": {
     "yantra": "./bin/yantra.js"

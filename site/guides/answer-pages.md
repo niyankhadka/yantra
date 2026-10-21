@@ -1,5 +1,5 @@
 ---
-description: Answer one question on one printable page: the headline first, then points, metrics, charts, comparisons, gantt plans and embedded diagrams, built into one offline HTML file.
+description: Answer one question on one printable page: the headline first, then points, metrics, charts, comparisons and diagrams, in one offline HTML file.
 ---
 
 # One-page answers and charts

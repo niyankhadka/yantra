@@ -23,6 +23,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history: the sitemap and docs pages date each page by its last commit
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -31,6 +33,11 @@ jobs:
       - uses: actions/configure-pages@v5
       - name: Build the site into dist-pages/
         run: npm run build:site
+        env:
+          # Optional search-engine ownership checks (Settings > Secrets and variables >
+          # Actions > Variables). Unset: no verification meta tag is written.
+          YANTRA_SITE_GOOGLE_VERIFICATION: ${{ vars.YANTRA_SITE_GOOGLE_VERIFICATION }}
+          YANTRA_SITE_BING_VERIFICATION: ${{ vars.YANTRA_SITE_BING_VERIFICATION }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist-pages

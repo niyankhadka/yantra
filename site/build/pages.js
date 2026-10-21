@@ -9,6 +9,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { ROOT, buildHtml, resolveLevels } from '../../lib/build.js';
 import { renderSvg } from '../../src/core/svg.js';
 import { sceneForView } from '../../src/core/sequence.js';
@@ -18,6 +19,54 @@ import { renderMarkdown } from './markdown.js';
 
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf-8');
 const abs = (p) => `${SITE.url}${p}`;
+
+// --- dates and structured data ---------------------------------------------------------
+const BUILD_DATE = new Date().toISOString();
+const MODIFIED = new Map();
+/**
+ * Last commit date of repository files (ISO 8601), the newest of them; the build date when
+ * git or the history is not available (a shallow clone gives the date of its one commit).
+ */
+export function lastModified(...rels) {
+  let best = '';
+  for (const rel of rels) {
+    if (!MODIFIED.has(rel)) {
+      let d = '';
+      try {
+        d = execFileSync('git', ['log', '-1', '--format=%cI', '--', rel], { cwd: ROOT, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      } catch {
+        // not a git checkout
+      }
+      MODIFIED.set(rel, d ? new Date(d).toISOString() : '');
+    }
+    const d = MODIFIED.get(rel);
+    if (d > best) best = d;
+  }
+  return best || BUILD_DATE;
+}
+
+/** JSON-LD in a script element; `<` is escaped so text cannot close the element. */
+const jsonLdScript = (data) => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\u003c')}</script>`;
+
+const PERSON = { '@type': 'Person', '@id': `${SITE.url}/#maintainer`, name: SITE.maintainer, url: SITE.maintainerUrl, sameAs: [SITE.maintainerUrl] };
+const SOCIAL = { url: '/social-preview.png', width: 1280, height: 640, alt: 'Yantra: interactive, step-by-step diagrams and one-page answers' };
+
+/** Search-engine ownership checks: set at build time (repository variables in pages.yml); off when unset. */
+function verificationTags() {
+  const tags = [];
+  const google = process.env.YANTRA_SITE_GOOGLE_VERIFICATION?.trim();
+  const bing = process.env.YANTRA_SITE_BING_VERIFICATION?.trim();
+  if (google) tags.push(`<meta name="google-site-verification" content="${esc(google)}">`);
+  if (bing) tags.push(`<meta name="msvalidate.01" content="${esc(bing)}">`);
+  return tags.map((t) => `${t}\n`).join('');
+}
+
+function breadcrumbs(items) {
+  return {
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map(([name, url], i) => ({ '@type': 'ListItem', position: i + 1, name, item: abs(url) }))
+  };
+}
 
 // --- icons (inline SVG, stroke = currentColor) ----------------------------------
 const ICON = {
@@ -98,9 +147,10 @@ function footer() {
 </footer>`;
 }
 
-function layout({ path: urlPath, title, description, body, current, assets, bodyClass = '', head = '', noindex = false }) {
+function layout({ path: urlPath, title, description, body, current, assets, bodyClass = '', head = '', noindex = false, jsonLd = [], ogType = 'website', modified = null }) {
   const canonical = abs(urlPath);
   const fullTitle = title === SITE.name ? `${SITE.name}: interactive diagrams and one-page answers` : `${title} | ${SITE.name}`;
+  const graph = jsonLd.length ? `${jsonLdScript({ '@context': 'https://schema.org', '@graph': jsonLd })}\n` : '';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -109,25 +159,32 @@ function layout({ path: urlPath, title, description, body, current, assets, body
 <title>${esc(fullTitle)}</title>
 <meta name="description" content="${esc(description)}">
 ${noindex ? '<meta name="robots" content="noindex">\n' : ''}<link rel="canonical" href="${canonical}">
-<meta property="og:type" content="website">
+${noindex ? '' : verificationTags()}<meta property="og:type" content="${ogType}">
 <meta property="og:site_name" content="${SITE.name}">
+<meta property="og:locale" content="en_GB">
 <meta property="og:title" content="${esc(fullTitle)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${canonical}">
-<meta property="og:image" content="${abs('/social-preview.png')}">
-<meta property="og:image:alt" content="Yantra: interactive, step-by-step diagrams">
-<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="${abs(SOCIAL.url)}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="${SOCIAL.width}">
+<meta property="og:image:height" content="${SOCIAL.height}">
+<meta property="og:image:alt" content="${esc(SOCIAL.alt)}">
+${modified ? `<meta property="article:modified_time" content="${modified}">\n` : ''}<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(fullTitle)}">
 <meta name="twitter:description" content="${esc(description)}">
-<meta name="twitter:image" content="${abs('/social-preview.png')}">
+<meta name="twitter:image" content="${abs(SOCIAL.url)}">
+<meta name="twitter:image:alt" content="${esc(SOCIAL.alt)}">
 <meta name="theme-color" content="#f6f6f3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="/logo-light.svg" media="(prefers-color-scheme: light)">
 <link rel="icon" type="image/svg+xml" href="/logo-dark.svg" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <script>${THEME_SCRIPT}</script>
 ${head}${assets.css.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
 <script type="module" src="${assets.js}"></script>
-</head>
+${graph}</head>
 <body class="${bodyClass}">
 <a class="skip" href="#main">Skip to content</a>
 ${header(current)}
@@ -216,11 +273,56 @@ async function starCount() {
   }
 }
 
+const LANDING_DESCRIPTION = 'Yantra turns JSON into interactive, step-by-step diagrams and one-page answers: one offline HTML file with automatic layout, routed edges and a validator.';
+
+const stripHtml = (html) => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+
+/** Landing page structured data: the site (with the docs search), the software, its maintainer and the visible FAQ. */
+function landingJsonLd() {
+  return [
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE.url}/#website`,
+      url: abs('/'),
+      name: SITE.name,
+      description: LANDING_DESCRIPTION,
+      inLanguage: 'en',
+      publisher: { '@id': PERSON['@id'] },
+      potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: abs('/docs/?q={search_term_string}') }, 'query-input': 'required name=search_term_string' }
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${SITE.url}/#software`,
+      name: SITE.name,
+      description: SITE.description,
+      url: abs('/'),
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Windows, macOS, Linux',
+      softwareVersion: SITE.version,
+      license: 'https://opensource.org/licenses/MIT',
+      downloadUrl: SITE.npm,
+      installUrl: SITE.npm,
+      codeRepository: SITE.repo,
+      keywords: SITE.keywords.join(', '),
+      image: abs(SOCIAL.url),
+      screenshot: abs('/images/walkthrough.png'),
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      author: { '@id': PERSON['@id'] }
+    },
+    PERSON,
+    {
+      '@type': 'FAQPage',
+      '@id': `${SITE.url}/#faq`,
+      mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: stripHtml(a) } }))
+    }
+  ];
+}
+
 function landing({ assets, thumbs, stars }) {
   const kindCards = KINDS.map((k) => {
     const media = k.page
-      ? `<img src="/images/answer-page.png" width="${thumbs.answerPage.w}" height="${thumbs.answerPage.h}" alt="" loading="lazy" decoding="async">`
-      : themedImg(`/thumbs/${k.id}`, '', thumbs[k.id]);
+      ? `<img src="/images/answer-page.png" width="${thumbs.answerPage.w}" height="${thumbs.answerPage.h}" alt="${esc(`${k.title}: an example answer page`)}" loading="lazy" decoding="async">`
+      : themedImg(`/thumbs/${k.id}`, `${k.title}: an example diagram`, thumbs[k.id]);
     return `<li class="kind">
       <a href="/playground/#example=${k.id}">
         <span class="kind-media">${media}</span>
@@ -229,7 +331,7 @@ function landing({ assets, thumbs, stars }) {
     </li>`;
   }).join('\n');
 
-  const strip = STRIP.map(([id, name, tag]) => `<li><a class="ex" href="/playground/#example=${id}"><span class="ex-media">${themedImg(`/thumbs/${id}`, '', thumbs[id])}</span><span class="ex-name">${esc(name)}</span><span class="ex-tag">${esc(tag)}</span></a></li>`).join('\n');
+  const strip = STRIP.map(([id, name, tag]) => `<li><a class="ex" href="/playground/#example=${id}"><span class="ex-media">${themedImg(`/thumbs/${id}`, `${name} diagram`, thumbs[id])}</span><span class="ex-name">${esc(name)}</span><span class="ex-tag">${esc(tag)}</span></a></li>`).join('\n');
   const chips = PAGE_CHIPS.map(([id, name]) => `<li><a class="chip" href="/playground/#example=${id}">${esc(name)}</a></li>`).join('\n');
   const faq = FAQ.map(([q, a]) => `<details class="faq-item"><summary>${esc(q)}</summary>${a}</details>`).join('\n');
   const starLabel = stars === null ? 'Star on GitHub' : `Star on GitHub <span class="count">${stars.toLocaleString('en-GB')}</span>`;
@@ -397,9 +499,10 @@ ${faq}
   return layout({
     path: '/',
     title: SITE.name,
-    description: 'Yantra turns a short JSON description into an interactive, step-by-step diagram or one-page answer: one offline HTML file with automatic layout, routed edges and a validator.',
+    description: LANDING_DESCRIPTION,
     body,
     current: 'home',
+    jsonLd: landingJsonLd(),
     assets,
     bodyClass: 'is-landing',
     head: `<script>${FORWARD_SCRIPT}</script>\n`
@@ -466,6 +569,15 @@ function tocOf(doc) {
     .join('')}</ul></div></nav>`;
 }
 
+/** "Related guides" at the end of a guide (content.js `related`). */
+function relatedGuides(docs, doc) {
+  const items = (doc.related || []).map((slug) => docs.find((d) => d.url === guideUrl(slug))).filter(Boolean);
+  if (!items.length) return '';
+  return `<nav class="related" aria-labelledby="related-title"><h2 id="related-title">Related guides</h2><ul class="cards">${items
+    .map((d) => `<li><a href="${d.url}"><span class="card-title">${esc(d.nav)}</span><span class="card-text">${esc(d.description)}</span></a></li>`)
+    .join('')}</ul></nav>`;
+}
+
 function docPage(docs, i, assets) {
   const doc = docs[i];
   const prev = docs[i - 1];
@@ -474,6 +586,7 @@ function docPage(docs, i, assets) {
   const article = `<article class="prose doc">
   <p class="crumbs"><a href="/docs/">Docs</a> <span aria-hidden="true">/</span> ${doc.section}</p>
   ${doc.html}
+  ${relatedGuides(docs, doc)}
   <div class="doc-foot">
     <a class="edit" href="${edit}">${ICON.edit}<span>Edit this page on GitHub</span></a>
   </div>
@@ -482,10 +595,31 @@ function docPage(docs, i, assets) {
     ${next ? `<a class="next" href="${next.url}"><span>Next</span>${esc(next.nav)}</a>` : '<span></span>'}
   </nav>
 </article>`;
+  const modified = lastModified(doc.file);
   return layout({
     path: doc.url,
     title: doc.title,
     description: doc.description,
+    ogType: 'article',
+    modified,
+    jsonLd: [
+      {
+        '@type': 'TechArticle',
+        '@id': `${abs(doc.url)}#article`,
+        headline: doc.title,
+        description: doc.description,
+        url: abs(doc.url),
+        mainEntityOfPage: abs(doc.url),
+        dateModified: modified,
+        inLanguage: 'en',
+        image: abs(SOCIAL.url),
+        author: PERSON,
+        publisher: PERSON,
+        about: { '@type': 'SoftwareApplication', name: SITE.name, url: abs('/') },
+        isPartOf: { '@type': 'WebSite', name: SITE.name, url: abs('/') }
+      },
+      breadcrumbs([['Home', '/'], ['Docs', '/docs/'], [doc.section, doc.section === 'Guides' ? '/docs/#guides' : '/docs/#reference'], [doc.nav, doc.url]])
+    ],
     body: docsShell(docs, { url: doc.url, article, toc: tocOf(doc) }),
     current: 'docs',
     assets,
@@ -510,6 +644,18 @@ function docsIndex(docs, assets) {
     path: '/docs/',
     title: 'Documentation',
     description: 'Guides and reference for Yantra: install, your first diagram, coding agents, answer pages, imports, AI chats, the Python SDK, sharing and self-hosting.',
+    jsonLd: [
+      {
+        '@type': 'CollectionPage',
+        '@id': `${abs('/docs/')}#page`,
+        name: 'Yantra documentation',
+        url: abs('/docs/'),
+        dateModified: lastModified(...docs.map((d) => d.file)),
+        inLanguage: 'en',
+        hasPart: docs.map((d) => ({ '@type': 'TechArticle', headline: d.title, url: abs(d.url) }))
+      },
+      breadcrumbs([['Home', '/'], ['Docs', '/docs/']])
+    ],
     body: docsShell(docs, { url: '/docs/', article }),
     current: 'docs',
     assets,
@@ -542,10 +688,10 @@ function searchIndex(docs) {
   })));
 }
 
-function sitemap(urls) {
+function sitemap(entries) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((u) => `  <url><loc>${abs(u)}</loc></url>`).join('\n')}
+${entries.map(([u, d]) => `  <url><loc>${abs(u)}</loc><lastmod>${d.slice(0, 10)}</lastmod></url>`).join('\n')}
 </urlset>
 `;
 }
@@ -569,6 +715,22 @@ export function staticFiles() {
   const png = files['images/answer-page.png'];
   thumbs.answerPage = { w: png.readUInt32BE(16), h: png.readUInt32BE(20) };
   files['social-preview.png'] = fs.readFileSync(path.join(ROOT, 'docs', 'images', 'social-preview.png'));
+  for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) files[f] = fs.readFileSync(path.join(ROOT, 'site', 'assets', f));
+  files['manifest.webmanifest'] = `${JSON.stringify({
+    name: 'Yantra',
+    short_name: 'Yantra',
+    description: SITE.tagline,
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#f6f6f3',
+    theme_color: '#f6f6f3',
+    icons: [
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/logo-light.svg', sizes: 'any', type: 'image/svg+xml' }
+    ]
+  }, null, 2)}\n`;
   files['logo-light.svg'] = read('src/assets/logo-light.svg');
   files['logo-dark.svg'] = read('src/assets/logo-dark.svg');
   const demo = path.join(ROOT, 'examples', 'cloud-architecture.json');
@@ -590,6 +752,11 @@ export async function siteFiles({ assets, statics = staticFiles() }) {
   });
   files['404.html'] = notFound(assets);
   files['docs/search-index.json'] = searchIndex(docs);
-  files['sitemap.xml'] = sitemap(['/', '/playground/', '/docs/', ...docs.map((d) => d.url)]);
+  files['sitemap.xml'] = sitemap([
+    ['/', lastModified('site/build/pages.js', 'site/build/content.js', 'package.json')],
+    ['/playground/', lastModified('playground/index.html', 'playground/main.js', 'playground/prompt.js', 'playground/style.css')],
+    ['/docs/', lastModified(...docs.map((d) => d.file))],
+    ...docs.map((d) => [d.url, lastModified(d.file)])
+  ]);
   return files;
 }

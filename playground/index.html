@@ -3,19 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yantra Playground</title>
-  <meta name="description" content="Paste Yantra JSON from any AI chat to check it, see the interactive diagram or answer page, and download it as one offline HTML file. Runs entirely in your browser." />
+  <title>Playground: validate and preview Yantra JSON | Yantra</title>
+  <meta name="description" content="Paste Yantra JSON from any AI chat to validate it, preview the interactive diagram or answer page and download one offline HTML file. Runs in your browser." />
   <link rel="canonical" href="https://yantra.nbk.com.np/playground/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Yantra" />
-  <meta property="og:title" content="Yantra Playground" />
-  <meta property="og:description" content="Paste Yantra JSON from any AI chat to check it, see the interactive diagram or answer page, and download it as one offline HTML file." />
+  <meta property="og:locale" content="en_GB" />
+  <meta property="og:title" content="Playground: validate and preview Yantra JSON | Yantra" />
+  <meta property="og:description" content="Paste Yantra JSON from any AI chat to validate it, preview the interactive diagram or answer page and download one offline HTML file. Runs in your browser." />
   <meta property="og:url" content="https://yantra.nbk.com.np/playground/" />
   <meta property="og:image" content="https://yantra.nbk.com.np/social-preview.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="640" />
+  <meta property="og:image:alt" content="Yantra: interactive, step-by-step diagrams and one-page answers" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Playground: validate and preview Yantra JSON | Yantra" />
+  <meta name="twitter:description" content="Paste Yantra JSON from any AI chat to validate it, preview the interactive diagram or answer page and download one offline HTML file. Runs in your browser." />
   <meta name="twitter:image" content="https://yantra.nbk.com.np/social-preview.png" />
+  <meta name="twitter:image:alt" content="Yantra: interactive, step-by-step diagrams and one-page answers" />
+  <meta name="theme-color" content="#f6f6f3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="/logo-light.svg" media="(prefers-color-scheme: light)" />
   <link rel="icon" type="image/svg+xml" href="/logo-dark.svg" media="(prefers-color-scheme: dark)" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebApplication","@id":"https://yantra.nbk.com.np/playground/#app","name":"Yantra Playground","url":"https://yantra.nbk.com.np/playground/","description":"Paste Yantra JSON from any AI chat to validate it, preview the interactive diagram or answer page and download one offline HTML file. Runs in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any (runs in a web browser)","browserRequirements":"Requires JavaScript","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"niyankhadka","url":"https://github.com/niyankhadka"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://yantra.nbk.com.np/"},{"@type":"ListItem","position":2,"name":"Playground","item":"https://yantra.nbk.com.np/playground/"}]}]}</script>
   <script>
     // Theme before first paint: #theme= > saved > system
     (function () {
@@ -64,6 +77,7 @@
   </header>
 
   <main class="pg-main">
+    <h1 class="pg-sr">Yantra <span data-i18n="play.title">Playground</span></h1>
     <section class="pg-pane pg-editor" aria-labelledby="editor-title">
       <div class="pg-head">
         <h2 id="editor-title"><label for="src" data-i18n="play.editor">Yantra JSON</label></h2>

@@ -1,5 +1,5 @@
 ---
-description: Turn Mermaid, PlantUML, draw.io / diagrams.net and Visio files into Yantra diagrams or answer pages with yantra import, then review the warnings and add a walkthrough.
+description: Turn Mermaid, PlantUML, draw.io and Visio files into Yantra diagrams or answer pages with yantra import, then review the warnings and add a walkthrough.
 ---
 
 # Import from Mermaid, PlantUML, draw.io and Visio

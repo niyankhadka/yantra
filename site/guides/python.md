@@ -1,5 +1,5 @@
 ---
-description: Build Yantra diagrams and answer pages from Python with the niyankhadka-yantra SDK, then validate, build HTML, export SVG and import Mermaid or draw.io through the CLI.
+description: Build Yantra diagrams and answer pages in Python with the niyankhadka-yantra SDK, then validate, build HTML, export SVG and import Mermaid or draw.io.
 ---
 
 # Python SDK

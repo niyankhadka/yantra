@@ -1,5 +1,5 @@
 ---
-description: Share Yantra output as one offline HTML file, a static SVG or PNG, or Markdown; link to a step, mode or theme with the URL hash; embed a diagram in a page with an iframe; print and brand it.
+description: Share Yantra output as one offline HTML file, SVG, PNG or Markdown; link to a step with the URL hash; embed a diagram with an iframe; print and brand it.
 ---
 
 # Embedding and sharing

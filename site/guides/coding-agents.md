@@ -1,5 +1,5 @@
 ---
-description: Set up Claude Code, Cursor, Codex or Antigravity with yantra init, then ask for architecture, sequence, ERD and lifecycle diagrams of your own repository and review what comes back.
+description: Set up Claude Code, Cursor, Codex or Antigravity with yantra init, then ask for architecture, sequence, ER and lifecycle diagrams of your repository.
 ---
 
 # Diagrams from your codebase with a coding agent

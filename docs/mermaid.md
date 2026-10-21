@@ -1,5 +1,8 @@
 # Importing Mermaid
 
+Turn Mermaid flowcharts, sequence, state, ER and class diagrams, mind maps, journeys and
+charts into Yantra diagrams and answer pages with `yantra import`.
+
 Yantra can turn a Mermaid **flowchart** (`graph` / `flowchart`), **sequence diagram**
 (`sequenceDiagram`), **state diagram** (`stateDiagram` / `stateDiagram-v2`), **ER diagram**
 (`erDiagram`), **class diagram** (`classDiagram`), **mind map** (`mindmap`) or **user journey**
