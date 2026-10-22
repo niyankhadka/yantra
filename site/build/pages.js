@@ -222,7 +222,10 @@ const KINDS = [
   { id: 'study-plan-mindmap', title: 'Mind maps', text: 'Balanced branches with curved connectors and a hue per branch.' },
   { id: 'smart-city-operations', title: 'Deep nesting and drill-down', text: 'Six levels of boxes, fold to a depth, zoom to a group, open detail diagrams.' },
   { id: 'live-operations-dashboard', title: 'Charts in cards', text: 'A mini chart on any card, or a chart card that connects like any other.' },
-  { id: 'answer-quarterly-review', page: true, title: 'Answer pages', text: 'The conclusion first, then points, metrics, charts, tables, gantt plans and FAQs.' }
+  { id: 'answer-quarterly-review', page: true, title: 'Answer pages', text: 'The conclusion first, then points, metrics, charts, tables, gantt plans and FAQs.' },
+  { id: 'book-checkout-explained', image: 'kind-book.png', title: 'Books and reading modes', text: 'Several pages in one file, read as one page, a screen at a time like an e-reader, or as slides.' },
+  { id: 'answer-quarterly-review', image: 'kind-present.png', title: 'Pages as slides', text: 'Present any page or book one row of blocks at a time, full screen, for a meeting.' },
+  { id: 'playground', href: '/playground/', image: 'kind-playground.png', title: 'Start from a template', text: 'Search templates and examples by kind in the playground, or describe the diagram in words.' }
 ];
 
 const STRIP = [
@@ -320,11 +323,13 @@ function landingJsonLd() {
 
 function landing({ assets, thumbs, stars }) {
   const kindCards = KINDS.map((k) => {
-    const media = k.page
+    const media = k.image
+      ? `<img src="/images/${k.image}" width="${thumbs[k.image].w}" height="${thumbs[k.image].h}" alt="${esc(`${k.title}: a screenshot`)}" loading="lazy" decoding="async">`
+      : k.page
       ? `<img src="/images/answer-page.png" width="${thumbs.answerPage.w}" height="${thumbs.answerPage.h}" alt="${esc(`${k.title}: an example answer page`)}" loading="lazy" decoding="async">`
       : themedImg(`/thumbs/${k.id}`, `${k.title}: an example diagram`, thumbs[k.id]);
     return `<li class="kind">
-      <a href="/playground/#example=${k.id}">
+      <a href="${k.href || `/playground/#example=${k.id}`}">
         <span class="kind-media">${media}</span>
         <span class="kind-body"><span class="kind-title">${esc(k.title)}</span><span class="kind-text">${esc(k.text)}</span><span class="kind-link">Open in the playground ${ICON.arrow}</span></span>
       </a>
@@ -697,7 +702,7 @@ ${entries.map(([u, d]) => `  <url><loc>${abs(u)}</loc><lastmod>${d.slice(0, 10)}
 }
 
 // --- everything ------------------------------------------------------------------------
-const THUMB_IDS = [...new Set([...KINDS.filter((k) => !k.page).map((k) => k.id), ...STRIP.map(([id]) => id)])];
+const THUMB_IDS = [...new Set([...KINDS.filter((k) => !k.page && !k.image).map((k) => k.id), ...STRIP.map(([id]) => id)])];
 
 /** Static files that do not depend on the built assets (computed once per build). */
 export function staticFiles() {
@@ -714,6 +719,10 @@ export function staticFiles() {
   for (const f of fs.readdirSync(path.join(ROOT, 'docs', 'images')).filter((x) => x !== 'social-preview.png')) files[`images/${f}`] = fs.readFileSync(path.join(ROOT, 'docs', 'images', f));
   const png = files['images/answer-page.png'];
   thumbs.answerPage = { w: png.readUInt32BE(16), h: png.readUInt32BE(20) };
+  for (const k of KINDS.filter((x) => x.image)) {
+    const img = files[`images/${k.image}`];
+    thumbs[k.image] = { w: img.readUInt32BE(16), h: img.readUInt32BE(20) };
+  }
   files['social-preview.png'] = fs.readFileSync(path.join(ROOT, 'docs', 'images', 'social-preview.png'));
   for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) files[f] = fs.readFileSync(path.join(ROOT, 'site', 'assets', f));
   files['manifest.webmanifest'] = `${JSON.stringify({

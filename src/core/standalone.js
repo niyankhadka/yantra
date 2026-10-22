@@ -4,7 +4,8 @@
  * lib/build.js passes the shell it builds from dist/, and the browser playground
  * passes the shell it was built with, so a file made in either place is the same.
  */
-import { renderPage, srcdocAttr } from './page.js';
+import { renderPage, srcdocAttr, walkBlocks } from './page.js';
+import { renderBook } from './book.js';
 import { localeOf, stringsFor } from './i18n.js';
 
 /**
@@ -122,13 +123,24 @@ function dedupeDataUris(html) {
   return beforeBodyEnd(html, script);
 }
 
+/** A book whose chapters are already resolved: as pageHtml, one shared viewer for every chapter's embeds. */
+export function bookHtml(book, { shell, logos = {} }) {
+  let live = false;
+  for (const ch of Array.isArray(book.chapters) ? book.chapters : []) walkBlocks(ch?.blocks, (b) => (live ||= b?.type === 'diagram' && !!b.interactive && !!b.diagram));
+  const payloads = [];
+  const viewerHtml = live ? (diagram) => EMBED_MARK(payloads.push(diagram) - 1) : null;
+  const html = renderBook(book, { logos, viewerHtml });
+  return shareViewer(dedupeDataUris(html), payloads, shell);
+}
+
 /**
  * A page whose diagram blocks are already resolved. Blocks with `interactive: true`
  * embed the full viewer: one shared copy of `shell()` (called only when needed) for
  * every embed, with the static SVG kept for print and no-JS.
  */
 export function pageHtml(page, { shell, logos = {} }) {
-  const live = (page.blocks || []).some((b) => b?.type === 'diagram' && b.interactive && b.diagram);
+  let live = false;
+  walkBlocks(page.blocks, (b) => (live ||= b?.type === 'diagram' && !!b.interactive && !!b.diagram));
   const payloads = [];
   const viewerHtml = live ? (diagram) => EMBED_MARK(payloads.push(diagram) - 1) : null;
   const html = renderPage(page, { logos, viewerHtml });

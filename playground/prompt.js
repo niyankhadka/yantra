@@ -63,8 +63,8 @@ export function buildPrompt({ instructions, text = '', value, jsonError, report,
   const hasValue = value !== undefined && !jsonError;
   if (!hasValue && !String(text).trim()) return result(`${base}\n\n---\n\nDescribe what you want: ${ask}`, { mode: 'new' });
 
-  const kind = hasValue && value && typeof value === 'object' && value.kind === 'page' ? 'page' : 'diagram';
-  const noun = kind === 'page' ? 'answer page' : 'diagram';
+  const kind = hasValue && value && typeof value === 'object' && (value.kind === 'page' || value.kind === 'book') ? value.kind : 'diagram';
+  const noun = { page: 'answer page', book: 'book' }[kind] || 'diagram';
   let json = hasValue ? JSON.stringify(value, null, 2) : String(text).trim();
   let compact = false;
   if (hasValue && json.length > COMPACT_ABOVE) {

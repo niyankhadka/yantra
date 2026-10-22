@@ -129,8 +129,21 @@ progress and a today line; `workdays: true` skips weekends and listed holidays. 
 places items on a 2x2 (impact against effort) or colours a risk heat map. The
 [launch plan](../../examples/answer-launch-plan.json) shows both.
 
+## 7. Layout, reading modes and books
+
+- `span: "half"` puts two blocks side by side and `span: "third"` puts three; a `section`
+  block groups blocks under a heading, with a short `intro`.
+- Readers switch between **Scroll**, **Book** (one screen at a time, like an e-reader) and
+  **Present** (one row of blocks per slide) in the page header. `meta.reading` sets how the
+  page opens.
+- When one page is not enough, put several in a **book**: `{ "kind": "book" }` with the pages
+  as `chapters`, a cover summary and a contents menu, still in one offline file. Start one
+  with `yantra new guide.json --book`, or open the
+  [example book](../../examples/book-checkout-explained.json).
+
 ## Next
 
 - Every block, chart option and validation code: [Answer pages](../../docs/pages.md).
+- Chapters, reading modes and their keys: [Books](../../docs/books.md).
 - Turn a Mermaid `gantt`, `pie` or `timeline` into a page: [Import](import.md).
 - Ask a chat to write pages for you: [Use with AI chats](chat.md).

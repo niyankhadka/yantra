@@ -9,7 +9,7 @@
  */
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { appShell, resolveLevels, resolvePage, ROOT } from '../../lib/build.js';
+import { appShell, resolveBook, resolveLevels, resolvePage, ROOT } from '../../lib/build.js';
 
 export const PLAYGROUND_DIR = 'playground';
 const PLAYGROUND_HTML = path.join(ROOT, PLAYGROUND_DIR, 'index.html');
@@ -20,7 +20,7 @@ export function inlineRefs() {
     enforce: 'pre',
     transform(code, id) {
       const file = id.split('?')[0];
-      if (!file.endsWith('.json') || (!code.includes('"$ref"') && !/"kind"\s*:\s*"page"/.test(code))) return null;
+      if (!file.endsWith('.json') || (!code.includes('"$ref"') && !/"kind"\s*:\s*"(page|book)"/.test(code))) return null;
       let payload;
       try {
         payload = JSON.parse(code);
@@ -28,7 +28,7 @@ export function inlineRefs() {
         return null;
       }
       const dir = path.dirname(file);
-      const out = payload?.kind === 'page' ? resolvePage(payload, dir) : resolveLevels(payload, dir, { root: ROOT });
+      const out = payload?.kind === 'book' ? resolveBook(payload, dir, { root: ROOT }) : payload?.kind === 'page' ? resolvePage(payload, dir) : resolveLevels(payload, dir, { root: ROOT });
       return { code: JSON.stringify(out), map: null };
     }
   };

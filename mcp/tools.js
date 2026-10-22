@@ -18,7 +18,11 @@ import { localizeFindings } from '../src/core/lintmessages.js';
 import { sceneForView } from '../src/core/sequence.js';
 import { renderSvg } from '../src/core/svg.js';
 import { toMarkdown } from '../src/core/markdown.js';
-import { isPage, pageToMarkdown } from '../src/core/page.js';
+import { isPage, isBook, pageToMarkdown } from '../src/core/page.js';
+import { bookToMarkdown } from '../src/core/book.js';
+
+/** Answer pages and books are documents: no levels, folds or SVG. */
+const isDoc = (p) => isPage(p) || isBook(p);
 import { fromMermaid } from '../src/core/mermaid.js';
 import { importText, FORMATS } from '../src/core/import.js';
 import { collectDiagrams, getLevel } from '../src/core/drill.js';
@@ -43,17 +47,17 @@ const fold = {
 
 function toolList({ read, write, shots }) {
   const source = {
-    payload: { type: 'object', description: 'A Yantra diagram, or an answer page ({ "kind": "page", ... }). See yantra_get_schema.' },
+    payload: { type: 'object', description: 'A Yantra diagram, an answer page ({ "kind": "page", ... }) or a book of answer pages ({ "kind": "book", ... }). See yantra_get_schema.' },
     ...(read
-      ? { filePath: { type: 'string', description: 'Path to a .json file (alternative to payload). Page diagram `src` paths and drill-down `{ "$ref": "detail.json" }` entries resolve relative to it (and must stay inside the input root).' } }
+      ? { filePath: { type: 'string', description: 'Path to a .json file (alternative to payload). Page diagram `src` paths, book chapter and drill-down `{ "$ref": "file.json" }` entries resolve relative to it (and must stay inside the input root).' } }
       : {})
   };
   const out = (desc) => (write ? { outputPath: { type: 'string', ...(desc ? { description: desc } : {}) } } : {});
   const list = [
     {
       name: 'yantra_get_schema',
-      description: 'Return the JSON Schemas and authoring rules. kind "diagram" (default) for interactive diagrams, "page" for one-page answers to a question (answer first, then blocks such as points, steps, compare, metrics, charts (bar, column, line, area, pie, donut), gantt plans, 2x2 / heat-map matrices, embedded diagrams).',
-      inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['diagram', 'page'] } } }
+      description: 'Return the JSON Schemas and authoring rules. kind "diagram" (default) for interactive diagrams, "page" for one-page answers to a question (answer first, then blocks such as points, steps, compare, metrics, charts (bar, column, line, area, pie, donut), gantt plans, 2x2 / heat-map matrices, sections, embedded diagrams), "book" for several answer pages read in order (chapters, with scroll, book and present reading modes).',
+      inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['diagram', 'page', 'book'] } } }
     },
     {
       name: 'yantra_list_examples',
@@ -226,7 +230,7 @@ export function createToolset({ inputRoot = null, outputRoot = null, screenshot:
   /** A drill-down level of a diagram payload (the overview when no id is given). */
   function pickLevel(payload, id) {
     if (id === undefined || id === null || id === '') return payload;
-    if (isPage(payload)) throw new Error('level applies to diagrams, not answer pages.');
+    if (isDoc(payload)) throw new Error(`level applies to diagrams, not ${isBook(payload) ? 'books' : 'answer pages'}.`);
     const lv = getLevel(payload, String(id));
     if (!lv) throw new Error(`Unknown level "${id}". Detail diagrams: ${[...collectDiagrams(payload).map.keys()].join(', ') || 'none'}.`);
     return lv;
@@ -237,10 +241,10 @@ export function createToolset({ inputRoot = null, outputRoot = null, screenshot:
     if (!offered.has(name)) throw Object.assign(new Error(`Unknown tool: ${name}`), { code: -32602 });
     switch (name) {
       case 'yantra_get_schema': {
-        const page = args.kind === 'page';
+        const files = { page: ['yantra-page.schema.json', 'pages.md'], book: ['yantra-book.schema.json', 'books.md'] }[args.kind] || ['yantra-payload.schema.json', 'authoring.md'];
         return {
-          schema: JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas', page ? 'yantra-page.schema.json' : 'yantra-payload.schema.json'), 'utf-8')),
-          rules: fs.readFileSync(path.join(ROOT, 'docs', page ? 'pages.md' : 'authoring.md'), 'utf-8')
+          schema: JSON.parse(fs.readFileSync(path.join(ROOT, 'schemas', files[0]), 'utf-8')),
+          rules: fs.readFileSync(path.join(ROOT, 'docs', files[1]), 'utf-8')
         };
       }
       case 'yantra_list_examples':
@@ -279,14 +283,14 @@ export function createToolset({ inputRoot = null, outputRoot = null, screenshot:
       }
       case 'yantra_export': {
         const payload = loadPayload(args);
-        if (args.format !== 'md' && isPage(payload)) throw new Error('Answer pages export to md, or to html with yantra_build.');
+        if (args.format !== 'md' && isDoc(payload)) throw new Error(`${isBook(payload) ? 'Books' : 'Answer pages'} export to md, or to html with yantra_build.`);
         const theme = args.theme === 'dark' ? 'dark' : 'light';
         const logos = readLogos();
         const picked = pickLevel(payload, args.level);
         const lv = withFolds(picked, args, picked);
         const content =
           args.format === 'md'
-            ? isPage(payload) ? pageToMarkdown(payload) : toMarkdown(lv, { levels: !!args.allLevels && lv === payload })
+            ? isBook(payload) ? bookToMarkdown(payload) : isPage(payload) ? pageToMarkdown(payload) : toMarkdown(lv, { levels: !!args.allLevels && lv === payload })
             : renderSvg(sceneForView(lv, { view: args.view, modeId: args.mode }), { theme, step: args.step > 0 ? args.step - 1 : null, logo: logos[theme] || logos.light || logos.dark });
         if (!wantsFile(args)) return { content };
         const out = outputPath(args.outputPath, args.format === 'md' ? ['.md'] : ['.svg']);
@@ -344,7 +348,7 @@ export function createToolset({ inputRoot = null, outputRoot = null, screenshot:
           foldsOf(payload, args); // pages refuse folds early; depth goes in the link below
           fs.writeFileSync(tmp, buildAny(payload));
           html = tmp;
-          if (isPage(payload)) args = { ...args, width: 1100, height: 2200 };
+          if (isDoc(payload)) args = { ...args, width: 1100, height: 2200 };
         }
         try {
           // Folds go in the link (#collapsed=a,b; empty unfolds all), so they apply to a level too
@@ -428,7 +432,7 @@ function depthOf(args) {
 function foldsOf(payload, args, target = payload) {
   const depth = depthOf(args);
   if (args.expandAll !== true && args.collapsed === undefined && depth === null) return null;
-  if (isPage(payload)) throw new Error('collapsed, expandAll and depth apply to diagrams, not answer pages.');
+  if (isDoc(payload)) throw new Error(`collapsed, expandAll and depth apply to diagrams, not ${isBook(payload) ? 'books' : 'answer pages'}.`);
   if ([args.expandAll === true, args.collapsed !== undefined, depth !== null].filter(Boolean).length > 1) throw new Error('Use one of collapsed, expandAll and depth.');
   if (depth !== null) return foldsForDepth(target, depth);
   if (args.expandAll === true) return [];

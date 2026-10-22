@@ -169,6 +169,14 @@
           ],
           "description": "false hides the \"Made with Yantra\" badge; a string replaces its text."
         },
+        "story": {
+          "enum": [
+            "open",
+            "collapsed",
+            "off"
+          ],
+          "description": "How the walkthrough opens: \"open\" (the full storyboard), \"collapsed\" (one slim bar) or \"off\" (no storyboard, nothing dimmed: the diagram as a picture). Readers can switch story mode with W; detail diagrams inherit the overview's setting. Default: open, collapsed in small frames."
+        },
         "inspector": {
           "type": "object",
           "description": "Which inspector tabs appear. By default a tab appears only when it has content: summary (meta.summary), step (a step has a payload), node/Details (a node has description, tech, metadata, ...), plus every panel.",
@@ -859,7 +867,7 @@
     },
     "cardChart": {
       "type": "object",
-      "description": "A chart drawn inside the card, under the subtitle (see docs/authoring.md, Charts in diagrams). On an ordinary card it is a mini chart: kind line or area (sparkline), column, bar (labelled bars, up to 5), donut (shares, up to 5), ring (progress: value of max) or bullet (value against target). On a chart card (shape \"chart\") it is a page chart block: kind column, bar, line, area, pie or donut with data or categories + series. The inspector shows it full size with its data table; the Markdown export lists the numbers.",
+      "description": "A chart drawn inside the card, under the subtitle (see docs/authoring.md, Charts in diagrams). On an ordinary card it is a mini chart: kind line or area (sparkline), column, bar (labelled bars, up to 8; more draw a \"+N more\" row), donut (shares, up to 6; more merge into \"Other\"), ring (progress: value of max) or bullet (value against target). On a chart card (shape \"chart\") it is a page chart block: kind column, bar, line, area, pie or donut with data or categories + series. The inspector shows it full size with its data table; the Markdown export lists the numbers.",
       "properties": {
         "kind": {
           "enum": [

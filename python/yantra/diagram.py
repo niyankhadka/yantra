@@ -34,6 +34,7 @@ END_LABEL_CHARS = 16
 #: Edge arrow heads: at the target (default), at both ends, or none (an undirected link).
 ARROWS = ("forward", "both", "none")
 ALGORITHMS = ("layered", "tree", "mindmap")
+STORY_MODES = ("open", "collapsed", "off")
 VIEWS = ("flow", "sequence")
 COMPACT = (True, False, "auto")
 #: UML relationship kinds (edge ``relation``). Triangles and diamonds sit on the source.
@@ -104,7 +105,7 @@ def mini_chart(values: Optional[Iterable[Optional[float]]] = None, kind: Optiona
     """A mini chart for a card's ``chart=`` (``data.chart``), drawn under the subtitle.
 
     ``kind``: "line" (default with `values`), "area", "column" (`values`, optional `labels`), "bar" and
-    "donut" (`data`: ``{label: value}``, ``(label, value[, tone])`` or ``{label, value, tone}``, up to 5),
+    "donut" (`data`: ``{label: value}``, ``(label, value[, tone])`` or ``{label, value, tone}``; up to 8 bars or 6 slices),
     "ring" (default with only `value`: `value` of `max`, default 100) and "bullet" (`value` against
     `target`). `label` is the caption drawn on the card; `unit` / `prefix` format the numbers ("%", "£");
     `target` adds a dashed line or a tick; `tone` (good, warn, bad, info, neutral or a colour) recolours it."""
@@ -442,6 +443,14 @@ class Diagram:
     def watermark(self, value: Union[bool, str]) -> "Diagram":
         """False hides the "Made with Yantra" badge; a string replaces its text."""
         self.meta["watermark"] = value
+        return self
+
+    def story(self, mode: str) -> "Diagram":
+        """How the walkthrough opens: "open" (the full storyboard), "collapsed" (one slim bar) or
+        "off" (no storyboard, nothing dimmed). Readers can still switch story mode with W."""
+        if mode not in STORY_MODES:
+            raise YantraError(f"story must be one of {STORY_MODES}, not {mode!r}")
+        self.meta["story"] = mode
         return self
 
     def inspector(self, tabs: Optional[List[str]] = None, labels: Optional[Mapping[str, str]] = None,

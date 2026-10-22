@@ -8,7 +8,11 @@ import { themeCss } from '../core/theme.js';
 import { renderSvg } from '../core/svg.js';
 import { toMarkdown } from '../core/markdown.js';
 import { escapeHtml as h } from '../core/text.js';
-import { renderBlock, renderPage, isPage, BLOCK_CSS } from '../core/page.js';
+import { renderBlock, renderPage, isPage, isBook, BLOCK_CSS } from '../core/page.js';
+import { renderBook } from '../core/book.js';
+
+/** Answer pages and books open as documents over the canvas. */
+const isDoc = (p) => isPage(p) || isBook(p);
 import { enhanceCharts, withChartLocale } from '../core/charts.js';
 import { CARD_CHART_CSS, chartBlock } from '../core/cardchart.js';
 import { safeUrl } from '../core/drill.js';
@@ -20,7 +24,7 @@ import { notationText } from '../core/notation.js';
 import { REPO_URL, GITHUB_MARK } from '../core/icons.js';
 import { localeOf, registerStrings } from '../core/i18n.js';
 import { hscroll, menu, tooltips } from './ui.js';
-import { hashParams } from './hash.js';
+import { hashParams, layoutStorageKey } from './hash.js';
 import { Renderer } from './renderer.js';
 import { InteractionManager } from './interact.js';
 import { Levels, DRILL_TEXT, setDrillLocale, crumbListHtml } from './levels.js';
@@ -94,6 +98,9 @@ class App {
     this.roleFilter = null;
     // Small frames (answer-page embeds, short windows) start with a one-row storyboard
     this.storyCollapsed = window.self !== window.top || window.innerHeight < 560;
+    // Story mode off: no storyboard, nothing dimmed, every card in view (meta.story, the reader's toggle, #story=)
+    this.storyOff = false;
+    this.storyRoot = null;
     this.followCamera = pref('follow', '1') === '1';
     this.stepsScroller = hscroll($('story-steps'));
     this.tabsScroller = hscroll($('inspector-tabs'));
@@ -101,7 +108,7 @@ class App {
 
     // A gallery answer page (#example=<page id>) opens over the first diagram
     const fromHash = this.embedded ? null : this.exampleFromHash();
-    const initial = this.embedded || (fromHash && !isPage(fromHash.data) ? fromHash.data : null) || EXAMPLES.find((x) => !isPage(x.data))?.data;
+    const initial = this.embedded || (fromHash && !isDoc(fromHash.data) ? fromHash.data : null) || EXAMPLES.find((x) => !isDoc(x.data))?.data;
     // Drill-down: the engine shows one level; #level= (else meta.startLevel) picks which
     this.levels = new Levels(initial);
     this.levels.setPath(this.levelFromHash() ?? initial?.meta?.startLevel);
@@ -114,7 +121,11 @@ class App {
       getInsets: () => this.insets(),
       onNodeMove: (id, x, y) => this.moveNode(id, x, y),
       onNodeMoveEnd: () => this.engine.commitMoves(),
-      onNodeClick: (id, how) => (how?.drill ? this.drillInto(id) : this.select(id)),
+      onNodeClick: (id, how) => {
+        if (how?.drill) return this.drillInto(id);
+        this.select(id);
+        if (how?.more) this.setInspector(true, 'node');
+      },
       onBackgroundClick: () => this.clearFocus(),
       onZoom: (z) => ($('zoom-label').textContent = this.L.num(Math.round(z * 100) / 100, { style: 'percent' }))
     });
@@ -133,14 +144,15 @@ class App {
     this.bindPrint();
     this.inspectorTab = null;
     this.applyHashState();
-    if (!this.focusId) this.stepFocus();
+    this.resolveStory();
+    if (!this.focusId && !this.storyOff) this.stepFocus();
     this.applyLogo();
     this.renderSpeed();
     this.renderFollow();
     this.loadPayloadUi();
     this.setInspector(/inspector=/.test(location.hash) && this.inspectorTabs().length > 0);
     this.hashReady = true; // deep links are applied; from now on the URL follows the UI
-    if (fromHash && isPage(fromHash.data)) this.showPage(fromHash);
+    if (fromHash && isDoc(fromHash.data)) this.showPage(fromHash);
     addEventListener('popstate', () => this.onHistory());
 
     const report = this.engine.validate();
@@ -174,6 +186,7 @@ class App {
     if (depth === null) params.delete('depth');
     else params.set('depth', e.collapsed.size ? String(depth) : 'all');
     set('focus', this.focusId && !this.focusFromStep ? this.focusId : null);
+    set('story', this.storyOff === this.storyDefaultOff() ? null : this.storyOff ? 'off' : 'on');
     if (params.has('theme')) set('theme', document.documentElement.getAttribute('data-theme'));
     if (this.levels.depth) params.set('level', this.levels.hashValue());
     else params.delete('level');
@@ -201,6 +214,7 @@ class App {
   // --- Lifecycle ----------------------------------------------------------
   loadPayloadUi() {
     const meta = this.engine.model.meta;
+    this.resolveStory();
     this.applyLocale();
     $('doc-title').textContent = meta.title || this.L.t('app.untitled');
     $('doc-desc').textContent = meta.description || '';
@@ -258,10 +272,15 @@ class App {
     this.applyState();
   }
 
+  /** The step's highlight, or none while story mode is off. */
+  highlight() {
+    return this.storyOff ? { nodes: new Set(), edges: new Set(), overview: true } : this.engine.getHighlight();
+  }
+
   applyState() {
     this.renderer.applyState({
-      highlight: this.engine.getHighlight(),
-      step: this.engine.stepIndex,
+      highlight: this.highlight(),
+      step: this.storyOff ? -1 : this.engine.stepIndex,
       selectedId: this.engine.selectedNodeId,
       roleFilter: this.roleFilter,
       focusGroup: this.focusId
@@ -271,9 +290,9 @@ class App {
   /** Camera follows the walkthrough: frame the step's nodes, or everything. */
   followStep({ animate = true, force = false } = {}) {
     if (!this.followCamera && !force) return;
-    if (this.engine.getView() === 'sequence') return this.followRow({ animate });
+    if (this.engine.getView() === 'sequence') return this.storyOff ? this.interact.fit(null, { animate }) : this.followRow({ animate });
     if (this.focusId && this.fitGroup(this.focusId, { animate })) return;
-    const hl = this.engine.getHighlight();
+    const hl = this.highlight();
     if (hl.overview) return this.interact.fit(null, { animate });
     const scene = this.engine.getScene();
     const boxes = [
@@ -666,7 +685,7 @@ class App {
   openExample(id) {
     const ex = EXAMPLES.find((x) => x.id === id);
     if (!ex) return;
-    if (isPage(ex.data)) return this.showPage(ex);
+    if (isDoc(ex.data)) return this.showPage(ex);
     this.hidePage();
     this.levels.reset(ex.data);
     this.engine.load(ex.data);
@@ -734,7 +753,7 @@ class App {
    */
   pageHtml(page) {
     const logos = LOGO_LIGHT ? { light: LOGO_LIGHT, dark: LOGO_DARK } : {};
-    const html = renderPage(page, { logos, viewerHtml: (diagram) => embedHtml(diagram), frameSandbox: GALLERY_SANDBOX });
+    const html = (isBook(page) ? renderBook : renderPage)(page, { logos, viewerHtml: (diagram) => embedHtml(diagram), frameSandbox: GALLERY_SANDBOX });
     const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
     const head = `<script>document.documentElement.setAttribute('data-theme',${JSON.stringify(theme)});
 document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="http"]');if(a)a.target='_blank'},true);</script>
@@ -782,6 +801,63 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     this.renderFollow();
     this.toast(this.L.t(on ? 'story.follow' : 'story.followOff'));
     if (on) this.followStep();
+  }
+
+  /** meta.story of the overview: "open", "collapsed" or "off" (detail diagrams inherit it). */
+  storySetting() {
+    const v = (this.levels?.root?.meta || this.engine.model.meta || {}).story;
+    return ['open', 'collapsed', 'off'].includes(v) ? v : null;
+  }
+
+  storyDefaultOff() {
+    return this.storySetting() === 'off';
+  }
+
+  storyPrefKey() {
+    return `story:${layoutStorageKey(this.levels?.root || this.engine.payload)}`;
+  }
+
+  /**
+   * Story mode for a newly opened diagram: #story= wins, then the reader's
+   * choice for this diagram, then meta.story. "collapsed" / "open" set the
+   * panel; without them small frames start collapsed (constructor).
+   */
+  resolveStory() {
+    const root = this.levels?.root || this.engine.payload;
+    if (root === this.storyRoot) return;
+    this.storyRoot = root;
+    const setting = this.storySetting();
+    const fromHash = this.storyHash;
+    this.storyHash = undefined;
+    const saved = pref(this.storyPrefKey(), null);
+    this.storyOff = fromHash ? fromHash === 'off' : saved !== null ? saved === 'off' : setting === 'off';
+    if (setting === 'collapsed') this.storyCollapsed = true;
+    else if (setting === 'open') this.storyCollapsed = false;
+  }
+
+  renderStoryMode() {
+    const btn = $('btn-story-mode');
+    btn.setAttribute('aria-pressed', String(!this.storyOff));
+    setTip(btn, `${this.L.t(this.storyOff ? 'story.on' : 'story.off')} (${logicalKey('W')})`);
+  }
+
+  /** The reader's story toggle: off hides the storyboard and shows every card undimmed. */
+  setStoryMode(on, { toast = true } = {}) {
+    if (!$('btn-story-mode') || $('btn-story-mode').hidden) return;
+    this.storyOff = !on;
+    if (!on) this.engine.pause();
+    savePref(this.storyPrefKey(), on ? 'on' : 'off');
+    if (on) this.stepFocus();
+    else if (this.focusFromStep) {
+      this.focusId = null;
+      this.focusFromStep = false;
+      this.renderFocusCrumbs();
+    }
+    this.renderStory();
+    this.applyState();
+    if (toast) this.toast(this.L.t(on ? 'story.onToast' : 'story.offToast'));
+    requestAnimationFrame(() => this.followStep({ force: true }));
+    this.syncHash();
   }
 
   /** Flow / Sequence toggle: shown when the scenario has messages to sequence and both views are offered. */
@@ -845,7 +921,10 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
   renderStory() {
     const steps = this.engine.getSteps();
     const story = $('story');
-    story.hidden = !this.engine.getScenarios().some((s) => s.steps?.length);
+    const hasSteps = this.engine.getScenarios().some((s) => s.steps?.length);
+    story.hidden = !hasSteps || this.storyOff;
+    $('btn-story-mode').hidden = !hasSteps;
+    this.renderStoryMode();
     // Chips start in their final state: no colour transition on first paint
     const at = this.engine.stepIndex;
     $('story-steps').innerHTML = steps
@@ -1344,6 +1423,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     $('btn-restart').onclick = () => this.engine.restart();
     $('btn-story-toggle').onclick = () => this.setStoryCollapsed(!this.storyCollapsed);
     $('btn-follow').onclick = () => this.setFollow(!this.followCamera);
+    $('btn-story-mode').onclick = () => this.setStoryMode(this.storyOff);
     $('btn-present').onclick = () => this.togglePresent();
     $('btn-story-more').onclick = () => {
       const open = $('story-desc').classList.toggle('is-expanded');
@@ -1497,6 +1577,8 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
         return this.select(ev.target.dataset.id);
       }
       if (ev.target.closest?.('button') && (k === 'Enter' || k === ' ')) return;
+      // With story mode off the step keys do nothing (there is no walkthrough on screen)
+      if (this.storyOff && ['ArrowRight', 'ArrowLeft', ' ', 'Home', 'End', 'p', 'P'].includes(logicalKey(k))) return;
       const map = {
         ArrowRight: () => this.engine.next(),
         ' ': () => this.engine.next(),
@@ -1513,6 +1595,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
         d: () => this.drillInto(this.engine.selectedNodeId || document.activeElement?.closest?.('.y-node')?.dataset.id),
         l: () => this.legendMenu.toggle(),
         s: () => this.setStoryCollapsed(!this.storyCollapsed),
+        w: () => this.setStoryMode(this.storyOff),
         r: () => this.interact.fit(),
         t: () => this.toggleTheme(),
         f: () => this.togglePresent(),
@@ -1625,7 +1708,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
 
   svgString() {
     const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-    const hl = this.engine.getHighlight();
+    const hl = this.highlight();
     const logo = theme === 'dark' ? LOGO_DARK : LOGO_LIGHT;
     return renderSvg(this.engine.getScene(), { theme, highlight: hl.overview ? null : hl, step: this.engine.stepIndex, logo, locale: this.L });
   }
@@ -1699,6 +1782,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     // An unknown role (stale link, other diagram) would dim every card
     if (get('role') && this.roleInUse(get('role'))) this.roleFilter = get('role');
     if (get('inspector')) this.inspectorTab = get('inspector');
+    if (get('story') === 'off' || get('story') === 'on') this.storyHash = get('story');
   }
 
   /** True when a card of this role is visible in the current mode. */

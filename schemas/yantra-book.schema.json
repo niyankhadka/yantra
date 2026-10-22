@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/niyankhadka/yantra/schemas/yantra-book.schema.json",
+  "title": "Yantra book",
+  "description": "Several answer pages (chapters) read in order, built into one offline HTML file with scroll, book (one screen at a time) and present modes. Each chapter follows the answer page rules: its answer first, then blocks.",
+  "type": "object",
+  "required": [
+    "kind",
+    "meta",
+    "chapters"
+  ],
+  "properties": {
+    "kind": {
+      "const": "book"
+    },
+    "meta": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The book's title, on its cover."
+        },
+        "description": {
+          "type": "string",
+          "description": "One sentence under the title: what the reader will understand by the end."
+        },
+        "author": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "description": "As written, e.g. 22/10/2026."
+        },
+        "kicker": {
+          "type": "string",
+          "description": "A short label beside the logo (Handbook, Onboarding, ...)."
+        },
+        "footer": {
+          "type": "string"
+        },
+        "reading": {
+          "enum": [
+            "scroll",
+            "book",
+            "present"
+          ],
+          "default": "book",
+          "description": "How the book opens: book (one screen at a time, like an e-reader), scroll (one long page) or present (one row of blocks per slide). Readers can switch; their place is kept in their browser, and #read= / #at= in the URL override both."
+        },
+        "lang": {
+          "type": "string",
+          "description": "BCP 47 language tag; chapters without their own meta.lang inherit it (and dir and strings)."
+        },
+        "dir": {
+          "enum": [
+            "ltr",
+            "rtl"
+          ]
+        },
+        "strings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "watermark": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "false hides the \"Made with Yantra\" badge; a string replaces its text."
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "The whole book in two or three sentences (light markdown), on the cover above the contents."
+    },
+    "chapters": {
+      "type": "array",
+      "minItems": 1,
+      "description": "1-12 chapters, in reading order: answer pages inline (kind \"page\" or no kind), or { \"$ref\": \"chapter.json\" } relative to the book's file and inside its folder.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "$ref": {
+            "type": "string",
+            "description": "A chapter in its own .json file (an answer page), relative to the book."
+          },
+          "kind": {
+            "const": "page"
+          },
+          "meta": {
+            "$ref": "yantra-page.schema.json#/properties/meta"
+          },
+          "answer": {
+            "$ref": "yantra-page.schema.json#/properties/answer"
+          },
+          "blocks": {
+            "$ref": "yantra-page.schema.json#/properties/blocks"
+          }
+        }
+      }
+    }
+  }
+}

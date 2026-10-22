@@ -70,9 +70,15 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
 | A line worth remembering | `quote` | `text`, `by?`, `source?` |
 | A screenshot, photo or chart image | `image` | `src` (`https:` URL or `data:image/…` URI), `alt` (required), `caption?`, `width?` |
 | Short facts about one thing (owner, status, version) | `kv` | `items: [{ k, v }]` |
+| A heading over a group of blocks (a part of a long page) | `section` | `blocks: [...]`, `title?`, `intro?` |
 
 - `span: "half"` places two consecutive blocks side by side on wide screens (pair a
-  `steps` with a `callout`, or two `points`).
+  `steps` with a `callout`, or two `points`); `span: "third"` places three (three
+  `metrics`, three `callout`s). Below 760px every block takes the full width.
+- `section` groups blocks under a heading (an `h2`, with an optional `intro` paragraph) in
+  their own row, so `half` and `third` work inside it. Sections go one level deep (no
+  section inside a section), and the blocks inside them count towards the 12-block budget
+  and the 2 interactive diagrams.
 - `tone` colours: `info` blue, `good` green, `warn` amber, `bad` rose, `neutral` slate.
 - Text fields accept light markdown: paragraphs, `- ` and `1. ` lists, `**bold**`,
   `*italic*`, `` `code` ``, `[link](https://…)`. HTML is escaped.
@@ -98,6 +104,13 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
   in an ellipsis (full title on hover). The row is left out of print; the Markdown export
   starts with the same list, linked to `<a id>` anchors before each heading.
 - `meta.updated` adds "Updated …" to the byline next to `meta.date`.
+- Reading modes: the header switches between **scroll** (the page as one long page),
+  **book** (one screen at a time with previous / next, a progress bar and text size) and
+  **present** (one row of blocks per slide, larger, for a meeting). `meta.reading`
+  (`scroll`, `book` or `present`) sets how the page opens; readers can switch, and their mode
+  and place are kept in their browser. Pages break between blocks, never inside one. Keys,
+  links and print are the same as for books: see `books.md` (Reading modes).
+- Several pages read in order are a **book** (`"kind": "book"`): see `books.md`.
 
 ## Charts
 
@@ -192,6 +205,7 @@ label string or `{ label, low?, high?, labels?, min?, max? }`.
 |---|---|
 | `page/missing-answer` | Add `answer.headline`. |
 | `page/unknown-block` | Use one of the block types above. |
+| `page/nested-section` | A section inside a section: move its blocks up, or make it a sibling section. |
 | `page/block-invalid` | Supply the fields listed in the message. |
 | `page/diagram-unresolved` | `src` must be a relative `.json` path inside the page's own folder (no `..`, no absolute paths); fix the path or inline the diagram. |
 | `page/unknown-level` | `level` must be a key of the diagram's `diagrams` map. |
@@ -207,7 +221,8 @@ label string or `{ label, low?, high?, labels?, min?, max? }`.
 | `page/gantt-dependency` | `after` must name a task's `id` or title, ids must be unique, and dependencies cannot loop. |
 | `page/gantt-order` | A task ends before it starts (error), or starts before a task in its `after` ends (warning). |
 | `page/heavy-embed` (warning) | More than 2 `interactive` diagrams; make the rest static. |
-| `page/bad-height`, `page/bad-toc` (warnings) | `height` is a number ≥ 240; `meta.toc` is `true` or `false`. |
+| `page/bad-height`, `page/bad-toc`, `page/bad-span` (warnings) | `height` is a number ≥ 240; `meta.toc` is `true` or `false`; `span` is `full`, `half` or `third`. |
+| `page/bad-reading` | `meta.reading` is `scroll`, `book` or `present`. |
 | `page/headline-too-long`, `page/too-many-blocks` | Cut. |
 | `i18n/*` (warnings) | See `authoring.md`: `meta.lang` is a BCP 47 tag, `meta.dir` is `ltr`/`rtl`, `meta.strings` keys exist. |
 | diagram codes (`geometry/*`, `ref/*`, …) | Fix the embedded diagram; see `authoring.md`. |

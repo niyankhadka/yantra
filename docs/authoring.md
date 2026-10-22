@@ -63,6 +63,22 @@ direction of the edges, so **edge direction is your layout tool**:
 - Add `modes` only when they change something (`hideNodes`, `hideEdges`, or per-mode
   `data.modes.<id>` overrides).
 
+## How the walkthrough opens
+
+`meta.story` sets how the storyboard opens; detail diagrams inherit the overview's setting.
+
+| `meta.story` | Opens with | Use it for |
+|---|---|---|
+| `"open"` | the full storyboard: step chips, text and controls | a diagram whose point is the walkthrough |
+| `"collapsed"` | one slim bar: `03 / 06`, the step title, back / next | a diagram read mostly as a picture, with steps for those who want them |
+| `"off"` | no storyboard; nothing is dimmed and every card is in view | a diagram that is a picture; steps can still feed the inspector |
+| (not set) | open; collapsed in small frames (embeds, windows under 560px tall) | |
+
+Readers switch story mode with the toolbar button or `W`; the choice is kept for that
+diagram in their browser, and `#story=off` (or `on`) in the URL overrides both. With story
+mode off the step keys do nothing, and the SVG export draws every card undimmed. A diagram
+without steps shows no storyboard and no switch.
+
 ## Inspector tabs: include only what was asked for
 
 The side panel builds its tabs from the payload, so add content for a tab only when the
@@ -516,8 +532,8 @@ the **Details** tab; the Markdown export lists the numbers under **Chart**.
 |---|---|---|
 | `line` (default with `values`), `area` | A sparkline; the latest value at the right of the caption | `values` (2-48 numbers, `null` for a gap), optional `labels` |
 | `column` | Mini columns from zero | `values` (up to 16), optional `labels` |
-| `bar` | Labelled bars with their values | `data: [{ label, value, tone? }]` (up to 5) |
-| `donut` | A small share donut with a legend | `data: [{ label, value, tone? }]` (up to 5, values ≥ 0) |
+| `bar` | Labelled bars with their values | `data: [{ label, value, tone? }]` (up to 8; beyond that the card draws a "+N more" row that opens Details) |
+| `donut` | A small share donut with a legend | `data: [{ label, value, tone? }]` (up to 6, values ≥ 0; with more, the first 5 are drawn and the rest merge into an "Other" slice that opens Details) |
 | `ring` (default with only `value`) | Progress: `value` of `max` (default 100) | `value`, `max`, optional `target` |
 | `bullet` | One bar: `value` against a `target` tick | `value`, `target`, `max` (default: a round number above both) |
 
@@ -671,6 +687,7 @@ Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-ara
 | `help.inspector` | Inspector |
 | `help.legend` | Roles legend |
 | `help.story` | Collapse walkthrough |
+| `help.storyMode` | Walkthrough on / off |
 | `help.fit` | Fit to screen |
 | `help.zoom` | Zoom |
 | `help.theme` | Light / dark |
@@ -703,6 +720,11 @@ Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-ara
 | `story.pause` | Pause |
 | `story.replay` | Replay |
 | `story.autoplay` | Autoplay |
+| `story.mode` | Walkthrough |
+| `story.on` | Turn the walkthrough on |
+| `story.off` | Turn the walkthrough off |
+| `story.onToast` | Walkthrough on |
+| `story.offToast` | Walkthrough off: every card in view |
 | `story.speed` | Autoplay speed |
 | `story.back` | Back |
 | `story.next` | Next |
@@ -857,6 +879,7 @@ Examples: `examples/health-referral-nepali.json`, `examples/order-fulfilment-ara
 | `chart.kind.bullet` | Bullet chart |
 | `chart.target` | Target |
 | `chart.remaining` | Remaining |
+| `chart.other` | Other |
 | `node.chart` | Chart |
 | `fold.expand` | Expand {title} ({n} hidden) |
 | `fold.collapse` | Collapse {title} |
@@ -953,6 +976,7 @@ Fix in this order; each fix can clear later errors.
 | `story/no-steps` (warning) | Add a scenario with an overview step and 2+ focused steps. |
 | `sequence/no-messages` (warning) | `meta.view` is `sequence` but no step lists `highlightEdges`: add them, or drop `meta.view`. |
 | `schema/unknown-view` | `meta.view` must be `flow` or `sequence`; `meta.views` a non-empty list of them. |
+| `schema/unknown-story` | `meta.story` is `open`, `collapsed` or `off`. |
 | `sequence/not-offered` (warning) | `meta.view` names a view the payload does not offer (`meta.views`, or `sequence` on a diagram of only table / class cards): change one of them. |
 | `schema/unknown-layout-algorithm`, `schema/layout-collapsed-invalid` | `meta.layout.algorithm` is `layered`, `tree` or `mindmap`; `collapsed` is an array of ids. |
 | `ref/collapsed-unknown` | List only node or group ids in `meta.layout.collapsed`. |

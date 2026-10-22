@@ -1,7 +1,7 @@
 """Typed block constructors shared by answer pages (`Page`) and diagram panels (`Diagram.panel`).
 
 Every function returns a plain ``dict`` matching ``schemas/yantra-page.schema.json``
-(``blocks.items``). All accept ``title=`` and ``span=`` ("full" | "half"); ``nodes=[...]``
+(``blocks.items``). All accept ``title=`` and ``span=`` ("full" | "half" | "third"); ``nodes=[...]``
 scopes a block in a diagram panel to those cards (ignored on pages).
 
 Items are forgiving: a string becomes ``{"title": s}``, a ``(title, text)`` tuple becomes
@@ -16,12 +16,13 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 __all__ = [
     "Block", "BLOCK_TYPES", "TONES",
     "text", "points", "steps", "metrics", "table", "compare", "callout", "diagram", "chart", "code", "sources",
-    "timeline", "faq", "checklist", "quote", "image", "kv", "gantt", "matrix", "CHART_KINDS",
+    "timeline", "faq", "checklist", "quote", "image", "kv", "gantt", "matrix", "section", "CHART_KINDS", "SPANS",
 ]
 
 Block = Dict[str, Any]
 BLOCK_TYPES = ("text", "points", "steps", "metrics", "table", "compare", "callout", "diagram", "chart", "code", "sources",
-               "timeline", "faq", "checklist", "quote", "image", "kv", "gantt", "matrix")
+               "timeline", "faq", "checklist", "quote", "image", "kv", "gantt", "matrix", "section")
+SPANS = ("full", "half", "third")
 CHART_KINDS = ("bar", "column", "line", "area", "pie", "donut")
 TONES = ("info", "good", "warn", "bad", "neutral")
 Item = Union[str, Sequence[Any], Mapping[str, Any]]
@@ -33,8 +34,8 @@ def _clean(d: Mapping[str, Any]) -> Dict[str, Any]:
 
 def _block(type: str, title: Optional[str], span: Optional[str], nodes: Optional[Iterable[Any]],
            **fields: Any) -> Block:
-    if span not in (None, "full", "half"):
-        raise ValueError(f"span must be 'full' or 'half', not {span!r}")
+    if span is not None and span not in SPANS:
+        raise ValueError(f"span must be one of {SPANS}, not {span!r}")
     out: Block = {"type": type}
     if title:
         out["title"] = title
@@ -293,3 +294,15 @@ def kv(items: Union[Iterable[Item], Mapping[str, Any]], title: Optional[str] = N
     if isinstance(items, Mapping):
         items = [{"k": k, "v": v} for k, v in items.items()]
     return _block("kv", title, span, nodes, items=_items(items, ("k", "v")))
+
+
+def section(blocks: Iterable[Block], title: Optional[str] = None, intro: Optional[str] = None,
+            span: Optional[str] = None, nodes: Optional[Iterable[Any]] = None) -> Block:
+    """A heading over a group of blocks, laid out in their own row (``span="third"`` blocks
+    sit three across). One level only: a section inside a section is refused."""
+    inner = list(blocks)
+    if not inner:
+        raise ValueError("a section needs at least one block")
+    if any(b.get("type") == "section" for b in inner):
+        raise ValueError("sections go one level deep: a section cannot contain a section")
+    return _block("section", title, span, nodes, intro=intro, blocks=inner)

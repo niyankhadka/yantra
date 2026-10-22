@@ -165,6 +165,112 @@ textarea {
   padding-inline-end: 6px;
 }
 
+/* --- the picker: a search box over grouped templates and examples ---------- */
+.pg-pick {
+  max-width: 260px;
+}
+
+.pg-pick span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pg-pick-pop {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(70vh, 620px);
+  padding: 10px;
+}
+
+.pg-pick-pop:popover-open {
+  display: flex;
+}
+
+.pg-search {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--y-border);
+  border-radius: 8px;
+  background: var(--y-bg);
+  color: var(--y-ink);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.pg-search:focus-visible {
+  outline: 2px solid var(--y-accent);
+  outline-offset: 0;
+}
+
+.pg-pick-list {
+  overflow: auto;
+  min-height: 0;
+  margin-inline: -4px;
+  padding-inline: 4px;
+}
+
+.pg-pick-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 6px 0 2px;
+  padding: 4px 6px;
+  background: var(--y-surface);
+  color: var(--y-ink-3);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:root[dir='rtl'] .pg-pick-head {
+  letter-spacing: 0;
+}
+
+.pg-pick-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.pg-pick-item b {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.pg-pick-item span {
+  overflow: hidden;
+  color: var(--y-ink-3);
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pg-pick-item.is-starter b::before {
+  content: '+ ';
+  color: var(--y-accent);
+}
+
+.pg-pick-item[aria-selected='true'] {
+  background: var(--y-accent-soft);
+}
+
+.pg-pick-item[aria-selected='true'] b {
+  color: var(--y-accent);
+}
+
+.pg-pick-empty {
+  margin: 4px 6px;
+  color: var(--y-ink-3);
+  font-size: 13px;
+}
+
 /* --- copy prompt: the button, its options arrow and the options popover --- */
 .pg-copy {
   display: inline-flex;
@@ -231,9 +337,60 @@ textarea {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(320px, 2fr) 3fr;
-  gap: 12px;
+  grid-template-columns: minmax(280px, var(--pg-split, 40%)) 12px minmax(0, 1fr);
   padding: 12px 16px 16px;
+}
+
+.pg-main.is-editor-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The drag handle between the editor and the preview (keys: arrows, Home, End) */
+.pg-split {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.pg-split::after {
+  content: '';
+  position: absolute;
+  inset-block: 40% 40%;
+  inset-inline-start: 4px;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--y-border-strong);
+  transition: background 0.15s, inset 0.15s;
+}
+
+.pg-split:hover::after,
+.pg-split:focus-visible::after,
+.is-resizing .pg-split::after {
+  inset-block: 0;
+  background: var(--y-accent);
+}
+
+.pg-split:focus-visible {
+  outline: none;
+}
+
+.is-resizing,
+.is-resizing * {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.is-resizing .pg-frame {
+  pointer-events: none;
+}
+
+.pg-preview:fullscreen {
+  border-radius: 0;
+  border: 0;
+}
+
+.pg-preview:fullscreen .pg-frame {
+  min-height: 0;
 }
 
 .pg-pane {
@@ -420,8 +577,58 @@ textarea {
   border: 1px dashed var(--y-border-strong);
   border-radius: 8px;
   color: var(--y-ink-3);
-  text-align: center;
   padding: 16px;
+  overflow: auto;
+}
+
+/* The start screen: describe the diagram, or start from a template */
+.pg-start {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(520px, 100%);
+}
+
+.pg-start-title {
+  color: var(--y-ink);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pg-describe {
+  width: 100%;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--y-border-strong);
+  border-radius: 10px;
+  background: var(--y-surface);
+  color: var(--y-ink);
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.pg-start-note,
+.pg-start-foot {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.pg-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pg-start-actions .pg-btn {
+  min-height: 36px;
+  padding-inline: 14px;
+}
+
+.pg-start-foot {
+  padding-top: 8px;
+  border-top: 1px solid var(--y-border);
 }
 
 .pg-toast {
@@ -462,7 +669,18 @@ textarea {
 
   .pg-main {
     grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
     padding: 10px 12px 16px;
+  }
+
+  .pg-split {
+    display: none;
+  }
+
+  /* Preview head: the title row keeps its buttons; downloads wrap below */
+  .pg-preview .pg-downloads {
+    order: 5;
+    flex-basis: 100%;
   }
 
   .pg-src {
@@ -488,10 +706,11 @@ textarea {
   }
 
   /* Row 1: brand, docs, theme; row 2: examples; row 3: the prompt button */
-  .pg-bar > .pg-select {
+  .pg-bar > .pg-pick {
     order: 4;
     flex: 1 1 100%;
     max-width: none;
+    justify-content: center;
   }
 
   .pg-bar > .pg-copy {

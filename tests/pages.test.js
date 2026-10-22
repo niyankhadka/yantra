@@ -13,6 +13,34 @@ const loadPage = (f) => resolvePage(JSON.parse(fs.readFileSync(path.join(EX, f),
 const page = (blocks, meta = {}) => ({ kind: 'page', meta: { question: 'Q?', ...meta }, answer: { headline: 'A.' }, blocks });
 const codes = (r) => [...r.errors, ...r.warnings].map((f) => f.code);
 
+test('span "third" and section blocks: three across, a heading over its own row, one level deep', () => {
+  const third = (title) => ({ type: 'metrics', title, span: 'third', items: [{ label: title, value: '1' }] });
+  const p = page([
+    third('Speed'),
+    third('Quality'),
+    third('Load'),
+    { type: 'section', title: 'What changed', intro: 'Two **changes**.', blocks: [{ type: 'text', title: 'Speed', body: 'Again.' }, { type: 'callout', span: 'half', body: 'Watch.' }] }
+  ]);
+  assert.deepEqual(codes(lint(p)), []);
+  const html = renderPage(p);
+  assert.equal(html.match(/class="p-block p-block--metrics is-third"/g).length, 3);
+  assert.match(html, /<section class="p-block p-block--section" id="what-changed"><div class="p-section-head"><h2>What changed<\/h2><p>Two <strong>changes<\/strong>\.<\/p><\/div><div class="p-grid p-subgrid">/);
+  assert.match(html, /<section class="p-block p-block--text" id="speed-2"><h3>Speed<\/h3>/, 'inner anchors are unique across the page');
+  assert.match(html, /\.p-grid>\.p-block\.is-third\{grid-column:span 2\}/);
+  const md = pageToMarkdown(p);
+  assert.match(md, /## What changed\n\nTwo \*\*changes\*\*\.\n\n### Speed\n\nAgain\./, 'blocks in a section are one heading level down');
+  // one level only, and the budgets count what is inside
+  const nested = page([{ type: 'section', blocks: [{ type: 'section', blocks: [{ type: 'text', body: 'x' }] }] }]);
+  assert.deepEqual(codes(lint(nested)), ['page/nested-section']);
+  assert.deepEqual(codes(lint(page([{ type: 'section', blocks: [] }]))), ['page/block-invalid']);
+  const many = page([{ type: 'section', blocks: Array.from({ length: 13 }, (_, i) => ({ type: 'text', body: `b${i}` })) }]);
+  assert.deepEqual(codes(lint(many)), ['page/too-many-blocks']);
+  assert.deepEqual(codes(lint(page([{ type: 'text', body: 'x', span: 'quarter' }]))), ['page/bad-span']);
+  // a diagram inside a section is loaded from its src like any other
+  const resolved = resolvePage({ ...page([{ type: 'section', blocks: [{ type: 'diagram', src: 'oauth-login.json' }] }]) }, EX);
+  assert.equal(resolved.blocks[0].blocks[0].diagram.meta.title, JSON.parse(fs.readFileSync(path.join(EX, 'oauth-login.json'), 'utf-8')).meta.title);
+});
+
 test('timeline renders dates as written, tones and markdown text', () => {
   const html = renderBlock({ type: 'timeline', items: [{ date: '14/10/2026', title: 'Alert <fires>', text: '**paged**', tone: 'bad' }] });
   assert.match(html, /<ol class="p-timeline"><li data-hue="rose"><span class="p-date">14\/10\/2026<\/span>/);
@@ -189,4 +217,12 @@ test('live embeds keep the opaque-origin sandbox unless the caller sets frameSan
   const blocks = [{ type: 'diagram', diagram, interactive: true }];
   assert.match(renderPage(page(blocks), { viewerHtml: () => '<p>v</p>' }), /sandbox="allow-scripts allow-popups"/);
   assert.match(renderPage(page(blocks), { viewerHtml: () => '<p>v</p>', frameSandbox: 'allow-scripts allow-same-origin' }), /sandbox="allow-scripts allow-same-origin"/);
+});
+
+test('findings from an embedded diagram say which block they come from', () => {
+  const p = page([{ type: 'diagram', title: 'Flow', diagram: { meta: { title: 'X' }, nodes: [{ id: 'a', data: { title: 'A' } }], edges: [{ id: 'e', source: 'a', target: 'zz' }] } }]);
+  const f = lint(p).errors.find((x) => x.code === 'ref/edge-unknown-target');
+  assert.match(f.message, /^blocks\[0\] "Flow": Edge "e" target "zz"/);
+  assert.equal(f.block, 0);
+  assert.equal(f.edge, 'e', "the diagram finding's own fields are kept");
 });

@@ -6,10 +6,10 @@
  *   yantra export <diagram.json> -f svg|md [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels] [--collapsed id,id | --expand-all | --depth n]
  *   yantra screenshot <diagram.json|page.html> [-o out.png] [--theme light|dark] [--step n] [--view flow|sequence] [--level id] [--collapsed id,id | --expand-all | --depth n] [--focus group]
  *   yantra import <file.mmd|file.md|file.drawio|file.puml|file.vsdx|file.drawio.png> [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n] [--title "..."] [--all]
- *   yantra new <file.json> [--page]  yantra examples [name]   yantra mcp [--http]   yantra dev
+ *   yantra new <file.json> [--page | --book | --kind k]  yantra examples [name]   yantra mcp [--http]   yantra dev
  *   yantra init [--claude] [--cursor] [--codex] [--antigravity] [--all] [--dir path] [--force] [--dry-run] [--json]
- *   yantra schema [diagram|page]   yantra docs [authoring|pages|mermaid|import|agents]
- * Works with diagrams and with one-page answers ({ "kind": "page" }).
+ *   yantra schema [diagram|page|book]   yantra docs [authoring|pages|books|mermaid|import|agents]
+ * Works with diagrams, one-page answers ({ "kind": "page" }) and books ({ "kind": "book" }).
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,7 +21,9 @@ import { localizeFindings } from '../src/core/lintmessages.js';
 import { renderSvg } from '../src/core/svg.js';
 import { sceneForView } from '../src/core/sequence.js';
 import { toMarkdown } from '../src/core/markdown.js';
-import { isPage, pageToMarkdown } from '../src/core/page.js';
+import { isPage, isBook, pageToMarkdown } from '../src/core/page.js';
+import { bookToMarkdown } from '../src/core/book.js';
+import { STARTER_DIAGRAM, STARTER_PAGE, STARTER_BOOK, STARTERS } from '../src/core/starters.js';
 import { importText, FORMATS } from '../src/core/import.js';
 import { collectDiagrams, getLevel } from '../src/core/drill.js';
 import { foldsForDepth } from '../src/core/nesting.js';
@@ -32,18 +34,19 @@ import { init, formatInit, AGENTS } from '../lib/init.js';
 
 const HELP = `Yantra - interactive, step-by-step diagrams
 
-Works with diagrams and with one-page answers (payloads with "kind": "page").
+Works with diagrams, one-page answers ("kind": "page") and books ("kind": "book").
 
 Usage
   yantra validate <file.json> [--json]         Check schema, references and rendered geometry  [--lang xx]
   yantra build <file.json> [-o out.html]       Validate, then write a single offline HTML file
   yantra export <file.json> -f svg|md          Static SVG (diagrams) or Markdown  [-o file] [--theme light|dark] [--mode id] [--view flow|sequence] [--step n] [--level id] [--all-levels]
   yantra screenshot <diagram.json|page.html>   PNG via local Chrome/Edge  [-o out.png] [--theme] [--step n] [--view flow|sequence] [--level id] [--focus group] [--width] [--height]
-  yantra new <file.json> [--page]              Write a starter diagram (or answer page)
+  yantra new <file.json> [--page | --book]     Write a starter diagram (or answer page, or book)
+                                               --kind flow|sequence|state|er|class|tree|mindmap|page|book
   yantra import <file>                         Convert Mermaid (.mmd/.md; diagrams, or gantt / pie / timeline / quadrant pages), draw.io (.drawio/.xml/.png), PlantUML (.puml) or Visio (.vsdx)  [-o out.json] [--from mermaid|drawio|plantuml|visio] [--page n|name] [--title "..."] [--all]
   yantra examples [name] [-o file]             List built-in examples, or copy one
-  yantra schema [diagram|page]                 Print the JSON Schema for diagrams (default) or answer pages
-  yantra docs [authoring|pages|mermaid|import|agents]  Print a guide (default: authoring)
+  yantra schema [diagram|page|book]            Print the JSON Schema for diagrams (default), answer pages or books
+  yantra docs [authoring|pages|books|mermaid|import|agents]  Print a guide (default: authoring)
   yantra init [agents] [--dir path]            Set up a project for coding agents: skill, MCP server, rules
                                                agents: --claude --cursor --codex --antigravity or --all
                                                (none: the agents whose folders exist, else --claude)
@@ -78,7 +81,7 @@ function parse(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang', 'collapsed', 'depth', 'focus', 'dir'].includes(key)) out[key] = argv[++i];
+      if (next !== undefined && !next.startsWith('-') && ['theme', 'mode', 'step', 'view', 'width', 'height', 'title', 'level', 'from', 'page', 'lang', 'collapsed', 'depth', 'focus', 'dir', 'kind'].includes(key)) out[key] = argv[++i];
       else out[key] = true;
     } else out._.push(a);
   }
@@ -110,46 +113,6 @@ function printReport(report, file) {
 
 const outName = (input, ext) => path.join(path.dirname(path.resolve(input)), `${path.parse(input).name}${ext}`);
 
-const STARTER = {
-  meta: { title: 'New diagram', description: 'What this diagram explains, in one sentence.', layout: { direction: 'LR' } },
-  roles: { actor: { label: 'Actor', color: 'amber' }, service: { label: 'Service', color: 'blue' }, store: { label: 'Data', color: 'violet' } },
-  nodes: [
-    { id: 'user', type: 'actor', data: { title: 'User', subtitle: 'Starts the flow', icon: 'user' } },
-    { id: 'api', type: 'service', data: { title: 'API', subtitle: 'Validates and routes', tech: 'Node.js' } },
-    { id: 'db', type: 'store', data: { title: 'Database', subtitle: 'Source of truth', tech: 'PostgreSQL', icon: 'database' } }
-  ],
-  edges: [
-    { id: 'user-api', source: 'user', target: 'api', label: 'HTTPS request' },
-    { id: 'api-db', source: 'api', target: 'db', label: 'SQL write' }
-  ],
-  scenarios: [
-    {
-      id: 'main',
-      name: 'Happy path',
-      steps: [
-        { id: 'overview', title: 'Overview', description: 'The whole system at a glance.' },
-        { id: 'request', title: 'Request arrives', description: 'The user calls the API.', highlightNodes: ['user', 'api'], highlightEdges: ['user-api'] },
-        { id: 'persist', title: 'Data is stored', description: 'The API writes to the database.', highlightNodes: ['api', 'db'], highlightEdges: ['api-db'] }
-      ]
-    }
-  ]
-};
-
-const STARTER_PAGE = {
-  kind: 'page',
-  meta: { question: 'What question does this page answer?', title: 'Short title', kicker: 'Explainer' },
-  answer: {
-    headline: 'The answer in one or two sentences - the conclusion comes first.',
-    text: 'One short paragraph of context: why this is the answer.',
-    points: ['First supporting point', 'Second supporting point', 'Third supporting point']
-  },
-  blocks: [
-    { type: 'points', title: 'Key ideas', items: [{ title: 'Idea one', text: 'One sentence.' }, { title: 'Idea two', text: 'One sentence.' }, { title: 'Idea three', text: 'One sentence.' }] },
-    { type: 'steps', title: 'How it works', span: 'half', items: [{ title: 'First', text: 'What happens.' }, { title: 'Then', text: 'What happens next.' }] },
-    { type: 'callout', tone: 'warn', label: 'Watch out', span: 'half', body: 'The one thing people get wrong.' }
-  ]
-};
-
 /**
  * Read a payload; page diagram `src` files and drill-down `$ref` files are
  * loaded relative to the input (and must stay inside its folder).
@@ -158,10 +121,14 @@ function load(file) {
   return resolveAny(readPayload(file), path.dirname(path.resolve(file)));
 }
 
+/** Answer pages and books: read as documents (no levels, folds or SVG). */
+const isDoc = (p) => isPage(p) || isBook(p);
+const docName = (p) => (isBook(p) ? 'books' : 'answer pages');
+
 /** The payload of `--level id` (a detail diagram), or the overview. */
 function pickLevel(payload, id) {
   if (!id || id === true) return payload;
-  if (isPage(payload)) fail('--level applies to diagrams, not answer pages.');
+  if (isDoc(payload)) fail(`--level applies to diagrams, not ${docName(payload)}.`);
   const level = getLevel(payload, id);
   if (!level) fail(`Unknown level "${id}". Detail diagrams: ${[...collectDiagrams(payload).map.keys()].join(', ') || 'none'}.`);
   return level;
@@ -175,7 +142,7 @@ function pickLevel(payload, id) {
 function folds(payload, target = payload) {
   const depth = depthArg();
   if (!args['expand-all'] && args.collapsed === undefined && depth === null) return null;
-  if (isPage(payload)) fail('--collapsed, --expand-all and --depth apply to diagrams, not answer pages.');
+  if (isDoc(payload)) fail(`--collapsed, --expand-all and --depth apply to diagrams, not ${docName(payload)}.`);
   if ([args['expand-all'], args.collapsed !== undefined, depth !== null].filter(Boolean).length > 1) fail('Use one of --collapsed, --expand-all and --depth.');
   if (depth !== null) return foldsForDepth(target, depth);
   if (args['expand-all']) return [];
@@ -228,18 +195,18 @@ try {
 
     case 'export': {
       const payload = load(input);
-      const format = (args.format || (isPage(payload) ? 'md' : 'svg')).toLowerCase();
+      const format = (args.format || (isDoc(payload) ? 'md' : 'svg')).toLowerCase();
       const picked = pickLevel(payload, args.level);
       const level = withFolds(picked, folds(payload, picked));
       let content;
       if (format === 'svg') {
-        if (isPage(payload)) fail('Answer pages export to html (yantra build) or md.');
+        if (isDoc(payload)) fail(`${isBook(payload) ? 'Books' : 'Answer pages'} export to html (yantra build) or md.`);
         const theme = args.theme === 'dark' ? 'dark' : 'light';
         const logos = readLogos();
         const step = Number(args.step) > 0 ? Number(args.step) - 1 : null;
         content = renderSvg(sceneForView(level, { view: args.view, modeId: args.mode }), { theme, step, logo: logos[theme] || logos.light || logos.dark });
       } else if (format === 'md' || format === 'markdown') {
-        content = isPage(payload) ? pageToMarkdown(payload) : toMarkdown(level, { levels: !!args['all-levels'] && level === payload });
+        content = isBook(payload) ? bookToMarkdown(payload) : isPage(payload) ? pageToMarkdown(payload) : toMarkdown(level, { levels: !!args['all-levels'] && level === payload });
       } else fail(`Unknown format "${format}" (use svg or md).`);
       const out = path.resolve(args.output || outName(input, format === 'svg' ? '.svg' : '.md'));
       fs.writeFileSync(out, content);
@@ -255,7 +222,7 @@ try {
       let fold = null;
       if (input.endsWith('.json')) {
         const payload = load(input);
-        page = isPage(payload);
+        page = isDoc(payload);
         pickLevel(payload, args.level); // fails early on an unknown level
         // --depth goes in the link (depth=n), so it applies to whichever level opens
         if (depthArg() === null) fold = folds(payload);
@@ -290,7 +257,11 @@ try {
     case 'new': {
       const out = path.resolve(input || 'diagram.json');
       if (fs.existsSync(out)) fail(`${out} already exists.`);
-      fs.writeFileSync(out, `${JSON.stringify(args.page ? STARTER_PAGE : STARTER, null, 2)}\n`);
+      if ([args.page, args.book, args.kind].filter(Boolean).length > 1) fail('Use one of --page, --book and --kind.');
+      const kinds = STARTERS.map((s) => s.id.replace(/^new-/, ''));
+      if (args.kind !== undefined && !kinds.includes(args.kind)) fail(`Unknown kind "${args.kind}" (use ${kinds.join(', ')}).`);
+      const starter = args.kind ? STARTERS.find((s) => s.id === `new-${args.kind}`).data : args.book ? STARTER_BOOK : args.page ? STARTER_PAGE : STARTER_DIAGRAM;
+      fs.writeFileSync(out, `${JSON.stringify(starter, null, 2)}\n`);
       console.error(`✓ Wrote ${out}. Next: yantra validate ${path.basename(out)}`);
       break;
     }
@@ -340,13 +311,14 @@ try {
 
     case 'schema': {
       const kind = input || 'diagram';
-      if (!['diagram', 'page'].includes(kind)) fail(`Unknown schema "${kind}" (use diagram or page).`);
-      process.stdout.write(fs.readFileSync(path.join(ROOT, 'schemas', kind === 'page' ? 'yantra-page.schema.json' : 'yantra-payload.schema.json'), 'utf-8'));
+      const SCHEMAS = { diagram: 'yantra-payload.schema.json', page: 'yantra-page.schema.json', book: 'yantra-book.schema.json' };
+      if (!Object.hasOwn(SCHEMAS, kind)) fail(`Unknown schema "${kind}" (use diagram, page or book).`);
+      process.stdout.write(fs.readFileSync(path.join(ROOT, 'schemas', SCHEMAS[kind]), 'utf-8'));
       break;
     }
 
     case 'docs': {
-      const DOCS = ['authoring', 'pages', 'mermaid', 'import', 'agents'];
+      const DOCS = ['authoring', 'pages', 'books', 'mermaid', 'import', 'agents'];
       const name = input || 'authoring';
       if (!DOCS.includes(name)) fail(`Unknown guide "${name}" (use ${DOCS.join(', ')}).`);
       process.stdout.write(fs.readFileSync(path.join(ROOT, 'docs', `${name}.md`), 'utf-8'));

@@ -18,6 +18,7 @@ from .i18n import language_meta
 
 __all__ = ["Page", "resolve_levels"]
 
+READING_MODES = ("scroll", "book", "present")
 _UNSAFE_REF = re.compile(r"^([a-zA-Z][\w+.-]*:|[\\/])")
 
 
@@ -116,6 +117,14 @@ class Page:
         self.meta["watermark"] = value
         return self
 
+    def reading(self, mode: str) -> "Page":
+        """How the page opens: "scroll", "book" (one screen at a time) or "present" (one row of
+        blocks per slide). Readers can switch."""
+        if mode not in READING_MODES:
+            raise YantraError(f"reading must be one of {READING_MODES}, not {mode!r}")
+        self.meta["reading"] = mode
+        return self
+
     def add(self, block: Dict[str, Any]) -> "Page":
         """Append a block made with :mod:`yantra.blocks` (or a raw dict)."""
         if block.get("type") not in B.BLOCK_TYPES:
@@ -202,6 +211,11 @@ class Page:
            span: Optional[str] = None) -> "Page":
         return self.add(B.kv(items, title, span))
 
+    def section(self, blocks: Iterable[Dict[str, Any]], title: Optional[str] = None,
+                intro: Optional[str] = None) -> "Page":
+        """A heading over blocks made with :mod:`yantra.blocks` (one level deep)."""
+        return self.add(B.section(blocks, title, intro))
+
     # --- output -------------------------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
         """The payload as a JSON-ready dict."""
@@ -232,9 +246,19 @@ class Page:
         """
         payload = self.to_dict()
         base = Path(self.base_dir or os.getcwd())
+        if payload.get("blocks"):
+            payload["blocks"] = self._resolve_blocks(payload["blocks"], base)
+        return payload
+
+    @staticmethod
+    def _resolve_blocks(blocks: List[Dict[str, Any]], base: Path) -> List[Dict[str, Any]]:
+        """Load diagram ``src`` files and ``$ref`` levels, inside sections too."""
         resolved = []
-        for b in payload.get("blocks", []):
-            if b.get("type") == "diagram" and b.get("src") and not b.get("diagram"):
+        for b in blocks:
+            if b.get("type") == "section" and isinstance(b.get("blocks"), list):
+                b = dict(b)
+                b["blocks"] = Page._resolve_blocks(b["blocks"], base)
+            elif b.get("type") == "diagram" and b.get("src") and not b.get("diagram"):
                 path = Path(b["src"]) if Path(b["src"]).is_absolute() else base / b["src"]
                 if path.is_file():
                     b = {k: v for k, v in b.items() if k != "src"}
@@ -246,9 +270,7 @@ class Page:
                 b = dict(b)
                 b["diagram"] = resolve_levels(b["diagram"], base, base)
             resolved.append(b)
-        if resolved:
-            payload["blocks"] = resolved
-        return payload
+        return resolved
 
     def validate(self, lang: Optional[str] = None) -> Dict[str, Any]:
         """Run the Yantra validator (embedded diagrams included); returns {"valid", "errors", "warnings"}.

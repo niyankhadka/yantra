@@ -32,8 +32,8 @@ test('files covers everything the builder, CLI and MCP server read at run time',
   const needed = [
     'bin/yantra.js', 'lib/build.js', 'lib/browser.js', 'mcp/server.js', 'dist/index.html',
     'src/assets/logo-light.svg', 'src/core/import.js', 'src/core/drawio.js', 'src/core/plantuml.js',
-    'schemas/yantra-payload.schema.json', 'schemas/yantra-page.schema.json',
-    'docs/authoring.md', 'docs/pages.md', 'docs/mermaid.md', 'docs/import.md', 'examples/oauth-login.json', 'examples/drawio/order-platform.drawio',
+    'schemas/yantra-payload.schema.json', 'schemas/yantra-page.schema.json', 'schemas/yantra-book.schema.json',
+    'docs/authoring.md', 'docs/pages.md', 'docs/books.md', 'docs/mermaid.md', 'docs/import.md', 'examples/oauth-login.json', 'examples/drawio/order-platform.drawio',
     'lib/init.js', 'skills/yantra/SKILL.md',
     ...sources
   ];

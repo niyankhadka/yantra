@@ -240,3 +240,10 @@ test('onNodeClick and panel block nodes are validated', () => {
   const hidden = lint({ ...base, meta: { ...base.meta, inspector: { tabs: ['summary'], onNodeClick: 'risks' } } });
   assert.ok(hidden.warnings.some((w) => w.code === 'ref/inspector-click-tab-hidden'));
 });
+
+test('meta.story takes "open", "collapsed" or "off"', () => {
+  const base = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'supply-chain.json'), 'utf-8'));
+  for (const story of ['open', 'collapsed', 'off']) assert.deepEqual(lint({ ...base, meta: { ...base.meta, story } }).errors, [], story);
+  const r = lint({ ...base, meta: { ...base.meta, story: 'hidden' } });
+  assert.deepEqual(r.errors.map((f) => f.code), ['schema/unknown-story']);
+});

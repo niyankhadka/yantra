@@ -51,6 +51,29 @@ test('every mini chart kind draws, grows its card by gap + chart height, and the
   }
 });
 
+test('mini charts past the card limit say so: a "+N more" bar row and an "Other" donut slice', () => {
+  const rows = (n) => Array.from({ length: n }, (_, i) => ({ label: `Team ${i + 1}`, value: 10 + i }));
+  const eight = measureNode(card('a', { kind: 'bar', data: rows(8) })).lines.chart;
+  const ten = measureNode(card('a', { kind: 'bar', data: rows(10) })).lines.chart;
+  assert.doesNotMatch(eight.svg, /data-more/, 'no row at the limit');
+  assert.equal((ten.svg.match(/class="m-bar"/g) || []).length, 8, 'the card draws 8 bars');
+  assert.match(ten.svg, /<g class="m-more-row" data-more="1">.*\+2 more<\/text><\/g>/, 'then a "+2 more" row');
+  assert.equal(ten.h, eight.h + MINI.row, 'the row adds one line to the card');
+  assert.match(ten.label, /Team 10 19/, 'a screen reader still hears every value');
+  const nine = measureNode(card('a', { kind: 'donut', data: rows(9) })).lines.chart;
+  assert.equal((nine.svg.match(/class="m-slice"/g) || []).length, 6, 'five slices and "Other"');
+  assert.match(nine.svg, /<path class="m-slice" data-hue="slate" data-more="1"/, 'the merged slice opens Details');
+  assert.match(nine.svg, />Other<\/text>/);
+  const total = rows(9).slice(5).reduce((a, d) => a + d.value, 0);
+  assert.match(nine.svg, new RegExp(`Other: ${total} `), '"Other" adds up the merged slices');
+  const tops = [...nine.svg.matchAll(/<rect class="m-key"[^>]* y="([\d.]+)"/g)].map((m) => Number(m[1]));
+  assert.ok(tops.every((y, i) => i === 0 || y - tops[i - 1] >= MINI.legendRow), 'legend rows never overlap');
+  // the static export drops the click marker
+  assert.doesNotMatch(inlineChart(ten.svg, TOKENS.light, () => '#000', '#000'), /data-more/);
+  const w = lint(diagram([card('a', { kind: 'bar', data: rows(10) }), card('b')])).warnings.find((f) => f.code === 'chart/too-many-points');
+  assert.match(w.message, /add "shape": "chart"/, 'the warning says how to show every bar');
+});
+
 test('mini chart model: defaults, value and the target', () => {
   assert.equal(miniModel({ values: [1, 2] }).kind, 'line');
   assert.equal(miniModel({ value: 40 }).kind, 'ring');
@@ -156,7 +179,10 @@ test('lint: chart codes', () => {
   assert.deepEqual(one({ kind: 'donut', data: [{ label: 'a', value: -1 }, { label: 'b', value: 2 }] }), ['chart/negative']);
   assert.deepEqual(one({ kind: 'ring', value: 120 }), ['chart/out-of-range']);
   assert.deepEqual(one({ values: Array.from({ length: 60 }, (_, i) => i) }), ['chart/too-many-points']);
-  assert.deepEqual(one({ kind: 'bar', data: Array.from({ length: 7 }, (_, i) => ({ label: `r${i}`, value: i })) }), ['chart/too-many-points']);
+  assert.deepEqual(one({ kind: 'bar', data: Array.from({ length: 8 }, (_, i) => ({ label: `r${i}`, value: i })) }), [], '8 bars fit a card');
+  assert.deepEqual(one({ kind: 'bar', data: Array.from({ length: 9 }, (_, i) => ({ label: `r${i}`, value: i })) }), ['chart/too-many-points']);
+  assert.deepEqual(one({ kind: 'donut', data: Array.from({ length: 6 }, (_, i) => ({ label: `d${i}`, value: i + 1 })) }), [], '6 slices fit a card');
+  assert.deepEqual(one({ kind: 'donut', data: Array.from({ length: 7 }, (_, i) => ({ label: `d${i}`, value: i + 1 })) }), ['chart/too-many-points']);
   assert.deepEqual(one({ kind: 'column', data: [{ label: 'a' }] }, { shape: 'chart' }), ['chart/invalid']);
   assert.deepEqual(one({ ...COLUMN_CARD, series: [{ name: 'x', values: [1] }] }, { shape: 'chart' }), ['chart/mismatch']);
   const many = { kind: 'line', categories: ['a', 'b'], series: Array.from({ length: 5 }, (_, i) => ({ name: `s${i}`, values: [i, i + 1] })) };

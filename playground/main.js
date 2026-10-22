@@ -11,23 +11,23 @@ import { themeCss } from '../src/core/theme.js';
 import { lint } from '../src/core/lint.js';
 import { localizeFindings } from '../src/core/lintmessages.js';
 import { LANGUAGES, localeOf, shippedLang } from '../src/core/i18n.js';
-import { isPage, pageToMarkdown } from '../src/core/page.js';
+import { isPage, isBook, pageToMarkdown } from '../src/core/page.js';
+import { bookToMarkdown } from '../src/core/book.js';
 import { toMarkdown } from '../src/core/markdown.js';
 import { renderSvg } from '../src/core/svg.js';
 import { sceneForView } from '../src/core/sequence.js';
-import { embedPayload, pageHtml, withPrelude } from '../src/core/standalone.js';
+import { embedPayload, pageHtml, bookHtml, withPrelude } from '../src/core/standalone.js';
 import PROMPT from '../chat/prompt.md?raw';
 import { buildPrompt } from './prompt.js';
+import { STARTERS } from '../src/core/starters.js';
 import LOGO_LIGHT from '../src/assets/logo-light.svg?raw';
 import LOGO_DARK from '../src/assets/logo-dark.svg?raw';
 
 const $ = (id) => document.getElementById(id);
 const LOGOS = { light: LOGO_LIGHT, dark: LOGO_DARK };
+/** Answer pages and books preview as documents: no SVG or PNG download. */
+const isDoc = (p) => isPage(p) || isBook(p);
 const DRAFT_KEY = 'yantra:playground';
-const STARTER = (() => {
-  const m = /```json\n([\s\S]*?)```/.exec(PROMPT); // the prompt's smallest valid diagram
-  return m ? m[1].trim() : '';
-})();
 
 // --- interface language: ?lang=xx, else the browser's first shipped language ---
 const params = new URLSearchParams(location.search);
@@ -206,6 +206,7 @@ function check() {
 /** The single-file HTML for a payload: what `yantra build` writes. */
 async function buildFile(payload) {
   const shell = await loadShell();
+  if (isBook(payload)) return bookHtml(payload, { shell: () => shell, logos: LOGOS });
   if (isPage(payload)) return pageHtml(payload, { shell: () => shell, logos: LOGOS });
   return embedPayload(shell, payload);
 }
@@ -234,7 +235,7 @@ async function render() {
     const html = await buildFile(payload);
     if (seq !== renderSeq) return;
     state.rendered = { payload, theme: theme() };
-    $('frame').srcdoc = previewDoc(html, isPage(payload));
+    $('frame').srcdoc = previewDoc(html, isDoc(payload));
   } catch (err) {
     stale.hidden = false;
     stale.textContent = String(err?.message || err);
@@ -243,7 +244,7 @@ async function render() {
 
 function syncDownloads() {
   const payload = state.report?.valid ? state.payload : null;
-  const page = payload && isPage(payload);
+  const page = payload && isDoc(payload);
   for (const b of document.querySelectorAll('[data-dl]')) {
     const vector = b.dataset.dl === 'svg' || b.dataset.dl === 'png';
     b.disabled = b.dataset.dl === 'json' ? !state.payload : !payload || (vector && page);
@@ -300,8 +301,8 @@ async function onDownload(kind) {
   if (kind === 'json') return download(`${base}.json`, `${JSON.stringify(payload, null, 2)}\n`, 'application/json');
   if (!state.report?.valid) return;
   if (kind === 'html') return download(`${base}.html`, await buildFile(payload), 'text/html');
-  if (kind === 'md') return download(`${base}.md`, isPage(payload) ? pageToMarkdown(payload) : toMarkdown(payload), 'text/markdown');
-  if (isPage(payload)) return toast(L.t('play.diagramOnly'));
+  if (kind === 'md') return download(`${base}.md`, isBook(payload) ? bookToMarkdown(payload) : isPage(payload) ? pageToMarkdown(payload) : toMarkdown(payload), 'text/markdown');
+  if (isDoc(payload)) return toast(L.t('play.diagramOnly'));
   const svg = svgOf(payload);
   if (kind === 'svg') return download(`${base}.svg`, svg, 'image/svg+xml');
   if (kind === 'png') return pngOf(svg, `${base}.png`);
@@ -314,29 +315,213 @@ function loadGallery() {
   return gallery;
 }
 
-async function fillExamples() {
-  const sel = $('example');
+/** Starters and gallery entries in the picker's order, each with its group and one-line description. */
+async function pickItems() {
   const sections = await loadGallery();
-  for (const section of sections) {
-    const group = document.createElement('optgroup');
-    group.label = L.t(section.label);
-    for (const item of section.items) {
-      const o = document.createElement('option');
-      o.value = item.id;
-      o.textContent = item.name;
-      group.append(o);
-    }
-    sel.append(group);
-  }
+  const describe = (x) => x.description || x.data?.meta?.description || x.data?.meta?.question || '';
+  const starters = STARTERS.map((x) => ({ ...x, group: 'starters', description: x.description }));
+  const gallery = sections.flatMap((sec) => sec.items).map((x) => ({ ...x, group: x.kind, description: describe(x) }));
+  return [...starters, ...gallery];
 }
 
+/** Group label keys in order: the starters first, then the gallery kinds. */
+async function pickGroups() {
+  const { KINDS } = await import('../src/app/examples.js');
+  return [['starters', 'play.kind.starters'], ...KINDS];
+}
+
+const fold = (t) => String(t).toLocaleLowerCase(L.lang).normalize('NFD').replace(/\p{M}/gu, '');
+
+/** The picker: a search box over grouped starters and examples (a combobox with a listbox). */
+async function fillPicker() {
+  const [items, groups] = await Promise.all([pickItems(), pickGroups()]);
+  const search = $('pick-search');
+  const list = $('pick-list');
+  let active = -1;
+  let shown = [];
+  const opts = () => [...list.querySelectorAll('[role="option"]')];
+  const setActive = (i) => {
+    const all = opts();
+    if (!all.length) return search.removeAttribute('aria-activedescendant');
+    active = (i + all.length) % all.length;
+    all.forEach((o, k) => o.setAttribute('aria-selected', String(k === active)));
+    search.setAttribute('aria-activedescendant', all[active].id);
+    all[active].scrollIntoView({ block: 'nearest' });
+  };
+  const draw = () => {
+    const words = fold(search.value).split(/\s+/).filter(Boolean);
+    const label = Object.fromEntries(groups.map(([g, key]) => [g, L.t(key)]));
+    shown = items.filter((x) => {
+      const hay = fold(`${x.name} ${x.description} ${label[x.group] || ''} ${x.id}`);
+      return words.every((w) => hay.includes(w));
+    });
+    let n = 0;
+    list.innerHTML = groups
+      .map(([g]) => {
+        const mine = shown.filter((x) => x.group === g);
+        if (!mine.length) return '';
+        return `<div role="group" aria-labelledby="pick-g-${g}"><p class="pg-pick-head" id="pick-g-${g}">${esc(label[g])}</p>${mine
+          .map((x) => `<div role="option" id="pick-o-${n++}" class="pg-pick-item${g === 'starters' ? ' is-starter' : ''}" data-id="${esc(x.id)}" aria-selected="false"><b>${esc(x.name)}</b>${x.description ? `<span>${esc(x.description)}</span>` : ''}</div>`)
+          .join('')}</div>`;
+      })
+      .join('');
+    $('pick-empty').hidden = shown.length > 0;
+    $('pick-empty').textContent = shown.length ? '' : L.t('play.noMatch', { q: search.value.trim() });
+    setActive(0);
+  };
+  const choose = async (id) => {
+    $('pick-pop').hidePopover?.();
+    const item = items.find((x) => x.id === id);
+    if (!item) return;
+    $('src').value = `${JSON.stringify(item.data, null, 2)}\n`;
+    check();
+    $('src').focus({ preventScroll: true });
+  };
+  search.addEventListener('input', draw);
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive(active + (e.key === 'ArrowDown' ? 1 : -1));
+    } else if (e.key === 'Home' && e.ctrlKey) setActive(0);
+    else if (e.key === 'End' && e.ctrlKey) setActive(opts().length - 1);
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const o = opts()[active];
+      if (o) choose(o.dataset.id);
+    }
+  });
+  list.addEventListener('click', (e) => {
+    const o = e.target.closest('[role="option"]');
+    if (o) choose(o.dataset.id);
+  });
+  list.addEventListener('pointermove', (e) => {
+    const o = e.target.closest('[role="option"]');
+    if (o) setActive(opts().indexOf(o));
+  });
+  const pop = $('pick-pop');
+  if (!('popover' in HTMLElement.prototype)) return draw();
+  pop.addEventListener('beforetoggle', (e) => {
+    if (e.newState !== 'open') return;
+    search.value = '';
+    draw();
+    placeUnder(pop, $('pick'), 440);
+  });
+  pop.addEventListener('toggle', (e) => {
+    $('pick').setAttribute('aria-expanded', String(e.newState === 'open'));
+    if (e.newState === 'open') search.focus();
+  });
+  addEventListener('resize', () => pop.matches(':popover-open') && placeUnder(pop, $('pick'), 440));
+  draw();
+}
+
+const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+/** Open a gallery entry or starter by id (#example=<id>). */
 async function openExample(id) {
-  const sections = await loadGallery();
-  const item = sections.flatMap((s) => s.items).find((x) => x.id === id);
+  const item = (await pickItems()).find((x) => x.id === id);
   if (!item) return false;
   $('src').value = `${JSON.stringify(item.data, null, 2)}\n`;
   check();
   return true;
+}
+
+// --- layout: editor width, hidden editor, full-screen preview --------------------
+const LAYOUT_KEY = 'yantra:playground-layout';
+const layout = (() => {
+  try {
+    const v = JSON.parse(store.get(LAYOUT_KEY) || '{}');
+    return { split: Number(v.split) >= 20 && Number(v.split) <= 75 ? Number(v.split) : 40, hidden: v.hidden === true };
+  } catch {
+    return { split: 40, hidden: false };
+  }
+})();
+
+function applyLayout(save = true) {
+  const main = document.querySelector('.pg-main');
+  main.style.setProperty('--pg-split', `${layout.split}%`);
+  main.classList.toggle('is-editor-hidden', layout.hidden);
+  $('editor').hidden = layout.hidden;
+  $('split').hidden = layout.hidden;
+  $('split').setAttribute('aria-valuenow', String(Math.round(layout.split)));
+  const btn = $('btn-editor');
+  btn.setAttribute('aria-pressed', String(!layout.hidden));
+  btn.title = L.t(layout.hidden ? 'play.showEditor' : 'play.hideEditor');
+  btn.setAttribute('aria-label', btn.title);
+  if (save) store.set(LAYOUT_KEY, JSON.stringify(layout));
+}
+
+function bindLayout() {
+  const split = $('split');
+  const main = document.querySelector('.pg-main');
+  const rtl = () => document.documentElement.dir === 'rtl';
+  const setSplit = (pct) => {
+    layout.split = Math.max(20, Math.min(75, pct));
+    applyLayout();
+  };
+  split.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    split.setPointerCapture(e.pointerId);
+    main.classList.add('is-resizing');
+    const move = (ev) => {
+      const r = main.getBoundingClientRect();
+      const x = rtl() ? r.right - ev.clientX : ev.clientX - r.left;
+      setSplit((x / r.width) * 100);
+    };
+    const up = () => {
+      main.classList.remove('is-resizing');
+      split.removeEventListener('pointermove', move);
+      split.removeEventListener('pointerup', up);
+      split.removeEventListener('pointercancel', up);
+    };
+    split.addEventListener('pointermove', move);
+    split.addEventListener('pointerup', up);
+    split.addEventListener('pointercancel', up);
+  });
+  split.addEventListener('keydown', (e) => {
+    const grow = rtl() ? 'ArrowLeft' : 'ArrowRight';
+    const shrink = rtl() ? 'ArrowRight' : 'ArrowLeft';
+    if (e.key === grow || e.key === shrink) {
+      e.preventDefault();
+      setSplit(layout.split + (e.key === grow ? 5 : -5));
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      setSplit(e.key === 'Home' ? 20 : 75);
+    }
+  });
+  split.addEventListener('dblclick', () => setSplit(40));
+  $('btn-editor').addEventListener('click', () => {
+    layout.hidden = !layout.hidden;
+    applyLayout();
+    if (!layout.hidden) $('src').focus({ preventScroll: true });
+  });
+  const preview = document.querySelector('.pg-preview');
+  const full = $('btn-full');
+  if (!preview.requestFullscreen) full.hidden = true;
+  full.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else preview.requestFullscreen().catch(() => {});
+  });
+  document.addEventListener('fullscreenchange', () => full.setAttribute('aria-pressed', String(document.fullscreenElement === preview)));
+  applyLayout(false);
+}
+
+/** The start screen: describe the diagram in words and copy the prompt, or pick a template. */
+function bindStart() {
+  const describe = $('describe');
+  const go = () => {
+    $('copy-request').value = describe.value;
+    copyPrompt();
+  };
+  $('describe-go').addEventListener('click', go);
+  describe.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      go();
+    }
+  });
+  // the request box in the prompt options and this one are the same request
+  describe.addEventListener('input', () => ($('copy-request').value = describe.value));
+  $('describe-pick').addEventListener('click', () => $('pick-pop').showPopover?.());
 }
 
 // --- chrome --------------------------------------------------------------------
@@ -369,10 +554,10 @@ function copyMode() {
   if (!$('src').value.trim()) return 'new';
   if (!state.payload || !state.report) return 'fix';
   if (state.report.errors.length || state.report.warnings.length) return 'fix';
-  return isPage(state.payload) ? 'page' : 'diagram';
+  return isBook(state.payload) ? 'book' : isPage(state.payload) ? 'page' : 'diagram';
 }
 
-const COPY_TEXT = { new: ['play.copyPrompt', 'play.copyTipNew'], diagram: ['play.copyWithDiagram', 'play.copyTipEdit'], page: ['play.copyWithPage', 'play.copyTipEdit'], fix: ['play.copyToFix', 'play.copyTipFix'] };
+const COPY_TEXT = { new: ['play.copyPrompt', 'play.copyTipNew'], diagram: ['play.copyWithDiagram', 'play.copyTipEdit'], page: ['play.copyWithPage', 'play.copyTipEdit'], book: ['play.copyWithBook', 'play.copyTipEdit'], fix: ['play.copyToFix', 'play.copyTipFix'] };
 
 function syncCopyButton() {
   const [label, tip] = COPY_TEXT[copyMode()];
@@ -397,6 +582,17 @@ async function copyPrompt(opts = {}) {
     download('yantra-prompt.md', p.text, 'text/markdown');
     toast(L.t('play.promptSaved'));
   }
+}
+
+/** A popover under its button, inside the window (`width` at most). */
+function placeUnder(pop, anchor, width) {
+  const r = anchor.getBoundingClientRect();
+  const w = Math.min(width, innerWidth - 24);
+  const rtl = document.documentElement.dir === 'rtl';
+  const left = rtl ? r.right - w : r.left;
+  pop.style.width = `${w}px`;
+  pop.style.top = `${Math.round(r.bottom + 6)}px`;
+  pop.style.left = `${Math.round(Math.max(12, Math.min(left, innerWidth - w - 12)))}px`;
 }
 
 /** The options popover sits under the button pair, inside the window. */
@@ -489,12 +685,9 @@ function bind() {
     check();
     editor.focus();
   });
-  $('example').addEventListener('change', async (e) => {
-    const id = e.target.value;
-    e.target.value = '';
-    if (id) await openExample(id);
-  });
   bindCopy();
+  bindLayout();
+  bindStart();
   $('lint-lang').addEventListener('change', showFindings);
   $('btn-theme').addEventListener('click', () => {
     const next = theme() === 'dark' ? 'light' : 'dark';
@@ -510,9 +703,10 @@ async function boot() {
   fillLintLanguages();
   bind();
   const fromHash = /(?:^#|&)example=([\w-]+)/.exec(location.hash)?.[1];
-  const examples = fillExamples();
+  const examples = fillPicker();
   if (fromHash && (await openExample(fromHash))) return examples;
-  $('src').value = store.get(DRAFT_KEY) ?? STARTER;
+  // A first visit opens on the start screen (describe it, or pick a template); later visits on the draft
+  $('src').value = store.get(DRAFT_KEY) ?? '';
   check();
   loadShell().catch(() => {});
   return examples;
