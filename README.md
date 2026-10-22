@@ -70,11 +70,16 @@ One JSON format covers these kinds of diagram. Each picture links to its example
     <td align="center"><a href="https://github.com/niyankhadka/yantra/blob/main/examples/answer-quarterly-review.json"><img src="https://raw.githubusercontent.com/niyankhadka/yantra/main/docs/images/kind-answer-page.png" alt="Answer page: a quarterly review question with the answer headline and three supporting points"></a><br><b>Answer pages</b></td>
     <td align="center"><a href="https://github.com/niyankhadka/yantra/blob/main/examples/live-operations-dashboard.json"><img src="https://raw.githubusercontent.com/niyankhadka/yantra/main/docs/images/chart-cards-dark.png" alt="Live operations dashboard in the dark theme: service cards with mini charts and alert rules"></a><br><b>Chart cards, dark theme</b></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/niyankhadka/yantra/blob/main/examples/book-checkout-explained.json"><img src="https://raw.githubusercontent.com/niyankhadka/yantra/main/docs/images/kind-book.png" alt="Book in book mode: the cover with its summary and four chapters, one screen at a time with page controls"></a><br><b>Books, read like an e-reader</b></td>
+    <td align="center"><a href="https://github.com/niyankhadka/yantra/blob/main/examples/answer-quarterly-review.json"><img src="https://raw.githubusercontent.com/niyankhadka/yantra/main/docs/images/kind-present.png" alt="An answer page in present mode: one chart per slide with slide controls"></a><br><b>Pages as slides</b></td>
+    <td align="center"><a href="https://yantra.nbk.com.np/playground/"><img src="https://raw.githubusercontent.com/niyankhadka/yantra/main/docs/images/kind-playground.png" alt="The playground: the JSON editor, a live preview and the examples and templates picker"></a><br><b>Playground: templates and preview</b></td>
+  </tr>
 </table>
 
 Also: drill-down from an overview into detail diagrams, charts on answer pages, and modes
 (for example production against local). Open any of them in the
-[playground](https://yantra.nbk.com.np/playground/) from **Load an example**.
+[playground](https://yantra.nbk.com.np/playground/) from **Examples and templates**.
 
 ## Quick start
 
@@ -155,10 +160,14 @@ Visio `.vsdx` files and validates the result. Guide:
   trees and mind maps; groups nested up to six levels; an optional manual layout.
 - **Diagram kinds:** flow and architecture, sequence (lifeline) view of the same payload,
   state machines with fork / join and regions, ER and UML class diagrams, chart cards.
-- **Walkthroughs:** scenarios with steps, autoplay, camera follow and a present mode;
-  folding for big diagrams; drill-down into detail diagrams up to eight levels.
+- **Walkthroughs:** scenarios with steps, autoplay, camera follow and a present mode, opened
+  full, as a slim bar or switched off; folding for big diagrams; drill-down into detail
+  diagrams up to eight levels.
 - **Answer pages:** the conclusion first, then blocks such as points, metrics, charts,
-  compare, table, timeline, FAQ, checklist, gantt, matrix and embedded diagrams.
+  compare, table, timeline, FAQ, checklist, gantt, matrix and embedded diagrams, side by side
+  in halves or thirds and grouped in sections.
+- **Books and reading modes:** several answer pages in one file, read as one long page, one
+  screen at a time like an e-reader, or as slides.
 - **Charts:** bar, column, line, area, pie and donut charts, sparklines, gantt plans and 2x2
   or risk heat-map matrices, drawn as inline SVG with no chart library.
 - **Sharing:** one offline HTML file; SVG, PNG and Markdown exports; view state in the URL
@@ -177,12 +186,12 @@ Visio `.vsdx` files and validates the result. Guide:
 | `yantra build <file.json> [-o out.html] [--force]` | Validate, then write a single offline HTML file. |
 | `yantra export <file.json> -f svg\|md [-o file]` | Static SVG (diagrams) or Markdown (diagrams and pages). |
 | `yantra screenshot <file.json\|page.html> [-o out.png]` | PNG through the local Chrome or Edge (`YANTRA_BROWSER` overrides). |
-| `yantra new <file.json> [--page]` | Write a starter diagram or answer page. |
+| `yantra new <file.json> [--page\|--book\|--kind k]` | Write a starter diagram, answer page or book (`--kind`: flow, sequence, state, er, class, tree, mindmap, page, book). |
 | `yantra import <file> [-o out.json]` | Convert Mermaid, PlantUML, draw.io or Visio, then validate. |
 | `yantra examples [name] [-o file]` | List the built-in examples, or copy one. |
 | `yantra init [--claude] [--cursor] [--codex] [--antigravity] [--all]` | Set up a project for coding agents: skill, MCP server, rules. Also `[--dir path] [--force] [--dry-run] [--json] [--windows\|--posix]`. |
-| `yantra schema [diagram\|page]` | Print the JSON Schema for diagrams or answer pages. |
-| `yantra docs [authoring\|pages\|mermaid\|import\|agents]` | Print a guide. |
+| `yantra schema [diagram\|page\|book]` | Print the JSON Schema for diagrams, answer pages or books. |
+| `yantra docs [authoring\|pages\|books\|mermaid\|import\|agents]` | Print a guide. |
 | `yantra mcp [--http]` | Start the MCP server on stdio, or over Streamable HTTP with `--http [--port 8787] [--host 127.0.0.1]`. |
 | `yantra dev` | Start the live viewer at http://localhost:3000 (from a clone after `npm install`, or with `vite` installed next to the package). |
 
@@ -237,6 +246,7 @@ Press `?` in a diagram to see the keys that work there.
 | `→` / `Space`, `←` | Next / previous step | `Home` / `End` | First / last step |
 | `P` | Play / pause | `C` | Camera follows steps |
 | `S` | Collapse the walkthrough | `1`-`9` | Switch scenario |
+| `W` | Walkthrough on / off | | |
 | `V` | Flow / sequence view | `M` | Next mode |
 | `I` | Inspector | `L` | Roles legend |
 | `T` | Light / dark | `F` | Full screen |
@@ -245,7 +255,7 @@ Press `?` in a diagram to see the keys that work there.
 | `+` / `-`, `R` | Zoom, fit to screen | `Esc` | Clear selection, then back up a level |
 
 The view state is mirrored in the URL hash, for example
-`#level=payments&step=3&mode=dev&view=sequence&theme=dark`, so a link reopens the same view.
+`#level=payments&step=3&mode=dev&view=sequence&theme=dark` (`story=off` hides the walkthrough), so a link reopens the same view.
 
 </details>
 
