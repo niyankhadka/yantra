@@ -7,8 +7,10 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
-Planned as 1.2.0: books and reading modes, a reworked playground, walkthrough settings and
-mini charts that never hide data.
+## [1.2.0] - 2026-10-22
+
+Books and reading modes, a reworked playground, walkthrough settings and mini charts that
+never hide data.
 
 ### Added
 
@@ -407,7 +409,8 @@ First public release.
 - CLI (`validate`, `build`, `export`, `screenshot`, `import`, `new`, `examples`, `mcp`,
   `dev`), an MCP server with sandboxed file access, an agent skill and a Python SDK.
 
-[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/niyankhadka/yantra/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/niyankhadka/yantra/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/niyankhadka/yantra/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/niyankhadka/yantra/compare/v1.0.0...v1.0.1
