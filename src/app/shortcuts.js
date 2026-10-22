@@ -36,6 +36,7 @@ export const SHORTCUT_GROUPS = [
       { keys: ['P'], text: 'help.play' },
       { keys: ['C'], text: 'help.follow' },
       { keys: ['S'], text: 'help.story' },
+      { keys: ['W'], text: 'help.storyMode' },
       { keys: (c) => [digits(Math.min(c.scenarios ?? 9, 9))], text: 'help.scenario', when: scenarioKeys }
     ]
   },

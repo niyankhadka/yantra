@@ -65,8 +65,9 @@ export class InteractionManager {
       return;
     }
     const nodeEl = e.target.closest('.y-node');
-    // A press on the drill mark opens the card's detail diagram instead of selecting it
-    const start = { sx: e.clientX, sy: e.clientY, moved: false, drill: !!e.target.closest('.y-node-drill') };
+    // A press on the drill mark opens the card's detail diagram instead of selecting it;
+    // one on a chart's "+N more" row or "Other" slice opens the card's Details
+    const start = { sx: e.clientX, sy: e.clientY, moved: false, drill: !!e.target.closest('.y-node-drill'), more: !!e.target.closest('[data-more]') };
     if (nodeEl && this.cb.getScene().kind === 'sequence') {
       // Sequence headers are fixed: a press pans, a click still selects
       this.drag = { kind: 'pan', ox: this.x, oy: this.y, clickId: nodeEl.dataset.id, ...start };
@@ -124,9 +125,9 @@ export class InteractionManager {
     if (d.kind === 'node') {
       d.el.classList.remove('is-dragging');
       if (d.moved) this.cb.onNodeMoveEnd?.(d.id);
-      else this.cb.onNodeClick?.(d.id, { drill: d.drill });
+      else this.cb.onNodeClick?.(d.id, { drill: d.drill, more: d.more });
     } else if (!d.moved && d.clickId) {
-      this.cb.onNodeClick?.(d.clickId, { drill: d.drill });
+      this.cb.onNodeClick?.(d.clickId, { drill: d.drill, more: d.more });
     } else if (!d.moved) {
       this.cb.onBackgroundClick?.();
     }

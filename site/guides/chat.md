@@ -48,8 +48,10 @@ replaces the placeholder, so the chat can start straight away. **Instructions on
 the instructions without the JSON, for very large diagrams that a chat may cut short (the
 playground warns when a prompt is over 60,000 characters).
 
-**Load an example** in the playground opens any gallery example. It helps to show a chat what
-you want: "make one like this, about our support process".
+**Examples and templates** in the playground searches the gallery by name or kind and starts
+from a template. Showing a chat an example helps: "make one like this, about our support
+process". With an empty editor, the playground opens on **Describe your diagram in words**:
+type what you want there and copy the prompt.
 
 ## Claude.ai skill
 

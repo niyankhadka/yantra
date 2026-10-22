@@ -60,6 +60,12 @@ Rules:
   `sourceEnd` / `targetEnd` and a verb label, UML edges with `relation`.
 - Boundaries that matter (VPC, trust zone, team, phase): 2-5 `groups`; a node sits only in
   its innermost group.
+- A number that belongs to a card (latency, uptime, a breakdown): `data.chart` draws a mini
+  chart on it: `{ "kind": "line"|"area"|"column"|"bar"|"donut"|"ring"|"bullet", "label"?,
+  "values"?: [numbers] or "data"?: [{ "label", "value" }], "unit"? }`. Limits on a card:
+  `bar` 8 rows, `donut` 6 slices, `column` 16, `line` / `area` 48 points. More bars: make it
+  a chart card (`"shape": "chart"`, same `data`, up to 12 bars). At most 12 mini charts and
+  6 chart cards per diagram.
 - Not in English? Set `meta.lang` and write every text in that language.
 
 ## Answer page shape
@@ -79,9 +85,17 @@ options[{name,summary?,pros?[],cons?[],verdict?,recommended?}] - `table` columns
 `callout` body, tone info|good|warn|bad - `text` body - `code` code, language? - `sources`
 items[{title,url?}] - `kv` items[{k,v}] - `quote` text, by? - `gantt` items[{title,start?,days?,after?,milestone?}] -
 `matrix` items[{label,x,y}], x, y, quadrants? - `diagram` diagram:{...a diagram payload...}, caption?.
-Any block takes `title`; `span: "half"` pairs two blocks side by side. Tones: info, good, warn,
-bad, neutral. Text accepts light markdown (**bold**, `code`, [link](https://...), "- " lists).
-Dates as `DD/MM/YYYY` or `YYYY-MM-DD`. Flag uncertain facts in a `callout`; cite `sources`.
+Any block takes `title`; `span: "half"` pairs two blocks side by side, `span: "third"` puts three
+in a row. `section` {title, intro?, blocks[]} groups blocks under a heading (one level, no section
+in a section). Tones: info, good, warn, bad, neutral. Text accepts light markdown (**bold**,
+`code`, [link](https://...), "- " lists). Dates as `DD/MM/YYYY` or `YYYY-MM-DD`. Flag uncertain
+facts in a `callout`; cite `sources`. `meta.reading`: "scroll" (default), "book" (one screen at a
+time) or "present" (one row of blocks per slide).
+
+**Book** (several pages read in order, like an e-reader): `{ "kind": "book", "meta": { "title",
+"description"? }, "summary"?: "the book in 2-3 sentences", "chapters": [ answer pages without
+"kind", 2-12 of them, one question each ] }`. Use it when one page is not enough (onboarding,
+a system part by part, a course module).
 
 ## Smallest valid diagram
 

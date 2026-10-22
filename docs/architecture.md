@@ -29,7 +29,10 @@ compute the **same** scene. What the validator checks is exactly what the viewer
 | `lint.js` | Structural, reference, story, budget and geometry checks with stable codes; nested boxes are checked as the diagram opens, fully unfolded and at every fold depth. |
 | `svg.js` / `markdown.js` | Static exports. SVG is plain SVG (no `foreignObject`), so it rasterises to PNG cleanly. `renderSequenceSvg` draws the sequence view. |
 | `drill.js` | Drill-down levels: `collectDiagrams` (the flat `diagrams` namespace), `levelPath` (repairs deep links), `levelOrder` (Markdown, all levels), `replaceLevel`; `safeUrl` for node/edge/step links. `drillTargets` / `modeDrills` (mode-specific `data.modes.<id>.drill`). File `$ref`s are loaded by `resolveLevels` in `lib/build.js` (confined to the input root) before lint and build, and by the `yantra-drill-refs` plugin in `vite.config.js` for the dev server's gallery. |
-| `page.js` | Answer pages: block renderers (shared with inspector panels), `renderPage`, page lint, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. |
+| `page.js` | Answer pages: block renderers (shared with inspector panels), `pageParts` and `pageDocument` (shared with books), `renderPage`, Markdown export. Diagram blocks render a static SVG figure; `interactive: true` asks the builder for a live viewer. Sections nest one level (`walkBlocks`). |
+| `book.js` | Books: `renderBook` (a cover, then each chapter through `pageParts` with `c<n>-` prefixed ids), `bookToMarkdown`, `bookContents`, `chapterPage` (language inheritance). Chapter `$ref`s are loaded by `resolveBook` in `lib/build.js`; book lint is `lintBook` in `lint.js`. |
+| `reader.js` | Reading modes for pages and books: the header controls and bottom bar, and `readerRuntime`, inlined as source into built pages. It splits a page into units (lead, blocks, section headings), groups units in one grid row, and pages them by measuring in the browser. |
+| `starters.js` | The smallest valid payload of each kind, for `yantra new` and the playground. |
 | `mermaid.js` | `fromMermaid(text, { title })`: flowchart, sequence, state, ER and class diagram importer (nodes, edges, subgraphs / namespaces / composite states to groups, state shapes, fields and methods, relationship markers, a generated walkthrough) with warnings for anything skipped. |
 | `i18n.js` | Interface strings: the English table plus `locales/<lang>.js` for 17 more (`STRINGS`, `STRING_KEYS`, `LANGUAGES`), `localeOf(meta)` -> `{ lang, dir, t, tHtml, num, plural }` with `meta.strings` overrides and English fallback, `Intl.PluralRules`, RTL detection, `Intl.NumberFormat`. Used by the viewer, pages, SVG and Markdown exports and lint. The viewer bundle is built without `locales/` (a plugin in `vite.config.js`); `lib/build.js` embeds the tables a payload needs as `<script id="yantra-strings">` and `registerStrings()` loads them, while the gallery chunk registers them all. |
 | `lintmessages.js` | Translated validation messages for `validate --lang` and MCP `lang`: English templates (`LINT_EN`) are matched against lint messages and refilled from each locale's `LINT` table. Node only. |
@@ -77,7 +80,8 @@ the single JS and CSS file, escapes `</script` inside the code, and writes the p
 `<script type="application/json" id="yantra-payload">` (with `<` escaped). No fonts or other
 requests are made at runtime; the system font stack is used.
 
-Answer pages (`buildPage`) render through `src/core/page.js`, then:
+Answer pages (`buildPage`) and books (`buildBook`) render through `src/core/page.js` (books
+through `book.js`), then:
 
 - **Interactive diagrams share one viewer.** The page carries the viewer shell once, as JSON
   text in `<script type="application/json" id="yantra-viewer-shell">`, and each diagram's

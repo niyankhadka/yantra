@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'vite';
-import { resolveLevels, resolvePage, sourceHash, ROOT } from './lib/build.js';
+import { resolveBook, resolveLevels, resolvePage, sourceHash, ROOT } from './lib/build.js';
 
 /**
  * Drill-down `{ "$ref": "./levels/x.json" }` entries in imported .json payloads
@@ -20,7 +20,7 @@ function drillRefs() {
     transform(code, id) {
       const file = id.split('?')[0];
       if (!file.endsWith('.json')) return null;
-      const page = /"kind"\s*:\s*"page"/.test(code);
+      const page = /"kind"\s*:\s*"(page|book)"/.test(code);
       if (!page && !code.includes('"$ref"')) return null;
       let payload;
       try {
@@ -28,6 +28,7 @@ function drillRefs() {
       } catch {
         return null;
       }
+      if (page && payload?.kind === 'book') return { code: JSON.stringify(resolveBook(payload, path.dirname(file), { root: ROOT, onLoad: (f) => this.addWatchFile(f) })), map: null };
       if (page && payload?.kind === 'page') {
         const dir = path.dirname(file);
         for (const b of Array.isArray(payload.blocks) ? payload.blocks : []) if (b?.type === 'diagram' && typeof b.src === 'string') this.addWatchFile(path.resolve(dir, b.src));

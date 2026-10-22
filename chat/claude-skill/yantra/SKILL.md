@@ -88,7 +88,12 @@ check-circle flag mail cloud monitor settings.
 9. **Data models**: cards with `data.fields` (`{ name, type, pk, fk, unique, nullable, ref }`,
    at most 12 rows, key columns first); ER edges with `sourceEnd` / `targetEnd` and a verb
    label; class diagrams use `data.methods` and edge `relation` (parent -> child).
-10. Content not in English: set `meta.lang` and write all text in that language.
+10. **Charts on cards**: `data.chart` draws a mini chart (`kind` `line`, `area`, `column`,
+   `bar`, `donut`, `ring`, `bullet`; `values` or `data: [{ label, value }]`). Limits on a
+   card: `bar` 8 rows, `donut` 6 slices, `column` 16, `line` / `area` 48 points. More bars:
+   a chart card (`"shape": "chart"`, same `data`, up to 12). At most 12 mini charts and 6
+   chart cards.
+11. Content not in English: set `meta.lang` and write all text in that language.
 
 ## Answer page shape
 
@@ -113,10 +118,16 @@ items[{title,url?}] - `kv` items[{k,v}] - `quote` text, by? - `gantt` items[{tit
 1. `answer.headline` first: the conclusion in 1-2 sentences, not a teaser; then
    `answer.text` and 3-5 `answer.points`.
 2. 3-8 blocks chosen by content; any block takes `title`, `span: "half"` pairs two blocks
-   side by side. At most 2 diagram blocks with `interactive: true`.
+   side by side, `span: "third"` puts three in a row, and a `section` (`title`, `intro?`,
+   `blocks`) groups blocks under a heading, one level deep. At most 2 diagram blocks with
+   `interactive: true`. `meta.reading`: `scroll` (default), `book` or `present`.
 3. Numbers need units and context (`unit`, `prefix`, `note`). Dates as `DD/MM/YYYY` or
    `YYYY-MM-DD`. Prefer a `compare` with a `recommended` option over "it depends".
 4. Do not state uncertain facts as certain: flag them in a `callout` and cite `sources`.
+5. **Books**: when one page is not enough (onboarding, a system part by part), write
+   `{ "kind": "book", "meta": { "title", "description"? }, "summary"?, "chapters": [...] }`
+   with 2-12 answer pages (no `kind`) as chapters, one question each. It reads like an
+   e-reader, one screen at a time.
 
 ## Check before sending
 

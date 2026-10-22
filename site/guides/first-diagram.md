@@ -8,8 +8,8 @@ In five minutes you will install the `yantra` command, write a small diagram wit
 walkthrough, check it and build it into one HTML file that works offline.
 
 Prefer not to install anything yet? Open the
-[playground](https://yantra.nbk.com.np/playground/), pick **Load an example** and edit the JSON
-there: it validates and previews in your browser.
+[playground](https://yantra.nbk.com.np/playground/), open **Examples and templates**, start from
+a template or an example and edit the JSON there: it validates and previews in your browser.
 
 ## 1. Check Node.js
 

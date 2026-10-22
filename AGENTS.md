@@ -30,7 +30,8 @@ Using Yantra in another project: `npx @niyankhadka/yantra init` installs the por
 
 - `src/core/` - pure ES modules shared by browser, CLI and MCP: model, layout, routing,
   scene, sequence view (`sequence.js`), lint, SVG and Markdown export, answer pages
-  (`page.js`), importers (`mermaid.js`, `drawio.js` + `inflate.js`, `visio.js`, `plantuml.js`, chart pages in `importcharts.js`, shared
+  (`page.js`), books (`book.js`), reading modes (`reader.js`), starter templates
+  (`starters.js`), importers (`mermaid.js`, `drawio.js` + `inflate.js`, `visio.js`, `plantuml.js`, chart pages in `importcharts.js`, shared
   assembly in `importkit.js`, dispatch in `import.js`), theme tokens. No DOM access here.
 - `src/app/` + `src/styles/` - the browser viewer. Card metrics in `src/styles/diagram.css`
   must match `CARD` in `src/core/layout.js`.

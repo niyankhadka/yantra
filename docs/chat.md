@@ -57,8 +57,11 @@ not fit. The parts after the instructions are in English, whatever the interface
 To build on your own machine instead: save the block as `diagram.json` and run
 `npx -y @niyankhadka/yantra build diagram.json` (Node.js 20.19 or later).
 
-**Load an example** in the playground opens any gallery example, which helps to show a chat
-what you want ("make one like this, about our onboarding process").
+**Examples and templates** in the playground searches the gallery by name or kind (sequence,
+state machine, mind map, book…) and starts a new diagram, page or book from a template.
+Showing a chat an example helps ("make one like this, about our onboarding process"). With
+an empty editor, the playground opens on **Describe your diagram in words**: type what you
+want and copy the prompt from there.
 
 ## Claude.ai skill
 
@@ -85,7 +88,7 @@ Files: [`chat/chatgpt/`](../chat/chatgpt/). `npm run pack:gpt` gathers everythin
 1. In ChatGPT, create a GPT (Explore GPTs > Create) and open **Configure**.
 2. **Name**: Yantra diagrams. **Description**: "Interactive step-by-step diagrams and
    one-page answers as Yantra JSON."
-3. **Instructions**: paste [`instructions.md`](../chat/chatgpt/instructions.md) (5,296
+3. **Instructions**: paste [`instructions.md`](../chat/chatgpt/instructions.md) (5,853
    characters; the field takes 8,000).
 4. **Conversation starters**: the lines of
    [`conversation-starters.md`](../chat/chatgpt/conversation-starters.md).

@@ -1,4 +1,5 @@
-// Gallery answer pages (`"kind": "page"`): opened by main.js in a frame over the canvas.
+// Gallery answer pages (`"kind": "page"`) and books: opened by main.js in a frame over the canvas.
+// Each entry: id, name (purpose first), kind (the playground's groups) and data.
 // Diagram blocks' `src` files are inlined at import time (vite.config.js drillRefs).
 import cardPayment from '../../examples/answer-card-payment-journey.json';
 import whatHappensUrl from '../../examples/answer-what-happens-url.json';
@@ -20,31 +21,35 @@ import surveyResults from '../../examples/chart-survey-results.json';
 import portfolioStatus from '../../examples/chart-portfolio-status.json';
 import slaMonitoring from '../../examples/chart-sla-monitoring.json';
 import hrHeadcount from '../../examples/chart-hr-headcount.json';
+import checkoutBook from '../../examples/book-checkout-explained.json';
 
 /** One-page answers to a question (explainers, decisions, incident write-ups). */
 export const PAGE_EXAMPLES = [
-  { id: 'answer-card-payment-journey', name: 'Card tap to merchant bank (explainer)', data: cardPayment },
-  { id: 'answer-what-happens-url', name: 'Typing a URL into a browser (explainer)', data: whatHappensUrl },
-  { id: 'answer-safe-feature-rollout', name: 'Rolling out a feature safely (how-to)', data: safeRollout },
-  { id: 'answer-build-or-buy-crm', name: 'Build or buy a CRM (decision)', data: buildOrBuyCrm },
-  { id: 'answer-black-friday-slowdown', name: 'Black Friday slowdown (incident)', data: blackFriday },
-  { id: 'answer-checkout-saga', name: 'Checkout saga (architecture decision)', data: checkoutSaga },
-  { id: 'answer-how-to-choose-database', name: 'Choosing a database (decision)', data: chooseDatabase },
-  { id: 'answer-incident-review', name: 'Checkout outage (incident review)', data: incidentReview },
-  { id: 'answer-project-kickoff', name: 'Self-service portal (kickoff)', data: projectKickoff },
-  { id: 'answer-explain-photosynthesis', name: 'Photosynthesis (study notes)', data: photosynthesis },
-  { id: 'answer-order-fulfilment-arabic', name: 'Reserve stock first (Arabic, RTL)', data: orderFulfilmentArabicPage }
+  { id: 'answer-card-payment-journey', name: 'How a card payment reaches the bank', kind: 'page', data: cardPayment },
+  { id: 'answer-what-happens-url', name: 'What happens when you type a URL', kind: 'page', data: whatHappensUrl },
+  { id: 'answer-safe-feature-rollout', name: 'How to roll out a feature safely', kind: 'page', data: safeRollout },
+  { id: 'answer-build-or-buy-crm', name: 'Build or buy a CRM? (decision)', kind: 'page', data: buildOrBuyCrm },
+  { id: 'answer-black-friday-slowdown', name: 'Why the site slowed on Black Friday', kind: 'page', data: blackFriday },
+  { id: 'answer-checkout-saga', name: 'Why checkout uses a saga (decision)', kind: 'page', data: checkoutSaga },
+  { id: 'answer-how-to-choose-database', name: 'How to choose a database', kind: 'page', data: chooseDatabase },
+  { id: 'answer-incident-review', name: 'Checkout outage: incident review', kind: 'page', data: incidentReview },
+  { id: 'answer-project-kickoff', name: 'Project kickoff: self-service portal', kind: 'page', data: projectKickoff },
+  { id: 'answer-explain-photosynthesis', name: 'Photosynthesis, explained (study notes)', kind: 'page', data: photosynthesis },
+  { id: 'answer-order-fulfilment-arabic', name: 'Reserve stock first (Arabic, right to left)', kind: 'page', data: orderFulfilmentArabicPage }
 ];
 
 /** Pages built around charts, plans and metrics. */
 export const CHART_EXAMPLES = [
-  { id: 'chart-sales-dashboard', name: 'Sales performance dashboard', data: salesDashboard },
-  { id: 'chart-marketing-analytics', name: 'Website and marketing analytics', data: marketingAnalytics },
-  { id: 'chart-budget-vs-actual', name: 'Budget against actual', data: budgetVsActual },
-  { id: 'chart-survey-results', name: 'Customer survey results', data: surveyResults },
-  { id: 'chart-portfolio-status', name: 'Project portfolio status', data: portfolioStatus },
-  { id: 'chart-sla-monitoring', name: 'Service levels and incidents', data: slaMonitoring },
-  { id: 'chart-hr-headcount', name: 'Headcount and hiring', data: hrHeadcount },
-  { id: 'answer-quarterly-review', name: 'Quarterly business review', data: quarterlyReview },
-  { id: 'answer-launch-plan', name: 'Launch plan (gantt, risks)', data: launchPlan }
+  { id: 'chart-sales-dashboard', name: 'Sales performance dashboard', kind: 'chart', data: salesDashboard },
+  { id: 'chart-marketing-analytics', name: 'Website and marketing analytics', kind: 'chart', data: marketingAnalytics },
+  { id: 'chart-budget-vs-actual', name: 'Budget against actual', kind: 'chart', data: budgetVsActual },
+  { id: 'chart-survey-results', name: 'Customer survey results', kind: 'chart', data: surveyResults },
+  { id: 'chart-portfolio-status', name: 'Project portfolio status', kind: 'chart', data: portfolioStatus },
+  { id: 'chart-sla-monitoring', name: 'Service levels and incidents', kind: 'chart', data: slaMonitoring },
+  { id: 'chart-hr-headcount', name: 'Headcount and hiring', kind: 'chart', data: hrHeadcount },
+  { id: 'answer-quarterly-review', name: 'Quarterly business review', kind: 'chart', data: quarterlyReview },
+  { id: 'answer-launch-plan', name: 'Launch plan with gantt and risks', kind: 'chart', data: launchPlan }
 ];
+
+/** Books: answer pages read in order (chapter `$ref`s are inlined at import time). */
+export const BOOK_EXAMPLES = [{ id: 'book-checkout-explained', name: 'Checkout, end to end (book)', kind: 'book', data: checkoutBook }];

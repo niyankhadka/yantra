@@ -48,9 +48,16 @@
       <span class="pg-sub" data-i18n="play.title">Playground</span>
     </a>
     <span class="pg-spacer"></span>
-    <select id="example" class="pg-select" aria-label="Load an example" data-i18n-label="play.examples">
-      <option value="" data-i18n="play.examples">Load an example</option>
-    </select>
+    <button id="pick" class="pg-btn pg-pick" type="button" popovertarget="pick-pop" aria-haspopup="dialog" aria-expanded="false" title="Start from a template or open an example" data-i18n-tip="play.pickTip">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span data-i18n="play.pick">Examples and templates</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div id="pick-pop" class="pg-pop pg-pick-pop" popover role="dialog" aria-label="Examples and templates" data-i18n-label="play.pick">
+      <input id="pick-search" class="pg-search" type="search" role="combobox" aria-expanded="true" aria-controls="pick-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" placeholder="Search examples and templates" aria-label="Search examples and templates" data-i18n-placeholder="play.search" data-i18n-label="play.search" />
+      <div id="pick-list" class="pg-pick-list" role="listbox" aria-label="Examples and templates" data-i18n-label="play.pick"></div>
+      <p id="pick-empty" class="pg-pick-empty" hidden></p>
+    </div>
     <div class="pg-copy" role="group" aria-label="Copy prompt for your chat" data-i18n-label="play.copyPrompt">
       <button id="copy-prompt" class="pg-btn pg-primary" type="button">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
@@ -78,7 +85,7 @@
 
   <main class="pg-main">
     <h1 class="pg-sr">Yantra <span data-i18n="play.title">Playground</span></h1>
-    <section class="pg-pane pg-editor" aria-labelledby="editor-title">
+    <section id="editor" class="pg-pane pg-editor" aria-labelledby="editor-title">
       <div class="pg-head">
         <h2 id="editor-title"><label for="src" data-i18n="play.editor">Yantra JSON</label></h2>
         <span class="pg-spacer"></span>
@@ -98,8 +105,13 @@
       <ul id="findings" class="pg-findings"></ul>
     </section>
 
+    <div id="split" class="pg-split" role="separator" aria-orientation="vertical" tabindex="0" aria-controls="editor" aria-valuemin="20" aria-valuemax="75" aria-valuenow="40" aria-label="Resize the editor and preview" data-i18n-label="play.resize"></div>
+
     <section class="pg-pane pg-preview" aria-labelledby="preview-title">
       <div class="pg-head">
+        <button id="btn-editor" class="pg-icon pg-small" type="button" aria-controls="editor" aria-pressed="true" title="Hide the editor" aria-label="Hide the editor">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+        </button>
         <h2 id="preview-title" data-i18n="play.preview">Preview</h2>
         <span class="pg-spacer"></span>
         <div class="pg-downloads" role="group" aria-label="Download" data-i18n-label="play.download">
@@ -110,11 +122,25 @@
           <button class="pg-btn pg-small" type="button" data-dl="md" data-i18n="export.md">Markdown spec</button>
           <button class="pg-btn pg-small" type="button" data-dl="json" data-i18n="play.json">JSON file</button>
         </div>
+        <button id="btn-full" class="pg-icon pg-small" type="button" title="Full-screen preview" aria-label="Full-screen preview" data-i18n-tip="play.fullscreen" data-i18n-label="play.fullscreen">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
       </div>
       <p id="stale" class="pg-note" hidden></p>
       <div class="pg-frame-wrap">
         <iframe id="frame" class="pg-frame" title="Preview" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads"></iframe>
-        <p id="placeholder" class="pg-placeholder" data-i18n="play.empty">Paste JSON or load an example to begin.</p>
+        <div id="placeholder" class="pg-placeholder">
+          <div class="pg-start">
+            <label class="pg-start-title" for="describe" data-i18n="play.describe">Describe your diagram in words</label>
+            <textarea id="describe" class="pg-describe" rows="4" placeholder="For example: how a customer pays for an order, from the basket to the bank" data-i18n-placeholder="play.describeHint"></textarea>
+            <p class="pg-start-note" data-i18n="play.describeNote">The prompt goes to your AI chat (Claude, ChatGPT, Gemini…); paste the JSON it writes back here.</p>
+            <div class="pg-start-actions">
+              <button id="describe-go" class="pg-btn pg-primary" type="button" data-i18n="play.copyPrompt">Copy prompt for your chat</button>
+              <button id="describe-pick" class="pg-btn" type="button" data-i18n="play.orTemplate">Or start from a template</button>
+            </div>
+            <p class="pg-start-foot" data-i18n="play.empty">Paste JSON or load an example to begin.</p>
+          </div>
+        </div>
       </div>
     </section>
   </main>

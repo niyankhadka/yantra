@@ -64,6 +64,12 @@ For "explain how X works", make the diagram first, then a page around it
    `description`, facts in `metadata`, the code location in `sourceFile`.
 5. Edge labels name what flows (`JWT`, `Order event`, `SQL write`); in a state machine, the
    event. `type: "async"` or `"event"` for asynchronous flows.
+6. **Walkthrough**: `meta.story` `"collapsed"` opens it as one slim bar, `"off"` shows the
+   diagram as a picture (readers can still switch with W).
+7. **Charts on cards**: `data.chart` draws a mini chart (`line`, `area`, `column`, `bar`,
+   `donut`, `ring`, `bullet`). Card limits: `bar` 8 rows, `donut` 6 slices, `column` 16,
+   `line` / `area` 48 points. More bars: a chart card (`"shape": "chart"`, same `data`, up
+   to 12). At most 12 mini charts and 6 chart cards.
 
 ## Diagrams from a codebase
 
@@ -92,8 +98,12 @@ For "explain how X works", make the diagram first, then a page around it
    `answer.points`.
 2. 3-8 blocks chosen by content (`points`, `steps`, `metrics`, `chart`, `compare`, `table`,
    `timeline`, `faq`, `checklist`, `callout`, `code`, `sources`, `diagram`, `gantt`,
-   `matrix`, ...). At most 2 diagrams with `interactive: true` per page.
+   `matrix`, ...). At most 2 diagrams with `interactive: true` per page. `span: "half"` or
+   `"third"` puts blocks side by side; a `section` groups blocks under a heading.
 3. Do not state uncertain facts as certain: flag them in a `callout` and cite `sources`.
+4. **Books**: when one page is not enough, a `{ "kind": "book" }` holds 2-12 answer pages as
+   `chapters` (inline, or `{ "$ref": "chapter.json" }`) and reads like an e-reader. See
+   `docs/books.md` (`yantra docs books`).
 
 ## Finish every output
 

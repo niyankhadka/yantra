@@ -7,6 +7,58 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+Planned as 1.2.0: books and reading modes, a reworked playground, walkthrough settings and
+mini charts that never hide data.
+
+### Added
+
+- **Books** (`"kind": "book"`, `docs/books.md`, `schemas/yantra-book.schema.json`): several
+  answer pages read in order in one offline file, with a cover (title, summary, contents) and
+  2-12 chapters, inline or `{ "$ref": "chapter.json" }`. Every chapter is validated as an
+  answer page (`book/*` codes); the CLI (`build`, `validate`, `export -f md`, `schema book`,
+  `docs books`, `new --book`), the MCP server (`yantra_get_schema` kind `book`), the
+  playground, the viewer's gallery and the Python SDK (`Book`) take them. Example:
+  `examples/book-checkout-explained.json`.
+- **Reading modes** for answer pages and books: **scroll**, **book** (one screen at a time,
+  like an e-reader, breaking between blocks; previous / next, swipe, edge taps, keys,
+  progress, text size) and **present** (one row of blocks per slide). `meta.reading` sets how
+  it opens; the reader's mode and place are kept in their browser, and `#read=` / `#at=` in
+  the URL open a given mode and place. Books add a contents menu.
+- Answer pages: `span: "third"` puts three blocks in a row, and a `section` block groups
+  blocks under a heading (one level; its blocks count towards the budgets).
+- Walkthrough settings: `meta.story` (`open`, `collapsed` or `off`) sets how the storyboard
+  opens, and a toolbar button (key `W`) turns story mode off (nothing dimmed, no storyboard)
+  and on; the reader's choice is kept per diagram, and `#story=off` overrides both. The
+  collapsed storyboard is one slim bar: count, step title, back / next, present, expand.
+- The playground: **Examples and templates**, a searchable picker grouped by kind (starters
+  first), with purpose-first names and a one-line description; a start screen to describe
+  the diagram in words and copy the prompt; a resizable editor (drag or arrow keys) that can
+  be hidden, a full-screen preview, and the layout remembered.
+- Starter templates for every kind (`src/core/starters.js`): flow, sequence, state machine,
+  ER, class, org chart, mind map, answer page and book, used by the playground and by
+  `yantra new --kind <kind>`.
+- Python SDK: `Book`, `Diagram.story()`, `Page.reading()`, `Page.section()` and
+  `blocks.section()`; `span="third"`.
+
+### Changed
+
+- Mini charts on cards show more and never drop data silently: bar charts take 8 rows, then
+  a "+N more" row; donuts take 6 slices, then merge the rest into an "Other" slice. Both
+  open the card's Details, which lists every value. The `chart/too-many-points` warning says
+  how to show everything (a chart card takes the same `data`, up to 12 bars).
+- The chat prompts, the Claude.ai skill, the GPT instructions and the agent skills describe
+  mini chart limits, thirds, sections, reading modes and books.
+- The playground opens on the start screen on a first visit (later visits reopen the draft).
+- New README and website screenshots of the current viewer, with books, slides and the
+  playground added to the README gallery and the website's diagram kinds; the answer pages
+  guide covers layout, reading modes and books.
+
+### Fixed
+
+- A mini donut's legend no longer overlaps itself when it is taller than the donut.
+- Validation findings from a diagram embedded in a page (or a panel) start with the block
+  they come from again (`blocks[2] "Title": …`); the diagram's own message replaced it.
+
 ## [1.1.1] - 2026-10-21
 
 The website, a context-aware Copy prompt in the playground and search-engine setup, plus

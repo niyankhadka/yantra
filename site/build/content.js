@@ -38,10 +38,11 @@ export const GUIDES = [
 ];
 
 /** Reference pages from docs/ in this order, then any other docs/*.md, then the changelog. */
-const REFERENCE_ORDER = ['authoring', 'pages', 'import', 'mermaid', 'agents', 'chat', 'remote-mcp', 'architecture'];
+const REFERENCE_ORDER = ['authoring', 'pages', 'books', 'import', 'mermaid', 'agents', 'chat', 'remote-mcp', 'architecture'];
 const REFERENCE_NAV = {
   authoring: 'Authoring diagrams',
   pages: 'Answer pages',
+  books: 'Books and reading modes',
   import: 'Import: draw.io, PlantUML, Visio',
   mermaid: 'Import: Mermaid',
   agents: 'Coding agents',

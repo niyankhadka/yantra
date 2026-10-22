@@ -1,0 +1,17 @@
+{
+  "kind": "book",
+  "meta": {
+    "title": "Checkout, end to end",
+    "description": "How a card payment works, why our checkout is built as a saga, what broke in October and how we ship changes safely now.",
+    "author": "Payments platform team",
+    "date": "22/10/2026",
+    "reading": "book"
+  },
+  "summary": "A payment is approved in two seconds and settled overnight. Our checkout coordinates payment, stock and the ledger as a saga, so one failing system never leaves an order half done. When an expired certificate stopped card payments for 47 minutes, the saga kept orders safe, and we now roll out every change behind a flag.",
+  "chapters": [
+    { "$ref": "answer-card-payment-journey.json" },
+    { "$ref": "answer-checkout-saga.json" },
+    { "$ref": "answer-incident-review.json" },
+    { "$ref": "answer-safe-feature-rollout.json" }
+  ]
+}

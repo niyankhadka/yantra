@@ -20,7 +20,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel));
 
 /** Examples shipped with both packs (diagram kinds plus a page and a chart page). */
 export const PACK_EXAMPLES = ['oauth-login', 'aws-serverless', 'ticket-lifecycle', 'ecommerce-schema', 'org-chart', 'answer-checkout-saga', 'chart-sales-dashboard'];
-const SCHEMAS = ['yantra-payload.schema.json', 'yantra-page.schema.json'];
+const SCHEMAS = ['yantra-payload.schema.json', 'yantra-page.schema.json', 'yantra-book.schema.json'];
 
 /** An example with its page `src` / drill-down `$ref` files inlined: a chat has no folder to read them from. */
 function example(name) {

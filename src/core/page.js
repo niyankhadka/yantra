@@ -11,8 +11,13 @@ import { REPO_URL, GITHUB_MARK } from './icons.js';
 import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartMarkdown, CHART_CSS, withChartLocale, enhanceCharts } from './charts.js';
 import { getLevel } from './drill.js';
 import { localeOf } from './i18n.js';
+import { READER_CSS, READING_MODES, readerControls, readerScript, readerWords } from './reader.js';
 
-export const BLOCK_TYPES = ['text', 'points', 'steps', 'metrics', 'table', 'compare', 'callout', 'diagram', 'chart', 'code', 'sources', 'timeline', 'faq', 'checklist', 'quote', 'image', 'kv', 'gantt', 'matrix'];
+export const BLOCK_TYPES = ['text', 'points', 'steps', 'metrics', 'table', 'compare', 'callout', 'diagram', 'chart', 'code', 'sources', 'timeline', 'faq', 'checklist', 'quote', 'image', 'kv', 'gantt', 'matrix', 'section'];
+/** Block widths: the whole row, half of it or a third (side by side on wide screens). */
+export const SPANS = ['full', 'half', 'third'];
+/** Design width (px) of a chart in a third-width block. */
+const THIRD_WIDTH = 260;
 const TONES = { info: 'blue', good: 'green', warn: 'amber', bad: 'rose', neutral: 'slate' };
 const own = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
 const tone = (t) => (own(TONES, t) ? TONES[t] : own(HUES, t) ? t : 'blue');
@@ -21,6 +26,8 @@ const tone = (t) => (own(TONES, t) ? TONES[t] : own(HUES, t) ? t : 'blue');
 export const FRAME_SANDBOX = 'allow-scripts allow-popups';
 
 export const isPage = (p) => p && typeof p === 'object' && p.kind === 'page';
+/** A book: chapters (answer pages) read in order, in one file. */
+export const isBook = (p) => p && typeof p === 'object' && p.kind === 'book';
 
 /** Inline markdown: **bold**, *italic*, `code`, [text](https://...). Input is escaped first. */
 export function inline(text) {
@@ -86,18 +93,43 @@ const plain = (text) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Anchor ids for titled blocks (null when untitled), de-duplicated with -2, -3 suffixes. */
-export function blockAnchors(blocks) {
-  const used = new Set();
-  return list(blocks).map((b) => {
-    if (!b?.title) return null;
-    const base = slug(b.title);
-    let id = base;
-    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
-    used.add(id);
-    return id;
+/**
+ * Every block in reading order, the blocks of a `section` after it (one level:
+ * a section inside a section is not rendered): calls fn(block, { index, parent, depth }).
+ */
+export function walkBlocks(blocks, fn) {
+  list(blocks).forEach((b, index) => {
+    fn(b, { index, parent: null, depth: 0 });
+    if (b?.type === 'section') list(b.blocks).forEach((c, i) => c?.type !== 'section' && fn(c, { index: i, parent: b, depth: 1 }));
   });
 }
+
+/**
+ * Anchor ids for titled blocks: `top` (one per block, null when untitled) and
+ * `inner` (for a section, one per block inside it; else null), de-duplicated
+ * across the page with -2, -3 suffixes.
+ */
+export function pageAnchors(blocks, prefix = '') {
+  const used = new Set();
+  const id = (b) => {
+    if (!b?.title) return null;
+    const base = `${prefix}${slug(b.title)}`;
+    let a = base;
+    for (let n = 2; used.has(a); n++) a = `${base}-${n}`;
+    used.add(a);
+    return a;
+  };
+  const top = [];
+  const inner = [];
+  for (const b of list(blocks)) {
+    top.push(id(b));
+    inner.push(b?.type === 'section' ? list(b.blocks).map((c) => (c?.type === 'section' ? null : id(c))) : null);
+  }
+  return { top, inner };
+}
+
+/** Anchor ids for top-level titled blocks (null when untitled), de-duplicated with -2, -3 suffixes. */
+export const blockAnchors = (blocks) => pageAnchors(blocks).top;
 
 /** Escape a whole HTML document for an iframe srcdoc attribute (only & and " matter inside it). */
 export const srcdocAttr = (html) => String(html).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -230,6 +262,12 @@ const BLOCKS = {
       .join('')}</div>`;
   },
 
+  // A heading over a group of blocks in their own grid (one level: no section in a section)
+  section: (b, ctx) =>
+    `<div class="p-grid p-subgrid">${list(b.blocks)
+      .map((c, i) => (c?.type === 'section' ? '' : renderBlock(c, `${ctx.uid}-${i + 1}`, { anchor: ctx.childAnchors?.[i] || null, viewerHtml: ctx.viewerHtml, pageMeta: ctx.pageMeta, locale: ctx.L, frameSandbox: ctx.frameSandbox })))
+      .join('')}</div>`,
+
   gantt: (b, ctx) => renderGantt(b, { half: ctx.half, width: ctx.width, fit: true, caption: b.caption ? inline(b.caption) : '' }),
 
   matrix: (b, ctx) => renderMatrix(b, { half: ctx.half, width: ctx.width, fit: true, caption: b.caption ? inline(b.caption) : '' }),
@@ -253,13 +291,24 @@ const BLOCKS = {
  * meta.strings); diagram blocks inherit its lang and dir. `width` (px): the
  * container's measured width, so charts fit it (inspector panels).
  */
-export function renderBlock(b, uid = 'b', { anchor = null, viewerHtml = null, pageMeta = null, locale = null, width = null, frameSandbox = null } = {}) {
+export function renderBlock(b, uid = 'b', { anchor = null, childAnchors = null, viewerHtml = null, pageMeta = null, locale = null, width = null, frameSandbox = null } = {}) {
   const render = BLOCKS[b?.type];
   if (!render) return '';
   const L = locale || localeOf(pageMeta);
+  const third = b.span === 'third';
   // Charts draw their words and numbers in the page language too
-  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L, width, frameSandbox }));
-  return `<section class="p-block p-block--${b.type}${b.span === 'half' ? ' is-half' : ''}"${anchor ? ` id="${h(anchor)}"` : ''}>${b.title ? `<h3>${inline(b.title)}</h3>` : ''}${body}</section>`;
+  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L, width: width ?? (third ? THIRD_WIDTH : null), frameSandbox, childAnchors }));
+  const span = b.span === 'half' ? ' is-half' : third ? ' is-third' : '';
+  // A section's title heads its blocks (h2, with its intro); every other block's title is a label (h3)
+  const head =
+    b.type === 'section'
+      ? b.title || b.intro
+        ? `<div class="p-section-head">${b.title ? `<h2>${inline(b.title)}</h2>` : ''}${b.intro ? md(b.intro) : ''}</div>`
+        : ''
+      : b.title
+        ? `<h3>${inline(b.title)}</h3>`
+        : '';
+  return `<section class="p-block p-block--${b.type}${span}"${anchor ? ` id="${h(anchor)}"` : ''}>${head}${body}</section>`;
 }
 
 /** Contents are shown when meta.toc is true, or automatically from this many titled blocks (meta.toc: false hides them). */
@@ -270,13 +319,128 @@ export const TOC_MIN_BLOCKS = 6;
  * ({ id, title } for every titled block that renders), empty when the contents row
  * is not shown. Shared by the HTML page and its Markdown export, so links match.
  */
-export function pageContents(page) {
+export function pageContents(page, prefix = '') {
   const meta = page?.meta || {};
   const all = list(page?.blocks);
-  const anchors = blockAnchors(all);
+  const { top: anchors, inner } = pageAnchors(all, prefix);
   const titled = all.map((b, i) => (anchors[i] && own(BLOCKS, b?.type) ? { id: anchors[i], title: b.title } : null)).filter(Boolean);
   const show = meta.toc === true ? titled.length > 0 : meta.toc !== false && titled.length >= TOC_MIN_BLOCKS;
-  return { anchors, items: show ? titled : [] };
+  return { anchors, inner, items: show ? titled : [] };
+}
+
+/**
+ * The parts of a page's body: the lead (title, byline, answer), the contents row
+ * and the blocks. `prefix` keeps anchors and SVG ids unique when several pages
+ * share a document (book chapters); `kicker` adds a line above the title, and
+ * `level` is the title's heading level (1 on a page, 2 for a chapter).
+ */
+export function pageParts(page, { viewerHtml = null, frameSandbox = null, prefix = '', level = 1, kicker = null } = {}) {
+  const meta = page.meta || {};
+  const answer = page.answer || {};
+  const L = localeOf(meta);
+  const byline = [meta.author, meta.date, meta.updated ? L.t('page.updated', { date: meta.updated }) : null].filter(Boolean).map(h).join(' · ');
+  const all = list(page.blocks);
+  const { anchors, inner, items } = pageContents(page, prefix);
+  let uid = 0;
+  const blocks = all.map((b, i) => renderBlock(b, `${prefix}b${++uid}`, { anchor: anchors[i], childAnchors: inner[i], viewerHtml, pageMeta: meta, locale: L, frameSandbox })).join('\n');
+  // Chips truncate long titles; the full title is in the tooltip
+  const toc = items.length
+    ? `<nav class="p-toc" aria-label="${h(L.t('page.contents'))}"><span class="p-label" aria-hidden="true">${h(L.t('page.contents'))}</span><ol>${items.map((t) => `<li><a href="#${h(t.id)}" title="${h(plain(t.title))}">${inline(t.title)}</a></li>`).join('')}</ol></nav>`
+    : '';
+  const hx = `h${level}`;
+  const lead = `<div class="p-lead">
+    <div class="p-lead-head">
+    ${kicker ? `<p class="p-chapter-kicker">${h(kicker)}</p>` : ''}
+    <${hx} class="p-title">${inline(meta.question || meta.title || '')}</${hx}>
+    ${meta.question && meta.title && meta.title !== meta.question ? `<p class="p-subtitle">${inline(meta.title)}</p>` : ''}
+    ${byline ? `<p class="p-byline">${byline}</p>` : ''}
+    </div>
+    <section class="p-answer" aria-label="${h(L.t('page.answer'))}">
+      <span class="p-label">${h(L.t('page.answer'))}</span>
+      <p class="p-headline">${inline(answer.headline || '')}</p>
+      ${answer.text ? md(answer.text) : ''}
+      ${list(answer.points).length ? `<ul class="p-keypoints">${answer.points.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>` : ''}
+    </section>
+  </div>`;
+  return { lead, toc, grid: `<div class="p-grid">\n${blocks}\n  </div>`, anchors, inner, items };
+}
+
+/** A short stable key for the reader's saved place (FNV-1a of the text). */
+export function readKey(text) {
+  let x = 2166136261;
+  const s = String(text || '');
+  for (let i = 0; i < s.length; i++) {
+    x ^= s.charCodeAt(i);
+    x = Math.imul(x, 16777619);
+  }
+  return (x >>> 0).toString(36);
+}
+
+/**
+ * The HTML document around a page or book body: theme, header (brand, kicker,
+ * reading controls, theme toggle), footer with the badge, the reader's bottom bar
+ * and the scripts. `contents` (books): [{ id, title, items }] for the contents menu.
+ */
+export function pageDocument({ meta = {}, L, logos = {}, body, title, description = '', kicker = '', start = 'scroll', key, contents = null, book = false, css = '' }) {
+  const toData = (svg) => (svg ? `data:image/svg+xml,${encodeURIComponent(svg)}` : null);
+  const logoLight = toData(logos.light || logos.dark);
+  const logoDark = toData(logos.dark || logos.light);
+  const mark = (cls) =>
+    logoLight
+      ? `<img class="${cls} p-only-light" src="${logoLight}" alt=""><img class="${cls} p-only-dark" src="${logoDark}" alt="">`
+      : `<span class="${cls} p-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l7 8 7-8M12 13v7"/></svg></span>`;
+  const markText = typeof meta.watermark === 'string' ? meta.watermark : L.t('watermark.text');
+  const watermark = meta.watermark === false ? '' : `<a class="p-badge" href="${REPO_URL}" target="_blank" rel="noopener noreferrer" title="${h(L.t('watermark.title'))}" aria-label="${h(L.t('watermark.label', { text: markText }))}"><span class="p-badge-face">${mark('p-badge-logo')}<span>${h(markText)}</span></span><span class="p-badge-face p-badge-github" aria-hidden="true">${GITHUB_MARK}<span>GitHub</span></span></a>`;
+  const reader = readerControls(L, { contents });
+  const startMode = READING_MODES.includes(start) ? start : 'scroll';
+
+  return `<!DOCTYPE html>
+<html lang="${h(L.lang)}" dir="${L.dir}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${h(title)}</title>
+${description ? `<meta name="description" content="${h(description)}">` : ''}
+${logoLight ? `<link rel="icon" href="${logoLight}">` : ''}
+<script>(function(){var m=/theme=(light|dark)/.exec(location.hash),s=null;try{s=localStorage.getItem('yantra:theme')}catch(e){}var d=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',m?m[1]:s||(d?'dark':'light'))})();</script>
+<style>
+${themeCss()}
+${BLOCK_CSS}
+${PAGE_CSS}
+${READER_CSS}
+${css}
+</style>
+</head>
+<body>
+<article class="p-page${book ? ' p-book' : ''}">
+  <header class="p-head">
+    <div class="p-brand">${mark('p-logo')}${kicker ? `<span class="p-kicker">${h(kicker)}</span>` : ''}</div>
+    ${reader.tools}
+      <button class="p-theme" type="button" aria-label="${h(L.t('page.theme'))}" onclick="var r=document.documentElement,n=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('yantra:theme',n)}catch(e){}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+      </button>
+    </div>
+  </header>
+  ${reader.list}
+  ${body}
+  <footer class="p-foot">
+    <span>${h(meta.footer || '')}</span>
+    ${watermark}
+  </footer>
+</article>
+${reader.bar}
+<script>
+// Print on paper in the light theme, with every FAQ answer open
+(function(){var r=document.documentElement,prev,shut=[];addEventListener('beforeprint',function(){prev=r.getAttribute('data-theme');r.setAttribute('data-theme','light');shut=[].filter.call(document.querySelectorAll('.p-faq details'),function(d){return !d.open});shut.forEach(function(d){d.open=true})});addEventListener('afterprint',function(){if(prev)r.setAttribute('data-theme',prev);shut.forEach(function(d){d.open=false});shut=[]})})();
+${FRAME_SCRIPT}
+${SCROLL_SCRIPT}
+${TOC_SCRIPT}
+${CHART_SCRIPT}
+${readerScript({ start: startMode, key, book, words: readerWords(L) })}
+</script>
+</body>
+</html>
+`;
 }
 
 /**
@@ -291,103 +455,53 @@ export function renderPage(page, { logos = {}, viewerHtml = null, frameSandbox =
   const meta = page.meta || {};
   const answer = page.answer || {};
   const L = localeOf(meta);
-  const toData = (svg) => (svg ? `data:image/svg+xml,${encodeURIComponent(svg)}` : null);
-  const logoLight = toData(logos.light || logos.dark);
-  const logoDark = toData(logos.dark || logos.light);
-  const mark = (cls) =>
-    logoLight
-      ? `<img class="${cls} p-only-light" src="${logoLight}" alt=""><img class="${cls} p-only-dark" src="${logoDark}" alt="">`
-      : `<span class="${cls} p-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l7 8 7-8M12 13v7"/></svg></span>`;
-  const markText = typeof meta.watermark === 'string' ? meta.watermark : L.t('watermark.text');
-  const watermark = meta.watermark === false ? '' : `<a class="p-badge" href="${REPO_URL}" target="_blank" rel="noopener noreferrer" title="${h(L.t('watermark.title'))}" aria-label="${h(L.t('watermark.label', { text: markText }))}"><span class="p-badge-face">${mark('p-badge-logo')}<span>${h(markText)}</span></span><span class="p-badge-face p-badge-github" aria-hidden="true">${GITHUB_MARK}<span>GitHub</span></span></a>`;
-  const byline = [meta.author, meta.date, meta.updated ? L.t('page.updated', { date: meta.updated }) : null].filter(Boolean).map(h).join(' · ');
-
-  const all = list(page.blocks);
-  const { anchors, items } = pageContents(page);
-  let uid = 0;
-  const blocks = all.map((b, i) => renderBlock(b, `b${++uid}`, { anchor: anchors[i], viewerHtml, pageMeta: meta, locale: L, frameSandbox })).join('\n');
-  // Chips truncate long titles; the full title is in the tooltip
-  const toc = items.length
-    ? `<nav class="p-toc" aria-label="${h(L.t('page.contents'))}"><span class="p-label" aria-hidden="true">${h(L.t('page.contents'))}</span><ol>${items.map((t) => `<li><a href="#${h(t.id)}" title="${h(plain(t.title))}">${inline(t.title)}</a></li>`).join('')}</ol></nav>`
-    : '';
-
-  return `<!DOCTYPE html>
-<html lang="${h(L.lang)}" dir="${L.dir}">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${h(meta.title || L.t('page.answer'))}</title>
-${meta.description || answer.headline ? `<meta name="description" content="${h(meta.description || answer.headline)}">` : ''}
-${logoLight ? `<link rel="icon" href="${logoLight}">` : ''}
-<script>(function(){var m=/theme=(light|dark)/.exec(location.hash),s=null;try{s=localStorage.getItem('yantra:theme')}catch(e){}var d=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',m?m[1]:s||(d?'dark':'light'))})();</script>
-<style>
-${themeCss()}
-${BLOCK_CSS}
-${PAGE_CSS}
-</style>
-</head>
-<body>
-<article class="p-page">
-  <header class="p-head">
-    <div class="p-brand">${mark('p-logo')}${meta.kicker || meta.question ? `<span class="p-kicker">${h(meta.kicker || L.t('page.question'))}</span>` : ''}</div>
-    <button class="p-theme" type="button" aria-label="${h(L.t('page.theme'))}" onclick="var r=document.documentElement,n=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('yantra:theme',n)}catch(e){}">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
-    </button>
-  </header>
-  <h1>${inline(meta.question || meta.title || '')}</h1>
-  ${meta.question && meta.title && meta.title !== meta.question ? `<p class="p-subtitle">${inline(meta.title)}</p>` : ''}
-  ${byline ? `<p class="p-byline">${byline}</p>` : ''}
-  <section class="p-answer" aria-label="${h(L.t('page.answer'))}">
-    <span class="p-label">${h(L.t('page.answer'))}</span>
-    <p class="p-headline">${inline(answer.headline || '')}</p>
-    ${answer.text ? md(answer.text) : ''}
-    ${list(answer.points).length ? `<ul class="p-keypoints">${answer.points.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>` : ''}
-  </section>
-  ${toc}
-  <div class="p-grid">
-${blocks}
-  </div>
-  <footer class="p-foot">
-    <span>${h(meta.footer || '')}</span>
-    ${watermark}
-  </footer>
-</article>
-<script>
-// Print on paper in the light theme, with every FAQ answer open
-(function(){var r=document.documentElement,prev,shut=[];addEventListener('beforeprint',function(){prev=r.getAttribute('data-theme');r.setAttribute('data-theme','light');shut=[].filter.call(document.querySelectorAll('.p-faq details'),function(d){return !d.open});shut.forEach(function(d){d.open=true})});addEventListener('afterprint',function(){if(prev)r.setAttribute('data-theme',prev);shut.forEach(function(d){d.open=false});shut=[]})})();
-${FRAME_SCRIPT}
-${SCROLL_SCRIPT}
-${TOC_SCRIPT}
-${CHART_SCRIPT}
-</script>
-</body>
-</html>
-`;
+  const parts = pageParts(page, { viewerHtml, frameSandbox });
+  return pageDocument({
+    meta,
+    L,
+    logos,
+    body: `${parts.lead}\n  ${parts.toc}\n  ${parts.grid}`,
+    title: meta.title || L.t('page.answer'),
+    description: meta.description || answer.headline || '',
+    kicker: meta.kicker || meta.question ? meta.kicker || L.t('page.question') : '',
+    start: meta.reading,
+    key: readKey(`${meta.question || meta.title || ''}\n${answer.headline || ''}`)
+  });
 }
 
 /** Markdown version of a page (for chat, docs or tickets). */
-export function pageToMarkdown(page) {
-  return withChartLocale(localeOf(page?.meta), () => pageMarkdown(page));
+export function pageToMarkdown(page, opts = {}) {
+  return withChartLocale(localeOf(page?.meta), () => pageMarkdown(page, opts));
 }
 
-function pageMarkdown(page) {
+/** `base` shifts every heading down (1: a book chapter's title is ##); `prefix` matches the HTML anchors. */
+function pageMarkdown(page, { base = 0, prefix = '', kicker = '' } = {}) {
   const meta = page.meta || {};
   const answer = page.answer || {};
   const { t } = localeOf(meta);
-  const out = [`# ${mi(meta.question || meta.title || t('page.answer'))}`, ''];
+  const out = [];
+  if (kicker) out.push(`*${mi(kicker)}*`, '');
+  if (prefix) out.push(`<a id="${h(prefix.replace(/-$/, ''))}"></a>`, '');
+  out.push(`${'#'.repeat(1 + base)} ${mi(meta.question || meta.title || t('page.answer'))}`, '');
   if (answer.headline) out.push(`**${mi(answer.headline)}**`, '');
   if (answer.text) out.push(mdBlock(answer.text), '');
   list(answer.points).forEach((p) => out.push(`- ${mi(p)}`));
   if (list(answer.points).length) out.push('');
   // Contents with the page's own anchors: an explicit <a id> before each heading keeps
   // the links working whatever slugs the Markdown renderer makes up
-  const { anchors, items } = pageContents(page);
+  const { anchors, items } = pageContents(page, prefix);
   if (items.length) out.push(`**${mi(t('page.contents'))}**`, '', ...items.map((it) => `- [${mi(plain(it.title))}](#${it.id})`), '');
-  for (const [i, b] of list(page.blocks).entries()) {
-    if (!b || typeof b !== 'object') continue;
-    if (b.title && items.length && anchors[i]) out.push(`<a id="${h(anchors[i])}"></a>`, '');
-    if (b.title) out.push(`## ${mi(b.title)}`, '');
+  // depth 1: a block inside a section, one heading level down
+  const emit = (b, anchor, depth) => {
+    if (!b || typeof b !== 'object') return;
+    const hx = '#'.repeat(2 + base + depth);
+    if (b.title && items.length && anchor) out.push(`<a id="${h(anchor)}"></a>`, '');
+    if (b.title) out.push(`${hx} ${mi(b.title)}`, '');
     switch (b.type) {
+      case 'section':
+        if (b.intro) out.push(mdBlock(b.intro), '');
+        list(b.blocks).forEach((c) => c?.type !== 'section' && emit(c, null, depth + 1));
+        break;
       case 'text':
         out.push(mdBlock(b.body), '');
         break;
@@ -407,7 +521,7 @@ function pageMarkdown(page) {
         break;
       case 'compare':
         list(b.options).forEach((o) => {
-          out.push(`### ${mi(o?.name)}${o?.recommended ? ` (${mi(t('page.recommended'))})` : ''}`, '');
+          out.push(`${hx}# ${mi(o?.name)}${o?.recommended ? ` (${mi(t('page.recommended'))})` : ''}`, '');
           if (o?.summary) out.push(mdBlock(o.summary), '');
           list(o?.pros).forEach((x) => out.push(`- + ${mi(x)}`));
           list(o?.cons).forEach((x) => out.push(`- − ${mi(x)}`));
@@ -470,7 +584,8 @@ function pageMarkdown(page) {
         out.push('');
         break;
     }
-  }
+  };
+  list(page.blocks).forEach((b, i) => emit(b, anchors[i], 0));
   return `${out.join('\n').replace(/\n{3,}/g, '\n\n')}\n`;
 }
 
@@ -637,7 +752,7 @@ a{color:var(--y-accent)}
 .p-kicker{color:var(--y-ink-3);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
 .p-theme{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--y-border);border-radius:8px;background:var(--y-surface);color:var(--y-ink-2);cursor:pointer}
 .p-theme:hover{color:var(--y-ink);border-color:var(--y-border-strong)}
-h1{margin:0 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.15;letter-spacing:-.02em;font-weight:700}
+h1,h2.p-title{margin:0 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.15;letter-spacing:-.02em;font-weight:700}
 .p-subtitle{margin:0 0 6px;color:var(--y-ink-2);font-size:17px}
 .p-byline{margin:0;color:var(--y-ink-3);font-size:13px}
 .p-answer{margin:26px 0 30px;padding:22px 24px;border:1px solid var(--y-border);border-inline-start:4px solid var(--y-accent);border-radius:12px;background:var(--y-surface)}
@@ -663,9 +778,14 @@ h1{margin:0 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.15;letter-spacing
 .p-block>h3[tabindex]:focus-visible{color:var(--y-accent)}
 @media (prefers-reduced-motion:reduce){.p-toc a,.p-toc.is-sticky{transition:none}}
 @media (max-width:520px){.p-toc{flex-direction:column;gap:6px}.p-toc .p-label{line-height:1.4}}
-.p-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 24px}
+.p-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:22px 24px}
 .p-grid>.p-block{grid-column:1/-1}
-.p-grid>.p-block.is-half{grid-column:span 1}
+.p-grid>.p-block.is-half{grid-column:span 3}
+.p-grid>.p-block.is-third{grid-column:span 2}
+.p-block--section{padding-top:18px;border-top:1px solid var(--y-border)}
+.p-section-head h2{margin:0 0 6px;font-size:21px;line-height:1.3;font-weight:700;letter-spacing:-.01em}
+.p-section-head>p{margin:0 0 4px;color:var(--y-ink-2)}
+.p-subgrid{margin-top:16px}
 .p-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:36px;padding-top:16px;border-top:1px solid var(--y-border);color:var(--y-ink-3);font-size:12.5px}
 .p-badge{display:inline-grid;padding-block:4px;padding-inline:5px 10px;border:1px solid var(--y-border);border-radius:999px;background:var(--y-surface);color:var(--y-ink-2);font-size:12px;font-weight:600;text-decoration:none;transition:border-color .15s,color .15s}
 .p-badge:hover,.p-badge:focus-visible{border-color:var(--y-ink-3);color:var(--y-ink)}
@@ -675,7 +795,7 @@ h1{margin:0 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.15;letter-spacing
 .p-badge-github svg{display:block;width:16px;height:16px}
 .p-badge-logo{width:18px;height:18px;border-radius:5px;display:block}
 .p-badge .p-mark svg{width:11px;height:11px}
-@media (max-width:760px){.p-grid{grid-template-columns:1fr}.p-grid>.p-block.is-half{grid-column:1/-1}body{padding:24px 16px 40px}.p-answer{padding:18px}}
+@media (max-width:760px){.p-grid{grid-template-columns:1fr}.p-grid>.p-block.is-half,.p-grid>.p-block.is-third{grid-column:1/-1}body{padding:24px 16px 40px}.p-answer{padding:18px}}
 @media print{
   @page{size:A4;margin:14mm}
   html{font-size:12.5px;background:#fff}

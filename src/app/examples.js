@@ -25,38 +25,38 @@ import hospitalTrust from '../../examples/hospital-trust-monitoring.json';
 import liveOps from '../../examples/live-operations-dashboard.json';
 import { registerStrings } from '../core/i18n.js';
 import { TABLES } from '../core/locales/index.js';
-import { PAGE_EXAMPLES, CHART_EXAMPLES } from './gallery-pages.js';
+import { PAGE_EXAMPLES, CHART_EXAMPLES, BOOK_EXAMPLES } from './gallery-pages.js';
 
 // Gallery examples come in many languages: load every interface table (built files embed only theirs)
 registerStrings(TABLES);
 
-/** Built-in gallery, shown only when the page has no embedded payload. */
+/** Built-in gallery, shown only when the page has no embedded payload. `kind` groups it in the playground. */
 export const EXAMPLES = [
-  { id: 'cloud-architecture', name: 'Cloud architecture', data: cloud },
-  { id: 'live-operations-dashboard', name: 'Live operations dashboard (charts)', data: liveOps },
-  { id: 'aws-serverless', name: 'AWS serverless (groups)', data: awsServerless },
-  { id: 'oauth-login', name: 'OAuth sign-in (sequence)', data: oauthLogin },
-  { id: 'ecommerce-schema', name: 'E-commerce schema (ERD)', data: ecommerceSchema },
-  { id: 'payment-classes', name: 'Order classes (UML)', data: paymentClasses },
-  { id: 'platform-overview', name: 'Shop platform (drill-down)', data: platform },
-  { id: 'smart-city-operations', name: 'Smart city (six nested levels)', data: smartCity },
-  { id: 'global-retail-group', name: 'Global retail group (six-level drill-down)', data: retailGroup },
-  { id: 'hospital-trust-monitoring', name: 'Hospital trust (nesting and drill-down)', data: hospitalTrust },
-  { id: 'sales-pipeline', name: 'B2B sales pipeline', data: sales },
-  { id: 'supply-chain', name: 'Supply chain', data: supplyChain },
-  { id: 'academic-faculty', name: 'Academic lifecycle', data: academic },
-  { id: 'healthcare-clinical', name: 'Emergency care pathway', data: healthcare },
-  { id: 'ml-training-pipeline', name: 'ML training pipeline (groups)', data: mlPipeline },
-  { id: 'customer-support-escalation', name: 'Support escalation (modes)', data: supportEscalation },
-  { id: 'manufacturing-quality', name: 'Manufacturing quality (panel)', data: manufacturing },
-  { id: 'research-paper-lifecycle', name: 'Research paper lifecycle', data: researchPaper },
-  { id: 'ticket-lifecycle', name: 'Ticket lifecycle (states)', data: ticketLifecycle },
-  { id: 'parallel-checkout-states', name: 'Parallel checkout (fork / join)', data: parallelCheckout },
-  { id: 'org-chart', name: 'Org chart (tree)', data: orgChart },
-  { id: 'study-plan-mindmap', name: 'Revision plan (mind map)', data: studyPlan },
-  { id: 'incident-triage-decision-tree', name: 'Incident triage (decision tree)', data: triageTree },
-  { id: 'health-referral-nepali', name: 'Patient referral (Nepali)', data: healthReferralNepali },
-  { id: 'order-fulfilment-arabic', name: 'Order fulfilment (Arabic, RTL)', data: orderFulfilmentArabic }
+  { id: 'cloud-architecture', name: 'Online store: how an order is paid', kind: 'flow', data: cloud },
+  { id: 'live-operations-dashboard', name: 'Online shop: live operations dashboard', kind: 'flow', data: liveOps },
+  { id: 'aws-serverless', name: 'Web app on AWS serverless', kind: 'flow', data: awsServerless },
+  { id: 'oauth-login', name: 'Sign in with OAuth 2.0 and PKCE', kind: 'sequence', data: oauthLogin },
+  { id: 'ecommerce-schema', name: 'Online shop database (ER)', kind: 'data', data: ecommerceSchema },
+  { id: 'payment-classes', name: 'Checkout classes (UML)', kind: 'data', data: paymentClasses },
+  { id: 'platform-overview', name: 'Shop platform: overview with detail diagrams', kind: 'flow', data: platform },
+  { id: 'smart-city-operations', name: 'Smart city sensors, six levels deep', kind: 'flow', data: smartCity },
+  { id: 'global-retail-group', name: 'Retail group: boardroom to till (drill-down)', kind: 'flow', data: retailGroup },
+  { id: 'hospital-trust-monitoring', name: 'Hospital trust: from the trust to one bed', kind: 'flow', data: hospitalTrust },
+  { id: 'sales-pipeline', name: 'B2B sales: from lead to signed contract', kind: 'flow', data: sales },
+  { id: 'supply-chain', name: 'Supply chain: raw materials to delivery', kind: 'flow', data: supplyChain },
+  { id: 'academic-faculty', name: 'University: admission to graduation', kind: 'flow', data: academic },
+  { id: 'healthcare-clinical', name: 'Hospital emergency care pathway', kind: 'flow', data: healthcare },
+  { id: 'ml-training-pipeline', name: 'Machine learning: training to production', kind: 'flow', data: mlPipeline },
+  { id: 'customer-support-escalation', name: 'Customer support escalation (modes)', kind: 'flow', data: supportEscalation },
+  { id: 'manufacturing-quality', name: 'Factory quality checks', kind: 'flow', data: manufacturing },
+  { id: 'research-paper-lifecycle', name: 'Research paper: idea to publication', kind: 'flow', data: researchPaper },
+  { id: 'ticket-lifecycle', name: 'Support ticket states', kind: 'state', data: ticketLifecycle },
+  { id: 'parallel-checkout-states', name: 'Checkout with parallel steps (fork / join)', kind: 'state', data: parallelCheckout },
+  { id: 'org-chart', name: 'Company org chart', kind: 'tree', data: orgChart },
+  { id: 'study-plan-mindmap', name: 'Exam revision plan', kind: 'mindmap', data: studyPlan },
+  { id: 'incident-triage-decision-tree', name: 'Incident severity decision tree', kind: 'tree', data: triageTree },
+  { id: 'health-referral-nepali', name: 'Patient referral, village to hospital (Nepali)', kind: 'flow', data: healthReferralNepali },
+  { id: 'order-fulfilment-arabic', name: 'Order fulfilment (Arabic, right to left)', kind: 'flow', data: orderFulfilmentArabic }
 ];
 
 /**
@@ -66,5 +66,22 @@ export const EXAMPLES = [
 export const GALLERY = [
   { id: 'diagrams', label: 'app.galleryDiagrams', items: EXAMPLES },
   { id: 'pages', label: 'app.galleryPages', items: PAGE_EXAMPLES },
-  { id: 'charts', label: 'app.galleryCharts', items: CHART_EXAMPLES }
+  { id: 'charts', label: 'app.galleryCharts', items: CHART_EXAMPLES },
+  { id: 'books', label: 'app.galleryBooks', items: BOOK_EXAMPLES }
+];
+
+/**
+ * The playground's groups, in order: `kind` of a gallery entry or starter -> its label key.
+ * An entry's one-line description is its own meta.description (or meta.question).
+ */
+export const KINDS = [
+  ['flow', 'play.kind.flow'],
+  ['sequence', 'play.kind.sequence'],
+  ['state', 'play.kind.state'],
+  ['data', 'play.kind.data'],
+  ['tree', 'play.kind.tree'],
+  ['mindmap', 'play.kind.mindmap'],
+  ['page', 'play.kind.page'],
+  ['chart', 'play.kind.chart'],
+  ['book', 'play.kind.book']
 ];

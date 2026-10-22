@@ -77,12 +77,15 @@ For "explain how X works", make the diagram first, then the page around it
    - Numbers that belong to a component (latency, uptime, conversion, a reading) →
      `data.chart` draws a mini chart on its card: `{ "kind": "line", "label": "p95 latency",
      "values": [..], "target": 160, "unit": " ms" }`; kinds `line`, `area`, `column`, `bar`
-     (`data`, up to 5), `donut`, `ring` (`value` of `max`), `bullet` (`value` against `target`).
+     (`data`, up to 8), `donut` (up to 6), `ring` (`value` of `max`), `bullet` (`value` against `target`).
      A dashboard number the diagram is about → a chart card: `"shape": "chart"` with a page
-     chart block in `data.chart` (column, bar, line, area, pie, donut). At most 6 chart cards
+     chart block in `data.chart` (column, bar, line, area, pie, donut); it takes the same
+     `data` list, so more bars than a card fits → add `"shape": "chart"`. At most 6 chart cards
      and 12 mini charts; see Charts in diagrams in `docs/authoring.md`.
    - Runbooks, dashboards, specs: `url` on a node (`data.url`), edge or step (http, https or
      mailto only); the inspector opens them in a new tab.
+   - A diagram read mostly as a picture: `meta.story: "collapsed"` (one slim walkthrough bar)
+     or `"off"` (no walkthrough, nothing dimmed; readers can switch it on with W).
 
 ## Answer page
 
@@ -99,6 +102,13 @@ For "explain how X works", make the diagram first, then the page around it
    and risks: `matrix` (2x2 with `quadrants`, or `grid: 5` heat map).
 3. Diagrams are static figures; `interactive: true` embeds the live viewer - at most 2 per page.
 4. Do not state uncertain facts as certain: flag them in a `callout`, cite `sources`.
+5. Layout: `span: "half"` pairs blocks, `span: "third"` puts three in a row; a `section`
+   (`title`, `intro?`, `blocks`) groups blocks under a heading, one level deep.
+   `meta.reading` opens the page in `scroll` (default), `book` or `present` mode.
+6. **Books** (`"kind": "book"`, `docs/books.md`): 2-12 answer pages as `chapters`, inline or
+   `{ "$ref": "chapter.json" }`, with a `summary` on the cover. Use one when a single page is
+   not enough (onboarding, a system part by part); each chapter keeps the page rules.
+   `node bin/yantra.js new guide.json --book` writes a starter.
 
 ## Then, for every output
 

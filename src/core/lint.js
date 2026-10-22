@@ -21,7 +21,9 @@ import { foldLevels, foldsForDepth, DEPTH_KEYS } from './nesting.js';
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => (typeof v === 'string' ? v : '');
-import { BLOCK_TYPES, isSafeImageSrc } from './page.js';
+import { BLOCK_TYPES, SPANS, walkBlocks, isSafeImageSrc } from './page.js';
+import { READING_MODES } from './reader.js';
+import { chapterPage, BOOK_BUDGET } from './book.js';
 import { CHART_NEEDS, CHART_SHAPES, checkChartBlock } from './charts.js';
 import { checkCardChart, hasChart, isChartCard, CHART_BUDGET } from './cardchart.js';
 
@@ -63,6 +65,7 @@ export function lint(payload) {
     return report(findings);
   }
   if (payload.kind === 'page') return lintPage(payload);
+  if (payload.kind === 'book') return lintBook(payload);
   diagramFindings(payload, add);
   if (payload.diagrams !== undefined || payload.meta?.startLevel !== undefined) checkLevels(payload, add);
   return report(findings);
@@ -362,6 +365,11 @@ function diagramFindings(payload, add) {
       }
     }
   }
+
+  // --- walkthrough --------------------------------------------------------
+  const story = model.meta.story;
+  if (story !== undefined && !['open', 'collapsed', 'off'].includes(story))
+    add('error', 'schema/unknown-story', `meta.story is "${story}"; use "open", "collapsed" or "off".`);
 
   // --- sequence view ------------------------------------------------------
   const view = model.meta.view;
@@ -845,7 +853,8 @@ const BLOCK_NEEDS = {
   checklist: (b) => Array.isArray(b.items) && b.items.length && b.items.every((i) => i?.text),
   quote: (b) => typeof b.text === 'string' && b.text.trim(),
   image: (b) => typeof b.src === 'string' && b.src.trim(),
-  kv: (b) => Array.isArray(b.items) && b.items.length && b.items.every((i) => i?.k && i.v !== undefined && i.v !== null)
+  kv: (b) => Array.isArray(b.items) && b.items.length && b.items.every((i) => i?.k && i.v !== undefined && i.v !== null),
+  section: (b) => Array.isArray(b.blocks) && b.blocks.length > 0
 };
 
 const BLOCK_SHAPE = {
@@ -867,8 +876,42 @@ const BLOCK_SHAPE = {
   checklist: 'items: [{ text, done?, note? }]',
   quote: 'text (string), by?, source?',
   image: 'src (https: URL or data:image/ URI) and alt',
-  kv: 'items: [{ k, v }]'
+  kv: 'items: [{ k, v }]',
+  section: 'blocks: [..] (the blocks under its title), title?, intro?'
 };
+
+/**
+ * A book: a title, 1-12 chapters, each checked as an answer page (its findings
+ * carry `chapter` and a chapters[i] prefix). Chapter $refs must be loaded first.
+ */
+export function lintBook(book) {
+  const findings = [];
+  const add = (level, code, message, extra = {}) => findings.push({ level, code, message, ...extra });
+  const meta = book.meta && typeof book.meta === 'object' ? book.meta : {};
+  if (!meta.title) add('error', 'schema/missing-title', 'meta.title is required: the book\'s title, shown on its cover.');
+  checkLocale(meta, add);
+  if (meta.reading !== undefined && !READING_MODES.includes(meta.reading)) add('error', 'page/bad-reading', `meta.reading is "${meta.reading}"; use "scroll", "book" or "present".`);
+  if (book.summary !== undefined && typeof book.summary !== 'string') add('error', 'book/bad-summary', 'summary must be a string: the book in two or three sentences, shown on the cover.');
+  const chapters = book.chapters;
+  if (!Array.isArray(chapters) || !chapters.length) {
+    add('error', 'book/no-chapters', 'chapters must be a non-empty list of answer pages (or { "$ref": "chapter.json" }).');
+    return report(findings);
+  }
+  if (chapters.length > BOOK_BUDGET.chapters) add('warning', 'book/too-many-chapters', `${chapters.length} chapters (budget ${BOOK_BUDGET.chapters}); split it into two books, or move detail into fewer chapters.`);
+  chapters.forEach((ch, i) => {
+    const where = `chapters[${i}]`;
+    if (ch && typeof ch === 'object' && typeof ch.$ref === 'string') {
+      const why = { unsafe: 'must be a relative .json path inside the book\'s folder (no "..", no absolute paths)', cycle: 'loads itself (a cycle)', missing: 'is missing or not valid JSON' }[ch.$error] || 'was not loaded (build or validate the book from its file)';
+      return add('error', 'book/chapter-unresolved', `${where} "${ch.$ref}" ${why}.`, { chapter: i });
+    }
+    if (!ch || typeof ch !== 'object' || Array.isArray(ch)) return add('error', 'book/chapter-invalid', `${where} must be an answer page: { meta, answer, blocks }.`, { chapter: i });
+    if (ch.kind !== undefined && ch.kind !== 'page') return add('error', 'book/chapter-invalid', `${where} has kind "${ch.kind}"; a chapter is an answer page (kind "page", or no kind).`, { chapter: i });
+    const r = lintPage(chapterPage(ch, meta));
+    const title = ch.meta?.title || ch.meta?.question;
+    for (const { level, code, message, ...rest } of [...r.errors, ...r.warnings]) add(level, code, `${where}${title ? ` "${title}"` : ''}: ${message}`, { ...rest, chapter: i });
+  });
+  return report(findings);
+}
 
 export function lintPage(page) {
   const findings = [];
@@ -886,10 +929,14 @@ export function lintPage(page) {
 
   const blocks = Array.isArray(page.blocks) ? page.blocks : [];
   if (page.blocks !== undefined && !Array.isArray(page.blocks)) add('error', 'schema/blocks-invalid', 'blocks must be an array.');
-  if (blocks.length > PAGE_BUDGET.blocks) add('warning', 'page/too-many-blocks', `${blocks.length} blocks (budget ${PAGE_BUDGET.blocks}); one page should be scannable. Cut or merge.`);
+  // Budgets count the blocks inside sections too (a section itself is only a heading)
+  const flat = [];
+  walkBlocks(blocks, (b) => b?.type !== 'section' && flat.push(b));
+  if (flat.length > PAGE_BUDGET.blocks) add('warning', 'page/too-many-blocks', `${flat.length} blocks (budget ${PAGE_BUDGET.blocks}); one page should be scannable. Cut or merge.`);
 
   if (meta.toc !== undefined && typeof meta.toc !== 'boolean') add('warning', 'page/bad-toc', 'meta.toc must be true or false.');
-  const live = blocks.filter((b) => b?.type === 'diagram' && b.interactive).length;
+  if (meta.reading !== undefined && !READING_MODES.includes(meta.reading)) add('error', 'page/bad-reading', `meta.reading is "${meta.reading}"; use "scroll", "book" or "present".`);
+  const live = flat.filter((b) => b?.type === 'diagram' && b.interactive).length;
   if (live > PAGE_BUDGET.interactiveDiagrams)
     add('warning', 'page/heavy-embed', `${live} interactive diagrams; each embeds the full viewer. Keep at most ${PAGE_BUDGET.interactiveDiagrams} and show the rest as static figures.`);
 
@@ -897,11 +944,12 @@ export function lintPage(page) {
   return report(findings);
 }
 
-/** Validate page or panel blocks; embedded diagrams get the full diagram lint. */
-function checkBlocks(blocks, add, path) {
+/** Validate page or panel blocks; embedded diagrams get the full diagram lint. A section's blocks are checked one level down. */
+function checkBlocks(blocks, add, path, depth = 0) {
   blocks.forEach((b, i) => {
     const where = `${path}[${i}]${b?.title ? ` "${b.title}"` : ''}`;
     if (!b || !BLOCK_TYPES.includes(b.type)) return add('error', 'page/unknown-block', `${where} has unknown type "${b?.type}". Use one of: ${BLOCK_TYPES.join(', ')}.`, { block: i });
+    if (b.type === 'section' && depth > 0) return add('error', 'page/nested-section', `${where} is a section inside a section; sections go one level deep. Move its blocks up, or make it a sibling section.`, { block: i });
     if (b.type === 'diagram' && b.src && !b.diagram) {
       const src = String(b.src);
       const unsafe = /^([a-zA-Z]:|[\\/])/.test(src) || src.split(/[\\/]/).includes('..') || !/\.json$/i.test(src);
@@ -914,9 +962,10 @@ function checkBlocks(blocks, add, path) {
       add('error', 'page/unknown-level', `${where} level "${b.level}" is not a detail diagram of this diagram (see its diagrams map).`, { block: i });
     if (b.type === 'diagram') {
       const r = lint(b.diagram);
-      for (const f of [...r.errors, ...r.warnings]) {
-        if (f.code === 'story/no-steps') continue; // a static figure needs no walkthrough
-        add(f.level, f.code, `${where}: ${f.message}`, { ...f, block: i });
+      for (const { level, code, message, ...rest } of [...r.errors, ...r.warnings]) {
+        if (code === 'story/no-steps') continue; // a static figure needs no walkthrough
+        // the finding's own fields go first, so the prefixed message is the one kept
+        add(level, code, `${where}: ${message}`, { ...rest, block: i });
       }
     }
     if (['chart', 'gantt', 'matrix', 'metrics'].includes(b.type))
@@ -927,6 +976,7 @@ function checkBlocks(blocks, add, path) {
     }
     if (b.type === 'diagram' && b.height !== undefined && !(Number.isFinite(b.height) && b.height >= 240))
       add('warning', 'page/bad-height', `${where} height must be a number of pixels, at least 240.`, { block: i });
-    if (b.span && b.span !== 'half' && b.span !== 'full') add('warning', 'page/bad-span', `${where} span must be "half" or "full".`, { block: i });
+    if (b.span && !SPANS.includes(b.span)) add('warning', 'page/bad-span', `${where} span must be "full", "half" or "third".`, { block: i });
+    if (b.type === 'section') checkBlocks(b.blocks, add, `${where}.blocks`, depth + 1);
   });
 }

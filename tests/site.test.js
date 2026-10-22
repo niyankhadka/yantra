@@ -371,3 +371,41 @@ test('playground: Copy prompt follows the editor (empty, valid example, findings
     await srv.close();
   }
 });
+
+test('playground: a first visit opens on the start screen; the picker searches templates and examples; the layout is kept', { skip: browserPath ? false : 'no Chrome, Edge or Chromium found', timeout: 120000 }, async () => {
+  const srv = await serveOut();
+  const browser = await startBrowser(browserPath);
+  try {
+    const page = await browser.open(`${srv.base}/playground/`);
+    await page.waitFor(`location.href.startsWith(${JSON.stringify(srv.base)}) && document.readyState === "complete"`);
+    await page.eval(`localStorage.clear(); location.reload(); true`);
+    await page.waitFor(`document.readyState === "complete" && document.getElementById('pick-list').children.length > 0`);
+    assert.equal(await page.eval(`document.getElementById('src').value`), '', 'no draft: an empty editor');
+    assert.equal(await page.eval(`document.getElementById('placeholder').hidden`), false, 'the start screen shows');
+    // Describe in words: the request goes into the copied prompt
+    await page.eval(`Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { window.__copied = t; } }, configurable: true }); true`);
+    await page.eval(`const d = document.getElementById('describe'); d.value = 'how a parcel is delivered'; d.dispatchEvent(new Event('input')); document.getElementById('describe-go').click(); true`);
+    assert.ok((await page.waitFor('window.__copied')).trimEnd().endsWith('Describe what you want: how a parcel is delivered'));
+    // The picker: starters first, then the gallery by kind; search narrows it; Enter opens the first match
+    await page.eval(`document.getElementById('pick').click(); true`);
+    const heads = await page.eval(`[...document.querySelectorAll('.pg-pick-head')].map((h) => h.textContent)`);
+    assert.equal(heads[0], 'Start from scratch');
+    assert.ok(heads.includes('Books') && heads.includes('Sequence'), heads.join(', '));
+    await page.eval(`const s = document.getElementById('pick-search'); s.value = 'mind map'; s.dispatchEvent(new Event('input')); true`);
+    const names = await page.eval(`[...document.querySelectorAll('#pick-list [role=option] b')].map((b) => b.textContent)`);
+    assert.deepEqual(names, ['Mind map', 'Exam revision plan']);
+    await page.eval(`document.getElementById('pick-search').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); true`);
+    await page.waitFor(`document.getElementById('src').value.includes('"mindmap"')`);
+    await page.waitFor(`document.getElementById('status').textContent.length > 0 && document.getElementById('placeholder').hidden`);
+    // Hide the editor; the choice survives a reload
+    await page.eval(`document.getElementById('btn-editor').click(); true`);
+    assert.equal(await page.eval(`document.getElementById('editor').hidden`), true);
+    await page.eval(`location.reload(); true`);
+    await page.waitFor(`document.readyState === "complete" && document.getElementById('pick-list').children.length > 0`);
+    assert.equal(await page.eval(`document.getElementById('editor').hidden`), true, 'layout remembered');
+    assert.equal(await page.eval(`document.getElementById('btn-editor').getAttribute('aria-pressed')`), 'false');
+  } finally {
+    await browser.close();
+    await srv.close();
+  }
+});

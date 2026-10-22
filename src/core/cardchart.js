@@ -23,7 +23,7 @@ import { HUES } from './theme.js';
 export const MINI = { gap: 10, head: 16, plot: 30, row: 16, ring: 44, bullet: 10, legendRow: 14 };
 export const MINI_KINDS = ['line', 'area', 'column', 'bar', 'donut', 'ring', 'bullet'];
 /** Points a mini chart reads well with; above these the validator warns (chart/too-many-points). */
-export const MINI_LIMITS = { line: 48, area: 48, column: 16, bar: 5, donut: 5 };
+export const MINI_LIMITS = { line: 48, area: 48, column: 16, bar: 8, donut: 6 };
 
 /** Chart card metrics: default width (card `width` overrides, 240-480), plot height, pie size and legend rows. */
 export const CHART_CARD = { width: 360, minWidth: 240, maxWidth: 480, gap: 10, plot: 170, pie: 140, legendRow: 16, pieRow: 18 };
@@ -134,8 +134,11 @@ function miniSvg(c, W) {
     if (m.target !== null) out.push(`<line class="m-target" x1="0" x2="${W}" y1="${r1(y(m.target))}" y2="${r1(y(m.target))}"><title>${h(`${chartWords().target}: ${fmt(m.target, m)}`)}</title></line>`);
     H = top + ph;
   } else if (m.kind === 'bar') {
-    const rows = m.values.map((v, i) => ({ v, l: m.labels[i] || '', hue: m.hues[i] || m.hue })).filter((r) => r.v !== null).slice(0, MINI_LIMITS.bar);
-    if (!rows.length) return null;
+    const all = m.values.map((v, i) => ({ v, l: m.labels[i] || '', hue: m.hues[i] || m.hue })).filter((r) => r.v !== null);
+    if (!all.length) return null;
+    // Rows past the limit are never dropped silently: a "+N more" row says so and opens Details
+    const rows = all.slice(0, MINI_LIMITS.bar);
+    const hidden = all.length - rows.length;
     let top = 0;
     if (m.label) {
       out.push(headRow(W, m.label, ''));
@@ -154,13 +157,24 @@ function miniSvg(c, W) {
       out.push(`<g${hueAttr(r.hue)}><rect class="m-track" x="${x0}" y="${yy + 4}" width="${r1(x1 - x0)}" height="8" rx="2"/><rect class="m-bar" x="${x0}" y="${yy + 4}" width="${r1(bw)}" height="8" rx="2"><title>${h(`${r.l ? `${r.l}: ` : ''}${vals[i]}`)}</title></rect></g>`);
       out.push(txt(W, yy + 11.5, vals[i], 'm-value', { anchor: 'end' }));
     });
-    H = top + rows.length * MINI.row;
+    const barsEnd = top + rows.length * MINI.row;
+    H = barsEnd;
     if (m.target !== null && m.target >= 0) {
       const tx = r1(x0 + ((x1 - x0) * Math.min(m.target, max)) / max);
-      out.push(`<line class="m-target" x1="${tx}" x2="${tx}" y1="${top + 1}" y2="${H - 1}"><title>${h(`${chartWords().target}: ${fmt(m.target, m)}`)}</title></line>`);
+      out.push(`<line class="m-target" x1="${tx}" x2="${tx}" y1="${top + 1}" y2="${barsEnd - 1}"><title>${h(`${chartWords().target}: ${fmt(m.target, m)}`)}</title></line>`);
+    }
+    if (hidden > 0) {
+      const more = chartWords().more(hidden);
+      out.push(`<g class="m-more-row" data-more="1"><rect class="m-hit" x="0" y="${barsEnd}" width="${W}" height="${MINI.row}"/>${txt(x0, barsEnd + 11.5, more, 'm-more')}</g>`);
+      H = barsEnd + MINI.row;
     }
   } else if (m.kind === 'donut') {
-    const items = m.values.map((v, i) => ({ v, l: m.labels[i] || '', hue: m.hues[i] || SERIES_HUES[i % SERIES_HUES.length] })).filter((d) => d.v !== null && d.v > 0);
+    let items = m.values.map((v, i) => ({ v, l: m.labels[i] || '', hue: m.hues[i] || SERIES_HUES[i % SERIES_HUES.length] })).filter((d) => d.v !== null && d.v > 0);
+    // Shares add up, so slices past the limit merge into one "Other" slice (it opens Details)
+    if (items.length > MINI_LIMITS.donut) {
+      const rest = items.slice(MINI_LIMITS.donut - 1);
+      items = [...items.slice(0, MINI_LIMITS.donut - 1), { v: rest.reduce((a, d) => a + d.v, 0), l: chartWords().other, hue: 'slate', more: true }];
+    }
     const total = items.reduce((a, d) => a + d.v, 0);
     if (!(total > 0)) return null;
     const D = MINI.ring;
@@ -174,18 +188,21 @@ function miniSvg(c, W) {
       const tip = `<title>${h(`${d.l ? `${d.l}: ` : ''}${fmt(d.v, m)} (${Math.round(f * 100)}%)`)}</title>`;
       out.push(f > 0.9999
         ? `<circle class="m-ring"${hueAttr(d.hue)} cx="${c}" cy="${c}" r="${(r + ir) / 2}" stroke-width="${r - ir}">${tip}</circle>`
-        : `<path class="m-slice"${hueAttr(d.hue)} d="M${at(a, r)}A${r} ${r} 0 ${big} 1 ${at(b, r)}L${at(b, ir)}A${ir} ${ir} 0 ${big} 0 ${at(a, ir)}Z">${tip}</path>`);
+        : `<path class="m-slice"${hueAttr(d.hue)}${d.more ? ' data-more="1"' : ''} d="M${at(a, r)}A${r} ${r} 0 ${big} 1 ${at(b, r)}L${at(b, ir)}A${ir} ${ir} 0 ${big} 0 ${at(a, ir)}Z">${tip}</path>`);
       a = b;
     }
     const shown = items.slice(0, MINI_LIMITS.donut);
     const lx = D + 10;
     const pw = Math.ceil(textWidth('100%', 11));
     shown.forEach((d, i) => {
-      const yy = (D - shown.length * MINI.legendRow) / 2 + i * MINI.legendRow;
-      const top = Math.max(0, yy);
-      out.push(`<rect class="m-key"${hueAttr(d.hue)} x="${lx}" y="${r1(top + 3)}" width="8" height="8" rx="2"/>`);
-      out.push(txt(lx + 13, top + 10.5, truncate(d.l, Math.max(16, W - lx - 13 - pw - 6), 11), 'm-name'));
-      out.push(txt(W, top + 10.5, `${Math.round((d.v / total) * 100)}%`, 'm-label', { anchor: 'end' }));
+      // centred beside the donut; a legend taller than the donut starts at the top (rows never overlap)
+      const top = Math.max(0, (D - shown.length * MINI.legendRow) / 2) + i * MINI.legendRow;
+      const row = [
+        `<rect class="m-key"${hueAttr(d.hue)} x="${lx}" y="${r1(top + 3)}" width="8" height="8" rx="2"/>`,
+        txt(lx + 13, top + 10.5, truncate(d.l, Math.max(16, W - lx - 13 - pw - 6), 11), d.more ? 'm-more' : 'm-name'),
+        txt(W, top + 10.5, `${Math.round((d.v / total) * 100)}%`, 'm-label', { anchor: 'end' })
+      ].join('');
+      out.push(d.more ? `<g class="m-more-row" data-more="1"><rect class="m-hit" x="${lx}" y="${r1(top)}" width="${r1(W - lx)}" height="${MINI.legendRow}"/>${row}</g>` : row);
     });
     H = Math.max(D, shown.length * MINI.legendRow);
   } else if (m.kind === 'ring') {
@@ -420,7 +437,14 @@ export function checkCardChart(node) {
   if (m.kind === 'donut' && nums.some((v) => v < 0)) add('error', 'chart/negative', `Node "${id}" donut values must be 0 or more.`);
   else if (m.kind === 'donut' && !nums.some((v) => v > 0)) add('error', 'chart/negative', `Node "${id}" donut values add up to 0.`);
   const cap = MINI_LIMITS[m.kind];
-  if (m.values.length > cap) add('warning', 'chart/too-many-points', `Node "${id}" mini ${m.kind} chart has ${m.values.length} ${m.kind === 'donut' ? 'slices' : m.kind === 'bar' ? 'bars' : 'points'}; keep to ${cap} on a card${m.kind === 'bar' || m.kind === 'donut' ? ' (only the first ' + cap + ' are listed)' : ''}, or use a chart card.`);
+  if (m.values.length > cap) {
+    const n = m.values.length;
+    const what = m.kind === 'donut' ? 'slices' : m.kind === 'bar' ? 'bars' : 'points';
+    // A chart card takes the same data list as a mini bar chart, so showing every bar is one line
+    if (m.kind === 'bar') add('warning', 'chart/too-many-points', `Node "${id}" mini bar chart has ${n} bars; a card shows ${cap}, then a "+${n - cap} more" row that opens Details. ${n <= CHART_CARD_LIMITS.bandPoints ? 'To show them all, make it a chart card: add "shape": "chart" to the node; the data stays the same.' : `A chart card shows up to ${CHART_CARD_LIMITS.bandPoints}; for more, group the rest as "Other" or move the chart to a panel.`}`);
+    else if (m.kind === 'donut') add('warning', 'chart/too-many-points', `Node "${id}" mini donut chart has ${n} slices; a card shows ${cap - 1} and merges the rest into "Other" (Details lists all). To show each one, use "kind": "bar" (up to ${MINI_LIMITS.bar} on a card, ${CHART_CARD_LIMITS.bandPoints} on a chart card).`);
+    else add('warning', 'chart/too-many-points', `Node "${id}" mini ${m.kind} chart has ${n} ${what}; keep to ${cap} on a card: shorten the series, or make it a chart card ("shape": "chart").`);
+  }
   return out;
 }
 
@@ -467,7 +491,9 @@ const RULES = [
   ['.m-tick', (p) => ({ stroke: p.ink, 'stroke-width': 2, 'stroke-linecap': 'round' })],
   ['.m-tick-bar', (p) => ({ fill: p.ink })],
   ['.m-target', (p) => ({ stroke: p.ink2, 'stroke-width': 1, 'stroke-dasharray': '3 2' })],
-  ['.m-zero', (p) => ({ stroke: p.ink3, 'stroke-width': 1 })]
+  ['.m-zero', (p) => ({ stroke: p.ink3, 'stroke-width': 1 })],
+  ['text.m-more', (p) => ({ fill: p.ink2, 'font-weight': 600 })],
+  ['.m-hit', () => ({ fill: 'transparent' })]
 ];
 
 const VARS = { ink: 'var(--y-ink)', ink2: 'var(--y-ink-2)', ink3: 'var(--y-ink-3)', border: 'var(--y-border)', surface: 'var(--y-surface)', surface2: 'var(--y-surface-2)' };
@@ -478,6 +504,8 @@ export const CARD_CHART_CSS = [
   '.y-node-chart .y-cc{display:block;overflow:visible;color:var(--y-hue,var(--y-ink-3));font-variant-numeric:tabular-nums}',
   '.y-cc [data-hue]{color:var(--y-hue)}',
   '.y-cc text{font-family:inherit}',
+  '.y-cc [data-more]{cursor:pointer}',
+  '.y-cc .m-more-row:hover text.m-more{text-decoration:underline}',
   ...RULES.map(([sel, f]) => `.y-cc ${sel}{${Object.entries(f(VARS)).map(([k, v]) => `${k}:${v}`).join(';')}}`)
 ].join('\n');
 
@@ -498,7 +526,7 @@ export function inlineChart(svg, p, hue, color) {
     const classes = cm ? cm[1].split(/\s+/) : [];
     const props = {};
     for (const r of parsed) if ((!r.tag || r.tag === tag) && r.cls.every((c) => classes.includes(c)) && (r.tag || r.cls.length)) Object.assign(props, r.f(p));
-    let rest = attrs.replace(/ class="[^"]*"/, '').replace(/ data-hue="[^"]*"/, '').replace(/ data-[si]="[^"]*"/g, '');
+    let rest = attrs.replace(/ class="[^"]*"/, '').replace(/ data-hue="[^"]*"/, '').replace(/ data-(?:[si]|more)="[^"]*"/g, '');
     if (hm) props.color = hue(hm[1]);
     if (tag === 'svg' && classes.includes('y-cc')) props.color = color;
     // as in CSS, the rules win over the element's own presentation attributes

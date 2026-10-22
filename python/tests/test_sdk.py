@@ -21,7 +21,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "python"))
 
-from yantra import LANGUAGES, RTL_LANGUAGES, Diagram, builtin_language, Page, YantraError, blocks, field, is_rtl, method  # noqa: E402
+from yantra import LANGUAGES, RTL_LANGUAGES, Book, Diagram, builtin_language, Page, YantraError, blocks, field, is_rtl, method  # noqa: E402
 
 SCHEMAS = {p.name: json.loads(p.read_text(encoding="utf-8")) for p in (ROOT / "schemas").glob("*.json")}
 HAS_NODE = shutil.which("node") is not None and (ROOT / "node_modules").exists()
@@ -84,6 +84,7 @@ def full_diagram() -> Diagram:
     d.summary("Orders are validated, charged and stored.", points=["One API", "One database"],
               facts={"Owner": "Payments", "SLA": "99.9%"})
     d.watermark(False)
+    d.story("collapsed")
     d.role("client", "Client", "amber").role("service", "Service", "blue").role("data", "Data", "violet")
     d.add_mode("prod", "Production", badge="PROD", default=True)
     d.add_mode("local", "Local", badge="LOCAL", description="Docker Compose", hide_nodes=["queue"])
@@ -218,6 +219,9 @@ class PayloadShapeTests(unittest.TestCase):
         self.assertEqual(meta["layout"], {"direction": "LR"})
         self.assertEqual(meta["summary"]["facts"]["Owner"], "Payments")
         self.assertIs(meta["watermark"], False)
+        self.assertEqual(meta["story"], "collapsed")
+        with self.assertRaises(YantraError):
+            Diagram("x").story("hidden")
         self.assertEqual(meta["inspector"], {"tabs": ["summary", "node", "risks"], "labels": {"node": "Component"},
                                              "onNodeClick": "risks"})
         self.assertEqual(meta["defaultMode"], "prod")
@@ -419,6 +423,38 @@ class PayloadShapeTests(unittest.TestCase):
             d.add_step("S", url="javascript:x")
         self.assertEqual(blocks.diagram(drill_diagram(), level="payments")["level"], "payments")
 
+    def test_sections_and_thirds(self) -> None:
+        p = Page("How did support do?", title="Quarter").answer("Faster, but the backlog grew.")
+        for name in ("Speed", "Quality", "Load"):
+            p.metrics({name: "1"}, title=name, span="third")
+        p.section([blocks.text("Two changes."), blocks.callout("Watch the backlog.", span="half")],
+                  title="What changed", intro="Most of the gain.")
+        payload = p.to_dict()
+        self.assertEqual(check(payload, SCHEMAS["yantra-page.schema.json"], "yantra-page.schema.json"), [])
+        self.assertEqual(payload["blocks"][3]["type"], "section")
+        self.assertEqual(payload["blocks"][3]["blocks"][1]["span"], "half")
+        with self.assertRaises(ValueError):
+            blocks.section([blocks.section([blocks.text("x")])])
+        with self.assertRaises(ValueError):
+            blocks.text("x", span="quarter")
+
+    def test_book_payload(self) -> None:
+        intro = Page("What is a saga?", title="Sagas").answer("Local steps, each one undoable.")
+        intro.reading("present")
+        book = Book("Checkout, end to end", description="How checkout works.").summary("Approved fast, settled overnight.")
+        book.chapter(intro).chapter("answer-incident-review.json").reading("scroll")
+        payload = book.to_dict()
+        self.assertEqual(check(payload, SCHEMAS["yantra-book.schema.json"], "yantra-book.schema.json"), [])
+        self.assertNotIn("kind", payload["chapters"][0])
+        self.assertEqual(payload["chapters"][1], {"$ref": "answer-incident-review.json"})
+        self.assertEqual(payload["meta"]["reading"], "scroll")
+        with self.assertRaises(YantraError):
+            Book("Empty").to_dict()
+        with self.assertRaises(YantraError):
+            Book("x").chapter({"kind": "book"})
+        with self.assertRaises(YantraError):
+            Book("x").reading("slides")
+
     def test_diagram_block_sources(self) -> None:
         self.assertEqual(blocks.diagram("diagrams/a.json")["src"], "diagrams/a.json")
         self.assertIn("diagram", blocks.diagram({"meta": {"title": "x"}, "nodes": [], "edges": []}))
@@ -500,6 +536,17 @@ class CliTests(unittest.TestCase):
     def assertClean(self, report: Dict[str, Any]) -> None:
         self.assertTrue(report["valid"], report)
         self.assertEqual(report["errors"], [])
+
+    def test_book_builds_with_chapter_files(self) -> None:
+        intro = Page("What does this book cover?").answer("Card payments, our saga and one incident.")
+        book = Book("Checkout, end to end", base_dir=str(ROOT / "examples")).chapter(intro)
+        book.chapter("answer-card-payment-journey.json").chapter("answer-checkout-saga.json")
+        self.assertClean(book.validate())
+        html = Path(book.build_html(os.path.join(self.tmp, "book.html"))).read_text(encoding="utf-8")
+        self.assertIn('id="c3"', html)
+        self.assertIn("p-reader", html)
+        missing = Book("Broken", base_dir=self.tmp).chapter("nowhere.json")
+        self.assertIn("book/chapter-unresolved", [f["code"] for f in missing.validate()["errors"]])
 
     def test_diagram_validates(self) -> None:
         self.assertClean(full_diagram().validate())

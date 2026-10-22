@@ -75,6 +75,15 @@
         "toc": {
           "type": "boolean",
           "description": "true shows a contents row linking to every titled block; false hides it. Default: shown from 6 titled blocks."
+        },
+        "reading": {
+          "enum": [
+            "scroll",
+            "book",
+            "present"
+          ],
+          "default": "scroll",
+          "description": "How the page opens: scroll (one long page), book (one screen at a time, like an e-reader) or present (one row of blocks per slide). Readers can switch; their choice and place are kept in their browser, and #read= / #at= in the URL override both."
         }
       }
     },
@@ -130,7 +139,8 @@
               "image",
               "kv",
               "gantt",
-              "matrix"
+              "matrix",
+              "section"
             ]
           },
           "title": {
@@ -140,10 +150,23 @@
           "span": {
             "enum": [
               "full",
-              "half"
+              "half",
+              "third"
             ],
             "default": "full",
-            "description": "half puts two blocks side by side on wide screens."
+            "description": "half puts two blocks side by side on wide screens, third three; below 760px every block takes the full width."
+          },
+          "blocks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/properties/blocks/items"
+            },
+            "description": "section: the blocks under its title, in their own row (span half / third work inside it). One level: no section inside a section. They count towards the page's block budget."
+          },
+          "intro": {
+            "type": "string",
+            "description": "section: a short paragraph under its title (light markdown)."
           },
           "body": {
             "type": "string",

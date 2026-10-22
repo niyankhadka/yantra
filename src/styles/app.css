@@ -862,28 +862,65 @@ kbd {
   background: none;
 }
 
-/* Collapsed: one compact row - count, title, back/next */
+/* Collapsed: one slim bar - count, step title, back / next, present, expand */
+.y-story.is-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(560px, calc(100vw - 24px));
+  padding: 6px 8px;
+  padding-inline-start: 14px;
+}
+
+.y-story.is-collapsed .y-story-head,
+.y-story.is-collapsed .y-story-body,
+.y-story.is-collapsed .y-story-controls {
+  display: contents;
+}
+
 .y-story.is-collapsed .y-steps,
+.y-story.is-collapsed .y-spacer,
 .y-story.is-collapsed .y-story-body p,
 .y-story.is-collapsed .y-story-body .y-link,
 .y-story.is-collapsed #btn-play,
 .y-story.is-collapsed #speed-select,
 .y-story.is-collapsed #btn-restart,
 .y-story.is-collapsed #scenario-select,
-.y-story.is-collapsed #btn-follow {
+.y-story.is-collapsed #btn-follow,
+.y-story.is-collapsed #btn-prev span {
   display: none;
 }
 
+.y-story.is-collapsed #story-count {
+  order: 1;
+}
+
 .y-story.is-collapsed .y-story-body h2 {
-  margin: 4px 0 0;
+  flex: 1;
+  order: 2;
+  min-width: 0;
+  margin: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: 13.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.y-story.is-collapsed .y-story-controls {
-  margin-top: 8px;
+.y-story.is-collapsed #btn-prev {
+  order: 3;
+  padding-inline: 8px;
+}
+
+.y-story.is-collapsed #btn-next {
+  order: 4;
+}
+
+.y-story.is-collapsed #btn-present {
+  order: 5;
+}
+
+.y-story.is-collapsed #btn-story-toggle {
+  order: 6;
 }
 
 .y-story.is-collapsed #btn-story-toggle svg {

@@ -30,6 +30,7 @@ export const CHART_STRINGS = {
   noData: 'No data to chart.',
   target: 'Target',
   remaining: 'Remaining',
+  other: 'Other',
   series: (n) => `Series ${n}`,
   more: (n) => `+${n} more`,
   days: (n) => `${n} day${n === 1 ? '' : 's'}`,
@@ -63,7 +64,7 @@ export function chartStringsFor(L) {
     }
   }
   const kinds = Object.fromEntries(Object.keys(CHART_STRINGS.kinds).map((k) => [k, t(`chart.kind.${k}`)]));
-  const words = ['total', 'today', 'value', 'share', 'task', 'group', 'start', 'end', 'after', 'milestone', 'item', 'noData', 'target', 'remaining'];
+  const words = ['total', 'today', 'value', 'share', 'task', 'group', 'start', 'end', 'after', 'milestone', 'item', 'noData', 'target', 'remaining', 'other'];
   return {
     ...Object.fromEntries(words.map((w) => [w, t(`chart.${w}`)])),
     day: t('chart.day', { n: '' }).trim(),
