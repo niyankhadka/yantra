@@ -44,6 +44,8 @@ Using Yantra in another project: `npx @niyankhadka/yantra init` installs the por
   `dist-pages/` (`npm run build:site`, `npm run dev:site`); `tests/site.test.js` checks every link.
 - `playground/` - browser playground for JSON from AI chats;
   `chat/` - chat packs (prompt, Claude.ai skill, custom GPT; `npm run pack:skill`). See `docs/chat.md`.
+- `scripts/video/` - the teaser render pipeline (voice-over, storyboard, scenes); outputs and the promo
+  go to `site/assets/video/`, served by the website at `/video/`.
 - `npm test` must pass; every file in `examples/` must validate with zero warnings. CI:
   `.github/workflows/ci.yml` (Node 20/22/24, Windows, Python 3.9/3.12).
 - After editing the skill, copy `.claude/skills/yantra/SKILL.md` to `.agents/skills/yantra/SKILL.md`

@@ -479,6 +479,32 @@ kbd {
   box-shadow: var(--y-shadow);
 }
 
+/* --- landing: teaser video ----------------------------------------------------------------- */
+.teaser {
+  padding: 12px 0 36px;
+}
+
+.teaser .section-title {
+  text-align: center;
+}
+
+.teaser-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--y-border);
+  border-radius: 16px;
+  background: var(--y-surface);
+}
+
+.teaser-more {
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--y-ink-2);
+  font-size: 15px;
+}
+
 /* --- landing: live demo -------------------------------------------------------------------- */
 .demo {
   padding: 12px 0 24px;
@@ -806,6 +832,12 @@ kbd {
   grid-row: span 3;
 }
 
+.uses {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
 .tool h3 {
   margin: 0 0 6px;
   font-size: 1.12rem;
@@ -1065,6 +1097,16 @@ kbd {
     grid-row: auto;
   }
 
+  .uses {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (max-width: 640px) {
+  .uses {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 600px) {

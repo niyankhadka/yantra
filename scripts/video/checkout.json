@@ -1,0 +1,17 @@
+{
+  "meta": { "title": "Checkout", "description": "How an order is paid and stored." },
+  "nodes": [
+    { "id": "web", "type": "client", "data": { "title": "Web app", "subtitle": "Customer checkout" } },
+    { "id": "api", "type": "service", "data": { "title": "Orders API", "tech": "Go" } },
+    { "id": "db", "type": "data", "data": { "title": "Orders DB", "tech": "PostgreSQL", "icon": "database" } }
+  ],
+  "edges": [
+    { "id": "web-api", "source": "web", "target": "api", "label": "POST /orders" },
+    { "id": "api-db", "source": "api", "target": "db", "label": "INSERT order" }
+  ],
+  "steps": [
+    { "title": "Overview" },
+    { "title": "Submit", "highlightNodes": ["web", "api"], "highlightEdges": ["web-api"] },
+    { "title": "Persist", "highlightNodes": ["api", "db"], "highlightEdges": ["api-db"] }
+  ]
+}

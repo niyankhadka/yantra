@@ -12,7 +12,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8')
 export const SITE = {
   url: 'https://yantra.nbk.com.np',
   name: 'Yantra',
-  tagline: 'Interactive, step-by-step diagrams and one-page answers, shipped as one offline HTML file.',
+  tagline: 'Diagrams that explain, one step at a time: written by you or your AI, checked before anyone reads them.',
   version: pkg.version,
   repo: 'https://github.com/niyankhadka/yantra',
   branch: 'main',

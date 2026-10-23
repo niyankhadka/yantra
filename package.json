@@ -2,7 +2,7 @@
   "name": "@niyankhadka/yantra",
   "version": "1.2.0",
   "type": "module",
-  "description": "Interactive, step-by-step diagrams and one-page answers from JSON: automatic layout, orthogonal edge routing and a validator. One offline HTML file; CLI, MCP server and browser playground.",
+  "description": "Make your AI show its work: interactive, step-by-step diagrams, answer pages and books from a short JSON description, written by you or your coding agent. Automatic layout and a validator; CLI, MCP server, playground and Python SDK.",
   "keywords": [
     "diagram",
     "architecture-diagram",

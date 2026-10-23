@@ -24,3 +24,7 @@ skill in `.claude/skills/yantra/`; the MCP server is registered in `.mcp.json`.
 - Geometry logic lives only in `src/core/`; the browser, CLI and MCP all call it.
 - Brand logos live in `src/assets/logo-light.svg` (light theme) and `logo-dark.svg` (dark theme).
 - Keep `.claude/skills/yantra/SKILL.md` and `.agents/skills/yantra/SKILL.md` identical.
+- Promo videos: published files in `site/assets/video/` (served at `/video/`), named `<name>-v<x.y.z>`
+  with their own version (`VERSION` in `scripts/video/make.mjs`; keep only the newest); the teaser renders with
+  `node scripts/video/make.mjs` (`scripts/video/README.md`). When using the brag / brag-slim skills,
+  write deliverables there and intermediates to the system temp folder: never create `brag-output/`.

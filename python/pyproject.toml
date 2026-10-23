@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "niyankhadka-yantra"
 version = "1.2.0"
-description = "Build Yantra step-by-step diagrams and one-page answers from Python; compiled to single offline HTML files by the Yantra CLI (Node.js >= 20.19)."
+description = "Build Yantra diagrams, answer pages and books from Python: explanations readers step through, validated and built by the Yantra CLI (Node.js >= 20.19)."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
