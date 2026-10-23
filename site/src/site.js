@@ -103,6 +103,70 @@ for (const block of document.querySelectorAll('.code')) {
   block.append(b);
 }
 
+// --- tabs and the "How it works" stepper (landing page); without JS every panel shows
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+for (const box of document.querySelectorAll('[data-tabs]')) {
+  const tabs = [...box.querySelectorAll('[role="tab"]')];
+  const vertical = box.querySelector('[role="tablist"]').getAttribute('aria-orientation') === 'vertical';
+  let current = 0;
+  const select = (i, focus) => {
+    current = i;
+    tabs.forEach((t, k) => {
+      t.setAttribute('aria-selected', String(k === i));
+      t.tabIndex = k === i ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = k !== i;
+    });
+    if (focus) tabs[i].focus();
+  };
+  // Autoplay (the stepper): advance while on screen, stop for good once the reader takes over
+  const delay = Number(box.dataset.autoplay) || 0;
+  let timer = null;
+  const stop = () => { clearInterval(timer); timer = null; box.classList.remove('is-auto'); };
+  const takeOver = () => { stop(); box.dataset.autoplay = ''; };
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => { takeOver(); select(i, false); });
+    tab.addEventListener('keydown', (e) => {
+      const keys = vertical ? { ArrowDown: i + 1, ArrowUp: i - 1 } : { ArrowRight: i + 1, ArrowLeft: i - 1 };
+      const to = { ...keys, Home: 0, End: tabs.length - 1 }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      takeOver();
+      select((to + tabs.length) % tabs.length, true);
+    });
+  });
+  select(Math.max(0, tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true')), false);
+  box.classList.add('is-ready');
+  if (delay && !calm && 'IntersectionObserver' in window) {
+    box.style.setProperty('--autoplay', `${delay}ms`);
+    const start = () => {
+      if (timer || !box.dataset.autoplay) return;
+      box.classList.add('is-auto');
+      timer = setInterval(() => select((current + 1) % tabs.length, false), delay);
+    };
+    new IntersectionObserver((entries) => (entries[0].isIntersecting ? start() : stop()), { threshold: 0.4 }).observe(box);
+    box.addEventListener('focusin', takeOver);
+  }
+}
+
+// --- teaser player: a large play button over the poster, then the native controls
+for (const player of document.querySelectorAll('[data-player]')) {
+  const video = player.querySelector('video');
+  const play = player.querySelector('.player-play');
+  video.controls = false;
+  play.hidden = false;
+  play.addEventListener('click', () => {
+    play.hidden = true;
+    video.controls = true;
+    video.play();
+    video.focus();
+  });
+  video.addEventListener('ended', () => {
+    video.controls = false;
+    play.querySelector('strong').textContent = 'Watch again';
+    play.hidden = false;
+  });
+}
+
 // --- live demo (landing page) -----------------------------------------------------
 const stage = document.querySelector('[data-demo]');
 if (stage) {
