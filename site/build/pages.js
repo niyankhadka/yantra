@@ -252,6 +252,8 @@ const PAGE_CHIPS = [
 ];
 
 const FAQ = [
+  ['What is Yantra?', '<p>An open-source explanation engine. You describe a system, a process or a decision in a few lines of JSON, or ask your coding agent or AI chat to. Yantra lays it out, checks it with a validator and turns it into a walkthrough readers can step through: a diagram, an answer page or a book, in one HTML file.</p>'],
+  ['How is it different from Mermaid or draw.io?', '<p>In draw.io you place every box by hand. Mermaid draws from text, but you get a picture rather than a story. Yantra adds walkthrough steps, answer pages and books, and a validator that checks the rendered result: overlaps, edges through cards and label collisions. It also imports Mermaid, PlantUML, draw.io and Visio files, so you can start from what you have.</p>'],
   ['Do the files really work offline?', '<p>Yes. <code>yantra build</code> writes one HTML file with the viewer, its styles and your data inlined. It makes no network requests, so it opens from an email attachment, a ticket or a USB stick. The playground also keeps working offline once it has loaded.</p>'],
   ['What does it cost, and what is the licence?', `<p>Nothing. Yantra is open source under the <a href="${SITE.repo}/blob/${SITE.branch}/LICENSE">MIT licence</a>, so you can use it at work and in commercial projects. The Yantra name and logo are covered by the <a href="${SITE.repo}/blob/${SITE.branch}/TRADEMARKS.md">trademark policy</a>. If it helps you, you can <a href="${SITE.sponsor}">sponsor the project</a>.</p>`],
   ['Where does my data go?', '<p>Nowhere. The CLI, the MCP server and the Python SDK run on your machine. The playground validates and renders in your browser and uploads nothing. Built files make no external requests. This website loads no analytics or third-party scripts; it only remembers your colour theme in your browser.</p>'],
@@ -276,7 +278,20 @@ async function starCount() {
   }
 }
 
-const LANDING_DESCRIPTION = 'Yantra turns JSON into interactive, step-by-step diagrams and one-page answers: one offline HTML file with automatic layout, routed edges and a validator.';
+const LANDING_DESCRIPTION = 'Make your AI show its work: Yantra turns a description from you or your coding agent into checked, step-by-step diagrams, one-page answers and books.';
+
+/**
+ * Promo videos in site/assets/video/ are named <name>-v<major.minor.patch>.mp4 (with a .jpg poster);
+ * the newest version of a name, e.g. 'yantra-teaser-v1.0.0', or null when there is none.
+ */
+const VIDEO_DIR = path.join(ROOT, 'site', 'assets', 'video');
+function latestVideo(name) {
+  if (!fs.existsSync(VIDEO_DIR)) return null;
+  const re = new RegExp(`^${name}-v(\\d+)\\.(\\d+)\\.(\\d+)\\.mp4$`);
+  const found = fs.readdirSync(VIDEO_DIR).map((f) => f.match(re)).filter(Boolean)
+    .sort((a, b) => (a[1] - b[1]) || (a[2] - b[2]) || (a[3] - b[3]));
+  return found.length ? found.at(-1)[0].replace(/\.mp4$/, '') : null;
+}
 
 const stripHtml = (html) => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
 
@@ -339,14 +354,16 @@ function landing({ assets, thumbs, stars }) {
   const strip = STRIP.map(([id, name, tag]) => `<li><a class="ex" href="/playground/#example=${id}"><span class="ex-media">${themedImg(`/thumbs/${id}`, `${name} diagram`, thumbs[id])}</span><span class="ex-name">${esc(name)}</span><span class="ex-tag">${esc(tag)}</span></a></li>`).join('\n');
   const chips = PAGE_CHIPS.map(([id, name]) => `<li><a class="chip" href="/playground/#example=${id}">${esc(name)}</a></li>`).join('\n');
   const faq = FAQ.map(([q, a]) => `<details class="faq-item"><summary>${esc(q)}</summary>${a}</details>`).join('\n');
+  const teaser = latestVideo('yantra-teaser');
+  const promo = latestVideo('yantra-promo');
   const starLabel = stars === null ? 'Star on GitHub' : `Star on GitHub <span class="count">${stars.toLocaleString('en-GB')}</span>`;
 
   const body = `<main id="main" class="landing">
 <section class="hero">
   <div class="wrap hero-in">
     <p class="kicker">Open source · MIT · v${esc(SITE.version)}</p>
-    <h1>Diagrams that explain, one step at a time.</h1>
-    <p class="lede">Describe the parts of a system or process, how they connect and the story to tell. Yantra lays it out, routes the edges, checks the geometry and writes <strong>one offline HTML file</strong> with a walkthrough readers can step through.</p>
+    <h1>Make your AI show its work.</h1>
+    <p class="lede"><strong>Diagrams that explain, one step at a time.</strong> Ask your coding agent or AI chat how something works, or describe it yourself in a few lines of JSON. Yantra lays it out, checks it and turns it into a walkthrough anyone can follow: diagrams, one-page answers and books, shared as one file.</p>
     <div class="cta">
       <a class="btn btn-primary" href="/playground/">Open the playground ${ICON.arrow}</a>
       <a class="btn" href="${guideUrl('first-diagram')}">Get started</a>
@@ -355,6 +372,17 @@ function landing({ assets, thumbs, stars }) {
     <div class="hero-install">${codeBlock('npx @niyankhadka/yantra new diagram.json', 'bash')}</div>
   </div>
 </section>
+
+${teaser ? `<section class="teaser" id="teaser" aria-labelledby="teaser-title">
+  <div class="wrap">
+    <h2 id="teaser-title" class="section-title">See it in 42 seconds</h2>
+    <video class="teaser-video" controls playsinline preload="none" poster="/video/${teaser}.jpg" width="1920" height="1080">
+      <source src="/video/${teaser}.mp4" type="video/mp4">
+      <a href="/video/${teaser}.mp4">Watch the teaser</a>
+    </video>
+    ${promo ? `<p class="teaser-more">Want the longer version? <a href="/video/${promo}.mp4">Watch the full promo</a> (68 seconds).</p>` : ''}
+  </div>
+</section>` : ''}
 
 <section class="demo" aria-labelledby="demo-title">
   <div class="wrap">
@@ -377,27 +405,61 @@ function landing({ assets, thumbs, stars }) {
 <section class="section" aria-labelledby="how-title">
   <div class="wrap">
     <h2 id="how-title" class="section-title">How it works</h2>
-    <p class="section-lede">No canvas, no dragging boxes. You describe the content; Yantra does the drawing and checks it.</p>
+    <p class="section-lede">Diagrams drawn by hand take hours and go stale; diagrams from AI overlap and point nowhere. With Yantra you describe the content, and it does the drawing, the checking and the walkthrough.</p>
     <ol class="how">
       <li>
         <span class="how-n" aria-hidden="true">1</span>
-        <h3>Describe</h3>
+        <h3>Describe it</h3>
         <p>Nodes, edges and walkthrough steps in JSON, with no coordinates. Write it yourself, ask your coding agent or chat, or import a Mermaid, PlantUML, draw.io or Visio sketch.</p>
         ${codeBlock('{ "id": "api", "type": "service",\n  "data": { "title": "Orders API" } }', 'json')}
       </li>
       <li>
         <span class="how-n" aria-hidden="true">2</span>
-        <h3>Validate</h3>
-        <p>The validator checks the schema, references and story, then the rendered geometry: overlaps, edges through cards, label collisions. Every finding has a stable code.</p>
+        <h3>Yantra checks it</h3>
+        <p>The validator checks the schema, references and story, then the rendered geometry: overlaps, edges through cards, label collisions. Every finding has a stable code, so an agent can fix its own mistakes.</p>
         ${codeBlock('yantra validate diagram.json', 'bash')}
       </li>
       <li>
         <span class="how-n" aria-hidden="true">3</span>
-        <h3>Ship one file</h3>
-        <p>One HTML file that works offline, with light and dark themes, a walkthrough and links that reopen a step. Export SVG, PNG or Markdown too.</p>
+        <h3>Share it anywhere</h3>
+        <p>Readers step through the story in one HTML file that works offline, with light and dark themes and links that reopen a step. Export SVG, PNG or Markdown too.</p>
         ${codeBlock('yantra build diagram.json', 'bash')}
       </li>
     </ol>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="uses-title">
+  <div class="wrap">
+    <h2 id="uses-title" class="section-title">What people explain with Yantra</h2>
+    <p class="section-lede">The same walkthrough works for a codebase, an incident or a lesson.</p>
+    <div class="uses">
+      <article class="tool">
+        <h3>Developers with a coding agent</h3>
+        <p>"How does this codebase work?", answered as a walkthrough instead of a wall of text.</p>
+        <a class="more" href="${guideUrl('coding-agents')}">Diagrams from your codebase ${ICON.arrow}</a>
+      </article>
+      <article class="tool">
+        <h3>Tech leads and architects</h3>
+        <p>Architecture reviews and onboarding that a new hire can step through on day one.</p>
+        <a class="more" href="/playground/#example=platform-overview">Open a platform overview ${ICON.arrow}</a>
+      </article>
+      <article class="tool">
+        <h3>SRE and incident teams</h3>
+        <p>Postmortems with the timeline, the cause and the fix on one page.</p>
+        <a class="more" href="/playground/#example=answer-incident-review">Open an incident review ${ICON.arrow}</a>
+      </article>
+      <article class="tool">
+        <h3>Teachers and technical writers</h3>
+        <p>Lessons and processes, one step or one chapter at a time, read like an e-reader.</p>
+        <a class="more" href="/playground/#example=book-checkout-explained">Open a book ${ICON.arrow}</a>
+      </article>
+      <article class="tool">
+        <h3>Mermaid, PlantUML, draw.io and Visio users</h3>
+        <p>Bring the diagrams you already have and turn them into a story.</p>
+        <a class="more" href="${guideUrl('import')}">Import a diagram ${ICON.arrow}</a>
+      </article>
+    </div>
   </div>
 </section>
 
@@ -493,7 +555,7 @@ ${faq}
 
 <section class="section closing">
   <div class="wrap closing-in">
-    <h2>Explain your next system in one file.</h2>
+    <h2>Don't draw it. Explain it.</h2>
     <div class="cta">
       <a class="btn btn-primary" href="/playground/">Open the playground ${ICON.arrow}</a>
       <a class="btn" href="/docs/">Read the docs</a>
@@ -725,6 +787,17 @@ export function staticFiles() {
   }
   files['social-preview.png'] = fs.readFileSync(path.join(ROOT, 'docs', 'images', 'social-preview.png'));
   for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png']) files[f] = fs.readFileSync(path.join(ROOT, 'site', 'assets', f));
+  // promo videos, posters and the README preview, served at /video/; the newest poster and preview
+  // also at stable addresses (/video/<name>.jpg, /video/yantra-teaser-preview.webp) so the README
+  // never needs a version bump
+  if (fs.existsSync(VIDEO_DIR)) for (const f of fs.readdirSync(VIDEO_DIR).filter((x) => /\.(mp4|jpg|webp)$/.test(x))) files[`video/${f}`] = fs.readFileSync(path.join(VIDEO_DIR, f));
+  for (const name of ['yantra-teaser', 'yantra-teaser-vertical', 'yantra-promo']) {
+    const latest = latestVideo(name);
+    if (latest && files[`video/${latest}.jpg`]) files[`video/${name}.jpg`] = files[`video/${latest}.jpg`];
+  }
+  const teaser = latestVideo('yantra-teaser');
+  const preview = teaser && `video/${teaser.replace('yantra-teaser-', 'yantra-teaser-preview-')}.webp`;
+  if (preview && files[preview]) files['video/yantra-teaser-preview.webp'] = files[preview];
   files['manifest.webmanifest'] = `${JSON.stringify({
     name: 'Yantra',
     short_name: 'Yantra',

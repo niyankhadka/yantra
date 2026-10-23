@@ -163,3 +163,10 @@ __pycache__/
 # Playground build (GitHub Pages) and chat packs
 dist-pages
 dist-chat
+
+# Promo video renders (scripts/video/make.mjs writes intermediates to temp)
+# and the third-party brag-slim skill (local authoring aid, installed with `npx skills add`)
+.claude/skills/brag-slim/
+skills-lock.json
+brag-output/
+brag-output-*/
