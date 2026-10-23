@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "title": "Smart thermostat launch plan",
+    "description": "Launch plan for Fernwood Home's Ember thermostat, as a mind map: product readiness, marketing, sales channels and support, around one launch date.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "mindmap"
+    },
+    "summary": {
+      "headline": "Ship Ember on 3 March with stock in two retailers, a press preview and a support team trained a fortnight early.",
+      "points": [
+        "Firmware freeze six weeks out; nothing new after that.",
+        "Press and creators get units before the public does.",
+        "Support is trained before the first box is sold."
+      ],
+      "facts": {
+        "Launch day": "03/03/2027",
+        "Launch stock": "12,000 units"
+      }
+    }
+  },
+  "roles": {
+    "goal": { "label": "Goal", "color": "violet", "icon": "flag" },
+    "branch": { "label": "Workstream", "color": "blue" },
+    "item": { "label": "Task", "color": "slate" }
+  },
+  "nodes": [
+    { "id": "launch", "type": "goal", "width": 240, "data": { "title": "Launch the Ember thermostat", "subtitle": "UK release, 3 March", "badge": "Goal" } },
+    { "id": "product", "type": "branch", "data": { "title": "Product", "subtitle": "Ready to ship", "icon": "package" } },
+    { "id": "firmware", "type": "item", "width": 200, "data": { "title": "Firmware freeze", "subtitle": "Bug fixes only after this", "badge": "Week -6" } },
+    { "id": "certification", "type": "item", "width": 200, "data": { "title": "UKCA certification", "subtitle": "Radio and electrical safety", "badge": "Week -8" } },
+    { "id": "packaging", "type": "item", "width": 200, "data": { "title": "Packaging and manual", "subtitle": "Quick-start in four steps", "badge": "Week -5" } },
+    { "id": "marketing", "type": "branch", "data": { "title": "Marketing", "subtitle": "Make people want it", "icon": "zap" } },
+    { "id": "press", "type": "item", "width": 200, "data": { "title": "Press preview", "subtitle": "20 review units, embargo", "badge": "Week -3" } },
+    { "id": "creators", "type": "item", "width": 200, "data": { "title": "Creator videos", "subtitle": "Install guides on YouTube", "badge": "Week -1" } },
+    { "id": "page", "type": "item", "width": 200, "data": { "title": "Launch page", "subtitle": "Savings calculator, pre-orders", "badge": "Week -2" } },
+    { "id": "sales", "type": "branch", "data": { "title": "Sales channels", "subtitle": "Where it is sold", "icon": "globe" } },
+    { "id": "online", "type": "item", "width": 200, "data": { "title": "Own web shop", "subtitle": "Pre-orders ship on day one", "badge": "Day 0" } },
+    { "id": "retail", "type": "item", "width": 200, "data": { "title": "Two retail partners", "subtitle": "Shelf space in 140 stores", "badge": "Week -4" } },
+    { "id": "installers", "type": "item", "width": 200, "data": { "title": "Installer network", "subtitle": "Fitted by trained engineers", "badge": "Week -2" } },
+    { "id": "support", "type": "branch", "data": { "title": "Support", "subtitle": "Help after purchase", "icon": "heart" } },
+    { "id": "training", "type": "item", "width": 200, "data": { "title": "Train the support team", "subtitle": "Wiring, Wi-Fi, app pairing", "badge": "Week -2" } },
+    { "id": "helpcentre", "type": "item", "width": 200, "data": { "title": "Help centre articles", "subtitle": "Top 25 questions answered", "badge": "Week -1" } },
+    { "id": "returns", "type": "item", "width": 200, "data": { "title": "Returns process", "subtitle": "30 days, prepaid label", "badge": "Day 0" } }
+  ],
+  "edges": [
+    { "id": "launch-product", "source": "launch", "target": "product" },
+    { "id": "product-firmware", "source": "product", "target": "firmware" },
+    { "id": "product-certification", "source": "product", "target": "certification" },
+    { "id": "product-packaging", "source": "product", "target": "packaging" },
+    { "id": "launch-marketing", "source": "launch", "target": "marketing" },
+    { "id": "marketing-press", "source": "marketing", "target": "press" },
+    { "id": "marketing-creators", "source": "marketing", "target": "creators" },
+    { "id": "marketing-page", "source": "marketing", "target": "page" },
+    { "id": "launch-sales", "source": "launch", "target": "sales" },
+    { "id": "sales-online", "source": "sales", "target": "online" },
+    { "id": "sales-retail", "source": "sales", "target": "retail" },
+    { "id": "sales-installers", "source": "sales", "target": "installers" },
+    { "id": "launch-support", "source": "launch", "target": "support" },
+    { "id": "support-training", "source": "support", "target": "training" },
+    { "id": "support-helpcentre", "source": "support", "target": "helpcentre" },
+    { "id": "support-returns", "source": "support", "target": "returns" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "The launch, workstream by workstream",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "One launch date in the centre and four workstreams around it. Badges count weeks back from launch day." },
+        { "id": "product", "title": "Product", "description": "Certification comes first, then the firmware freeze; packaging is printed once the quick-start steps are final.", "highlightNodes": ["launch", "product", "firmware", "certification", "packaging"], "highlightEdges": ["launch-product", "product-firmware", "product-certification", "product-packaging"] },
+        { "id": "marketing", "title": "Marketing", "description": "Reviewers get units three weeks early under embargo; the launch page takes pre-orders a fortnight out.", "highlightNodes": ["launch", "marketing", "press", "creators", "page"], "highlightEdges": ["launch-marketing", "marketing-press", "marketing-creators", "marketing-page"] },
+        { "id": "sales", "title": "Sales channels", "description": "Retail stock must be in warehouses a month ahead; installers are the channel for customers who will not wire it themselves.", "highlightNodes": ["launch", "sales", "online", "retail", "installers"], "highlightEdges": ["launch-sales", "sales-online", "sales-retail", "sales-installers"] },
+        { "id": "support", "title": "Support", "description": "The team is trained before launch and the help centre covers the questions beta testers asked most.", "highlightNodes": ["launch", "support", "training", "helpcentre", "returns"], "highlightEdges": ["launch-support", "support-training", "support-helpcentre", "support-returns"] }
+      ]
+    }
+  ]
+}

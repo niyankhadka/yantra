@@ -73,6 +73,9 @@ taller than the screen scrolls on its own page.
 3. Keep interactive diagrams to the chapters that need them (at most 2 per chapter); static
    figures print and load faster.
 4. More than 12 chapters is documentation: split it into books, or use a docs site.
+5. A chapter that some readers need to go deeper on can keep **detail pages** (a `details`
+   map, opened from blocks with `"detail": "id"`; see [Answer pages](pages.md)). Each
+   chapter's details are its own; their back bar returns to the chapter.
 
 ## Validation codes
 

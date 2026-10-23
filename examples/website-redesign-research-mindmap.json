@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "title": "Council website redesign: research themes",
+    "description": "What user research found before Ashbridge District Council redesigns its website, as a mind map: finding things, paying and applying, access needs and trust.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "mindmap"
+    },
+    "summary": {
+      "headline": "Residents come to do one task; search, plain forms and mobile pages matter more than a new look.",
+      "points": [
+        "Bin collection and council tax are 40% of all visits.",
+        "Most residents arrive on a phone, from a search engine.",
+        "Screen reader users fail at the PDF forms."
+      ],
+      "facts": {
+        "Interviews": "24 residents",
+        "Survey replies": "1,180"
+      }
+    }
+  },
+  "roles": {
+    "goal": { "label": "Goal", "color": "violet", "icon": "flag" },
+    "branch": { "label": "Theme", "color": "blue" },
+    "item": { "label": "Finding", "color": "slate" }
+  },
+  "nodes": [
+    { "id": "goal", "type": "goal", "width": 240, "data": { "title": "Redesign the council website", "subtitle": "What residents told us", "badge": "Research" } },
+    { "id": "finding", "type": "branch", "data": { "title": "Finding things", "subtitle": "Navigation and search", "icon": "crosshair" } },
+    { "id": "search", "type": "item", "width": 200, "data": { "title": "Search fails on plain words", "subtitle": "\"Bins\" finds nothing useful", "badge": "18 of 24" } },
+    { "id": "menus", "type": "item", "width": 200, "data": { "title": "Menus mirror departments", "subtitle": "Not the tasks people have", "badge": "Card sort" } },
+    { "id": "mobile", "type": "item", "width": 200, "data": { "title": "Mostly on phones", "subtitle": "Tables do not fit", "badge": "71% of visits" } },
+    { "id": "tasks", "type": "branch", "data": { "title": "Paying and applying", "subtitle": "Getting a task done", "icon": "credit-card" } },
+    { "id": "counciltax", "type": "item", "width": 200, "data": { "title": "Council tax account", "subtitle": "Login lost after 10 minutes", "badge": "Top task" } },
+    { "id": "forms", "type": "item", "width": 200, "data": { "title": "Long forms", "subtitle": "No save and return", "badge": "Survey" } },
+    { "id": "status", "type": "item", "width": 200, "data": { "title": "No progress updates", "subtitle": "People phone to check", "badge": "Call logs" } },
+    { "id": "access", "type": "branch", "data": { "title": "Access needs", "subtitle": "Everyone can use it", "icon": "user" } },
+    { "id": "pdfs", "type": "item", "width": 200, "data": { "title": "PDF forms", "subtitle": "Unreadable by screen readers", "badge": "Audit" } },
+    { "id": "language", "type": "item", "width": 200, "data": { "title": "Jargon", "subtitle": "\"Discretionary relief\"", "badge": "Interviews" } },
+    { "id": "offline", "type": "item", "width": 200, "data": { "title": "Assisted digital", "subtitle": "Library staff help 300 a week", "badge": "Libraries" } },
+    { "id": "trust", "type": "branch", "data": { "title": "Trust", "subtitle": "Is this the real council?", "icon": "shield" } },
+    { "id": "outdated", "type": "item", "width": 200, "data": { "title": "Out-of-date pages", "subtitle": "2019 opening hours", "badge": "Content audit" } },
+    { "id": "lookalikes", "type": "item", "width": 200, "data": { "title": "Lookalike sites", "subtitle": "Charge for free services", "badge": "Interviews" } }
+  ],
+  "edges": [
+    { "id": "goal-finding", "source": "goal", "target": "finding" },
+    { "id": "finding-search", "source": "finding", "target": "search" },
+    { "id": "finding-menus", "source": "finding", "target": "menus" },
+    { "id": "finding-mobile", "source": "finding", "target": "mobile" },
+    { "id": "goal-tasks", "source": "goal", "target": "tasks" },
+    { "id": "tasks-counciltax", "source": "tasks", "target": "counciltax" },
+    { "id": "tasks-forms", "source": "tasks", "target": "forms" },
+    { "id": "tasks-status", "source": "tasks", "target": "status" },
+    { "id": "goal-access", "source": "goal", "target": "access" },
+    { "id": "access-pdfs", "source": "access", "target": "pdfs" },
+    { "id": "access-language", "source": "access", "target": "language" },
+    { "id": "access-offline", "source": "access", "target": "offline" },
+    { "id": "goal-trust", "source": "goal", "target": "trust" },
+    { "id": "trust-outdated", "source": "trust", "target": "outdated" },
+    { "id": "trust-lookalikes", "source": "trust", "target": "lookalikes" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "The research, theme by theme",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Four research themes around the redesign. Badges say where each finding came from." },
+        { "id": "finding", "title": "Finding things", "description": "Residents search in everyday words and use phones; menus built around departments do not help them.", "highlightNodes": ["goal", "finding", "search", "menus", "mobile"], "highlightEdges": ["goal-finding", "finding-search", "finding-menus", "finding-mobile"] },
+        { "id": "tasks", "title": "Paying and applying", "description": "The council tax account and long forms lose people part-way; missing updates turn into phone calls.", "highlightNodes": ["goal", "tasks", "counciltax", "forms", "status"], "highlightEdges": ["goal-tasks", "tasks-counciltax", "tasks-forms", "tasks-status"] },
+        { "id": "access", "title": "Access needs", "description": "PDF forms shut out screen reader users, jargon shuts out many more, and some residents need help in person.", "highlightNodes": ["goal", "access", "pdfs", "language", "offline"], "highlightEdges": ["goal-access", "access-pdfs", "access-language", "access-offline"] },
+        { "id": "trust", "title": "Trust", "description": "Stale pages and paid lookalike sites make residents unsure which site is the council's own.", "highlightNodes": ["goal", "trust", "outdated", "lookalikes"], "highlightEdges": ["goal-trust", "trust-outdated", "trust-lookalikes"] }
+      ]
+    }
+  ]
+}

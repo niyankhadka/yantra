@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "title": "זימון תור במרפאה",
+    "description": "איך מטופל במרפאת \"שקד\" קובע תור לרופא המשפחה: דרך האפליקציה או המוקד הטלפוני, עם תזכורת ואישור הגעה.",
+    "lang": "he",
+    "version": "1.0.0",
+    "summary": {
+      "headline": "כל התורים נקבעים במערכת זימון אחת, שמחוברת ליומן הרופאים ושולחת תזכורות בעצמה.",
+      "points": [
+        "האפליקציה והמוקד הטלפוני רואים את אותם תורים פנויים",
+        "תזכורת נשלחת יום לפני התור, ותור שבוטל חוזר מיד ליומן",
+        "בהגעה למרפאה המטופל מאשר את הגעתו בעמדה, והרופא רואה שהוא ממתין"
+      ],
+      "facts": {
+        "שעות המוקד": "א'-ה', 08:00-19:00",
+        "אורך תור": "10 דקות"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "patient": { "label": "מטופל", "color": "amber", "icon": "user" },
+    "channel": { "label": "ערוץ", "color": "blue" },
+    "system": { "label": "מערכת", "color": "violet" },
+    "clinic": { "label": "מרפאה", "color": "teal" }
+  },
+  "nodes": [
+    { "id": "patient", "type": "patient", "data": { "title": "מטופל", "subtitle": "צריך תור לרופא משפחה", "icon": "user", "description": "יוסי אברהם, מבוטח במרפאה. מבקש תור בגלל שיעול שלא עובר." } },
+    { "id": "app", "type": "channel", "data": { "title": "אפליקציה", "subtitle": "בחירת רופא ושעה", "icon": "monitor" } },
+    { "id": "callcenter", "type": "channel", "data": { "title": "מוקד טלפוני", "subtitle": "נציג קובע את התור", "icon": "users", "description": "מיועד למי שמעדיף לדבר עם נציג, או כשאין תור פנוי והמטופל צריך מקום ברשימת ההמתנה." } },
+    { "id": "scheduler", "type": "system", "data": { "title": "מערכת זימון תורים", "subtitle": "תורים פנויים ושמורים", "icon": "database", "description": "מקור אחד לכל התורים: נועלת תור ברגע שנבחר, כדי ששני מטופלים לא יקבלו את אותה שעה.", "metadata": { "תורים בשבוע": "כ-2,400" } } },
+    { "id": "calendar", "type": "system", "data": { "title": "יומן הרופא", "subtitle": "משמרות וחופשות", "icon": "file-text" } },
+    { "id": "sms", "type": "system", "data": { "title": "תזכורות", "subtitle": "SMS יום לפני", "icon": "mail", "description": "המטופל יכול להשיב \"בטל\" בהודעה, והתור משתחרר מיד." } },
+    { "id": "kiosk", "type": "clinic", "data": { "title": "עמדת קבלה", "subtitle": "אישור הגעה בכרטיס", "icon": "cpu" } },
+    { "id": "doctor", "type": "clinic", "data": { "title": "רופאת המשפחה", "subtitle": "ד\"ר מיכל לוי", "icon": "heart" } }
+  ],
+  "edges": [
+    { "id": "patient-app", "source": "patient", "target": "app", "label": "בקשת תור" },
+    { "id": "patient-callcenter", "source": "patient", "target": "callcenter", "label": "שיחה" },
+    { "id": "app-scheduler", "source": "app", "target": "scheduler", "label": "שמירת תור" },
+    { "id": "callcenter-scheduler", "source": "callcenter", "target": "scheduler", "label": "שמירת תור" },
+    { "id": "calendar-scheduler", "source": "calendar", "target": "scheduler", "label": "שעות פנויות" },
+    { "id": "scheduler-sms", "source": "scheduler", "target": "sms", "label": "תור מחר", "type": "async" },
+    { "id": "sms-patient", "source": "sms", "target": "patient", "label": "תזכורת", "type": "async" },
+    { "id": "kiosk-scheduler", "source": "kiosk", "target": "scheduler", "label": "המטופל הגיע" },
+    { "id": "scheduler-doctor", "source": "scheduler", "target": "doctor", "label": "רשימת ממתינים" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "יוסי קובע תור ומגיע אליו",
+      "steps": [
+        { "id": "overview", "title": "מבט כללי", "description": "שני ערוצים לקביעת תור, מערכת זימון אחת במרכז, ותחנות במרפאה עצמה." },
+        { "id": "slots", "title": "מאיפה באים התורים", "description": "יומן הרופאה קובע אילו שעות פתוחות; מערכת הזימון מציגה רק אותן.", "highlightNodes": ["calendar", "scheduler"], "highlightEdges": ["calendar-scheduler"] },
+        { "id": "book", "title": "קביעת התור", "description": "יוסי בוחר שעה באפליקציה. מי שמתקשר למוקד מקבל את אותן שעות מהנציג.", "highlightNodes": ["patient", "app", "callcenter", "scheduler"], "highlightEdges": ["patient-app", "patient-callcenter", "app-scheduler", "callcenter-scheduler"] },
+        { "id": "remind", "title": "תזכורת", "description": "יום לפני התור נשלח SMS. אם יוסי משיב \"בטל\", התור חוזר מיד לרשימת התורים הפנויים.", "highlightNodes": ["scheduler", "sms", "patient"], "highlightEdges": ["scheduler-sms", "sms-patient"] },
+        { "id": "arrive", "title": "הגעה למרפאה", "description": "יוסי מעביר את כרטיס הקופה בעמדת הקבלה, והרופאה רואה ברשימה שהוא ממתין.", "highlightNodes": ["kiosk", "scheduler", "doctor"], "highlightEdges": ["kiosk-scheduler", "scheduler-doctor"] }
+      ]
+    }
+  ]
+}

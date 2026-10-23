@@ -92,6 +92,27 @@ node bin/yantra.js export answer.json -f md   # Markdown copy for chat, tickets 
 - A diagram with detail diagrams (drill-down, see `authoring.md`) embeds as one viewer with
   every level; `level: "payments"` shows that level as the figure and opens the viewer there.
   A `src` diagram's `$ref` levels are loaded relative to its own file, inside the page's folder.
+  In the viewer, a level bar under the toolbar names the parent level ("← Overview", or `Esc`).
+- **Detail pages** keep a page short when some readers need more. Put deeper pages in a
+  top-level `details` map (`{ "id": answer page }`, or `{ "$ref": "detail.json" }` relative to
+  the page, inside its folder) and add `"detail": "id"` to any block, sections included: the
+  block ends with a "Read more" link. A detail opens on its own, with a back bar (back to the
+  page or the detail it came from, `Esc` too), the path from the page, and its own answer and
+  blocks; Back returns to the spot you left. Details link on to other details of the same map,
+  so deeper levels need no new map (a detail keeps no `details` of its own). `#detail=id`
+  links straight to one. Book and present modes page the main page only; a detail reads as
+  one scrolling page. Print and the Markdown export put every detail after the page, in the
+  order a reader meets them. Each detail is validated as an answer page (`details.<id>:`);
+  `page/detail-unknown` (link to a missing id), `page/detail-unused` (never linked),
+  `page/detail-invalid`, `page/detail-unresolved` (a `$ref` that did not load),
+  `page/nested-details` and `page/too-many-details` (more than 12) cover the rest.
+
+  ```json
+  "blocks": [{ "type": "callout", "title": "Why nobody noticed", "body": "…", "detail": "renewal" }],
+  "details": {
+    "renewal": { "meta": { "title": "How the renewal broke" }, "answer": { "headline": "…" }, "blocks": [] }
+  }
+  ```
 - Contents: a row of links to every titled block appears when `meta.toc` is `true`, or by
   itself from 6 titled blocks (`meta.toc: false` hides it). Anchors are the slug of the
   block title (`#follow-up-actions`), with `-2`, `-3` for repeats, so links stay stable;

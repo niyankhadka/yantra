@@ -69,8 +69,10 @@ export function readerControls(L, { contents = null } = {}) {
 export function readerRuntime(doc, cfg) {
   var root = doc.documentElement;
   var W = cfg.words;
-  var units = [].slice.call(doc.querySelectorAll('.p-lead-head,.p-lead>.p-answer,.p-cover-list,.p-section-head,.p-grid>.p-block:not(.p-block--section),.p-foot'));
-  var holders = [].slice.call(doc.querySelectorAll('.p-lead,.p-block--section,.p-chapter'));
+  // Detail pages (.p-detail) read as plain pages: book and present modes page the main text only
+  var mainOnly = function (el) { return !el.closest('.p-detail'); };
+  var units = [].slice.call(doc.querySelectorAll('.p-lead-head,.p-lead>.p-answer,.p-cover-list,.p-section-head,.p-grid>.p-block:not(.p-block--section),.p-foot')).filter(mainOnly);
+  var holders = [].slice.call(doc.querySelectorAll('.p-lead,.p-block--section,.p-chapter')).filter(mainOnly);
   var bar = doc.querySelector('.p-reader');
   if (!units.length || !bar) return;
   var where = bar.querySelector('.p-where-text');

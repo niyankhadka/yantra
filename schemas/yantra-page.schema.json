@@ -110,6 +110,13 @@
         }
       }
     },
+    "details": {
+      "type": "object",
+      "description": "Detail pages: { \"id\": answer page, or { \"$ref\": \"detail.json\" } relative to this file }. A block opens one with \"detail\": \"id\"; details link on to other details of this map. Detail pages keep no details map of their own.",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
     "blocks": {
       "type": "array",
       "maxItems": 12,
@@ -146,6 +153,10 @@
           "title": {
             "type": "string",
             "description": "Section heading; also the block anchor (#slug-of-title) used by the contents row."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Id of a page in the top page's details map: the block ends with a \"Read more\" link that opens that detail page (back bar, path, Esc to return)."
           },
           "span": {
             "enum": [

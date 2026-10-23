@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "title": "Pellmore Home returns and refunds",
+    "description": "A decision tree for customer service advisers at a homeware retailer: four questions decide whether a returned item gets a refund, a repair or replacement, store credit or nothing.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "collapsed": ["q-custom"]
+    },
+    "summary": {
+      "headline": "Faulty goods follow the law; change-of-mind returns follow our 28-day policy.",
+      "points": [
+        "A fault reported within 30 days of delivery gets a full refund; the customer does not have to accept a repair.",
+        "After 30 days, offer one repair or replacement first; refund if that fails.",
+        "Personalised and perishable items cannot be returned for a change of mind."
+      ],
+      "facts": {
+        "Owner": "Customer service",
+        "Policy": "Returns policy v4",
+        "Reviewed": "01/09/2026"
+      }
+    }
+  },
+  "roles": {
+    "question": { "label": "Question", "color": "blue", "icon": "crosshair" },
+    "refund": { "label": "Refund", "color": "green", "icon": "credit-card" },
+    "remedy": { "label": "Repair or credit", "color": "amber", "icon": "package" },
+    "decline": { "label": "Decline", "color": "rose", "icon": "flag" }
+  },
+  "nodes": [
+    { "id": "q-faulty", "type": "question", "width": 250, "data": { "title": "Is the item faulty?", "subtitle": "Or not as described", "badge": "Question 1", "description": "Broken on arrival, stopped working in normal use, or different from the photos and description." } },
+    { "id": "q-30days", "type": "question", "width": 230, "data": { "title": "Reported within 30 days?", "subtitle": "Counted from delivery", "badge": "Question 2" } },
+    { "id": "refund-faulty", "type": "refund", "width": 200, "data": { "title": "Full refund", "subtitle": "Including delivery costs", "badge": "Refund", "description": "Short-term right to reject. We collect the item free and refund within 14 days of the collection." } },
+    { "id": "repair-replace", "type": "remedy", "width": 200, "data": { "title": "Repair or replace", "subtitle": "One attempt, at our cost", "badge": "Remedy", "description": "If the repair or replacement fails, offer a refund, less a fair deduction for use after six months." } },
+    { "id": "q-custom", "type": "question", "width": 230, "data": { "title": "Personalised or perishable?", "subtitle": "Engraved, made to measure, plants", "badge": "Question 2" } },
+    { "id": "decline-exempt", "type": "decline", "width": 200, "data": { "title": "Decline the return", "subtitle": "Exempt from change of mind", "badge": "Exempt", "description": "Explain the exemption politely and point to the policy shown at checkout." } },
+    { "id": "q-window", "type": "question", "width": 230, "data": { "title": "Within 28 days and unused?", "subtitle": "In original packaging, with proof", "badge": "Question 3" } },
+    { "id": "refund-change", "type": "refund", "width": 200, "data": { "title": "Refund the price", "subtitle": "Customer pays return postage", "badge": "Refund", "description": "Refund to the original payment method within 14 days of receiving the item back." } },
+    { "id": "store-credit", "type": "remedy", "width": 200, "data": { "title": "Store credit at most", "subtitle": "Team leader decides", "badge": "Discretion", "description": "Outside the window or used: no right to a refund. A team leader may offer store credit for loyal customers." } }
+  ],
+  "edges": [
+    { "id": "faulty-yes", "source": "q-faulty", "target": "q-30days", "label": "Yes" },
+    { "id": "faulty-no", "source": "q-faulty", "target": "q-custom", "label": "No, changed mind" },
+    { "id": "30days-yes", "source": "q-30days", "target": "refund-faulty", "label": "Yes" },
+    { "id": "30days-no", "source": "q-30days", "target": "repair-replace", "label": "No" },
+    { "id": "custom-yes", "source": "q-custom", "target": "decline-exempt", "label": "Yes" },
+    { "id": "custom-no", "source": "q-custom", "target": "q-window", "label": "No" },
+    { "id": "window-yes", "source": "q-window", "target": "refund-change", "label": "Yes" },
+    { "id": "window-no", "source": "q-window", "target": "store-credit", "label": "No" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Handle a return",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Start at the top with the customer on the phone or in chat. The change-of-mind branch opens folded; the steps unfold it." },
+        { "id": "faulty", "title": "Faulty goods", "description": "A fault puts the customer's legal rights first. The only question is how long ago the item arrived.", "highlightNodes": ["q-faulty", "q-30days"], "highlightEdges": ["faulty-yes"] },
+        { "id": "remedy", "title": "Refund or repair", "description": "Within 30 days the customer can insist on a full refund. After that, offer one repair or replacement before a refund.", "highlightNodes": ["q-30days", "refund-faulty", "repair-replace"], "highlightEdges": ["30days-yes", "30days-no"] },
+        { "id": "change-of-mind", "title": "Change of mind", "description": "Nothing is wrong with the item. Personalised and perishable goods are exempt from change-of-mind returns.", "highlightNodes": ["q-faulty", "q-custom", "decline-exempt", "q-window"], "highlightEdges": ["faulty-no", "custom-yes", "custom-no"] },
+        { "id": "window", "title": "The 28-day window", "description": "Unused and back within 28 days: refund the price. Otherwise there is no refund, though a team leader may offer store credit.", "highlightNodes": ["q-window", "refund-change", "store-credit"], "highlightEdges": ["window-yes", "window-no"] }
+      ]
+    }
+  ]
+}

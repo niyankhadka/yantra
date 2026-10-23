@@ -7,7 +7,33 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-23
+
+Detail pages for answer pages and books, a clearer way back up from detail diagrams, 39 new
+real-world examples in four new gallery groups, the redesigned website and the teaser video.
+
 ### Added
+
+- 39 new real-world examples: sequence diagrams (3-D Secure, webhooks, password reset,
+  presigned uploads), state machines (orders, mortgages, pull requests), ER schemas, UML class
+  diagrams, org charts, decision trees, mind maps, an airline drill-down, flows in Spanish,
+  Japanese and Hebrew, and four books. Every gallery group now has at least five.
+- New gallery groups in the playground and viewer: class diagrams, decision trees, drill-down
+  and nested, and other languages.
+
+- **Detail pages** for answer pages and book chapters (`docs/pages.md`): a top-level `details`
+  map of deeper answer pages (inline or `$ref`), opened from any block with `"detail": "id"`.
+  A detail shows on its own with a back bar (back to the page or the parent detail, `Esc`
+  too), the path from the page, and its own answer and blocks; Back returns to the spot you
+  left, and `#detail=id` links straight to one. Details can link on to other details.
+  Reading modes page the main text only; print and the Markdown export append every detail.
+  New validation codes: `page/detail-unknown`, `page/detail-unused`, `page/detail-invalid`,
+  `page/detail-unresolved`, `page/nested-details` and `page/too-many-details`. The incident
+  review example has two levels of detail.
+- Viewer: a level bar under the toolbar on detail diagrams (drill-down): a clear back button
+  named after the parent level, with its `Esc` shortcut, then the path of levels. It replaces
+  the small breadcrumb above the title, also in diagrams embedded in pages and books.
+- The collapsed walkthrough bar keeps the restart button (back to the first step).
 
 - A 42-second teaser video (landscape and vertical, with captions) in the website's hero; the
   README shows an animated preview that links to it. Videos
@@ -432,7 +458,8 @@ First public release.
 - CLI (`validate`, `build`, `export`, `screenshot`, `import`, `new`, `examples`, `mcp`,
   `dev`), an MCP server with sandboxed file access, an agent skill and a Python SDK.
 
-[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/niyankhadka/yantra/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/niyankhadka/yantra/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/niyankhadka/yantra/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/niyankhadka/yantra/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/niyankhadka/yantra/compare/v1.0.1...v1.1.0

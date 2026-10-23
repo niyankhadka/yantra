@@ -653,7 +653,7 @@ ${kindCards}
     <div class="section-head">
       <div>
         <h2 id="examples-title" class="section-title">Examples</h2>
-        <p class="section-lede">25 diagrams, 13 answer pages and 7 chart pages ship with Yantra. Open any of them in the playground, then change it. Companies and data in the examples are fictional.</p>
+        <p class="section-lede">56 diagrams, 13 answer pages, 7 chart pages and 5 books ship with Yantra. Open any of them in the playground, then change it. Companies and data in the examples are fictional.</p>
       </div>
       <a class="btn" href="/playground/">Browse all in the playground</a>
     </div>

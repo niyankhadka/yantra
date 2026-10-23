@@ -1,6 +1,6 @@
 {
   "name": "@niyankhadka/yantra",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "Make your AI show its work: interactive, step-by-step diagrams, answer pages and books from a short JSON description, written by you or your coding agent. Automatic layout and a validator; CLI, MCP server, playground and Python SDK.",
   "keywords": [

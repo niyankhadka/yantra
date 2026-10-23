@@ -27,7 +27,6 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l7 8 7-8M12 13v7"/></svg>
         </span>
         <div class="y-titles">
-          <nav id="crumbs" class="y-crumbs" aria-label="Diagram levels" data-i18n-label="drill.crumbs" hidden></nav>
           <h1 id="doc-title">Yantra</h1>
           <p id="doc-desc"></p>
         </div>
@@ -97,6 +96,8 @@
       <div id="world" class="y-world"></div>
     </main>
 
+    <!-- Drill-down: back to the parent level and the path of levels, under the toolbar -->
+    <nav id="crumbs" class="y-crumbs y-levelbar" aria-label="Diagram levels" data-i18n-label="drill.crumbs" hidden></nav>
     <nav id="focus-crumbs" class="y-crumbs y-focus-crumbs" aria-label="Group path" data-i18n-label="focus.crumbs" hidden></nav>
     <div id="crumb-menu" class="y-menu-list y-crumb-menu" role="menu" hidden></div>
 

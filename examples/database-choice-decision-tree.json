@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "title": "Choosing a database for a new service",
+    "description": "A decision tree for a team starting a new service: four questions about data shape, write volume and access patterns lead to a type of database.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "collapsed": ["q-analytics"]
+    },
+    "summary": {
+      "headline": "Start with managed PostgreSQL unless a clear need rules it out.",
+      "points": [
+        "Relational data with transactions belongs in a relational database; scale alone rarely changes that.",
+        "Key-only access suits a key-value store, or a cache if losing the data is acceptable.",
+        "Large analytical scans go to a columnar warehouse, never the service's own database."
+      ],
+      "facts": {
+        "Owner": "Architecture guild",
+        "Reviewed": "01/09/2026"
+      }
+    }
+  },
+  "roles": {
+    "question": { "label": "Question", "color": "blue", "icon": "crosshair" },
+    "default": { "label": "Default choice", "color": "green", "icon": "check-circle" },
+    "specialist": { "label": "Specialist store", "color": "violet", "icon": "database" },
+    "review": { "label": "Needs design review", "color": "orange", "icon": "flag" }
+  },
+  "nodes": [
+    { "id": "q-relational", "type": "question", "width": 260, "data": { "title": "Is the data relational?", "subtitle": "Joins and transactions across records", "badge": "Question 1" } },
+    { "id": "q-scale", "type": "question", "width": 230, "data": { "title": "Beyond one primary's writes?", "subtitle": "Over 20k writes/s or writes in many regions", "badge": "Question 2" } },
+    { "id": "distributed-sql", "type": "review", "width": 210, "data": { "title": "Distributed SQL", "subtitle": "Multi-region, strongly consistent", "badge": "Review", "description": "Costs more and adds latency to every write. Book an architecture review before you commit." } },
+    { "id": "postgres", "type": "default", "width": 210, "data": { "title": "Managed PostgreSQL", "subtitle": "The default for most services", "badge": "Default", "description": "Point-in-time recovery, read replicas and the team's existing runbooks. Start here." } },
+    { "id": "q-key", "type": "question", "width": 230, "data": { "title": "Read and written by key only?", "subtitle": "No queries on other fields", "badge": "Question 2" } },
+    { "id": "q-durable", "type": "question", "width": 210, "data": { "title": "Is it the system of record?", "subtitle": "Losing it would lose data", "badge": "Question 3" } },
+    { "id": "kv-store", "type": "specialist", "width": 200, "data": { "title": "Key-value store", "subtitle": "Durable, predictable latency", "badge": "Key-value", "description": "Design the keys around your access patterns up front; adding a query later is expensive." } },
+    { "id": "cache", "type": "specialist", "width": 200, "data": { "title": "In-memory cache", "subtitle": "Sessions, rate limits, hot reads", "badge": "Cache", "description": "Fast but volatile: the service must still work, more slowly, if the cache is empty." } },
+    { "id": "q-analytics", "type": "question", "width": 210, "data": { "title": "Mostly scans over history?", "subtitle": "Reports and aggregates", "badge": "Question 3" } },
+    { "id": "warehouse", "type": "specialist", "width": 200, "data": { "title": "Columnar warehouse", "subtitle": "Fed from the service by events", "badge": "Analytics", "description": "The service keeps its own operational store and publishes events into the warehouse." } },
+    { "id": "document", "type": "specialist", "width": 200, "data": { "title": "Document store", "subtitle": "Nested records, flexible fields", "badge": "Document", "description": "Fits records read and written whole, such as product catalogues or form submissions." } }
+  ],
+  "edges": [
+    { "id": "relational-yes", "source": "q-relational", "target": "q-scale", "label": "Yes" },
+    { "id": "relational-no", "source": "q-relational", "target": "q-key", "label": "No" },
+    { "id": "scale-yes", "source": "q-scale", "target": "distributed-sql", "label": "Yes" },
+    { "id": "scale-no", "source": "q-scale", "target": "postgres", "label": "No" },
+    { "id": "key-yes", "source": "q-key", "target": "q-durable", "label": "Yes" },
+    { "id": "key-no", "source": "q-key", "target": "q-analytics", "label": "No" },
+    { "id": "durable-yes", "source": "q-durable", "target": "kv-store", "label": "Yes" },
+    { "id": "durable-no", "source": "q-durable", "target": "cache", "label": "No" },
+    { "id": "analytics-yes", "source": "q-analytics", "target": "warehouse", "label": "Yes" },
+    { "id": "analytics-no", "source": "q-analytics", "target": "document", "label": "No" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Pick a database",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Start at the top and answer each question. Green is the default, violet a specialist store, orange needs a design review. The analytics branch opens folded; the steps unfold it." },
+        { "id": "relational", "title": "Relational data", "description": "Orders, accounts and invoices have relationships and need transactions, so the only question left is write volume.", "highlightNodes": ["q-relational", "q-scale"], "highlightEdges": ["relational-yes"] },
+        { "id": "postgres", "title": "PostgreSQL almost always", "description": "Few services outgrow one well-sized primary. Only sustained heavy writes or writes in several regions justify distributed SQL.", "highlightNodes": ["q-scale", "postgres", "distributed-sql"], "highlightEdges": ["scale-no", "scale-yes"] },
+        { "id": "key", "title": "Key-only access", "description": "If every read and write uses one key, a key-value store fits; if the data can be rebuilt, a cache is enough.", "highlightNodes": ["q-relational", "q-key", "q-durable", "kv-store", "cache"], "highlightEdges": ["relational-no", "key-yes", "durable-yes", "durable-no"] },
+        { "id": "analytics", "title": "Scans or documents", "description": "Reporting over months of history belongs in a warehouse; nested records read whole suit a document store.", "highlightNodes": ["q-key", "q-analytics", "warehouse", "document"], "highlightEdges": ["key-no", "analytics-yes", "analytics-no"] }
+      ]
+    }
+  ]
+}

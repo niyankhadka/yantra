@@ -24,6 +24,7 @@ const str = (v) => (typeof v === 'string' ? v : '');
 import { BLOCK_TYPES, SPANS, walkBlocks, isSafeImageSrc } from './page.js';
 import { READING_MODES } from './reader.js';
 import { chapterPage, BOOK_BUDGET } from './book.js';
+import { detailTree, detailPage, DETAIL_BUDGET } from './details.js';
 import { CHART_NEEDS, CHART_SHAPES, checkChartBlock } from './charts.js';
 import { checkCardChart, hasChart, isChartCard, CHART_BUDGET } from './cardchart.js';
 
@@ -913,7 +914,48 @@ export function lintBook(book) {
   return report(findings);
 }
 
-export function lintPage(page) {
+/**
+ * Detail pages: every "detail" link names a detail of the top page, each detail is
+ * an answer page (checked like one, findings prefixed details.<id>), details are
+ * opened from somewhere, and a detail keeps no details map of its own.
+ */
+function checkDetails(page, add, parentDetails) {
+  const own = page.details;
+  const isDetail = parentDetails !== null;
+  if (own !== undefined && (!own || typeof own !== 'object' || Array.isArray(own))) return add('error', 'page/bad-details', 'details must be an object of detail pages: { "id": { meta, answer, blocks } }.');
+  const map = isDetail ? parentDetails : own || {};
+  const linked = [];
+  walkBlocks(Array.isArray(page.blocks) ? page.blocks : [], (b) => b && b.detail !== undefined && linked.push(b));
+  for (const b of linked) {
+    if (typeof b.detail !== 'string' || !Object.hasOwn(map, b.detail)) {
+      const known = Object.keys(map);
+      add('error', 'page/detail-unknown', `block "${b.title || b.type}" links to detail "${b.detail}", which is not in details${known.length ? ` (${known.join(', ')})` : ': add a details map to the page'}.`);
+    }
+  }
+  if (isDetail || !own) return;
+  const ids = Object.keys(own);
+  if (ids.length > DETAIL_BUDGET.details) add('warning', 'page/too-many-details', `${ids.length} detail pages (budget ${DETAIL_BUDGET.details}); that much detail reads better as a book.`);
+  const reached = new Set(detailTree(page).map((d) => d.id));
+  for (const id of ids) {
+    const d = own[id];
+    const where = `details.${id}`;
+    if (d && typeof d === 'object' && typeof d.$ref === 'string') {
+      const why = { unsafe: 'must be a relative .json path inside the page\'s folder (no "..", no absolute paths)', missing: 'is missing or not valid JSON' }[d.$error] || 'was not loaded (build or validate the page from its file)';
+      add('error', 'page/detail-unresolved', `${where} "${d.$ref}" ${why}.`, { detail: id });
+      continue;
+    }
+    if (!d || typeof d !== 'object' || Array.isArray(d) || (d.kind !== undefined && d.kind !== 'page')) {
+      add('error', 'page/detail-invalid', `${where} must be an answer page: { meta, answer, blocks }.`, { detail: id });
+      continue;
+    }
+    if (d.details !== undefined) add('error', 'page/nested-details', `${where} has its own details; keep every detail in the top page's details map and link to it with "detail".`, { detail: id });
+    if (!reached.has(id)) add('warning', 'page/detail-unused', `${where} is never opened: link to it from a block with "detail": "${id}".`, { detail: id });
+    const r = lintPage(detailPage(d, page.meta || {}), { details: own });
+    for (const { level, code, message, ...rest } of [...r.errors, ...r.warnings]) add(level, code, `${where}: ${message}`, { ...rest, detail: id });
+  }
+}
+
+export function lintPage(page, { details: parentDetails = null } = {}) {
   const findings = [];
   const add = (level, code, message, extra = {}) => findings.push({ level, code, message, ...extra });
   const meta = page.meta || {};
@@ -941,6 +983,7 @@ export function lintPage(page) {
     add('warning', 'page/heavy-embed', `${live} interactive diagrams; each embeds the full viewer. Keep at most ${PAGE_BUDGET.interactiveDiagrams} and show the rest as static figures.`);
 
   checkBlocks(blocks, add, 'blocks');
+  checkDetails(page, add, parentDetails);
   return report(findings);
 }
 

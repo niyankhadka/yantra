@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "title": "Mortgage application states",
+    "description": "The states a home loan application passes through, with the property valuation and the legal checks running at the same time.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "After approval in principle, the valuation and the legal checks run in parallel, and the lender issues an offer only when both are done.",
+      "points": [
+        "Automated credit and fraud checks decline some applications before an underwriter sees them.",
+        "Underwriters can ask for more documents without moving the application on.",
+        "Valuation and conveyancing are regions of one Property checks state: both are active at once.",
+        "An offer that is not completed within six months expires."
+      ],
+      "facts": { "States": "9 plus a check, fork, join, start and end", "Regions": "Valuation, Legal", "Typical time": "4 to 8 weeks", "Lender": "Ashgrove Building Society" }
+    }
+  },
+  "roles": {
+    "pseudo": { "label": "Start / end / bars", "color": "slate" },
+    "state": { "label": "Application state", "color": "blue" },
+    "decision": { "label": "Decision", "color": "amber" },
+    "valuation": { "label": "Valuation", "color": "teal" },
+    "legal": { "label": "Legal", "color": "violet" }
+  },
+  "nodes": [
+    { "id": "start", "type": "pseudo", "shape": "initial", "data": { "title": "Start", "description": "A broker or the applicant starts an application online." } },
+    { "id": "submitted", "type": "state", "shape": "state", "data": { "title": "Submitted", "subtitle": "Income and property details in", "icon": "file-text", "description": "The application, payslips, bank statements and the property address are all in." } },
+    { "id": "checks", "type": "decision", "shape": "choice", "data": { "title": "Credit and fraud checks pass?", "description": "A credit reference search, an identity check and fraud scoring run automatically within minutes." } },
+    { "id": "underwriting", "type": "state", "shape": "state", "data": { "title": "Underwriting", "subtitle": "Affordability assessed", "icon": "user", "description": "An underwriter checks income, outgoings and stress-tested repayments against the lending policy.", "metadata": { "Stress rate": "Product rate + 3%", "Target": "Decision in 5 working days" } } },
+    { "id": "split", "type": "pseudo", "shape": "fork", "data": { "title": "Fork", "description": "Starts the valuation and the legal work at the same time." } },
+    { "id": "booked", "type": "valuation", "shape": "state", "data": { "title": "Valuation booked", "subtitle": "Surveyor instructed", "icon": "building" } },
+    { "id": "valued", "type": "valuation", "shape": "state", "data": { "title": "Property valued", "subtitle": "Report received", "icon": "check-circle", "description": "The surveyor's figure must support the loan-to-value the applicant asked for." } },
+    { "id": "searches", "type": "legal", "shape": "state", "data": { "title": "Searches ordered", "subtitle": "Local authority and title", "icon": "book-open", "description": "The conveyancer orders local authority, drainage and environmental searches." } },
+    { "id": "title", "type": "legal", "shape": "state", "data": { "title": "Title approved", "subtitle": "Certificate of title in", "icon": "shield" } },
+    { "id": "join", "type": "pseudo", "shape": "fork", "data": { "title": "Join", "description": "Waits for both the valuation report and the certificate of title." } },
+    { "id": "offer", "type": "state", "shape": "state", "data": { "title": "Offer issued", "subtitle": "Valid for six months", "icon": "award" } },
+    { "id": "completed", "type": "state", "shape": "state", "data": { "title": "Completed", "subtitle": "Funds released", "icon": "credit-card", "description": "The money goes to the conveyancer on completion day and the loan account opens." } },
+    { "id": "declined", "type": "state", "shape": "state", "data": { "title": "Declined", "subtitle": "Reasons sent to applicant", "icon": "flag" } },
+    { "id": "end", "type": "pseudo", "shape": "final", "data": { "title": "Closed" } }
+  ],
+  "edges": [
+    { "id": "start-submitted", "source": "start", "target": "submitted" },
+    { "id": "submitted-checks", "source": "submitted", "target": "checks", "label": "run checks" },
+    { "id": "checks-underwriting", "source": "checks", "target": "underwriting", "label": "pass" },
+    { "id": "checks-declined", "source": "checks", "target": "declined", "label": "fail" },
+    { "id": "underwriting-docs", "source": "underwriting", "target": "underwriting", "label": "request documents" },
+    { "id": "underwriting-declined", "source": "underwriting", "target": "declined", "label": "not affordable" },
+    { "id": "underwriting-split", "source": "underwriting", "target": "split", "label": "approve in principle" },
+    { "id": "split-booked", "source": "split", "target": "booked" },
+    { "id": "split-searches", "source": "split", "target": "searches" },
+    { "id": "booked-valued", "source": "booked", "target": "valued", "label": "surveyor visits" },
+    { "id": "searches-title", "source": "searches", "target": "title", "label": "results clear" },
+    { "id": "valued-join", "source": "valued", "target": "join" },
+    { "id": "title-join", "source": "title", "target": "join" },
+    { "id": "join-offer", "source": "join", "target": "offer" },
+    { "id": "offer-completed", "source": "offer", "target": "completed", "label": "completion day" },
+    { "id": "offer-end", "source": "offer", "target": "end", "label": "expires" },
+    { "id": "completed-end", "source": "completed", "target": "end" },
+    { "id": "declined-end", "source": "declined", "target": "end" }
+  ],
+  "groups": [
+    { "id": "property", "title": "Property checks", "nodes": [], "color": "slate", "style": "solid" },
+    { "id": "valuation", "title": "Valuation", "kind": "region", "parent": "property", "nodes": ["booked", "valued"], "color": "teal" },
+    { "id": "legal", "title": "Legal", "kind": "region", "parent": "property", "nodes": ["searches", "title"], "color": "violet" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Application lifecycle",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "An application is checked, underwritten, then split into two pieces of work that run at once: valuing the property and the legal checks. The offer waits for both." },
+        {
+          "id": "screen",
+          "title": "Submission and automated checks",
+          "description": "Once the documents are in, credit, identity and fraud checks run automatically. A failure declines the application before an underwriter spends time on it.",
+          "highlightNodes": ["start", "submitted", "checks", "underwriting", "declined"],
+          "highlightEdges": ["start-submitted", "submitted-checks", "checks-underwriting", "checks-declined"]
+        },
+        {
+          "id": "underwrite",
+          "title": "Underwriting",
+          "description": "The underwriter may ask for more payslips or an explanation of a large payment; the application stays in Underwriting (the loop). It ends either in approval in principle or a decline on affordability.",
+          "highlightNodes": ["underwriting", "split", "declined"],
+          "highlightEdges": ["underwriting-docs", "underwriting-split", "underwriting-declined"]
+        },
+        {
+          "id": "parallel",
+          "title": "Valuation and legal work at once",
+          "description": "The fork starts both regions. A surveyor visits the house while the applicant's conveyancer orders searches and checks the title; neither waits for the other.",
+          "highlightNodes": ["split", "booked", "valued", "searches", "title"],
+          "highlightEdges": ["split-booked", "split-searches", "booked-valued", "searches-title"]
+        },
+        {
+          "id": "offer",
+          "title": "The offer waits for both",
+          "description": "The join fires only when the valuation report and the certificate of title are both in. Then the formal offer is issued.",
+          "highlightNodes": ["valued", "title", "join", "offer"],
+          "highlightEdges": ["valued-join", "title-join", "join-offer"]
+        },
+        {
+          "id": "complete",
+          "title": "Completion or expiry",
+          "description": "On completion day the funds go to the conveyancer and the loan starts. An offer not used within six months expires, and declined applications close straight away.",
+          "highlightNodes": ["offer", "completed", "declined", "end"],
+          "highlightEdges": ["offer-completed", "offer-end", "completed-end", "declined-end"]
+        }
+      ]
+    }
+  ]
+}

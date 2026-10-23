@@ -1409,9 +1409,9 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
     if (!$('legend').hidden && fab.top > vp.top + vp.height / 2) bottom = Math.max(bottom, vp.bottom - fab.top + 8);
     const panel = this.inspectorOpen ? $('inspector') : this.helpOpen ? $('help') : null;
     const side = panel && window.innerWidth > 720 ? panel.getBoundingClientRect().width + 16 : 16;
-    // the group path sits under the toolbar while zoomed to a group
-    const crumbs = $('focus-crumbs');
-    const top = crumbs.hidden ? bar.bottom : Math.max(bar.bottom, crumbs.getBoundingClientRect().bottom);
+    // the level bar (drill-down) and the group path (zoomed to a group) sit under the toolbar
+    let top = bar.bottom;
+    for (const id of ['crumbs', 'focus-crumbs']) if (!$(id).hidden) top = Math.max(top, $(id).getBoundingClientRect().bottom);
     return { top: top - vp.top + 8, bottom, left: isRtl() ? side : 16, right: isRtl() ? 16 : side };
   }
 

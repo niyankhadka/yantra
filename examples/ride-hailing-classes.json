@@ -1,0 +1,218 @@
+{
+  "meta": {
+    "title": "Ride-hailing booking classes",
+    "description": "The booking domain of the fictional Hopa ride-hailing app: riders, drivers and vehicles, the trip itself, and how fares are priced.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "Trip is the aggregate root: it moves through its states, holds its route as GeoPoint values, and asks a FarePolicy for the price.",
+      "points": [
+        "Rider and Driver both extend the abstract Account, which supplies identity, phone and rating.",
+        "A Driver drives one active Vehicle at a time; the Trip records which vehicle it used.",
+        "StandardFare and SurgeFare realise FarePolicy, so surge pricing is a swap of strategy rather than an if statement."
+      ]
+    }
+  },
+  "roles": {
+    "abstract": { "label": "Abstract type", "color": "violet" },
+    "party": { "label": "Account", "color": "blue" },
+    "trip": { "label": "Trip aggregate", "color": "teal" },
+    "pricing": { "label": "Pricing", "color": "amber" }
+  },
+  "nodes": [
+    {
+      "id": "account",
+      "type": "abstract",
+      "data": {
+        "title": "Account",
+        "stereotype": "abstract",
+        "icon": "users",
+        "fields": [
+          { "name": "id", "type": "UUID", "visibility": "#" },
+          { "name": "phone", "type": "PhoneNumber", "visibility": "#" },
+          { "name": "rating", "type": "double", "visibility": "#" }
+        ],
+        "methods": [
+          { "name": "rate", "params": "stars: int", "type": "void", "visibility": "+" },
+          { "name": "canBook", "type": "boolean", "visibility": "+", "abstract": true }
+        ]
+      }
+    },
+    {
+      "id": "rider",
+      "type": "party",
+      "data": {
+        "title": "Rider",
+        "icon": "user",
+        "fields": [
+          { "name": "defaultPayment", "type": "PaymentToken", "visibility": "-" },
+          { "name": "savedPlaces", "type": "List<GeoPoint>", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "requestTrip", "params": "pickup, dropoff", "type": "Trip", "visibility": "+" },
+          { "name": "canBook", "type": "boolean", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "driver",
+      "type": "party",
+      "data": {
+        "title": "Driver",
+        "icon": "user",
+        "description": "canBook() is false while the licence check is pending or the driver is offline.",
+        "fields": [
+          { "name": "licenceNo", "type": "String", "visibility": "-" },
+          { "name": "online", "type": "boolean", "visibility": "-" },
+          { "name": "location", "type": "GeoPoint", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "accept", "params": "trip: Trip", "type": "void", "visibility": "+" },
+          { "name": "canBook", "type": "boolean", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "vehicle",
+      "type": "party",
+      "data": {
+        "title": "Vehicle",
+        "icon": "truck",
+        "fields": [
+          { "name": "registration", "type": "String", "visibility": "-" },
+          { "name": "make", "type": "String", "visibility": "-" },
+          { "name": "seats", "type": "int", "visibility": "-" },
+          { "name": "category", "type": "RideCategory", "visibility": "-" }
+        ]
+      }
+    },
+    {
+      "id": "trip",
+      "type": "trip",
+      "data": {
+        "title": "Trip",
+        "icon": "activity",
+        "description": "Aggregate root. Status moves requested, accepted, arrived, in_progress, completed (or cancelled); each method checks the current state first.",
+        "sourceFile": "src/booking/Trip.kt",
+        "fields": [
+          { "name": "status", "type": "TripStatus", "visibility": "-" },
+          { "name": "pickup", "type": "GeoPoint", "visibility": "-" },
+          { "name": "dropoff", "type": "GeoPoint", "visibility": "-" },
+          { "name": "quote", "type": "Fare", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "assign", "params": "driver, vehicle", "type": "void", "visibility": "+" },
+          { "name": "start", "type": "void", "visibility": "+" },
+          { "name": "complete", "params": "distanceKm, minutes", "type": "Fare", "visibility": "+" },
+          { "name": "cancel", "params": "by: Account", "type": "void", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "geopoint",
+      "type": "trip",
+      "data": {
+        "title": "GeoPoint",
+        "icon": "globe",
+        "description": "Immutable latitude and longitude in WGS 84.",
+        "fields": [
+          { "name": "lat", "type": "double", "visibility": "-" },
+          { "name": "lng", "type": "double", "visibility": "-" }
+        ],
+        "methods": [{ "name": "distanceTo", "params": "other: GeoPoint", "type": "double", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "policy",
+      "type": "abstract",
+      "data": {
+        "title": "FarePolicy",
+        "stereotype": "interface",
+        "icon": "credit-card",
+        "methods": [
+          { "name": "quote", "params": "route: Route, cat", "type": "Fare", "visibility": "+" },
+          { "name": "finalise", "params": "km, minutes", "type": "Fare", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "standard",
+      "type": "pricing",
+      "data": {
+        "title": "StandardFare",
+        "icon": "credit-card",
+        "fields": [
+          { "name": "baseFare", "type": "Money", "visibility": "-" },
+          { "name": "perKm", "type": "Money", "visibility": "-" },
+          { "name": "perMinute", "type": "Money", "visibility": "-" }
+        ],
+        "methods": [{ "name": "quote", "params": "route: Route, cat", "type": "Fare", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "surge",
+      "type": "pricing",
+      "data": {
+        "title": "SurgeFare",
+        "icon": "zap",
+        "description": "Wraps another policy and multiplies its price when demand in the pickup zone outstrips nearby drivers.",
+        "fields": [
+          { "name": "inner", "type": "FarePolicy", "visibility": "-" },
+          { "name": "multiplier", "type": "double", "visibility": "-" }
+        ],
+        "methods": [{ "name": "quote", "params": "route: Route, cat", "type": "Fare", "visibility": "+" }]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "account-rider", "source": "account", "target": "rider", "relation": "inheritance" },
+    { "id": "account-driver", "source": "account", "target": "driver", "relation": "inheritance" },
+    { "id": "driver-vehicle", "source": "driver", "target": "vehicle", "relation": "aggregation", "label": "drives", "sourceLabel": "1", "targetLabel": "1..*" },
+    { "id": "rider-trip", "source": "rider", "target": "trip", "relation": "association", "label": "books", "sourceLabel": "1", "targetLabel": "0..*" },
+    { "id": "driver-trip", "source": "driver", "target": "trip", "relation": "association", "label": "serves", "sourceLabel": "0..1", "targetLabel": "0..*" },
+    { "id": "trip-geopoint", "source": "trip", "target": "geopoint", "relation": "association", "label": "pickup, dropoff", "targetLabel": "2" },
+    { "id": "trip-policy", "source": "trip", "target": "policy", "relation": "dependency", "label": "priced by" },
+    { "id": "policy-standard", "source": "policy", "target": "standard", "relation": "realization" },
+    { "id": "policy-surge", "source": "policy", "target": "surge", "relation": "realization" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the model",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Nine types around one aggregate, Trip. Hollow triangles point at a parent class or interface."
+        },
+        {
+          "id": "accounts",
+          "title": "Riders and drivers",
+          "description": "Both extend the abstract Account for identity, phone and rating, and each answers canBook() in its own way.",
+          "highlightNodes": ["account", "rider", "driver"],
+          "highlightEdges": ["account-rider", "account-driver"]
+        },
+        {
+          "id": "vehicles",
+          "title": "Drivers and vehicles",
+          "description": "A driver registers one or more vehicles (hollow diamond: a vehicle outlives a driver leaving). Its category decides which trips it can take.",
+          "highlightNodes": ["driver", "vehicle"],
+          "highlightEdges": ["driver-vehicle"]
+        },
+        {
+          "id": "trip",
+          "title": "Booking a trip",
+          "description": "A rider books a Trip with pickup and dropoff GeoPoints. A trip has no driver until one accepts, hence 0..1 on the driver end.",
+          "highlightNodes": ["rider", "trip", "driver", "geopoint"],
+          "highlightEdges": ["rider-trip", "driver-trip", "trip-geopoint"]
+        },
+        {
+          "id": "fare",
+          "title": "Pricing the fare",
+          "description": "Trip depends only on the FarePolicy interface. SurgeFare wraps StandardFare as a decorator when demand is high.",
+          "highlightNodes": ["trip", "policy", "standard", "surge"],
+          "highlightEdges": ["trip-policy", "policy-standard", "policy-surge"]
+        }
+      ]
+    }
+  ]
+}

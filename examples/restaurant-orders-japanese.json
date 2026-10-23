@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "title": "飲食店の注文から提供まで",
+    "description": "定食屋「みなと食堂」で、席での注文が厨房に届き、料理が出て会計が終わるまでの流れ。",
+    "lang": "ja",
+    "version": "1.0.0",
+    "summary": {
+      "headline": "注文はすべてPOSに集まり、持ち場ごとのキッチン画面に分かれて届きます。",
+      "points": [
+        "注文はテーブルのQRコードか、ホール担当のハンディから入ります",
+        "焼き場と揚げ場はそれぞれ自分の分だけを画面で見ます",
+        "料理がそろった卓から順に配膳し、会計はレジでまとめて行います"
+      ],
+      "facts": {
+        "席数": "42席",
+        "提供時間の目標": "注文から12分以内"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "kyaku": { "label": "お客様", "color": "amber", "icon": "user" },
+    "hall": { "label": "ホール", "color": "blue" },
+    "system": { "label": "システム", "color": "violet" },
+    "kitchen": { "label": "厨房", "color": "teal" }
+  },
+  "groups": [
+    { "id": "chubo", "title": "厨房", "nodes": ["yakiba", "ageba", "deshap"], "color": "teal" }
+  ],
+  "nodes": [
+    { "id": "kyaku", "type": "kyaku", "data": { "title": "お客様", "subtitle": "3番テーブル、2名", "icon": "users" } },
+    { "id": "qr", "type": "hall", "data": { "title": "QRコード注文", "subtitle": "スマートフォンから", "icon": "monitor", "description": "テーブルのQRコードを読み取ると、その卓の注文画面が開きます。" } },
+    { "id": "handy", "type": "hall", "data": { "title": "ホール担当", "subtitle": "ハンディで注文を受ける", "icon": "user", "description": "スマートフォンを使わないお客様の注文を、ハンディ端末で入力します。" } },
+    { "id": "pos", "type": "system", "data": { "title": "POSシステム", "subtitle": "注文と会計の記録", "icon": "database", "description": "卓ごとの注文を記録し、料理ごとに担当の持ち場へ振り分けます。", "metadata": { "1日の注文数": "約380件" } } },
+    { "id": "yakiba", "type": "kitchen", "data": { "title": "焼き場", "subtitle": "焼き魚、生姜焼き", "icon": "zap" } },
+    { "id": "ageba", "type": "kitchen", "data": { "title": "揚げ場", "subtitle": "唐揚げ、とんかつ", "icon": "zap" } },
+    { "id": "deshap", "type": "kitchen", "data": { "title": "デシャップ", "subtitle": "盛り付けと最終確認", "icon": "check-circle", "description": "持ち場から上がった料理を卓ごとにそろえ、ご飯と味噌汁を添えて出します。" } },
+    { "id": "haizen", "type": "hall", "data": { "title": "配膳", "subtitle": "卓番号を確認して運ぶ", "icon": "package" } },
+    { "id": "regi", "type": "system", "data": { "title": "レジ", "subtitle": "現金、カード、QR決済", "icon": "credit-card" } }
+  ],
+  "edges": [
+    { "id": "kyaku-qr", "source": "kyaku", "target": "qr", "label": "注文" },
+    { "id": "kyaku-handy", "source": "kyaku", "target": "handy", "label": "口頭で注文" },
+    { "id": "qr-pos", "source": "qr", "target": "pos", "label": "注文データ" },
+    { "id": "handy-pos", "source": "handy", "target": "pos", "label": "注文データ" },
+    { "id": "pos-yakiba", "source": "pos", "target": "yakiba", "label": "焼き物の伝票" },
+    { "id": "pos-ageba", "source": "pos", "target": "ageba", "label": "揚げ物の伝票" },
+    { "id": "yakiba-deshap", "source": "yakiba", "target": "deshap", "label": "焼き上がり" },
+    { "id": "ageba-deshap", "source": "ageba", "target": "deshap", "label": "揚げ上がり" },
+    { "id": "deshap-haizen", "source": "deshap", "target": "haizen", "label": "そろった定食" },
+    { "id": "pos-regi", "source": "pos", "target": "regi", "label": "卓の合計金額" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "3番テーブルの注文",
+      "steps": [
+        { "id": "overview", "title": "全体の流れ", "description": "注文はPOSに集まり、厨房の持ち場に分かれ、デシャップでそろってから配膳されます。" },
+        { "id": "chumon", "title": "注文する", "description": "一人はQRコードから、もう一人はホール担当に口頭で注文します。どちらもPOSに同じ卓の注文として入ります。", "highlightNodes": ["kyaku", "qr", "handy", "pos"], "highlightEdges": ["kyaku-qr", "kyaku-handy", "qr-pos", "handy-pos"] },
+        { "id": "furiwake", "title": "持ち場に振り分ける", "description": "POSは焼き魚定食を焼き場へ、唐揚げ定食を揚げ場へ送ります。各持ち場の画面には自分の分だけが表示されます。", "highlightNodes": ["pos", "yakiba", "ageba"], "highlightEdges": ["pos-yakiba", "pos-ageba"] },
+        { "id": "soroeru", "title": "料理をそろえる", "description": "デシャップは2品がそろうまで待ち、同じ卓の料理を一緒に出します。", "highlightNodes": ["yakiba", "ageba", "deshap", "haizen"], "highlightEdges": ["yakiba-deshap", "ageba-deshap", "deshap-haizen"] },
+        { "id": "kaikei", "title": "会計", "description": "食後、レジでは卓番号を入れるだけで合計金額が呼び出されます。", "highlightNodes": ["pos", "regi"], "highlightEdges": ["pos-regi"] }
+      ]
+    }
+  ]
+}

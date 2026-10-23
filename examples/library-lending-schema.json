@@ -1,0 +1,202 @@
+{
+  "meta": {
+    "title": "Library lending schema",
+    "description": "Tables behind the fictional Ashford County Libraries: members, the catalogue of works, physical copies at each branch, loans and holds.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "A work is what you search for; a copy is what you borrow. Loans and holds sit between members and those two levels.",
+      "points": [
+        "works holds one row per title and edition; copies holds one row per barcode on a shelf.",
+        "A loan always names a single copy, while a hold names a work, so the first copy returned anywhere can fill it.",
+        "Authors join works through work_authors, because a book can have several authors and an author many books."
+      ],
+      "facts": { "Engine": "PostgreSQL 16", "Tables": 8 }
+    }
+  },
+  "roles": {
+    "member": { "label": "Members", "color": "blue" },
+    "catalog": { "label": "Catalogue", "color": "teal" },
+    "stock": { "label": "Stock", "color": "amber" },
+    "circulation": { "label": "Circulation", "color": "violet" }
+  },
+  "nodes": [
+    {
+      "id": "members",
+      "type": "member",
+      "data": {
+        "title": "members",
+        "icon": "user",
+        "description": "One row per library card. Children's cards have a lower loan limit and no overdue charges.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "card_number", "type": "char(14)", "unique": true },
+          { "name": "full_name", "type": "varchar(120)" },
+          { "name": "email", "type": "varchar(255)", "nullable": true },
+          { "name": "category", "type": "member_category", "note": "adult, child or housebound" },
+          { "name": "expires_on", "type": "date" }
+        ]
+      }
+    },
+    {
+      "id": "branches",
+      "type": "stock",
+      "data": {
+        "title": "branches",
+        "icon": "building",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "code", "type": "varchar(6)", "unique": true },
+          { "name": "name", "type": "text" },
+          { "name": "postcode", "type": "varchar(8)" }
+        ]
+      }
+    },
+    {
+      "id": "works",
+      "type": "catalog",
+      "data": {
+        "title": "works",
+        "icon": "book-open",
+        "description": "The bibliographic record: one row per title and edition, whatever the number of copies.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "isbn13", "type": "char(13)", "unique": true, "nullable": true },
+          { "name": "title", "type": "text" },
+          { "name": "publisher", "type": "text" },
+          { "name": "published_year", "type": "smallint" },
+          { "name": "dewey_class", "type": "varchar(12)", "nullable": true }
+        ]
+      }
+    },
+    {
+      "id": "authors",
+      "type": "catalog",
+      "data": {
+        "title": "authors",
+        "icon": "users",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "sort_name", "type": "text", "note": "Surname first, as shelved" },
+          { "name": "display_name", "type": "text" }
+        ]
+      }
+    },
+    {
+      "id": "work_authors",
+      "type": "catalog",
+      "data": {
+        "title": "work_authors",
+        "icon": "layers",
+        "description": "Joins works to authors. position keeps the order printed on the title page.",
+        "fields": [
+          { "name": "work_id", "type": "uuid", "pk": true, "fk": true, "ref": "works.id" },
+          { "name": "author_id", "type": "uuid", "pk": true, "fk": true, "ref": "authors.id" },
+          { "name": "position", "type": "smallint" }
+        ]
+      }
+    },
+    {
+      "id": "copies",
+      "type": "stock",
+      "data": {
+        "title": "copies",
+        "icon": "package",
+        "description": "A physical item with its own barcode. Copies move between branches, so branch_id is where it lives now.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "barcode", "type": "char(12)", "unique": true },
+          { "name": "work_id", "type": "uuid", "fk": true, "ref": "works.id" },
+          { "name": "branch_id", "type": "uuid", "fk": true, "ref": "branches.id" },
+          { "name": "status", "type": "copy_status", "note": "on_shelf, on_loan, in_transit, lost or withdrawn" }
+        ]
+      }
+    },
+    {
+      "id": "loans",
+      "type": "circulation",
+      "data": {
+        "title": "loans",
+        "icon": "file-text",
+        "description": "One row per issue. A renewal moves due_on forward and adds one to renewals; returning sets returned_at.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "copy_id", "type": "uuid", "fk": true, "ref": "copies.id" },
+          { "name": "member_id", "type": "uuid", "fk": true, "ref": "members.id" },
+          { "name": "issued_at", "type": "timestamptz" },
+          { "name": "due_on", "type": "date" },
+          { "name": "renewals", "type": "smallint" },
+          { "name": "returned_at", "type": "timestamptz", "nullable": true }
+        ]
+      }
+    },
+    {
+      "id": "holds",
+      "type": "circulation",
+      "data": {
+        "title": "holds",
+        "icon": "flag",
+        "description": "A reservation queue per work. When a copy is checked in, the oldest waiting hold is assigned it and the member is told.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "work_id", "type": "uuid", "fk": true, "ref": "works.id" },
+          { "name": "member_id", "type": "uuid", "fk": true, "ref": "members.id" },
+          { "name": "pickup_branch_id", "type": "uuid", "fk": true, "ref": "branches.id" },
+          { "name": "placed_at", "type": "timestamptz" },
+          { "name": "status", "type": "hold_status", "note": "waiting, ready, collected or expired" }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "works-authors", "source": "works", "target": "work_authors", "label": "written by", "sourceEnd": "one", "sourceField": "id", "targetField": "work_id", "targetEnd": "one-or-many" },
+    { "id": "authors-works", "source": "authors", "target": "work_authors", "label": "credited", "sourceEnd": "one", "sourceField": "id", "targetField": "author_id", "targetEnd": "one-or-many" },
+    { "id": "works-copies", "source": "works", "target": "copies", "label": "held as", "sourceEnd": "one", "sourceField": "id", "targetField": "work_id", "targetEnd": "zero-or-many" },
+    { "id": "branches-copies", "source": "branches", "target": "copies", "label": "shelves", "sourceEnd": "one", "sourceField": "id", "targetField": "branch_id", "targetEnd": "zero-or-many" },
+    { "id": "copies-loans", "source": "copies", "target": "loans", "label": "lent in", "sourceEnd": "one", "sourceField": "id", "targetField": "copy_id", "targetEnd": "zero-or-many" },
+    { "id": "members-loans", "source": "members", "target": "loans", "label": "borrows", "sourceEnd": "one", "sourceField": "id", "targetField": "member_id", "targetEnd": "zero-or-many" },
+    { "id": "works-holds", "source": "works", "target": "holds", "label": "reserved by", "sourceEnd": "one", "sourceField": "id", "targetField": "work_id", "targetEnd": "zero-or-many" },
+    { "id": "members-holds", "source": "members", "target": "holds", "label": "places", "sourceEnd": "one", "sourceField": "id", "targetField": "member_id", "targetEnd": "zero-or-many" },
+    { "id": "branches-holds", "source": "branches", "target": "holds", "label": "collect at", "sourceEnd": "one", "sourceField": "id", "targetField": "pickup_branch_id", "targetEnd": "zero-or-many" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the schema",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Eight tables: members, the catalogue (works and authors), stock (branches and copies) and circulation (loans and holds)."
+        },
+        {
+          "id": "catalogue",
+          "title": "Works and authors",
+          "description": "work_authors resolves the many-to-many link: every work has at least one author, and every author listed has at least one work.",
+          "highlightNodes": ["works", "work_authors", "authors"],
+          "highlightEdges": ["works-authors", "authors-works"]
+        },
+        {
+          "id": "copies",
+          "title": "Copies on the shelf",
+          "description": "A work can have no copies yet (on order) or dozens spread across branches. Each copy is shelved at exactly one branch at a time.",
+          "highlightNodes": ["works", "copies", "branches"],
+          "highlightEdges": ["works-copies", "branches-copies"]
+        },
+        {
+          "id": "loan",
+          "title": "Borrowing a copy",
+          "description": "A loan joins one member to one barcoded copy. The history is kept, so a copy has many loans over its life but only one open at a time.",
+          "highlightNodes": ["members", "loans", "copies"],
+          "highlightEdges": ["members-loans", "copies-loans"]
+        },
+        {
+          "id": "holds",
+          "title": "Reserving a title",
+          "description": "A hold names the work, not a copy, plus the branch where the member will collect it, so the first copy checked in anywhere can fill it.",
+          "highlightNodes": ["members", "holds", "works", "branches"],
+          "highlightEdges": ["members-holds", "works-holds", "branches-holds"]
+        }
+      ]
+    }
+  ]
+}

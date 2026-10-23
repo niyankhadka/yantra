@@ -1,0 +1,282 @@
+{
+  "meta": {
+    "title": "Card payment with 3-D Secure",
+    "description": "An online card payment that the issuer challenges with 3-D Secure 2: who calls whom, from Pay now to the order confirmation.",
+    "view": "sequence",
+    "summary": {
+      "headline": "The issuer decides whether to challenge; once the shopper passes, the authentication value travels with the authorisation so the issuer carries the fraud liability.",
+      "points": [
+        "The merchant never sees the card number; it pays with a gateway token",
+        "Device data lets the issuer approve most payments without a challenge",
+        "The challenge runs between the browser and the issuer's access control server",
+        "Authorisation carries the CAVV, which shifts fraud liability to the issuer"
+      ],
+      "facts": {
+        "Protocol": "EMV 3-D Secure 2.2",
+        "Challenge rate": "about 1 in 8 payments",
+        "Authorisation timeout": "30 seconds"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "client": {
+      "label": "Shopper",
+      "color": "slate"
+    },
+    "merchant": {
+      "label": "Merchant",
+      "color": "blue"
+    },
+    "gateway": {
+      "label": "Payment gateway",
+      "color": "violet"
+    },
+    "issuer": {
+      "label": "Card issuer",
+      "color": "rose"
+    }
+  },
+  "nodes": [
+    {
+      "id": "merchant",
+      "type": "merchant",
+      "data": {
+        "title": "Merchant backend",
+        "subtitle": "Larkfield Outdoor shop",
+        "tech": "Python · Django",
+        "icon": "server",
+        "description": "Creates the payment for the basket total, reacts to the gateway's next action and confirms the order once the payment succeeds.",
+        "metadata": {
+          "PCI scope": "SAQ A",
+          "Currency": "GBP"
+        }
+      }
+    },
+    {
+      "id": "browser",
+      "type": "client",
+      "data": {
+        "title": "Shopper's browser",
+        "subtitle": "Checkout page",
+        "tech": "Hosted card fields",
+        "icon": "user",
+        "description": "Card details go straight from hosted fields to the gateway, which hands back a token. The merchant's page never holds the card number."
+      }
+    },
+    {
+      "id": "gateway",
+      "type": "gateway",
+      "data": {
+        "title": "Payment gateway",
+        "subtitle": "Tollgate Payments",
+        "tech": "REST API · 3DS server",
+        "icon": "credit-card",
+        "description": "Runs the 3-D Secure server, routes the authorisation to the card scheme and reports one payment status back to the merchant."
+      }
+    },
+    {
+      "id": "acs",
+      "type": "issuer",
+      "data": {
+        "title": "Access control server",
+        "subtitle": "Issuer's 3DS service",
+        "tech": "EMV 3DS 2.2",
+        "icon": "shield",
+        "description": "Scores the device and transaction data, then either approves frictionlessly or challenges the cardholder with a one-time code or banking app."
+      }
+    },
+    {
+      "id": "issuer",
+      "type": "issuer",
+      "data": {
+        "title": "Issuing bank",
+        "subtitle": "Authorisation host",
+        "tech": "ISO 8583",
+        "icon": "building",
+        "description": "Checks funds, card status and the authentication value, then approves or declines the authorisation."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "pay",
+      "source": "browser",
+      "target": "merchant",
+      "label": "Pay now + card token"
+    },
+    {
+      "id": "create",
+      "source": "merchant",
+      "target": "gateway",
+      "label": "create payment"
+    },
+    {
+      "id": "areq",
+      "source": "gateway",
+      "target": "acs",
+      "label": "AReq + device data"
+    },
+    {
+      "id": "ares",
+      "source": "acs",
+      "target": "gateway",
+      "label": "ARes: challenge"
+    },
+    {
+      "id": "action",
+      "source": "gateway",
+      "target": "merchant",
+      "label": "requires_action"
+    },
+    {
+      "id": "show",
+      "source": "merchant",
+      "target": "browser",
+      "label": "open challenge"
+    },
+    {
+      "id": "creq",
+      "source": "browser",
+      "target": "acs",
+      "label": "CReq + one-time code"
+    },
+    {
+      "id": "cres",
+      "source": "acs",
+      "target": "browser",
+      "label": "CRes: authenticated"
+    },
+    {
+      "id": "rreq",
+      "source": "acs",
+      "target": "gateway",
+      "label": "RReq: result"
+    },
+    {
+      "id": "auth",
+      "source": "gateway",
+      "target": "issuer",
+      "label": "authorise + CAVV"
+    },
+    {
+      "id": "approved",
+      "source": "issuer",
+      "target": "gateway",
+      "label": "approved (00)"
+    },
+    {
+      "id": "succeeded",
+      "source": "gateway",
+      "target": "merchant",
+      "label": "succeeded"
+    },
+    {
+      "id": "receipt",
+      "source": "merchant",
+      "target": "browser",
+      "label": "order confirmed"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "challenge",
+      "name": "Challenged payment",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "A shopper pays £86.40 for a tent. The issuer asks for a one-time code before it approves, so the payment takes a detour through 3-D Secure."
+        },
+        {
+          "id": "create",
+          "title": "The merchant creates the payment",
+          "description": "The browser sends the gateway token, never the card number. The merchant creates a payment for the basket total with an idempotency key, so a double click cannot charge twice.",
+          "highlightNodes": [
+            "browser",
+            "merchant",
+            "gateway"
+          ],
+          "highlightEdges": [
+            "pay",
+            "create"
+          ],
+          "payload": {
+            "method": "POST",
+            "endpoint": "/v1/payments",
+            "amount": 8640,
+            "currency": "GBP",
+            "payment_method": "tok_4f9c"
+          }
+        },
+        {
+          "id": "authenticate",
+          "title": "The issuer asks for a challenge",
+          "description": "The gateway's 3DS server sends the issuer's access control server the device data and transaction details. This one scores as unusual (new device, high basket), so the answer is a challenge, which the gateway passes back as requires_action.",
+          "highlightNodes": [
+            "gateway",
+            "acs",
+            "merchant"
+          ],
+          "highlightEdges": [
+            "areq",
+            "ares",
+            "action"
+          ]
+        },
+        {
+          "id": "challenge",
+          "title": "The shopper passes the challenge",
+          "description": "The checkout opens the issuer's challenge in a frame. The shopper types the code from a text message; the access control server checks it and returns an authentication value to the browser.",
+          "highlightNodes": [
+            "merchant",
+            "browser",
+            "acs"
+          ],
+          "highlightEdges": [
+            "show",
+            "creq",
+            "cres"
+          ]
+        },
+        {
+          "id": "authorise",
+          "title": "Authorisation with the CAVV",
+          "description": "The access control server also sends the result to the gateway's 3DS server on the back channel. The gateway then sends the authorisation through the card scheme with the CAVV attached, and the issuer approves.",
+          "highlightNodes": [
+            "acs",
+            "gateway",
+            "issuer"
+          ],
+          "highlightEdges": [
+            "rreq",
+            "auth",
+            "approved"
+          ],
+          "payload": {
+            "protocol": "ISO 8583",
+            "status": "00 approved",
+            "latency": "1.4 s",
+            "eci": "05"
+          }
+        },
+        {
+          "id": "confirm",
+          "title": "The order is confirmed",
+          "description": "The gateway reports the payment as succeeded. The merchant marks the order paid and shows the confirmation page. Funds are captured later, when the tent ships.",
+          "highlightNodes": [
+            "gateway",
+            "merchant",
+            "browser"
+          ],
+          "highlightEdges": [
+            "succeeded",
+            "receipt"
+          ]
+        }
+      ]
+    }
+  ]
+}

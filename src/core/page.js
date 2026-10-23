@@ -12,6 +12,7 @@ import { renderChart, renderGantt, renderMatrix, sparkline, isSimpleBars, chartM
 import { getLevel } from './drill.js';
 import { localeOf } from './i18n.js';
 import { READER_CSS, READING_MODES, readerControls, readerScript, readerWords } from './reader.js';
+import { detailsOf, detailPage, detailTitle, detailTree, detailTrail } from './details.js';
 
 export const BLOCK_TYPES = ['text', 'points', 'steps', 'metrics', 'table', 'compare', 'callout', 'diagram', 'chart', 'code', 'sources', 'timeline', 'faq', 'checklist', 'quote', 'image', 'kv', 'gantt', 'matrix', 'section'];
 /** Block widths: the whole row, half of it or a third (side by side on wide screens). */
@@ -265,7 +266,7 @@ const BLOCKS = {
   // A heading over a group of blocks in their own grid (one level: no section in a section)
   section: (b, ctx) =>
     `<div class="p-grid p-subgrid">${list(b.blocks)
-      .map((c, i) => (c?.type === 'section' ? '' : renderBlock(c, `${ctx.uid}-${i + 1}`, { anchor: ctx.childAnchors?.[i] || null, viewerHtml: ctx.viewerHtml, pageMeta: ctx.pageMeta, locale: ctx.L, frameSandbox: ctx.frameSandbox })))
+      .map((c, i) => (c?.type === 'section' ? '' : renderBlock(c, `${ctx.uid}-${i + 1}`, { anchor: ctx.childAnchors?.[i] || null, viewerHtml: ctx.viewerHtml, pageMeta: ctx.pageMeta, locale: ctx.L, frameSandbox: ctx.frameSandbox, details: ctx.details, detailKey: ctx.detailKey })))
       .join('')}</div>`,
 
   gantt: (b, ctx) => renderGantt(b, { half: ctx.half, width: ctx.width, fit: true, caption: b.caption ? inline(b.caption) : '' }),
@@ -291,13 +292,19 @@ const BLOCKS = {
  * meta.strings); diagram blocks inherit its lang and dir. `width` (px): the
  * container's measured width, so charts fit it (inspector panels).
  */
-export function renderBlock(b, uid = 'b', { anchor = null, childAnchors = null, viewerHtml = null, pageMeta = null, locale = null, width = null, frameSandbox = null } = {}) {
+export function renderBlock(b, uid = 'b', { anchor = null, childAnchors = null, viewerHtml = null, pageMeta = null, locale = null, width = null, frameSandbox = null, details = null, detailKey = null } = {}) {
   const render = BLOCKS[b?.type];
   if (!render) return '';
   const L = locale || localeOf(pageMeta);
   const third = b.span === 'third';
   // Charts draw their words and numbers in the page language too
-  const body = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L, width: width ?? (third ? THIRD_WIDTH : null), frameSandbox, childAnchors }));
+  const content = withChartLocale(L, () => render(b, { uid, viewerHtml, half: b.span === 'half', pageMeta, L, width: width ?? (third ? THIRD_WIDTH : null), frameSandbox, childAnchors, details, detailKey }));
+  // "detail": a link to a deeper page of this page's details
+  const target = typeof b.detail === 'string' && details && Object.hasOwn(details, b.detail) ? details[b.detail] : null;
+  const key = target && (detailKey ? detailKey(b.detail) : b.detail);
+  const body = target
+    ? `${content}<p class="p-detail-link"><a href="#detail=${h(encodeURIComponent(key))}" data-detail-link="${h(key)}">${h(L.t('page.detailMore'))}: <strong>${h(detailTitle(target, b.detail))}</strong><svg class="p-flip" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>`
+    : content;
   const span = b.span === 'half' ? ' is-half' : third ? ' is-third' : '';
   // A section's title heads its blocks (h2, with its intro); every other block's title is a label (h3)
   const head =
@@ -334,7 +341,7 @@ export function pageContents(page, prefix = '') {
  * share a document (book chapters); `kicker` adds a line above the title, and
  * `level` is the title's heading level (1 on a page, 2 for a chapter).
  */
-export function pageParts(page, { viewerHtml = null, frameSandbox = null, prefix = '', level = 1, kicker = null } = {}) {
+export function pageParts(page, { viewerHtml = null, frameSandbox = null, prefix = '', level = 1, kicker = null, details = null, detailKey = null } = {}) {
   const meta = page.meta || {};
   const answer = page.answer || {};
   const L = localeOf(meta);
@@ -342,7 +349,7 @@ export function pageParts(page, { viewerHtml = null, frameSandbox = null, prefix
   const all = list(page.blocks);
   const { anchors, inner, items } = pageContents(page, prefix);
   let uid = 0;
-  const blocks = all.map((b, i) => renderBlock(b, `${prefix}b${++uid}`, { anchor: anchors[i], childAnchors: inner[i], viewerHtml, pageMeta: meta, locale: L, frameSandbox })).join('\n');
+  const blocks = all.map((b, i) => renderBlock(b, `${prefix}b${++uid}`, { anchor: anchors[i], childAnchors: inner[i], viewerHtml, pageMeta: meta, locale: L, frameSandbox, details, detailKey })).join('\n');
   // Chips truncate long titles; the full title is in the tooltip
   const toc = items.length
     ? `<nav class="p-toc" aria-label="${h(L.t('page.contents'))}"><span class="p-label" aria-hidden="true">${h(L.t('page.contents'))}</span><ol>${items.map((t) => `<li><a href="#${h(t.id)}" title="${h(plain(t.title))}">${inline(t.title)}</a></li>`).join('')}</ol></nav>`
@@ -363,6 +370,44 @@ export function pageParts(page, { viewerHtml = null, frameSandbox = null, prefix
     </section>
   </div>`;
   return { lead, toc, grid: `<div class="p-grid">\n${blocks}\n  </div>`, anchors, inner, items };
+}
+
+/**
+ * A page's detail pages as hidden sections, shown one at a time by DETAIL_SCRIPT
+ * (`#detail=key`): a back bar (back to the parent, Esc), the path from the page,
+ * then the detail's own lead and blocks. `keyPrefix` keeps keys unique per book
+ * chapter; `homeHref` and `homeTitle` are the page the path starts from.
+ */
+export function detailSections(page, { viewerHtml = null, frameSandbox = null, prefix = '', keyPrefix = '', homeHref = '#', homeTitle = '' } = {}) {
+  const map = detailsOf(page);
+  const tree = detailTree(page);
+  if (!tree.length) return '';
+  const meta = page.meta || {};
+  const L = localeOf(meta);
+  const keyOf = (id) => `${keyPrefix}${id}`;
+  const hrefOf = (id) => `#detail=${encodeURIComponent(keyOf(id))}`;
+  const titleOf = (id) => detailTitle(map[id], id);
+  const arrow = '<svg class="p-flip" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>';
+  return tree
+    .map((d, i) => {
+      const trail = detailTrail(tree, d.id);
+      const up = d.parent ? titleOf(d.parent) : homeTitle;
+      const items = [`<li><a href="${h(homeHref)}" data-detail-home>${h(homeTitle)}</a></li>`, ...trail.slice(0, -1).map((id) => `<li><a href="${h(hrefOf(id))}">${h(titleOf(id))}</a></li>`), `<li><span aria-current="page">${h(titleOf(d.id))}</span></li>`];
+      // Long paths keep the page, the parent and the current detail; the levels between fold into "…"
+      const hidden = items.length > 4 ? trail.slice(0, -2).map(titleOf) : [];
+      const path = (hidden.length ? [items[0], `<li><span class="p-detail-gap" title="${h(hidden.join(' › '))}">…</span></li>`, ...items.slice(-2)] : items).join('');
+      const parts = pageParts(detailPage(d.page, meta), { viewerHtml, frameSandbox, prefix: `${prefix}d${i + 1}-`, level: 1, kicker: L.t('page.detailKicker'), details: map, detailKey: keyOf });
+      return `<section class="p-detail" data-detail="${h(keyOf(d.id))}" data-parent="${h(d.parent ? keyOf(d.parent) : '')}" hidden>
+  <nav class="p-detail-bar" aria-label="${h(L.t('page.detailPath'))}">
+    <button type="button" class="p-detail-back" data-detail-back aria-label="${h(L.t('page.detailBack', { title: up }))} (Esc)" title="${h(L.t('page.detailBack', { title: up }))} (Esc)">${arrow}<span>${h(L.t('story.back'))}</span><kbd aria-hidden="true">Esc</kbd></button>
+    <ol class="p-detail-path">${path}</ol>
+  </nav>
+  ${parts.lead}
+  ${parts.toc}
+  ${parts.grid}
+</section>`;
+    })
+    .join('\n');
 }
 
 /** A short stable key for the reader's saved place (FNV-1a of the text). */
@@ -408,6 +453,7 @@ ${themeCss()}
 ${BLOCK_CSS}
 ${PAGE_CSS}
 ${READER_CSS}
+${body.includes('class="p-detail"') ? DETAIL_CSS : ''}
 ${css}
 </style>
 </head>
@@ -436,6 +482,7 @@ ${FRAME_SCRIPT}
 ${SCROLL_SCRIPT}
 ${TOC_SCRIPT}
 ${CHART_SCRIPT}
+${body.includes('class="p-detail"') ? DETAIL_SCRIPT : ''}
 ${readerScript({ start: startMode, key, book, words: readerWords(L) })}
 </script>
 </body>
@@ -455,12 +502,14 @@ export function renderPage(page, { logos = {}, viewerHtml = null, frameSandbox =
   const meta = page.meta || {};
   const answer = page.answer || {};
   const L = localeOf(meta);
-  const parts = pageParts(page, { viewerHtml, frameSandbox });
+  const details = detailsOf(page);
+  const parts = pageParts(page, { viewerHtml, frameSandbox, details });
+  const extra = detailSections(page, { viewerHtml, frameSandbox, homeHref: '#', homeTitle: meta.title || meta.question || L.t('page.answer') });
   return pageDocument({
     meta,
     L,
     logos,
-    body: `${parts.lead}\n  ${parts.toc}\n  ${parts.grid}`,
+    body: `<div class="p-main">\n  ${parts.lead}\n  ${parts.toc}\n  ${parts.grid}\n  </div>\n  ${extra}`,
     title: meta.title || L.t('page.answer'),
     description: meta.description || answer.headline || '',
     kicker: meta.kicker || meta.question ? meta.kicker || L.t('page.question') : '',
@@ -475,8 +524,9 @@ export function pageToMarkdown(page, opts = {}) {
 }
 
 /** `base` shifts every heading down (1: a book chapter's title is ##); `prefix` matches the HTML anchors. */
-function pageMarkdown(page, { base = 0, prefix = '', kicker = '' } = {}) {
+function pageMarkdown(page, { base = 0, prefix = '', kicker = '', details: detailMap = null, detailKey = null, isDetail = false } = {}) {
   const meta = page.meta || {};
+  const details = detailMap || detailsOf(page);
   const answer = page.answer || {};
   const { t } = localeOf(meta);
   const out = [];
@@ -584,8 +634,20 @@ function pageMarkdown(page, { base = 0, prefix = '', kicker = '' } = {}) {
         out.push('');
         break;
     }
+    // A link to the block's detail page (written after the page, under its anchor)
+    const target = typeof b?.detail === 'string' && Object.hasOwn(details, b.detail) ? details[b.detail] : null;
+    if (target) out.push(`→ ${mi(t('page.detailMore'))}: [${mi(detailTitle(target, b.detail))}](#detail-${slug(detailKey ? detailKey(b.detail) : b.detail)})`, '');
   };
   list(page.blocks).forEach((b, i) => emit(b, anchors[i], 0));
+  // The page's detail pages, one heading level down, in the order a reader meets them
+  if (!isDetail) {
+    const tree = detailTree(page);
+    const keyOf = (id) => (detailKey ? detailKey(id) : id);
+    tree.forEach((d, i) => {
+      out.push(`<a id="detail-${slug(keyOf(d.id))}"></a>`, '');
+      out.push(pageMarkdown(detailPage(d.page, meta), { base: base + 1, prefix: `${prefix}d${i + 1}-`, kicker: t('page.detailKicker'), details, detailKey, isDetail: true }).trim(), '');
+    });
+  }
   return `${out.join('\n').replace(/\n{3,}/g, '\n\n')}\n`;
 }
 
@@ -629,6 +691,52 @@ if('IntersectionObserver' in window){var io=new IntersectionObserver(function(){
 fit();addEventListener('load',function(){fit();var s=own&&location.hash&&byId(location.hash);if(s&&secs.indexOf(s)>=0){go(s,false);pin=secs.indexOf(s);mark(pin)}})})();`;
 
 /** Drag / shift-wheel scrolling with edge fades for wide tables and figures on pages (RTL scrollLeft runs negative). */
+// Detail pages: `#detail=key` shows that detail instead of the page (the reading modes stay
+// with the page). Opening one from a link remembers where you were; Back, Esc or the browser's
+// back button return there. Details opened from a link go back with history; others to their parent.
+const DETAIL_SCRIPT = `(function(){var r=document.documentElement,main=document.querySelector('.p-main'),secs=[].slice.call(document.querySelectorAll('.p-detail'));if(!main||!secs.length)return;
+var cur=null,ys={},from={};
+function want(){var m=/(?:^#|&)detail=([^&]*)/.exec(location.hash);if(!m)return '';try{return decodeURIComponent(m[1])}catch(e){return m[1]}}
+function find(k){for(var i=0;i<secs.length;i++)if(secs[i].getAttribute('data-detail')===k)return secs[i];return null}
+function keyOf(s){return s?s.getAttribute('data-detail'):''}
+function show(){var s=find(want());if(s===cur)return;cur=s;var k=keyOf(s);
+secs.forEach(function(x){x.hidden=x!==s});main.hidden=!!s;if(s)r.setAttribute('data-detail-open','');else r.removeAttribute('data-detail-open');
+if(from[k]){var y=ys[k]||0,a=from[k];delete from[k];scrollTo(0,y);try{a.focus({preventScroll:true})}catch(e){}return}
+scrollTo(0,0);var t=s&&s.querySelector('.p-title');if(t){t.setAttribute('tabindex','-1');try{t.focus({preventScroll:true})}catch(e){}}}
+function home(){history.pushState(null,'',location.pathname+location.search);show()}
+function back(){if(!cur)return;var p=cur.getAttribute('data-parent')||'';if(from[p])history.back();else if(p)location.hash='detail='+encodeURIComponent(p);else home()}
+document.addEventListener('click',function(e){var t=e.target;if(!t.closest)return;
+var a=t.closest('a[data-detail-link]');if(a){var k=keyOf(cur);from[k]=a;ys[k]=scrollY;return}
+if(t.closest('[data-detail-back]')){e.preventDefault();back();return}
+if(t.closest('a[data-detail-home]')){e.preventDefault();home()}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&cur&&!e.defaultPrevented&&!(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))){e.preventDefault();back()}});
+addEventListener('hashchange',show);show()})();`;
+
+const DETAIL_CSS = `
+.p-detail .p-chapter-kicker{margin:0 0 6px;color:var(--y-accent);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+:root[dir="rtl"] .p-detail .p-chapter-kicker{letter-spacing:0}
+.p-detail-link{margin:16px 0 0}
+.p-detail-link a{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:8px 14px;border:1px solid var(--y-border);border-radius:10px;background:var(--y-surface);color:var(--y-accent);font-size:14px;font-weight:600;text-decoration:none;transition:border-color .15s,box-shadow .15s}
+.p-detail-link a:hover{border-color:var(--y-accent);box-shadow:0 4px 14px -6px var(--y-accent)}
+.p-detail-link strong{overflow:hidden;color:var(--y-ink);white-space:nowrap;text-overflow:ellipsis}
+.p-detail-bar{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 26px;padding:6px;padding-inline-end:14px;border:1px solid var(--y-border);border-radius:12px;background:var(--y-overlay);box-shadow:0 6px 20px rgba(0,0,0,.07);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.p-detail-back{display:inline-flex;align-items:center;gap:8px;max-width:100%;min-height:34px;padding:0 12px;border:0;border-radius:9px;background:var(--y-accent);color:var(--y-accent-ink);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.p-detail-back:hover{filter:brightness(1.08)}
+.p-detail-back:focus-visible{outline:2px solid var(--y-accent);outline-offset:2px}
+.p-detail-back span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.p-detail-back kbd{padding:0 5px;border-radius:4px;background:color-mix(in srgb,var(--y-accent-ink) 22%,transparent);font:600 11px/16px ui-monospace,monospace}
+.p-detail-path{display:flex;flex-wrap:wrap;align-items:center;min-width:0;margin:0;padding:0;list-style:none;color:var(--y-ink-3);font-size:13px}
+.p-detail-path li+li::before{content:'\\203A';padding:0 6px}
+:root[dir="rtl"] .p-detail-path li+li::before{content:'\\2039'}
+.p-detail-path a{color:var(--y-ink-2);text-decoration:none}
+.p-detail-path a:hover{color:var(--y-accent);text-decoration:underline}
+.p-detail-path [aria-current]{color:var(--y-ink);font-weight:650}
+:root[dir="rtl"] .p-flip{transform:scaleX(-1)}
+:root[data-detail-open] .p-reader,:root[data-detail-open] .p-mode{display:none!important}
+@media (max-width:560px){.p-detail-back kbd,.p-detail-path{display:none}}
+@media print{.p-main,.p-detail{display:block!important}.p-detail{break-before:page}.p-detail-bar,.p-detail-link{display:none}}
+`;
+
 const SCROLL_SCRIPT = `(function(){document.querySelectorAll('.p-scroll').forEach(function(el){
 function u(){var m=el.scrollWidth-el.clientWidth,s=Math.abs(el.scrollLeft);el.classList.toggle('can-prev',m>1&&s>1);el.classList.toggle('can-next',m>1&&s<m-1)}
 el.addEventListener('scroll',u,{passive:true});addEventListener('resize',u);u();

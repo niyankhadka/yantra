@@ -1,0 +1,191 @@
+{
+  "meta": {
+    "title": "School timetable schema",
+    "description": "Tables behind the timetable at the fictional Hollins Park Academy: students, teaching groups, teachers, rooms and the weekly lesson grid.",
+    "layout": { "direction": "TB" },
+    "summary": {
+      "headline": "A lesson is one teaching group, in one room, with one teacher, in one period; unique keys stop anyone or anywhere being double-booked.",
+      "points": [
+        "Teaching groups (such as 10X/Ma1) belong to a subject and a year; students join groups through enrolments.",
+        "periods describes the fortnightly grid once, so lessons only need a period id.",
+        "Unique keys on (period, room) and (period, teacher) make clashes impossible to save."
+      ],
+      "facts": { "Engine": "PostgreSQL 16", "Tables": 8 }
+    }
+  },
+  "roles": {
+    "people": { "label": "People", "color": "blue" },
+    "curriculum": { "label": "Curriculum", "color": "teal" },
+    "timetable": { "label": "Timetable", "color": "violet" },
+    "site": { "label": "Site", "color": "amber" }
+  },
+  "nodes": [
+    {
+      "id": "students",
+      "type": "people",
+      "data": {
+        "title": "students",
+        "icon": "graduation-cap",
+        "description": "One row per pupil on roll. upn is the unique pupil number used in census returns.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "upn", "type": "char(13)", "unique": true },
+          { "name": "full_name", "type": "varchar(120)" },
+          { "name": "year_group", "type": "smallint" },
+          { "name": "tutor_group", "type": "varchar(6)" }
+        ]
+      }
+    },
+    {
+      "id": "teachers",
+      "type": "people",
+      "data": {
+        "title": "teachers",
+        "icon": "user",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "staff_code", "type": "char(3)", "unique": true, "note": "Initials shown on the printed timetable" },
+          { "name": "full_name", "type": "varchar(120)" },
+          { "name": "department_id", "type": "uuid", "fk": true, "ref": "subjects.id", "note": "Head subject for cover and line management" },
+          { "name": "contract_fte", "type": "numeric(3,2)" }
+        ]
+      }
+    },
+    {
+      "id": "subjects",
+      "type": "curriculum",
+      "data": {
+        "title": "subjects",
+        "icon": "book-open",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "code", "type": "varchar(4)", "unique": true },
+          { "name": "name", "type": "text" },
+          { "name": "needs_lab", "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "id": "teaching_groups",
+      "type": "curriculum",
+      "data": {
+        "title": "teaching_groups",
+        "icon": "users",
+        "description": "A set or class taught together, for example 10X/Ma1. lessons_per_cycle says how many periods it needs per fortnight.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "code", "type": "varchar(12)", "unique": true },
+          { "name": "subject_id", "type": "uuid", "fk": true, "ref": "subjects.id" },
+          { "name": "year_group", "type": "smallint" },
+          { "name": "lessons_per_cycle", "type": "smallint" }
+        ]
+      }
+    },
+    {
+      "id": "enrolments",
+      "type": "curriculum",
+      "data": {
+        "title": "enrolments",
+        "icon": "layers",
+        "description": "Joins students to the groups they are taught in. Ending a row (rather than deleting it) keeps set changes on record.",
+        "fields": [
+          { "name": "student_id", "type": "uuid", "pk": true, "fk": true, "ref": "students.id" },
+          { "name": "group_id", "type": "uuid", "pk": true, "fk": true, "ref": "teaching_groups.id" },
+          { "name": "joined_on", "type": "date" },
+          { "name": "left_on", "type": "date", "nullable": true }
+        ]
+      }
+    },
+    {
+      "id": "periods",
+      "type": "timetable",
+      "data": {
+        "title": "periods",
+        "icon": "activity",
+        "description": "The fortnightly grid: week A or B, day 1 to 5 and period 1 to 6, with bell times.",
+        "fields": [
+          { "name": "id", "type": "smallint", "pk": true },
+          { "name": "week", "type": "char(1)" },
+          { "name": "day", "type": "smallint" },
+          { "name": "period_no", "type": "smallint" },
+          { "name": "starts_at", "type": "time" },
+          { "name": "ends_at", "type": "time" }
+        ]
+      }
+    },
+    {
+      "id": "rooms",
+      "type": "site",
+      "data": {
+        "title": "rooms",
+        "icon": "building",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "code", "type": "varchar(6)", "unique": true, "note": "e.g. S12 for science block room 12" },
+          { "name": "capacity", "type": "smallint" },
+          { "name": "is_lab", "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "id": "lessons",
+      "type": "timetable",
+      "data": {
+        "title": "lessons",
+        "icon": "crosshair",
+        "description": "One cell of the timetable. Unique keys on (period_id, room_id) and (period_id, teacher_id) prevent clashes.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "group_id", "type": "uuid", "fk": true, "ref": "teaching_groups.id" },
+          { "name": "teacher_id", "type": "uuid", "fk": true, "ref": "teachers.id" },
+          { "name": "room_id", "type": "uuid", "fk": true, "ref": "rooms.id" },
+          { "name": "period_id", "type": "smallint", "fk": true, "ref": "periods.id" }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "students-enrolments", "source": "students", "target": "enrolments", "label": "enrols in", "sourceEnd": "one", "sourceField": "id", "targetField": "student_id", "targetEnd": "one-or-many" },
+    { "id": "groups-enrolments", "source": "teaching_groups", "target": "enrolments", "label": "includes", "sourceEnd": "one", "sourceField": "id", "targetField": "group_id", "targetEnd": "zero-or-many" },
+    { "id": "subjects-groups", "source": "subjects", "target": "teaching_groups", "label": "taught as", "sourceEnd": "one", "sourceField": "id", "targetField": "subject_id", "targetEnd": "zero-or-many" },
+    { "id": "subjects-teachers", "source": "subjects", "target": "teachers", "label": "department of", "sourceEnd": "one", "sourceField": "id", "targetField": "department_id", "targetEnd": "zero-or-many" },
+    { "id": "groups-lessons", "source": "teaching_groups", "target": "lessons", "label": "meets in", "sourceEnd": "one", "sourceField": "id", "targetField": "group_id", "targetEnd": "zero-or-many" },
+    { "id": "teachers-lessons", "source": "teachers", "target": "lessons", "label": "teaches", "sourceEnd": "one", "sourceField": "id", "targetField": "teacher_id", "targetEnd": "zero-or-many" },
+    { "id": "rooms-lessons", "source": "rooms", "target": "lessons", "label": "hosts", "sourceEnd": "one", "sourceField": "id", "targetField": "room_id", "targetEnd": "zero-or-many" },
+    { "id": "periods-lessons", "source": "periods", "target": "lessons", "label": "slots", "sourceEnd": "one", "sourceField": "id", "targetField": "period_id", "targetEnd": "zero-or-many" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the schema",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Eight tables. lessons is the timetable itself; everything else describes who, what, where and when."
+        },
+        {
+          "id": "groups",
+          "title": "Subjects and teaching groups",
+          "description": "Each teaching group belongs to one subject. Teachers also sit in one subject department, which the cover planner uses.",
+          "highlightNodes": ["subjects", "teaching_groups", "teachers"],
+          "highlightEdges": ["subjects-groups", "subjects-teachers"]
+        },
+        {
+          "id": "enrol",
+          "title": "Students in groups",
+          "description": "enrolments joins students to groups. Every student is in at least one group; a newly created group may have no students yet.",
+          "highlightNodes": ["students", "enrolments", "teaching_groups"],
+          "highlightEdges": ["students-enrolments", "groups-enrolments"]
+        },
+        {
+          "id": "lesson",
+          "title": "One cell of the grid",
+          "description": "A lesson brings together a group, a teacher, a room and a period. The unique keys reject a second lesson in the same room or with the same teacher in that period.",
+          "highlightNodes": ["lessons", "teaching_groups", "teachers", "rooms", "periods"],
+          "highlightEdges": ["groups-lessons", "teachers-lessons", "rooms-lessons", "periods-lessons"]
+        }
+      ]
+    }
+  ]
+}

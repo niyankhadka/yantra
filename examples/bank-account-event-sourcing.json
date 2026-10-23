@@ -1,0 +1,202 @@
+{
+  "meta": {
+    "title": "Event-sourced bank account classes",
+    "description": "The core classes of an event-sourced current account at the fictional Larkfield Building Society: the aggregate, its domain events, and how they are stored and replayed.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "BankAccount never saves its balance: it records events, and its state is rebuilt by replaying them from the EventStore.",
+      "points": [
+        "Commands such as withdraw() check the rules, then raise an event; apply() is the only place that changes state.",
+        "AccountOpened, MoneyDeposited and MoneyWithdrawn are immutable facts that realise the DomainEvent interface.",
+        "AccountRepository loads by replaying a stream and saves by appending new events with an expected version, which catches concurrent writes."
+      ]
+    }
+  },
+  "roles": {
+    "abstract": { "label": "Abstract type", "color": "violet" },
+    "aggregate": { "label": "Domain model", "color": "blue" },
+    "event": { "label": "Domain event", "color": "amber" },
+    "infra": { "label": "Persistence", "color": "teal" }
+  },
+  "nodes": [
+    {
+      "id": "root",
+      "type": "abstract",
+      "data": {
+        "title": "AggregateRoot",
+        "stereotype": "abstract",
+        "icon": "layers",
+        "description": "Keeps the version and the list of events raised since the aggregate was loaded.",
+        "fields": [
+          { "name": "id", "type": "UUID", "visibility": "#" },
+          { "name": "version", "type": "long", "visibility": "#" },
+          { "name": "pending", "type": "List<DomainEvent>", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "raise", "params": "e: DomainEvent", "type": "void", "visibility": "#" },
+          { "name": "replay", "params": "history", "type": "void", "visibility": "+" },
+          { "name": "apply", "params": "e: DomainEvent", "type": "void", "visibility": "#", "abstract": true }
+        ]
+      }
+    },
+    {
+      "id": "account",
+      "type": "aggregate",
+      "data": {
+        "title": "BankAccount",
+        "icon": "credit-card",
+        "description": "withdraw() refuses when the balance plus the arranged overdraft would go below zero; otherwise it raises MoneyWithdrawn.",
+        "sourceFile": "src/accounts/BankAccount.cs",
+        "fields": [
+          { "name": "sortCode", "type": "String", "visibility": "-" },
+          { "name": "accountNumber", "type": "String", "visibility": "-" },
+          { "name": "balance", "type": "Money", "visibility": "-" },
+          { "name": "overdraftLimit", "type": "Money", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "open", "params": "holder, limit", "type": "BankAccount", "visibility": "+", "static": true },
+          { "name": "deposit", "params": "amount: Money", "type": "void", "visibility": "+" },
+          { "name": "withdraw", "params": "amount: Money", "type": "void", "visibility": "+" },
+          { "name": "apply", "params": "e: DomainEvent", "type": "void", "visibility": "#" }
+        ]
+      }
+    },
+    {
+      "id": "money",
+      "type": "aggregate",
+      "data": {
+        "title": "Money",
+        "icon": "credit-card",
+        "description": "Immutable amount in pence plus an ISO 4217 currency code.",
+        "fields": [
+          { "name": "pence", "type": "long", "visibility": "-" },
+          { "name": "currency", "type": "String", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "plus", "params": "other: Money", "type": "Money", "visibility": "+" },
+          { "name": "minus", "params": "other: Money", "type": "Money", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "event",
+      "type": "abstract",
+      "data": {
+        "title": "DomainEvent",
+        "stereotype": "interface",
+        "icon": "zap",
+        "methods": [
+          { "name": "aggregateId", "type": "UUID", "visibility": "+" },
+          { "name": "occurredAt", "type": "Instant", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "opened",
+      "type": "event",
+      "data": {
+        "title": "AccountOpened",
+        "icon": "flag",
+        "fields": [
+          { "name": "holderId", "type": "UUID", "visibility": "+" },
+          { "name": "overdraftLimit", "type": "Money", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "deposited",
+      "type": "event",
+      "data": {
+        "title": "MoneyDeposited",
+        "icon": "check-circle",
+        "fields": [
+          { "name": "amount", "type": "Money", "visibility": "+" },
+          { "name": "reference", "type": "String", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "withdrawn",
+      "type": "event",
+      "data": {
+        "title": "MoneyWithdrawn",
+        "icon": "activity",
+        "fields": [
+          { "name": "amount", "type": "Money", "visibility": "+" },
+          { "name": "channel", "type": "String", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "repository",
+      "type": "infra",
+      "data": {
+        "title": "AccountRepository",
+        "icon": "server",
+        "fields": [{ "name": "store", "type": "EventStore", "visibility": "-" }],
+        "methods": [
+          { "name": "load", "params": "id: UUID", "type": "BankAccount", "visibility": "+" },
+          { "name": "save", "params": "account: BankAccount", "type": "void", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "store",
+      "type": "infra",
+      "data": {
+        "title": "EventStore",
+        "stereotype": "interface",
+        "icon": "database",
+        "description": "append() fails with a concurrency error if the stream has moved past expectedVersion, so two tills cannot both spend the same balance.",
+        "methods": [
+          { "name": "readStream", "params": "id: UUID", "type": "List<DomainEvent>", "visibility": "+" },
+          { "name": "append", "params": "id, expectedVersion, events", "type": "void", "visibility": "+" }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "root-account", "source": "root", "target": "account", "relation": "inheritance" },
+    { "id": "account-money", "source": "account", "target": "money", "relation": "association", "label": "balance" },
+    { "id": "root-event", "source": "root", "target": "event", "relation": "aggregation", "label": "pending", "sourceLabel": "1", "targetLabel": "0..*" },
+    { "id": "event-opened", "source": "event", "target": "opened", "relation": "realization" },
+    { "id": "event-deposited", "source": "event", "target": "deposited", "relation": "realization" },
+    { "id": "event-withdrawn", "source": "event", "target": "withdrawn", "relation": "realization" },
+    { "id": "repository-account", "source": "repository", "target": "account", "relation": "dependency", "label": "rebuilds" },
+    { "id": "repository-store", "source": "repository", "target": "store", "relation": "association", "label": "appends to" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the model",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Nine types. There is no balance column anywhere: the account's state is whatever its events add up to."
+        },
+        {
+          "id": "aggregate",
+          "title": "The aggregate",
+          "description": "BankAccount extends AggregateRoot, which tracks the version and the events raised since loading. BankAccount supplies apply() and holds its balance as Money.",
+          "highlightNodes": ["root", "account", "money"],
+          "highlightEdges": ["root-account", "account-money"]
+        },
+        {
+          "id": "events",
+          "title": "Events as facts",
+          "description": "A command raises an event into the pending list. Each event type realises DomainEvent and is never changed once written.",
+          "highlightNodes": ["root", "event", "opened", "deposited", "withdrawn"],
+          "highlightEdges": ["root-event", "event-opened", "event-deposited", "event-withdrawn"]
+        },
+        {
+          "id": "persist",
+          "title": "Saving and loading",
+          "description": "save() appends the pending events with the version the account was loaded at; load() reads the stream and replays it to rebuild the account.",
+          "highlightNodes": ["repository", "store", "account"],
+          "highlightEdges": ["repository-store", "repository-account"]
+        }
+      ]
+    }
+  ]
+}

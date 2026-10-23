@@ -393,7 +393,7 @@ test('playground: a first visit opens on the start screen; the picker searches t
     assert.ok(heads.includes('Books') && heads.includes('Sequence'), heads.join(', '));
     await page.eval(`const s = document.getElementById('pick-search'); s.value = 'mind map'; s.dispatchEvent(new Event('input')); true`);
     const names = await page.eval(`[...document.querySelectorAll('#pick-list [role=option] b')].map((b) => b.textContent)`);
-    assert.deepEqual(names, ['Mind map', 'Exam revision plan']);
+    assert.deepEqual(names, ['Mind map', 'Exam revision plan', 'Smart thermostat launch plan', "A new manager's first 90 days", 'Council website redesign research', 'Monthly household budget']);
     await page.eval(`document.getElementById('pick-search').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); true`);
     await page.waitFor(`document.getElementById('src').value.includes('"mindmap"')`);
     await page.waitFor(`document.getElementById('status').textContent.length > 0 && document.getElementById('placeholder').hidden`);

@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "title": "Harlow Vale Faculty of Science and Engineering",
+    "description": "How a university faculty is organised: the dean, the associate deans for education and research, four schools and the departments inside them.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "compact": true
+    },
+    "summary": {
+      "headline": "Four heads of school run the departments; two associate deans set faculty-wide standards for teaching and research.",
+      "points": [
+        "Departments own their degree programmes and staff; schools own the budget and the buildings.",
+        "The associate dean for education signs off every new or changed programme.",
+        "Research students belong to the faculty's doctoral college, whichever department supervises them."
+      ],
+      "facts": {
+        "Students": "7,900",
+        "Academic staff": "480",
+        "Updated": "15/09/2026"
+      }
+    }
+  },
+  "roles": {
+    "dean": { "label": "Faculty leadership", "color": "violet", "icon": "award" },
+    "school": { "label": "Head of school", "color": "blue", "icon": "building" },
+    "department": { "label": "Head of department", "color": "teal", "icon": "graduation-cap" },
+    "office": { "label": "Faculty office", "color": "amber", "icon": "book-open" }
+  },
+  "nodes": [
+    { "id": "dean", "type": "dean", "width": 200, "data": { "title": "Prof. Eleanor Whitcombe", "subtitle": "Dean of Science and Engineering", "badge": "Dean", "metadata": { "Schools": 4, "Budget": "£96m" } } },
+    { "id": "manager", "type": "office", "width": 200, "data": { "title": "Gareth Lloyd", "subtitle": "Faculty Operating Officer", "badge": "Operations", "assistant": true, "description": "Runs the faculty office: finance, timetabling, space and professional services staff. Works beside the dean rather than in the academic line." } },
+    { "id": "ad-education", "type": "dean", "width": 200, "data": { "title": "Dr Rachel Obi", "subtitle": "Associate Dean, Education", "badge": "Education", "description": "Chairs the faculty teaching committee; approves new programmes and changes to assessment." } },
+    { "id": "ad-research", "type": "dean", "width": 200, "data": { "title": "Prof. Stefan Novak", "subtitle": "Associate Dean, Research", "badge": "Research", "description": "Leads research strategy, grant support and preparation for the national research assessment." } },
+    { "id": "quality", "type": "office", "width": 180, "data": { "title": "Laura Fenwick", "subtitle": "Quality and accreditation manager", "badge": "Quality", "description": "Keeps engineering degrees accredited by the professional bodies." } },
+    { "id": "doctoral", "type": "office", "width": 180, "data": { "title": "Dr Tariq Hassan", "subtitle": "Director, Doctoral College", "badge": "PhD", "metadata": { "PhD students": 610 } } },
+    { "id": "computing", "type": "school", "width": 190, "data": { "title": "Prof. Ananya Iyer", "subtitle": "Head of School of Computing", "badge": "Computing", "metadata": { "Students": 2300 } } },
+    { "id": "engineering", "type": "school", "width": 190, "data": { "title": "Prof. Colin Bradshaw", "subtitle": "Head of School of Engineering", "badge": "Engineering", "metadata": { "Students": 2600 } } },
+    { "id": "sciences", "type": "school", "width": 190, "data": { "title": "Prof. Ingrid Larsen", "subtitle": "Head of School of Natural Sciences", "badge": "Sciences", "metadata": { "Students": 2100 } } },
+    { "id": "maths", "type": "school", "width": 190, "data": { "title": "Prof. Daniel Achebe", "subtitle": "Head of School of Mathematics", "badge": "Mathematics", "metadata": { "Students": 900 } } },
+    { "id": "cs", "type": "department", "width": 180, "data": { "title": "Dr Sophie Turner", "subtitle": "Computer Science", "badge": "CS" } },
+    { "id": "data-science", "type": "department", "width": 180, "data": { "title": "Dr Rahul Kapoor", "subtitle": "Data Science and AI", "badge": "Data and AI" } },
+    { "id": "civil", "type": "department", "width": 180, "data": { "title": "Prof. Moira Gallagher", "subtitle": "Civil Engineering", "badge": "Civil" } },
+    { "id": "mechanical", "type": "department", "width": 180, "data": { "title": "Dr Kenji Watanabe", "subtitle": "Mechanical Engineering", "badge": "Mechanical" } },
+    { "id": "electrical", "type": "department", "width": 180, "data": { "title": "Dr Fatima Zahra", "subtitle": "Electrical and Electronic Engineering", "badge": "Electrical" } },
+    { "id": "physics", "type": "department", "width": 180, "data": { "title": "Prof. Liam O'Connell", "subtitle": "Physics and Astronomy", "badge": "Physics" } },
+    { "id": "chemistry", "type": "department", "width": 180, "data": { "title": "Dr Hélène Mercier", "subtitle": "Chemistry", "badge": "Chemistry" } },
+    { "id": "biosciences", "type": "department", "width": 180, "data": { "title": "Dr Samuel Kariuki", "subtitle": "Biosciences", "badge": "Biosciences" } },
+    { "id": "pure", "type": "department", "width": 180, "data": { "title": "Dr Agnieszka Nowak", "subtitle": "Pure Mathematics", "badge": "Pure maths" } },
+    { "id": "statistics", "type": "department", "width": 180, "data": { "title": "Dr Peter Lindqvist", "subtitle": "Applied Mathematics and Statistics", "badge": "Statistics" } }
+  ],
+  "edges": [
+    { "id": "dean-manager", "source": "dean", "target": "manager" },
+    { "id": "dean-ad-education", "source": "dean", "target": "ad-education" },
+    { "id": "dean-ad-research", "source": "dean", "target": "ad-research" },
+    { "id": "dean-computing", "source": "dean", "target": "computing" },
+    { "id": "dean-engineering", "source": "dean", "target": "engineering" },
+    { "id": "dean-sciences", "source": "dean", "target": "sciences" },
+    { "id": "dean-maths", "source": "dean", "target": "maths" },
+    { "id": "education-quality", "source": "ad-education", "target": "quality" },
+    { "id": "research-doctoral", "source": "ad-research", "target": "doctoral" },
+    { "id": "computing-cs", "source": "computing", "target": "cs" },
+    { "id": "computing-data", "source": "computing", "target": "data-science" },
+    { "id": "engineering-civil", "source": "engineering", "target": "civil" },
+    { "id": "engineering-mechanical", "source": "engineering", "target": "mechanical" },
+    { "id": "engineering-electrical", "source": "engineering", "target": "electrical" },
+    { "id": "sciences-physics", "source": "sciences", "target": "physics" },
+    { "id": "sciences-chemistry", "source": "sciences", "target": "chemistry" },
+    { "id": "sciences-bio", "source": "sciences", "target": "biosciences" },
+    { "id": "maths-pure", "source": "maths", "target": "pure" },
+    { "id": "maths-statistics", "source": "maths", "target": "statistics" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Tour of the faculty",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Twenty leaders in four levels. The faculty operating officer sits beside the dean; departments are listed under their school. Use the fold buttons to hide or show a school." },
+        { "id": "leadership", "title": "Faculty executive", "description": "The dean meets the two associate deans and the four heads of school every fortnight as the faculty executive.", "highlightNodes": ["dean", "manager", "ad-education", "ad-research", "computing", "engineering", "sciences", "maths"], "highlightEdges": ["dean-manager", "dean-ad-education", "dean-ad-research", "dean-computing", "dean-engineering", "dean-sciences", "dean-maths"] },
+        { "id": "standards", "title": "Teaching and research standards", "description": "The associate deans have no departments of their own. Quality and accreditation report to education; the doctoral college reports to research.", "highlightNodes": ["ad-education", "quality", "ad-research", "doctoral"], "highlightEdges": ["education-quality", "research-doctoral"] },
+        { "id": "engineering", "title": "The largest school", "description": "Engineering has three departments and the most students; its degrees must keep professional accreditation.", "highlightNodes": ["engineering", "civil", "mechanical", "electrical"], "highlightEdges": ["engineering-civil", "engineering-mechanical", "engineering-electrical"] },
+        { "id": "computing-maths", "title": "Computing and mathematics", "description": "Data Science and AI shares joint modules with Applied Mathematics and Statistics, though the two sit in different schools.", "highlightNodes": ["computing", "cs", "data-science", "maths", "pure", "statistics"], "highlightEdges": ["computing-cs", "computing-data", "maths-pure", "maths-statistics"] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "title": "Fernhill Pay engineering organisation",
+    "description": "How a 140-engineer payments scale-up organises engineering: platform teams that build shared foundations, product teams grouped by customer, plus data and security.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "compact": true
+    },
+    "summary": {
+      "headline": "Product teams own customer outcomes; platform teams own the paved road they build on.",
+      "points": [
+        "Each product team is long-lived and owns its services end to end, including on-call.",
+        "Platform teams treat the product teams as their customers and publish a yearly roadmap.",
+        "Security and fraud models sit outside the product line so they can say no."
+      ],
+      "facts": {
+        "Engineers": "140",
+        "Teams": "11",
+        "Updated": "01/10/2026"
+      }
+    }
+  },
+  "roles": {
+    "lead": { "label": "Engineering leadership", "color": "violet", "icon": "award" },
+    "platform": { "label": "Platform", "color": "blue", "icon": "layers" },
+    "product": { "label": "Product engineering", "color": "teal", "icon": "users" },
+    "data": { "label": "Data and security", "color": "amber", "icon": "shield" }
+  },
+  "nodes": [
+    { "id": "cto", "type": "lead", "width": 200, "data": { "title": "Nadia Petrova", "subtitle": "Chief Technology Officer", "badge": "CTO", "metadata": { "Engineers": 140, "Directs": 4 } } },
+    { "id": "eng-ops", "type": "lead", "width": 200, "data": { "title": "Sam Okoro", "subtitle": "Engineering chief of staff", "badge": "Eng ops", "assistant": true, "description": "Runs quarterly planning, hiring plans and the engineering all-hands; no reporting line of its own." } },
+    { "id": "platform", "type": "platform", "width": 200, "data": { "title": "Henrik Dahl", "subtitle": "Director of Platform", "badge": "Platform", "metadata": { "Engineers": 32 }, "description": "Owns the internal developer platform: clusters, CI/CD, observability and the service templates." } },
+    { "id": "product-eng", "type": "product", "width": 200, "data": { "title": "Chloe Barrett", "subtitle": "Director of Product Engineering", "badge": "Product eng", "metadata": { "Engineers": 78 } } },
+    { "id": "data", "type": "data", "width": 200, "data": { "title": "Ravi Menon", "subtitle": "Head of Data and ML", "badge": "Data", "metadata": { "Engineers": 18 } } },
+    { "id": "security", "type": "data", "width": 200, "data": { "title": "Zainab Musa", "subtitle": "Head of Security", "badge": "Security", "metadata": { "Engineers": 12 }, "description": "Responsible for PCI DSS compliance, application security and the security operations rota." } },
+    { "id": "infra", "type": "platform", "width": 180, "data": { "title": "Tomasz Wójcik", "subtitle": "EM, Infrastructure", "badge": "Infra" } },
+    { "id": "devex", "type": "platform", "width": 180, "data": { "title": "Isla Murray", "subtitle": "EM, Developer experience", "badge": "DevEx" } },
+    { "id": "sre", "type": "platform", "width": 180, "data": { "title": "Diego Alvarez", "subtitle": "EM, Reliability", "badge": "SRE" } },
+    { "id": "payments", "type": "product", "width": 215, "data": { "title": "Aisha Bello", "subtitle": "Group EM, Payments", "badge": "Payments", "description": "Everything money touches: taking card payments and paying merchants out." } },
+    { "id": "merchant", "type": "product", "width": 215, "data": { "title": "Oliver Grant", "subtitle": "Group EM, Merchant experience", "badge": "Merchant", "description": "Everything a merchant sees: sign-up, verification and the dashboard." } },
+    { "id": "checkout", "type": "product", "width": 180, "data": { "title": "Lena Fischer", "subtitle": "EM, Checkout", "badge": "Checkout" } },
+    { "id": "payouts", "type": "product", "width": 180, "data": { "title": "Marco Bianchi", "subtitle": "EM, Payouts and ledger", "badge": "Payouts" } },
+    { "id": "onboarding", "type": "product", "width": 180, "data": { "title": "Priya Raman", "subtitle": "EM, Onboarding and KYC", "badge": "Onboarding" } },
+    { "id": "dashboard", "type": "product", "width": 180, "data": { "title": "Jack Whitaker", "subtitle": "EM, Merchant dashboard", "badge": "Dashboard" } },
+    { "id": "data-platform", "type": "data", "width": 180, "data": { "title": "Emeka Nwosu", "subtitle": "EM, Data platform", "badge": "Data" } },
+    { "id": "fraud-ml", "type": "data", "width": 180, "data": { "title": "Yuna Sato", "subtitle": "EM, Fraud models", "badge": "ML" } },
+    { "id": "appsec", "type": "data", "width": 180, "data": { "title": "Callum Fraser", "subtitle": "Application security lead", "badge": "AppSec" } },
+    { "id": "secops", "type": "data", "width": 180, "data": { "title": "Noor Al-Hashimi", "subtitle": "Security operations lead", "badge": "SecOps" } }
+  ],
+  "edges": [
+    { "id": "cto-eng-ops", "source": "cto", "target": "eng-ops" },
+    { "id": "cto-platform", "source": "cto", "target": "platform" },
+    { "id": "cto-product", "source": "cto", "target": "product-eng" },
+    { "id": "cto-data", "source": "cto", "target": "data" },
+    { "id": "cto-security", "source": "cto", "target": "security" },
+    { "id": "platform-infra", "source": "platform", "target": "infra" },
+    { "id": "platform-devex", "source": "platform", "target": "devex" },
+    { "id": "platform-sre", "source": "platform", "target": "sre" },
+    { "id": "product-payments", "source": "product-eng", "target": "payments" },
+    { "id": "product-merchant", "source": "product-eng", "target": "merchant" },
+    { "id": "payments-checkout", "source": "payments", "target": "checkout" },
+    { "id": "payments-payouts", "source": "payments", "target": "payouts" },
+    { "id": "merchant-onboarding", "source": "merchant", "target": "onboarding" },
+    { "id": "merchant-dashboard", "source": "merchant", "target": "dashboard" },
+    { "id": "data-platform-team", "source": "data", "target": "data-platform" },
+    { "id": "data-fraud", "source": "data", "target": "fraud-ml" },
+    { "id": "security-appsec", "source": "security", "target": "appsec" },
+    { "id": "security-secops", "source": "security", "target": "secops" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Tour of engineering",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Nineteen engineering leaders in four levels. The chief of staff sits beside the CTO; teams are listed under their manager. Use the fold buttons to hide or show a group." },
+        { "id": "leadership", "title": "Engineering leadership", "description": "Four leaders report to the CTO: platform, product engineering, data and ML, and security.", "highlightNodes": ["cto", "eng-ops", "platform", "product-eng", "data", "security"], "highlightEdges": ["cto-eng-ops", "cto-platform", "cto-product", "cto-data", "cto-security"] },
+        { "id": "platform", "title": "The paved road", "description": "Infrastructure, developer experience and reliability give every product team the same way to build, deploy and run a service.", "highlightNodes": ["platform", "infra", "devex", "sre"], "highlightEdges": ["platform-infra", "platform-devex", "platform-sre"] },
+        { "id": "product", "title": "Product teams by customer", "description": "Product engineering splits into two groups: payments for the money flow and merchant experience for what merchants see. Each team owns its services and its on-call.", "highlightNodes": ["product-eng", "payments", "merchant", "checkout", "payouts", "onboarding", "dashboard"], "highlightEdges": ["product-payments", "product-merchant", "payments-checkout", "payments-payouts", "merchant-onboarding", "merchant-dashboard"] },
+        { "id": "guardrails", "title": "Guardrails", "description": "Fraud models and security report to their own leaders, not to the product groups whose launches they may need to block.", "highlightNodes": ["data", "data-platform", "fraud-ml", "security", "appsec", "secops"], "highlightEdges": ["data-platform-team", "data-fraud", "security-appsec", "security-secops"] }
+      ]
+    }
+  ]
+}

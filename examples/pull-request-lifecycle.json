@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "title": "Pull request lifecycle",
+    "description": "The states a pull request moves through, from draft to merged, with review rounds, a merge queue and the way back when checks fail.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "A pull request merges only after an approval on its latest commits and green checks on top of the current main branch.",
+      "points": [
+        "Drafts run CI but ask no one to review.",
+        "Review comments loop on In review; requested changes go round until fixes are pushed.",
+        "New commits after approval dismiss it and send the pull request back to review.",
+        "The merge queue rebuilds on the latest main, so a red build there sends it back for changes."
+      ],
+      "facts": { "States": "7 plus a check, start and end", "Required approvals": "1 code owner", "Repository": "Quillfeather payments-api" }
+    }
+  },
+  "roles": {
+    "pseudo": { "label": "Start / end", "color": "slate" },
+    "state": { "label": "Pull request state", "color": "blue" },
+    "decision": { "label": "Decision", "color": "amber" },
+    "blocked": { "label": "Needs the author", "color": "rose" }
+  },
+  "nodes": [
+    { "id": "start", "type": "pseudo", "shape": "initial", "data": { "title": "Start", "description": "The author pushes a branch and opens a pull request." } },
+    { "id": "draft", "type": "state", "shape": "state", "data": { "title": "Draft", "subtitle": "Work in progress", "icon": "file-text", "description": "CI runs on every push, but no reviewers are requested." } },
+    { "id": "ready", "type": "state", "shape": "state", "data": { "title": "Ready for review", "subtitle": "Reviewers requested", "icon": "users", "description": "CODEOWNERS adds the owning team; a reviewer is assigned by round robin.", "metadata": { "Target": "First review within 1 working day" } } },
+    { "id": "review", "type": "state", "shape": "state", "data": { "title": "In review", "subtitle": "Reviewer reading the diff", "icon": "book-open" } },
+    { "id": "changes", "type": "blocked", "shape": "state", "data": { "title": "Changes requested", "subtitle": "Back with the author", "icon": "flag" } },
+    { "id": "approved", "type": "state", "shape": "state", "data": { "title": "Approved", "subtitle": "Code owner signed off", "icon": "check-circle" } },
+    { "id": "queued", "type": "state", "shape": "state", "data": { "title": "In merge queue", "subtitle": "Waiting for its turn", "icon": "layers", "description": "The queue tests each pull request on top of main plus the ones ahead of it." } },
+    { "id": "checks", "type": "decision", "shape": "choice", "data": { "title": "Checks pass on latest main?", "description": "Unit, integration and contract tests, plus the security scan." } },
+    { "id": "merged", "type": "state", "shape": "state", "data": { "title": "Merged", "subtitle": "Squashed into main", "icon": "zap", "description": "The squash commit triggers the deploy to staging." } },
+    { "id": "closed", "type": "blocked", "shape": "state", "data": { "title": "Closed", "subtitle": "Not merged", "icon": "flag" } },
+    { "id": "end", "type": "pseudo", "shape": "final", "data": { "title": "Done", "description": "The branch is deleted." } }
+  ],
+  "edges": [
+    { "id": "start-draft", "source": "start", "target": "draft" },
+    { "id": "draft-ready", "source": "draft", "target": "ready", "label": "mark ready" },
+    { "id": "ready-review", "source": "ready", "target": "review", "label": "reviewer starts" },
+    { "id": "review-comment", "source": "review", "target": "review", "label": "comment" },
+    { "id": "review-changes", "source": "review", "target": "changes", "label": "request changes" },
+    { "id": "changes-review", "source": "changes", "target": "review", "label": "push fixes" },
+    { "id": "review-approved", "source": "review", "target": "approved", "label": "approve" },
+    { "id": "approved-review", "source": "approved", "target": "review", "label": "new commits" },
+    { "id": "approved-queued", "source": "approved", "target": "queued", "label": "add to queue" },
+    { "id": "queued-checks", "source": "queued", "target": "checks", "label": "build on main" },
+    { "id": "checks-merged", "source": "checks", "target": "merged", "label": "green" },
+    { "id": "checks-changes", "source": "checks", "target": "changes", "label": "red" },
+    { "id": "ready-closed", "source": "ready", "target": "closed", "label": "close" },
+    { "id": "closed-ready", "source": "closed", "target": "ready", "label": "reopen" },
+    { "id": "merged-end", "source": "merged", "target": "end" },
+    { "id": "closed-end", "source": "closed", "target": "end", "label": "branch deleted" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Pull request lifecycle",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "The main road runs from Draft to Merged. The back-arrows are the review rounds, and the rose states are where the pull request waits on its author." },
+        {
+          "id": "open",
+          "title": "From draft to review",
+          "description": "The author opens a draft while the work is unfinished. Marking it ready requests the code owners, and the state moves on when a reviewer starts.",
+          "highlightNodes": ["start", "draft", "ready", "review"],
+          "highlightEdges": ["start-draft", "draft-ready", "ready-review"]
+        },
+        {
+          "id": "rounds",
+          "title": "Review rounds",
+          "description": "Comments keep the pull request In review (the loop). Requesting changes hands it back to the author; pushing fixes brings it back for another look.",
+          "highlightNodes": ["review", "changes"],
+          "highlightEdges": ["review-comment", "review-changes", "changes-review"]
+        },
+        {
+          "id": "approve",
+          "title": "Approval",
+          "description": "A code owner approves. If the author pushes new commits afterwards, the approval is dismissed and the pull request goes back to review.",
+          "highlightNodes": ["review", "approved"],
+          "highlightEdges": ["review-approved", "approved-review"]
+        },
+        {
+          "id": "merge",
+          "title": "Merge queue",
+          "description": "Approved pull requests join the merge queue, which builds each one on the latest main. Green merges; red sends it back to the author as Changes requested.",
+          "highlightNodes": ["approved", "queued", "checks", "merged", "changes", "end"],
+          "highlightEdges": ["approved-queued", "queued-checks", "checks-merged", "checks-changes", "merged-end"]
+        },
+        {
+          "id": "close",
+          "title": "Closing without merging",
+          "description": "A pull request that is no longer wanted is closed. It can be reopened while the branch exists; once the branch is deleted it is done.",
+          "highlightNodes": ["ready", "closed", "end"],
+          "highlightEdges": ["ready-closed", "closed-ready", "closed-end"]
+        }
+      ]
+    }
+  ]
+}

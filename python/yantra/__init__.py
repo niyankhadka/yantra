@@ -17,7 +17,7 @@ from .i18n import LANGUAGES, RTL_LANGUAGES, builtin_language, is_rtl
 from .book import Book
 from .page import Page, resolve_levels
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 __all__ = [
     "Diagram", "Node", "Edge", "Step", "Scenario", "Group", "Page", "Book", "blocks",

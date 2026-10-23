@@ -55,6 +55,7 @@
     {
       "type": "callout",
       "title": "Why the renewal failure went unnoticed",
+      "detail": "certificate-renewal",
       "span": "half",
       "tone": "warn",
       "label": "Silent failure",
@@ -80,5 +81,79 @@
         { "q": "Could this happen to other services?", "a": "Yes, any service using the same renewal job. The expiry alert now covers all 23 certificates in the store." }
       ]
     }
-  ]
+  ],
+  "details": {
+    "certificate-renewal": {
+      "meta": {
+        "title": "How the certificate renewal broke"
+      },
+      "answer": {
+        "headline": "The renewal job lost write access to the certificate store during a permissions clean-up on 12/09/2026, and every run after that failed quietly.",
+        "points": [
+          "The job ran every night and logged its failure at debug level only",
+          "Nothing checked when the certificate would expire",
+          "The certificate expired on 14/10/2026 at 14:02"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "steps",
+          "title": "From clean-up to outage",
+          "items": [
+            {
+              "title": "Permissions clean-up",
+              "text": "Unused service-account roles were removed, including the renewal job's write role."
+            },
+            {
+              "title": "Nightly runs fail",
+              "text": "The job could not write the new certificate, logged it at debug level and exited without an error code."
+            },
+            {
+              "title": "Certificate expires",
+              "text": "The gateway kept serving the old certificate until it expired, and every card payment failed."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "warn",
+          "title": "Why nobody was paged",
+          "body": "The failure looked like a slow rise in errors, and the error-rate alert waits 10 minutes before it fires.",
+          "detail": "alerting"
+        }
+      ]
+    },
+    "alerting": {
+      "meta": {
+        "title": "Why the alert waited 10 minutes"
+      },
+      "answer": {
+        "headline": "The error-rate alert fires only after 10 minutes above its threshold, to avoid paging on short spikes; a sudden total failure should page at once.",
+        "points": [
+          "Add a second rule: 100% failures for 1 minute pages immediately",
+          "Alert 14 days before any certificate expires"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "kv",
+          "title": "The alert today",
+          "items": [
+            {
+              "k": "Threshold",
+              "v": "Above 5% failed payments"
+            },
+            {
+              "k": "Wait",
+              "v": "10 minutes"
+            },
+            {
+              "k": "Pages",
+              "v": "Platform on-call"
+            }
+          ]
+        }
+      ]
+    }
+  }
 }

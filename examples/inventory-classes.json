@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "title": "Warehouse inventory classes",
+    "description": "The domain model of stock control at the fictional Northgate Supplies distribution centre: warehouses, bin locations, stock levels and the movements that change them.",
+    "layout": { "direction": "TB" },
+    "summary": {
+      "headline": "Stock levels only change through StockMovement subclasses, so every unit on a shelf can be traced to a goods receipt or an order pick.",
+      "points": [
+        "A Warehouse owns its BinLocations, and each StockLevel counts one product in one bin.",
+        "Receipt and Pick extend the abstract StockMovement, which applies itself and checks quantities never go negative; a bin-to-bin transfer would be one more subclass.",
+        "ReorderPolicy is an interface: MinMaxPolicy suits steady lines, while seasonal products can plug in their own rule."
+      ]
+    }
+  },
+  "roles": {
+    "abstract": { "label": "Abstract type", "color": "violet" },
+    "class": { "label": "Class", "color": "blue" },
+    "movement": { "label": "Stock movement", "color": "amber" },
+    "value": { "label": "Value object", "color": "teal" }
+  },
+  "nodes": [
+    {
+      "id": "warehouse",
+      "type": "class",
+      "data": {
+        "title": "Warehouse",
+        "icon": "warehouse",
+        "fields": [
+          { "name": "code", "type": "String", "visibility": "-" },
+          { "name": "bins", "type": "List<BinLocation>", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "available", "params": "sku: Sku", "type": "Quantity", "visibility": "+" },
+          { "name": "findBin", "params": "label: String", "type": "BinLocation", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "bin",
+      "type": "class",
+      "data": {
+        "title": "BinLocation",
+        "icon": "layers",
+        "description": "A labelled shelf position such as A-04-3 (aisle, bay, level).",
+        "fields": [
+          { "name": "label", "type": "String", "visibility": "-" },
+          { "name": "maxVolumeLitres", "type": "int", "visibility": "-" },
+          { "name": "levels", "type": "List<StockLevel>", "visibility": "-" }
+        ],
+        "methods": [{ "name": "freeVolume", "type": "int", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "level",
+      "type": "class",
+      "data": {
+        "title": "StockLevel",
+        "icon": "activity",
+        "description": "How many of one product sit in one bin, and how many of those are reserved for open orders.",
+        "fields": [
+          { "name": "onHand", "type": "Quantity", "visibility": "-" },
+          { "name": "reserved", "type": "Quantity", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "free", "type": "Quantity", "visibility": "+" },
+          { "name": "adjust", "params": "delta: Quantity", "type": "void", "visibility": "~" }
+        ]
+      }
+    },
+    {
+      "id": "product",
+      "type": "class",
+      "data": {
+        "title": "Product",
+        "icon": "package",
+        "fields": [
+          { "name": "sku", "type": "Sku", "visibility": "-" },
+          { "name": "description", "type": "String", "visibility": "-" },
+          { "name": "unitOfMeasure", "type": "Uom", "visibility": "-" },
+          { "name": "reorder", "type": "ReorderPolicy", "visibility": "-" }
+        ],
+        "methods": [{ "name": "needsReorder", "params": "available: Quantity", "type": "boolean", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "quantity",
+      "type": "value",
+      "data": {
+        "title": "Quantity",
+        "icon": "crosshair",
+        "description": "Immutable amount in a unit of measure (each, case of 12, pallet). Adding mismatched units throws.",
+        "fields": [
+          { "name": "amount", "type": "int", "visibility": "-" },
+          { "name": "uom", "type": "Uom", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "plus", "params": "other: Quantity", "type": "Quantity", "visibility": "+" },
+          { "name": "isNegative", "type": "boolean", "visibility": "+" },
+          { "name": "of", "params": "amount, uom", "type": "Quantity", "visibility": "+", "static": true }
+        ]
+      }
+    },
+    {
+      "id": "movement",
+      "type": "abstract",
+      "data": {
+        "title": "StockMovement",
+        "stereotype": "abstract",
+        "icon": "truck",
+        "description": "Template method: apply() validates, calls the subclass's effects() and writes an audit line.",
+        "fields": [
+          { "name": "id", "type": "UUID", "visibility": "#" },
+          { "name": "quantity", "type": "Quantity", "visibility": "#" },
+          { "name": "performedBy", "type": "String", "visibility": "#" }
+        ],
+        "methods": [
+          { "name": "apply", "type": "void", "visibility": "+" },
+          { "name": "effects", "type": "List<Adjustment>", "visibility": "#", "abstract": true }
+        ]
+      }
+    },
+    {
+      "id": "receipt",
+      "type": "movement",
+      "data": {
+        "title": "Receipt",
+        "icon": "truck",
+        "fields": [
+          { "name": "purchaseOrder", "type": "String", "visibility": "-" },
+          { "name": "into", "type": "BinLocation", "visibility": "-" }
+        ],
+        "methods": [{ "name": "effects", "type": "List<Adjustment>", "visibility": "#" }]
+      }
+    },
+    {
+      "id": "pick",
+      "type": "movement",
+      "data": {
+        "title": "Pick",
+        "icon": "check-circle",
+        "fields": [
+          { "name": "orderRef", "type": "String", "visibility": "-" },
+          { "name": "from", "type": "BinLocation", "visibility": "-" }
+        ],
+        "methods": [{ "name": "effects", "type": "List<Adjustment>", "visibility": "#" }]
+      }
+    },
+    {
+      "id": "policy",
+      "type": "abstract",
+      "data": {
+        "title": "ReorderPolicy",
+        "stereotype": "interface",
+        "icon": "settings",
+        "methods": [
+          { "name": "suggest", "params": "available: Quantity", "type": "Quantity", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "minmax",
+      "type": "class",
+      "data": {
+        "title": "MinMaxPolicy",
+        "icon": "flag",
+        "description": "Orders up to max whenever available stock drops below min.",
+        "fields": [
+          { "name": "min", "type": "Quantity", "visibility": "-" },
+          { "name": "max", "type": "Quantity", "visibility": "-" }
+        ],
+        "methods": [{ "name": "suggest", "params": "available: Quantity", "type": "Quantity", "visibility": "+" }]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "warehouse-bin", "source": "warehouse", "target": "bin", "relation": "composition", "label": "bins", "sourceLabel": "1", "targetLabel": "1..*" },
+    { "id": "bin-level", "source": "bin", "target": "level", "relation": "composition", "label": "levels", "sourceLabel": "1", "targetLabel": "0..*" },
+    { "id": "level-product", "source": "product", "target": "level", "relation": "association", "label": "counted in", "sourceLabel": "1", "targetLabel": "0..*" },
+    { "id": "movement-quantity", "source": "movement", "target": "quantity", "relation": "association", "label": "moves" },
+    { "id": "movement-receipt", "source": "movement", "target": "receipt", "relation": "inheritance" },
+    { "id": "movement-pick", "source": "movement", "target": "pick", "relation": "inheritance" },
+    { "id": "movement-level", "source": "movement", "target": "level", "relation": "dependency", "label": "adjusts" },
+    { "id": "product-policy", "source": "policy", "target": "product", "relation": "association", "label": "governs", "sourceLabel": "1", "targetLabel": "0..*" },
+    { "id": "policy-minmax", "source": "policy", "target": "minmax", "relation": "realization" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the model",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Ten types. Solid hollow triangles point at a parent class, dashed ones at an interface; filled diamonds sit on the owning side."
+        },
+        {
+          "id": "structure",
+          "title": "Where stock lives",
+          "description": "A warehouse owns its bins, and a bin owns its stock levels (filled diamonds): delete the bin and its levels go with it.",
+          "highlightNodes": ["warehouse", "bin", "level"],
+          "highlightEdges": ["warehouse-bin", "bin-level"]
+        },
+        {
+          "id": "counting",
+          "title": "Counting a product",
+          "description": "Each StockLevel counts one Product in one bin. A product with stock in five bins has five StockLevels.",
+          "highlightNodes": ["level", "product"],
+          "highlightEdges": ["level-product"]
+        },
+        {
+          "id": "movements",
+          "title": "Changing stock",
+          "description": "Receipt and Pick extend StockMovement and supply effects(). The shared apply() adjusts stock levels by a Quantity, which refuses to mix cases and single units, and never lets a level go negative.",
+          "highlightNodes": ["movement", "receipt", "pick", "level", "quantity"],
+          "highlightEdges": ["movement-receipt", "movement-pick", "movement-level", "movement-quantity"]
+        },
+        {
+          "id": "reorder",
+          "title": "Reordering",
+          "description": "Each product holds a ReorderPolicy. MinMaxPolicy realises it; the buying team can assign a different policy per product.",
+          "highlightNodes": ["product", "policy", "minmax"],
+          "highlightEdges": ["product-policy", "policy-minmax"]
+        }
+      ]
+    }
+  ]
+}

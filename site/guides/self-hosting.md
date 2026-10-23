@@ -24,9 +24,9 @@ the HTTP MCP server and the playground.
 For repeatable builds in CI or a team, pin the version instead of fetching the latest:
 
 ```bash
-npm i -D @niyankhadka/yantra@1.2.0          # in the project, so npx uses this copy
-npx -y @niyankhadka/yantra@1.2.0 build x.json  # or pin it in the command
-pip install niyankhadka-yantra==1.2.0
+npm i -D @niyankhadka/yantra@1.2.1          # in the project, so npx uses this copy
+npx -y @niyankhadka/yantra@1.2.1 build x.json  # or pin it in the command
+pip install niyankhadka-yantra==1.2.1
 ```
 
 With the package installed in the project, the MCP entries `yantra init` writes
@@ -50,7 +50,7 @@ access**: payloads come in, HTML, SVG, Markdown or payloads go out. Before expos
 2. Set `YANTRA_MCP_TOKEN` and send `Authorization: Bearer <token>` where the client allows
    it; otherwise authenticate at the proxy.
 3. Do not set `YANTRA_INPUT_ROOT` or `YANTRA_OUTPUT_ROOT` on a shared or public server.
-4. Pin the version (`@niyankhadka/yantra@1.2.0`) so deploys are repeatable.
+4. Pin the version (`@niyankhadka/yantra@1.2.1`) so deploys are repeatable.
 
 A one-line Docker start, the protocol details, the full security model and the connector
 steps for each app are in [Remote MCP server](../../docs/remote-mcp.md).

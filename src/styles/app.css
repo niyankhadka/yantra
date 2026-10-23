@@ -862,7 +862,7 @@ kbd {
   background: none;
 }
 
-/* Collapsed: one slim bar - count, step title, back / next, present, expand */
+/* Collapsed: one slim bar - count, step title, restart, back / next, present, expand */
 .y-story.is-collapsed {
   display: flex;
   align-items: center;
@@ -884,7 +884,6 @@ kbd {
 .y-story.is-collapsed .y-story-body .y-link,
 .y-story.is-collapsed #btn-play,
 .y-story.is-collapsed #speed-select,
-.y-story.is-collapsed #btn-restart,
 .y-story.is-collapsed #scenario-select,
 .y-story.is-collapsed #btn-follow,
 .y-story.is-collapsed #btn-prev span {
@@ -904,6 +903,10 @@ kbd {
   font-size: 13.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.y-story.is-collapsed #btn-restart {
+  order: 3;
 }
 
 .y-story.is-collapsed #btn-prev {
@@ -1996,6 +1999,102 @@ kbd {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Drill-down level bar: a clear way back up, then the path of levels, under the toolbar */
+.y-levelbar {
+  position: absolute;
+  top: 76px;
+  inset-inline-start: 12px;
+  z-index: 15;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  height: auto;
+  padding: 4px;
+  padding-inline-end: 12px;
+  border: 1px solid var(--y-border);
+  border-radius: 12px;
+  background: var(--y-overlay);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.y-levelbar[hidden] {
+  display: none;
+}
+
+.y-level-back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  max-width: 260px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--y-accent);
+  color: var(--y-accent-ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.y-level-back:hover {
+  filter: brightness(1.08);
+}
+
+.y-level-back:focus-visible {
+  outline: 2px solid var(--y-accent);
+  outline-offset: 2px;
+}
+
+.y-level-up {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.y-level-back kbd {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--y-accent-ink) 22%, transparent);
+  font: 600 11px/16px var(--y-font-mono, monospace);
+}
+
+.y-level-sep {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  background: var(--y-border);
+}
+
+.y-levelbar .y-crumb {
+  color: var(--y-ink-2);
+}
+
+.y-levelbar .y-crumb:hover {
+  color: var(--y-accent);
+}
+
+.y-levelbar li span {
+  color: var(--y-ink);
+  font-weight: 650;
+}
+
+@media (max-width: 560px) {
+  .y-level-back kbd,
+  .y-levelbar .y-level-sep,
+  .y-levelbar ol {
+    display: none;
+  }
+}
+
+/* With the level bar shown, the group path goes under it */
+.y-levelbar:not([hidden]) ~ .y-focus-crumbs {
+  top: 124px;
 }
 
 /* Group focus: the path of boxes around the zoomed group, under the toolbar */
