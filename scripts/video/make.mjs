@@ -22,6 +22,19 @@ const BEAT = 0.5;
 const VO_OFFSET = 0.25; // the voice starts this long after the first frame
 // Phrases per voice-over line, split by the pauses in the take (plan.md lists the words)
 const PHRASES_PER_LINE = [2, 2, 1, 2, 2, 2, 2, 3, 2, 3];
+// The words of each line, for the captions (the voice says "Yun-truh"; captions spell Yantra)
+const CAPTIONS = [
+  'Diagrams take hours… and go stale by Friday.',
+  'AI drawings? Overlapping boxes. Arrows to nowhere.',
+  'Meet Yantra.',
+  'Describe it, or ask your agent. Yantra draws it.',
+  'Every diagram is checked… before anyone sees it.',
+  'Then step through it, like a story.',
+  'Diagrams. Answer pages. Books.',
+  'Onboard a team. Review an incident. Teach a lesson.',
+  'One file. Even offline.',
+  "Yantra… Don't draw it. Explain it."
+];
 const FORMATS = { landscape: { w: 1920, h: 1080 }, vertical: { w: 1080, h: 1920 } };
 
 const args = process.argv.slice(2);
@@ -73,6 +86,13 @@ const end = Math.ceil((phrases.at(-1)[1] + 1.2) / 2) * 2;
 const T = { cuts: [...cuts, end], lines, end, voOffset: VO_OFFSET };
 fs.writeFileSync(path.join(WORK, 'timeline.json'), JSON.stringify(T, null, 2));
 console.log(`voice-over: ${phrases.length} phrases, cuts at ${T.cuts.join(', ')}s`);
+
+// captions (WebVTT), one cue per voice-over line; both formats share them
+const vtt = (s) => { const m = Math.floor(s / 60), r = (s - m * 60).toFixed(3).padStart(6, '0'); return `00:${String(m).padStart(2, '0')}:${r}`; };
+const cues = CAPTIONS.map((text, i) => `${i + 1}\n${vtt(lines[i][0][0])} --> ${vtt(lines[i].at(-1)[1] + 0.3)}\n${text}`);
+fs.mkdirSync(OUT, { recursive: true });
+fs.writeFileSync(path.join(OUT, `yantra-teaser-v${VERSION}.vtt`), `WEBVTT\n\n${cues.join('\n\n')}\n`);
+if (args.includes('--captions')) process.exit(0);
 
 // ---- 2. real Yantra output for the scenes
 fs.copyFileSync(path.join(SRC, 'checkout.json'), path.join(WORK, 'checkout.json'));

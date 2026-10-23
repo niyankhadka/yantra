@@ -19,7 +19,7 @@ node scripts/video/make.mjs --stills 9.8,16.6        # review frames only
 | `synth.mjs` | Music and effects on one beat grid, ducked under the voice. |
 | `cdp.mjs` | Headless Chrome over the DevTools Protocol (no npm dependency). |
 
-The outputs, `yantra-teaser-v<VERSION>.mp4` / `.jpg` and `yantra-teaser-vertical-v<VERSION>.mp4` / `.jpg`,
+The outputs, `yantra-teaser-v<VERSION>.mp4` / `.jpg` / `.vtt` (captions) and `yantra-teaser-vertical-v<VERSION>.mp4` / `.jpg`,
 go to `site/assets/video/`, which the website serves at `/video/`.
 
 ## Versions
@@ -35,5 +35,3 @@ It needs Chrome or Edge (`YANTRA_BROWSER`) and ffmpeg (`FFMPEG=path`, or on `PAT
 
 If you record a new take, keep the same pauses. `make.mjs` stops with a message if it
 doesn't find the expected number of phrases (`PHRASES_PER_LINE`).
-
-The long promo is published as-is (`yantra-promo-v<version>.mp4`, 1080p, with its poster). Keep 4K or other source masters out of git; attach them to a GitHub release.

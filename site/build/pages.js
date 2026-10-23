@@ -81,6 +81,72 @@ const ICON = {
   edit: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>'
 };
 
+/** Line icons for the landing page's problem and feature cards (24px grid, currentColor). */
+const svgIcon = (p) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const FI = {
+  clock: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  text: svgIcon('<path d="M4 6h16M4 10h16M4 14h10M4 18h7"/>'),
+  broken: svgIcon('<rect x="3" y="4" width="9" height="6" rx="1.5"/><rect x="8" y="8" width="9" height="6" rx="1.5"/><path d="m16 17 5 4M21 17l-5 4"/>'),
+  layout: svgIcon('<rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="8.5" y="16" width="7" height="5" rx="1"/><path d="M6.5 8v3h11V8M12 11v5"/>'),
+  check: svgIcon('<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="m9 12 2 2 4-4"/>'),
+  steps: svgIcon('<circle cx="5" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="18" r="2"/><path d="m6.5 7.5 4 3M13.5 13.5l4 3"/>'),
+  shapes: svgIcon('<rect x="3" y="3" width="8" height="8" rx="1.5"/><circle cx="17" cy="7" r="4"/><path d="M7 14l4 7H3z"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),
+  agent: svgIcon('<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V5M9 13h.01M15 13h.01M9.5 17h5"/><circle cx="12" cy="4" r="1"/>'),
+  import: svgIcon('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'),
+  share: svgIcon('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>'),
+  globe: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'),
+  cross: svgIcon('<path d="M18 6 6 18M6 6l12 12"/>'),
+  tick: svgIcon('<path d="M20 6 9 17l-5-5"/>'),
+  file: svgIcon('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 14l2 2 4-4"/>'),
+  chat: svgIcon('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>'),
+  terminal: svgIcon('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/>')
+};
+
+/** A monochrome brand logo from site/assets/logos (Simple Icons), drawn in currentColor. */
+function brandLogo(slug) {
+  const svg = fs.readFileSync(path.join(ROOT, 'site', 'assets', 'logos', `${slug}.svg`), 'utf8');
+  return svg.replace(/<title>[^<]*<\/title>/, '').replace('<svg ', '<svg class="logo-mark" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false" ').replace(' role="img"', '');
+}
+
+/** "Works with" row: [logo slug or null, name]. */
+const WORKS_WITH = [
+  ['claude', 'Claude Code & Claude.ai'],
+  ['openai', 'Codex & ChatGPT'],
+  ['cursor', 'Cursor'],
+  ['googlegemini', 'Gemini'],
+  [null, 'Antigravity'],
+  ['modelcontextprotocol', 'Any MCP client'],
+  ['python', 'Python']
+];
+
+/** The problem, as [without Yantra, with Yantra] pairs (HTML). */
+const PAINS = [
+  ['Hours of dragging boxes, and the diagram is out of date by Friday', 'A few lines of description; layout, routing and labels are automatic'],
+  ['Ask an AI how something works and get a wall of text', 'Your agent answers with a diagram readers can step through'],
+  ['AI diagrams where boxes overlap and arrows point at nothing', 'A validator catches it first, with codes the agent can fix'],
+  ['A screenshot pasted into a doc that nobody can explore', 'One file with a walkthrough, an inspector and links to each step']
+];
+
+/** How it works: [id, title, text]; each has a matching panel in the stepper. */
+const STEPS = [
+  ['describe', 'Describe it', 'A few lines of JSON, written by you or your coding agent. No coordinates.'],
+  ['check', 'Yantra checks it', 'Broken references, overlaps and colliding labels are caught before anyone sees them.'],
+  ['step', 'Readers step through it', 'Each step lights up what matters, with a short explanation.'],
+  ['share', 'Share it anywhere', 'One HTML file, links to a single step, or SVG, PNG and Markdown.']
+];
+
+/** Landing page features: [icon, title, text (HTML)]. */
+const FEATURES = [
+  ['layout', 'No boxes to place', 'Layered layout with routed edges and placed labels, plus trees, mind maps and nested groups. There are no coordinates to write.'],
+  ['check', 'Checked before anyone sees it', 'The validator reports broken references, overlaps, edges through cards and label collisions, each with a stable code.'],
+  ['steps', 'Walkthroughs', 'Steps that light up what matters, scenarios, autoplay, camera follow, present mode and drill-down into detail diagrams.'],
+  ['shapes', 'Every shape of answer', 'Architecture, sequence, state, ER, class, org chart and mind map diagrams, answer pages with charts, books and slides.'],
+  ['agent', 'Built for AI', 'An MCP server, agent skills set up by <code>yantra init</code>, and prompts for Claude.ai, ChatGPT and any chat.'],
+  ['import', 'Bring your diagrams', 'Import Mermaid, PlantUML, draw.io and Visio files, then add the story.'],
+  ['share', 'Share it anywhere', 'One HTML file with no network requests, links that reopen a step, and SVG, PNG and Markdown exports.'],
+  ['globe', 'For every reader', '18 interface languages, right-to-left layouts, light and dark themes and full keyboard control.']
+];
+
 // Theme before first paint: saved choice (shared with the playground and viewer) or the system
 const THEME_SCRIPT = "(function(){var s=null;try{s=localStorage.getItem('yantra:theme')}catch(e){}var p=s==='light'||s==='dark'?s:'system';var d=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;var r=document.documentElement;r.setAttribute('data-theme',p==='system'?(d?'dark':'light'):p);r.setAttribute('data-theme-pref',p)})()";
 // The playground used to be the site root: /#example=..., /?lang=... go to /playground/
@@ -355,42 +421,135 @@ function landing({ assets, thumbs, stars }) {
   const chips = PAGE_CHIPS.map(([id, name]) => `<li><a class="chip" href="/playground/#example=${id}">${esc(name)}</a></li>`).join('\n');
   const faq = FAQ.map(([q, a]) => `<details class="faq-item"><summary>${esc(q)}</summary>${a}</details>`).join('\n');
   const teaser = latestVideo('yantra-teaser');
-  const promo = latestVideo('yantra-promo');
+  // [who, outcome, text, href, link label, image]
+  const shot = (src, alt, w = 1200, h = 750) => `<img src="${src}" width="${w}" height="${h}" alt="${esc(alt)}" loading="lazy" decoding="async">`;
+  const USES = [
+    ['Developers', 'Understand a codebase', '"How does this work?", answered as a walkthrough instead of a wall of text.', guideUrl('coding-agents'), 'Diagrams from your codebase', shot('/images/kind-cloud-architecture.png', 'An order and payment pipeline explained as an architecture diagram', 960, 600)],
+    ['Tech leads', 'Onboard a new hire', 'An architecture overview they can step through on day one, with detail diagrams a click away.', '/playground/#example=platform-overview', 'Open a platform overview', themedImg('/thumbs/platform-overview', 'A shop platform overview diagram', thumbs['platform-overview'])],
+    ['SRE and on-call', 'Review an incident', 'The timeline, the cause and the fix on one page anyone can read.', '/playground/#example=answer-incident-review', 'Open an incident review', shot('/images/use-incident-review.png', 'An incident review answer page: the cause first, then the impact')],
+    ['Product and operations', 'Make a decision', 'Options compared side by side, with the recommendation first.', '/playground/#example=answer-build-or-buy-crm', 'Open a decision record', shot('/images/use-decision.png', 'A build-or-buy decision page with the recommendation and three options')],
+    ['Teachers and writers', 'Teach a lesson', 'Lessons and processes, one step or one chapter at a time.', '/playground/#example=book-checkout-explained', 'Open a book', shot('/images/kind-book.png', 'A book in book mode: the cover and its chapters', 960, 600)],
+    ['Teams on Mermaid or draw.io', 'Upgrade the diagrams you have', 'Import what you already have and turn it into a story.', guideUrl('import'), 'Import a diagram', shot('/images/use-import.png', 'A Mermaid flowchart imported into Yantra, with groups and routed edges')]
+  ];
   const starLabel = stars === null ? 'Star on GitHub' : `Star on GitHub <span class="count">${stars.toLocaleString('en-GB')}</span>`;
 
   const body = `<main id="main" class="landing">
 <section class="hero">
   <div class="wrap hero-in">
-    <p class="kicker">Open source · MIT · v${esc(SITE.version)}</p>
-    <h1>Make your AI show its work.</h1>
-    <p class="lede"><strong>Diagrams that explain, one step at a time.</strong> Ask your coding agent or AI chat how something works, or describe it yourself in a few lines of JSON. Yantra lays it out, checks it and turns it into a walkthrough anyone can follow: diagrams, one-page answers and books, shared as one file.</p>
-    <div class="cta">
-      <a class="btn btn-primary" href="/playground/">Open the playground ${ICON.arrow}</a>
-      <a class="btn" href="${guideUrl('first-diagram')}">Get started</a>
-      <a class="btn btn-ghost" href="${SITE.repo}">${ICON.github}<span>${starLabel}</span></a>
+    <div class="hero-copy">
+      <div class="hero-badges">
+        <span class="kicker">Open source · MIT · v${esc(SITE.version)}</span>
+        <a class="star" href="${SITE.repo}">${ICON.github}<span>${starLabel}</span></a>
+      </div>
+      <h1>Make your AI show its work.</h1>
+      <p class="lede"><strong>Diagrams that explain, one step at a time.</strong> Describe a system, a process or a decision, or ask your coding agent or AI chat to. Yantra lays it out, checks it and turns it into a walkthrough anyone can follow.</p>
+      <div class="cta">
+        <a class="btn btn-primary btn-lg" href="/playground/">Open the playground ${ICON.arrow}</a>
+        <a class="btn btn-lg" href="#start">Get started</a>
+      </div>
+      <div class="hero-install">${codeBlock('npx @niyankhadka/yantra init', 'bash', 'Set up your coding agent')}</div>
     </div>
-    <div class="hero-install">${codeBlock('npx @niyankhadka/yantra new diagram.json', 'bash')}</div>
+    ${teaser ? `<figure class="hero-media">
+      <div class="player" data-player>
+        <video controls playsinline preload="none" poster="/video/${teaser}.jpg" width="1920" height="1080">
+          <source src="/video/${teaser}.mp4" type="video/mp4">
+          <track kind="captions" src="/video/${teaser}.vtt" srclang="en" label="English">
+          <a href="/video/${teaser}.mp4">Watch the 42-second tour</a>
+        </video>
+        <button class="player-play" type="button" hidden aria-label="Play the 42-second tour, with sound and captions">
+          <span class="player-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg></span>
+          <span class="player-label" aria-hidden="true"><strong>Watch the tour</strong><span>0:42 · sound and captions</span></span>
+        </button>
+      </div>
+    </figure>` : ''}
+  </div>
+  <div class="wrap">
+    <div class="works-with">
+      <p class="works-with-label">Works with</p>
+      <ul>
+${WORKS_WITH.map(([logo, name]) => `        <li>${logo ? brandLogo(logo) : FI.agent}<span>${esc(name)}</span></li>`).join('\n')}
+      </ul>
+    </div>
   </div>
 </section>
 
-${teaser ? `<section class="teaser" id="teaser" aria-labelledby="teaser-title">
+<section class="section" id="problem" aria-labelledby="problem-title">
   <div class="wrap">
-    <h2 id="teaser-title" class="section-title">See it in 42 seconds</h2>
-    <video class="teaser-video" controls playsinline preload="none" poster="/video/${teaser}.jpg" width="1920" height="1080">
-      <source src="/video/${teaser}.mp4" type="video/mp4">
-      <a href="/video/${teaser}.mp4">Watch the teaser</a>
-    </video>
-    ${promo ? `<p class="teaser-more">Want the longer version? <a href="/video/${promo}.mp4">Watch the full promo</a> (68 seconds).</p>` : ''}
+    <div class="section-intro">
+      <p class="eyebrow">The problem</p>
+      <h2 id="problem-title" class="section-title">Explaining a system shouldn't take all afternoon</h2>
+      <p class="section-lede">Whether you draw it yourself or ask an AI, the result is usually slow, stale or wrong. Yantra changes each of those.</p>
+    </div>
+    <div class="compare">
+      <p class="compare-head is-before" aria-hidden="true">Without Yantra</p>
+      <p class="compare-head is-after" aria-hidden="true">With Yantra</p>
+      <ul class="compare-rows">
+${PAINS.map(([before, after]) => `        <li class="reveal"><p class="before"><span class="mark" aria-hidden="true">${FI.cross}</span><span><span class="sr-only">Without Yantra: </span>${before}</span></p><span class="compare-arrow" aria-hidden="true">${ICON.arrow}</span><p class="after"><span class="mark" aria-hidden="true">${FI.tick}</span><span><span class="sr-only">With Yantra: </span>${after}</span></p></li>`).join('\n')}
+      </ul>
+    </div>
   </div>
-</section>` : ''}
+</section>
 
-<section class="demo" aria-labelledby="demo-title">
+<section class="section section-alt" id="how" aria-labelledby="how-title">
   <div class="wrap">
+    <div class="section-intro">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title" class="section-title">Describe it. Yantra does the rest.</h2>
+      <p class="section-lede">Four steps from a question to an explanation anyone can follow.</p>
+    </div>
+    <div class="stepper" data-tabs data-autoplay="6000">
+      <div class="stepper-list" role="tablist" aria-orientation="vertical" aria-label="How Yantra works">
+${STEPS.map(([id, title, text], i) => `        <button type="button" role="tab" id="step-${id}" aria-controls="stage-${id}" aria-selected="${i === 0}"${i ? ' tabindex="-1"' : ''}><span class="step-n" aria-hidden="true">${i + 1}</span><span class="step-text"><strong>${esc(title)}</strong><span>${esc(text)}</span></span><span class="step-bar" aria-hidden="true"></span></button>`).join('\n')}
+      </div>
+      <div class="stepper-stage">
+        <div class="tabpanel" role="tabpanel" id="stage-describe" aria-labelledby="step-describe" tabindex="0">
+          <h3 class="tab-h">1. Describe it</h3>
+          ${codeBlock('{\n  "meta": { "title": "Checkout" },\n  "nodes": [\n    { "id": "web", "data": { "title": "Web app" } },\n    { "id": "api", "data": { "title": "Orders API" } },\n    { "id": "db", "data": { "title": "Orders DB" } }\n  ],\n  "edges": [\n    { "id": "e1", "source": "web", "target": "api", "label": "POST /orders" },\n    { "id": "e2", "source": "api", "target": "db", "label": "INSERT" }\n  ],\n  "steps": [\n    { "title": "Overview" },\n    { "title": "Submit", "highlightNodes": ["web", "api"] }\n  ]\n}', 'json', 'checkout.json')}
+        </div>
+        <div class="tabpanel" role="tabpanel" id="stage-check" aria-labelledby="step-check" tabindex="0">
+          <h3 class="tab-h">2. Yantra checks it</h3>
+          <div class="term" role="img" aria-label="Terminal: yantra validate reports that edge api-db targets dbx, which is not a node; after the fix it reports that checkout.json is valid.">
+            <p><span class="t-p">$</span> yantra validate checkout.json</p>
+            <p>&nbsp;&nbsp;<span class="t-err">error</span>&nbsp;&nbsp;<span class="t-dim">ref/edge-unknown-target</span></p>
+            <p>&nbsp;&nbsp;Edge "api-db" target "dbx" is not a node.</p>
+            <p><span class="t-err">✗ checkout.json: 1 error</span></p>
+            <p class="t-gap"><span class="t-p">$</span> yantra validate checkout.json</p>
+            <p><span class="t-ok">✓ checkout.json is valid</span></p>
+          </div>
+        </div>
+        <div class="tabpanel" role="tabpanel" id="stage-step" aria-labelledby="step-step" tabindex="0">
+          <h3 class="tab-h">3. Readers step through it</h3>
+          <img class="stage-shot" src="/images/walkthrough.png" width="1400" height="860" alt="A cloud architecture diagram at step 3 of its walkthrough: two cards are highlighted, the rest are dimmed, and the storyboard below describes the step." loading="lazy" decoding="async">
+        </div>
+        <div class="tabpanel" role="tabpanel" id="stage-share" aria-labelledby="step-share" tabindex="0">
+          <h3 class="tab-h">4. Share it anywhere</h3>
+          <div class="share">
+            <div class="share-file"><span class="share-icon" aria-hidden="true">${FI.file}</span><div><strong>checkout.html</strong><span>One file · no network requests · opens anywhere</span></div></div>
+            <p class="share-label">Or export</p>
+            <ul class="share-chips"><li>SVG</li><li>PNG</li><li>Markdown</li></ul>
+            <p class="share-label">Link to one step</p>
+            <code class="share-link">checkout.html#step=3&amp;theme=dark</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section demo" aria-labelledby="demo-title">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Try it</p>
+        <h2 id="demo-title" class="section-title">Step through a real one</h2>
+        <p class="section-lede">This is the actual file <code>yantra build</code> writes, running right here.</p>
+      </div>
+      <a class="btn" href="/playground/#example=cloud-architecture">Edit it in the playground ${ICON.arrow}</a>
+    </div>
     <div class="demo-frame">
       <div class="demo-bar">
         <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        <h2 id="demo-title">cloud-architecture.html <span class="muted">· the real viewer, live</span></h2>
-        <a class="demo-open" href="/playground/#example=cloud-architecture">Edit in the playground ${ICON.arrow}</a>
+        <p class="demo-file">cloud-architecture.html <span class="muted">· live</span></p>
       </div>
       <div class="demo-stage" data-demo="/demo/cloud-architecture.html">
         <div class="demo-poster" aria-hidden="true">${themedImg('/thumbs/cloud-architecture', '', thumbs['cloud-architecture'])}</div>
@@ -398,129 +557,93 @@ ${teaser ? `<section class="teaser" id="teaser" aria-labelledby="teaser-title">
         <noscript><p class="demo-noscript">The live demo needs JavaScript. <a href="/demo/cloud-architecture.html">Open the file on its own</a>.</p></noscript>
       </div>
     </div>
-    <p class="demo-hint">Use <kbd>→</kbd> and <kbd>←</kbd> to step through the walkthrough, click a card to inspect it, <kbd>V</kbd> for the sequence view, <kbd>?</kbd> for every shortcut. This is the same single file <code>yantra build</code> writes.</p>
+    <p class="demo-hint">Use <kbd>→</kbd> and <kbd>←</kbd> to step through, click a card to inspect it, <kbd>V</kbd> for the sequence view and <kbd>?</kbd> for every shortcut.</p>
   </div>
 </section>
 
-<section class="section" aria-labelledby="how-title">
+<section class="section section-alt" id="features" aria-labelledby="features-title">
   <div class="wrap">
-    <h2 id="how-title" class="section-title">How it works</h2>
-    <p class="section-lede">Diagrams drawn by hand take hours and go stale; diagrams from AI overlap and point nowhere. With Yantra you describe the content, and it does the drawing, the checking and the walkthrough.</p>
-    <ol class="how">
-      <li>
-        <span class="how-n" aria-hidden="true">1</span>
-        <h3>Describe it</h3>
-        <p>Nodes, edges and walkthrough steps in JSON, with no coordinates. Write it yourself, ask your coding agent or chat, or import a Mermaid, PlantUML, draw.io or Visio sketch.</p>
-        ${codeBlock('{ "id": "api", "type": "service",\n  "data": { "title": "Orders API" } }', 'json')}
-      </li>
-      <li>
-        <span class="how-n" aria-hidden="true">2</span>
-        <h3>Yantra checks it</h3>
-        <p>The validator checks the schema, references and story, then the rendered geometry: overlaps, edges through cards, label collisions. Every finding has a stable code, so an agent can fix its own mistakes.</p>
-        ${codeBlock('yantra validate diagram.json', 'bash')}
-      </li>
-      <li>
-        <span class="how-n" aria-hidden="true">3</span>
-        <h3>Share it anywhere</h3>
-        <p>Readers step through the story in one HTML file that works offline, with light and dark themes and links that reopen a step. Export SVG, PNG or Markdown too.</p>
-        ${codeBlock('yantra build diagram.json', 'bash')}
-      </li>
-    </ol>
-  </div>
-</section>
-
-<section class="section" aria-labelledby="uses-title">
-  <div class="wrap">
-    <h2 id="uses-title" class="section-title">What people explain with Yantra</h2>
-    <p class="section-lede">The same walkthrough works for a codebase, an incident or a lesson.</p>
-    <div class="uses">
-      <article class="tool">
-        <h3>Developers with a coding agent</h3>
-        <p>"How does this codebase work?", answered as a walkthrough instead of a wall of text.</p>
-        <a class="more" href="${guideUrl('coding-agents')}">Diagrams from your codebase ${ICON.arrow}</a>
-      </article>
-      <article class="tool">
-        <h3>Tech leads and architects</h3>
-        <p>Architecture reviews and onboarding that a new hire can step through on day one.</p>
-        <a class="more" href="/playground/#example=platform-overview">Open a platform overview ${ICON.arrow}</a>
-      </article>
-      <article class="tool">
-        <h3>SRE and incident teams</h3>
-        <p>Postmortems with the timeline, the cause and the fix on one page.</p>
-        <a class="more" href="/playground/#example=answer-incident-review">Open an incident review ${ICON.arrow}</a>
-      </article>
-      <article class="tool">
-        <h3>Teachers and technical writers</h3>
-        <p>Lessons and processes, one step or one chapter at a time, read like an e-reader.</p>
-        <a class="more" href="/playground/#example=book-checkout-explained">Open a book ${ICON.arrow}</a>
-      </article>
-      <article class="tool">
-        <h3>Mermaid, PlantUML, draw.io and Visio users</h3>
-        <p>Bring the diagrams you already have and turn them into a story.</p>
-        <a class="more" href="${guideUrl('import')}">Import a diagram ${ICON.arrow}</a>
-      </article>
+    <div class="section-intro">
+      <p class="eyebrow">Features</p>
+      <h2 id="features-title" class="section-title">Everything an explanation needs</h2>
+      <p class="section-lede">One format and one viewer for every kind of explanation, and the tools to write it with or without AI.</p>
     </div>
+    <ul class="bento">
+${FEATURES.map(([icon, title, text], i) => `      <li class="feat reveal${i === 0 ? ' feat-wide' : ''}"><div class="feat-body"><span class="feat-icon" aria-hidden="true">${FI[icon]}</span><h3>${esc(title)}</h3><p>${text}</p></div>${i === 0 ? `<div class="feat-media">${themedImg('/thumbs/aws-serverless', 'An AWS serverless diagram laid out automatically, with nested groups and routed edges', thumbs['aws-serverless'])}</div>` : ''}</li>`).join('\n')}
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="use-cases" aria-labelledby="uses-title">
+  <div class="wrap">
+    <div class="section-intro">
+      <p class="eyebrow">Use cases</p>
+      <h2 id="uses-title" class="section-title">What people explain with Yantra</h2>
+      <p class="section-lede">The same walkthrough works for a codebase, an incident, a decision or a lesson.</p>
+    </div>
+    <ul class="uses">
+${USES.map(([who, title, text, href, link, img]) => `      <li class="use reveal"><a href="${href}"><span class="use-media">${img}</span><span class="use-body"><span class="use-who">${esc(who)}</span><span class="use-title">${esc(title)}</span><span class="use-text">${esc(text)}</span><span class="use-link">${esc(link)} ${ICON.arrow}</span></span></a></li>`).join('\n')}
+    </ul>
   </div>
 </section>
 
 <section class="section section-alt" aria-labelledby="kinds-title">
   <div class="wrap">
-    <h2 id="kinds-title" class="section-title">One format, many kinds of diagram</h2>
-    <p class="section-lede">Every kind shares the same viewer: walkthroughs, an inspector, folding, light and dark themes, 18 interface languages and full keyboard control.</p>
+    <div class="section-intro">
+      <p class="eyebrow">Diagram kinds</p>
+      <h2 id="kinds-title" class="section-title">One format, every kind of diagram</h2>
+      <p class="section-lede">Every kind shares the same viewer: walkthroughs, an inspector, folding, light and dark themes, 18 interface languages and full keyboard control.</p>
+    </div>
     <ul class="kinds">
 ${kindCards}
     </ul>
   </div>
 </section>
 
-<section class="section" aria-labelledby="tools-title">
+<section class="section" id="start" aria-labelledby="start-title">
   <div class="wrap">
-    <h2 id="tools-title" class="section-title">Works with your tools</h2>
-    <p class="section-lede">Use it from a coding agent, an AI chat, the command line or Python. All of them write the same JSON and build the same file.</p>
-    <div class="tools">
-      <article class="tool tool-wide">
-        <h3>Coding agents</h3>
-        <p>One command sets up your project: the Yantra skill, the MCP server and short rules. Then ask for a diagram, or run the skill directly.</p>
-        ${codeBlock('npx @niyankhadka/yantra init', 'bash')}
-        <div class="table-wrap"><table class="agents">
-          <thead><tr><th scope="col">Agent</th><th scope="col">Flag</th><th scope="col">Use it</th></tr></thead>
-          <tbody>
-            <tr><td>Claude Code</td><td><code>--claude</code></td><td><code>/yantra</code>, or ask for a diagram</td></tr>
-            <tr><td>Cursor</td><td><code>--cursor</code></td><td><code>/yantra</code>, or ask for a diagram</td></tr>
-            <tr><td>Codex</td><td><code>--codex</code></td><td><code>$yantra</code>, or ask for a diagram</td></tr>
-            <tr><td>Antigravity</td><td><code>--antigravity</code></td><td>ask for a diagram</td></tr>
-          </tbody>
-        </table></div>
-        <a class="more" href="${guideUrl('coding-agents')}">Diagrams from your codebase ${ICON.arrow}</a>
-      </article>
-      <article class="tool">
-        <h3>Claude.ai, ChatGPT, any chat</h3>
-        <p>Copy the prompt from the playground into any chat, ask for a diagram or a one-page answer, and paste the JSON back. A Claude.ai skill and a custom GPT pack are ready to upload.</p>
-        <a class="more" href="${guideUrl('chat')}">Use with AI chats ${ICON.arrow}</a>
-      </article>
-      <article class="tool">
-        <h3>Command line and MCP</h3>
-        <p><code>validate</code>, <code>build</code>, <code>export</code>, <code>screenshot</code>, <code>import</code> and an MCP server over stdio or Streamable HTTP, with sandboxed file access.</p>
-        <a class="more" href="${referenceUrl('agents')}">MCP setup ${ICON.arrow}</a>
-      </article>
-      <article class="tool">
-        <h3>Python</h3>
-        <p>Build diagrams and pages in Python with no third-party dependencies, then validate and build through the CLI.</p>
-        <a class="more" href="${guideUrl('python')}">Python SDK ${ICON.arrow}</a>
-      </article>
+    <div class="section-intro">
+      <p class="eyebrow">Get started</p>
+      <h2 id="start-title" class="section-title">Start in a minute, your way</h2>
+      <p class="section-lede">Every route writes the same JSON and builds the same file. The CLI needs Node.js 20.19 or later; the playground needs only a browser.</p>
     </div>
-  </div>
-</section>
-
-<section class="section section-alt" aria-labelledby="install-title" id="install">
-  <div class="wrap">
-    <h2 id="install-title" class="section-title">Install</h2>
-    <p class="section-lede">Node.js 20.19 or later (22.12 or later on Node 22). The playground needs nothing but a browser.</p>
-    <div class="install">
-      <div><h3>npm</h3><p>The <code>yantra</code> command, with a prebuilt viewer.</p>${codeBlock('npm i -g @niyankhadka/yantra', 'bash')}</div>
-      <div><h3>npx</h3><p>Run it without installing.</p>${codeBlock('npx @niyankhadka/yantra build diagram.json', 'bash')}</div>
-      <div><h3>pip</h3><p>The Python SDK (import <code>yantra</code>).</p>${codeBlock('pip install niyankhadka-yantra', 'bash')}</div>
-      <div><h3>init</h3><p>Set up your coding agent in this project.</p>${codeBlock('npx @niyankhadka/yantra init', 'bash')}</div>
+    <div class="tabs" data-tabs>
+      <div class="tablist" role="tablist" aria-label="Ways to use Yantra">
+        <button type="button" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="true">${FI.agent}<span>Coding agent</span></button>
+        <button type="button" role="tab" id="tab-chat" aria-controls="panel-chat" aria-selected="false" tabindex="-1">${FI.chat}<span>AI chat</span></button>
+        <button type="button" role="tab" id="tab-cli" aria-controls="panel-cli" aria-selected="false" tabindex="-1">${FI.terminal}<span>Command line</span></button>
+        <button type="button" role="tab" id="tab-python" aria-controls="panel-python" aria-selected="false" tabindex="-1">${brandLogo('python')}<span>Python</span></button>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-agent" aria-labelledby="tab-agent" tabindex="0">
+        <h3 class="tab-h">Coding agent</h3>
+        <ol class="steps">
+          <li><strong>Set up your project.</strong> One command adds the Yantra skill, the MCP server and short rules for Claude Code, Cursor, Codex or Antigravity.${codeBlock('npx @niyankhadka/yantra init', 'bash')}</li>
+          <li><strong>Ask for an explanation.</strong> For example: <em>"Explain how our checkout works as a Yantra diagram."</em> The agent reads your code, writes the JSON and fixes anything the validator finds.</li>
+          <li><strong>Open the HTML file it builds,</strong> and step through it.</li>
+        </ol>
+        <a class="more" href="${guideUrl('coding-agents')}">Diagrams from your codebase ${ICON.arrow}</a>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-chat" aria-labelledby="tab-chat" tabindex="0">
+        <h3 class="tab-h">AI chat</h3>
+        <ol class="steps">
+          <li><strong>Open the playground</strong> and press <em>Copy prompt for your chat</em>.</li>
+          <li><strong>Paste it into Claude.ai, ChatGPT, Gemini or any chat,</strong> and ask for a diagram or an answer page.</li>
+          <li><strong>Paste the JSON back</strong> to check it, see it and download the file. Everything runs in your browser.</li>
+        </ol>
+        <div class="cta"><a class="btn btn-primary" href="/playground/">Open the playground ${ICON.arrow}</a><a class="more" href="${guideUrl('chat')}">Use with AI chats ${ICON.arrow}</a></div>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-cli" aria-labelledby="tab-cli" tabindex="0">
+        <h3 class="tab-h">Command line</h3>
+        ${codeBlock('npm i -g @niyankhadka/yantra    # or run any command with npx\nyantra new diagram.json         # a starter (--page, --book, --kind sequence...)\nyantra validate diagram.json    # checks references, story and layout\nyantra build diagram.json       # -> diagram.html', 'bash')}
+        <p>Already have diagrams? <code>yantra import flow.mmd</code> reads Mermaid, PlantUML, draw.io and Visio.</p>
+        <a class="more" href="${guideUrl('first-diagram')}">Install and your first diagram ${ICON.arrow}</a>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-python" aria-labelledby="tab-python" tabindex="0">
+        <h3 class="tab-h">Python</h3>
+        ${codeBlock('pip install niyankhadka-yantra', 'bash')}
+        <p>Build diagrams, answer pages and books in Python with no third-party dependencies, then validate and build them through the CLI.</p>
+        <a class="more" href="${guideUrl('python')}">Python SDK ${ICON.arrow}</a>
+      </div>
     </div>
   </div>
 </section>
@@ -556,9 +679,11 @@ ${faq}
 <section class="section closing">
   <div class="wrap closing-in">
     <h2>Don't draw it. Explain it.</h2>
+    <p class="closing-lede">Describe your next system, process or decision, and let readers step through it.</p>
     <div class="cta">
       <a class="btn btn-primary" href="/playground/">Open the playground ${ICON.arrow}</a>
-      <a class="btn" href="/docs/">Read the docs</a>
+      <a class="btn" href="#start">Get started</a>
+      <a class="btn btn-ghost" href="/docs/">Read the docs</a>
     </div>
   </div>
 </section>
@@ -790,8 +915,8 @@ export function staticFiles() {
   // promo videos, posters and the README preview, served at /video/; the newest poster and preview
   // also at stable addresses (/video/<name>.jpg, /video/yantra-teaser-preview.webp) so the README
   // never needs a version bump
-  if (fs.existsSync(VIDEO_DIR)) for (const f of fs.readdirSync(VIDEO_DIR).filter((x) => /\.(mp4|jpg|webp)$/.test(x))) files[`video/${f}`] = fs.readFileSync(path.join(VIDEO_DIR, f));
-  for (const name of ['yantra-teaser', 'yantra-teaser-vertical', 'yantra-promo']) {
+  if (fs.existsSync(VIDEO_DIR)) for (const f of fs.readdirSync(VIDEO_DIR).filter((x) => /\.(mp4|jpg|webp|vtt)$/.test(x))) files[`video/${f}`] = fs.readFileSync(path.join(VIDEO_DIR, f));
+  for (const name of ['yantra-teaser', 'yantra-teaser-vertical']) {
     const latest = latestVideo(name);
     if (latest && files[`video/${latest}.jpg`]) files[`video/${name}.jpg`] = files[`video/${latest}.jpg`];
   }
