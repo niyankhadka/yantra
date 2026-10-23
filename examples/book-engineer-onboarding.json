@@ -1,0 +1,277 @@
+{
+  "kind": "book",
+  "meta": {
+    "title": "Your first month at Larchfield",
+    "description": "A handbook for new engineers: what to do in week one, how a change reaches production and how on-call works.",
+    "author": "Larchfield Software, Engineering enablement",
+    "date": "19/10/2026",
+    "reading": "book"
+  },
+  "summary": "Week one is for getting set up and shipping one small change, not for learning the whole system. Every change reaches production the same way: a reviewed pull request, a green pipeline, a canary and an automatic rollout. You join the on-call rota in week six, after two shadow shifts, and the first rule of a page is to acknowledge it and ask for help early.",
+  "chapters": [
+    {
+      "meta": {
+        "question": "What should I do in my first week?",
+        "title": "Week one",
+        "kicker": "Onboarding"
+      },
+      "answer": {
+        "headline": "Get your accounts and laptop working, meet your buddy and team, and ship one small change to production by Friday. Nobody expects you to understand the whole system yet.",
+        "text": "Your manager has picked a starter ticket that touches the real deploy pipeline but cannot hurt customers. Shipping it teaches you more about how we work than a week of reading.",
+        "points": [
+          "Your buddy is your first stop for any question, however small",
+          "Setup should take one day; if it takes longer, the guide is wrong, so tell us",
+          "Reading the code is fine, but pairing on a real ticket is faster"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "timeline",
+          "title": "The week at a glance",
+          "items": [
+            { "date": "Monday", "title": "Laptop, accounts and welcome", "text": "Collect your laptop at 09:30, run the setup script and join the 11:00 welcome session with People team." },
+            { "date": "Tuesday", "title": "Meet your team", "text": "Sit in on stand-up and planning. Your buddy walks you through the services your team owns." },
+            { "date": "Wednesday", "title": "Local environment running", "text": "Run the app and its tests locally. Pick up your starter ticket and pair on it with your buddy." },
+            { "date": "Thursday", "title": "First pull request", "text": "Open your pull request, respond to review and watch the pipeline run.", "tone": "info" },
+            { "date": "Friday", "title": "First change in production", "text": "Merge, watch the canary and tell the team channel it is live. Lunch with the team is on us.", "tone": "good" }
+          ]
+        },
+        {
+          "type": "checklist",
+          "title": "Day one set-up",
+          "span": "half",
+          "items": [
+            { "text": "Sign in with single sign-on and enrol two-factor authentication", "note": "Hardware key on your desk" },
+            { "text": "Run `./bootstrap.sh` from the dev-setup repository", "note": "About 40 minutes" },
+            { "text": "Join #eng-help, #deploys and your team's channel" },
+            { "text": "Request read access to production logs", "note": "Approved by your manager" },
+            { "text": "Book a 30-minute chat with your skip-level manager" }
+          ]
+        },
+        {
+          "type": "kv",
+          "title": "Who is who",
+          "span": "half",
+          "items": [
+            { "k": "Buddy", "v": "An engineer on your team, for your first 6 weeks" },
+            { "k": "Manager", "v": "Weekly one-to-one, 30 minutes" },
+            { "k": "Engineering enablement", "v": "Laptops, tooling and this handbook" },
+            { "k": "Security", "v": "#security, or security@ for anything sensitive" },
+            { "k": "People team", "v": "Payroll, leave and benefits" }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Ask early",
+          "tone": "info",
+          "label": "Tip",
+          "body": "If you have been stuck for 30 minutes, ask. A question in #eng-help usually gets an answer within the hour, and it often shows us a gap in the docs."
+        },
+        {
+          "type": "faq",
+          "title": "Questions new starters ask",
+          "items": [
+            { "q": "When do I get production access?", "a": "Read-only access to logs and dashboards in week one. Write access to production systems comes with on-call, after your shadow shifts." },
+            { "q": "What if my starter ticket is not done by Friday?", "a": "That is fine. The aim is to go through the whole process once; a ticket that turns out bigger than expected is useful too." },
+            { "q": "Do I need to read all the architecture docs?", "a": "No. Read the overview for your team's services. The rest makes more sense once you have shipped something." }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "How does a change get from my laptop to production?",
+        "title": "How we ship",
+        "kicker": "Process"
+      },
+      "answer": {
+        "headline": "Every change goes through a reviewed pull request, a green pipeline and a 5% canary for 15 minutes before it rolls out to everyone. Rollback is automatic if error rate or latency rises.",
+        "text": "We deploy small changes many times a day. The pipeline is the only way into production: nobody copies files to a server or edits a live database by hand.",
+        "points": [
+          "One approval from a code owner is needed to merge",
+          "Main is always deployable; unfinished work hides behind a feature flag",
+          "A typical change is live 35 minutes after merge"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "diagram",
+          "title": "The path to production",
+          "caption": "Every merge to main takes this path. A failed check at any stage stops the change.",
+          "diagram": {
+            "meta": {
+              "title": "Deploy pipeline",
+              "description": "A pull request is reviewed and tested, merged to main, built once, deployed to staging, then to a canary and finally to all servers.",
+              "layout": { "direction": "LR" }
+            },
+            "roles": {
+              "dev": { "label": "Developer", "color": "amber" },
+              "ci": { "label": "Pipeline", "color": "blue" },
+              "prod": { "label": "Production", "color": "teal" }
+            },
+            "nodes": [
+              { "id": "pr", "type": "dev", "data": { "title": "Pull request", "subtitle": "1 code-owner review", "icon": "file-text" } },
+              { "id": "build", "type": "ci", "data": { "title": "Build, test, staging", "subtitle": "Tests, then smoke tests", "icon": "package" } },
+              { "id": "canary", "type": "prod", "data": { "title": "Canary", "subtitle": "5% of traffic, 15 min", "icon": "activity", "badge": "Gate" } },
+              { "id": "all", "type": "prod", "data": { "title": "Full rollout", "subtitle": "All regions", "icon": "globe" } }
+            ],
+            "edges": [
+              { "id": "e1", "source": "pr", "target": "build", "label": "Merge to main" },
+              { "id": "e3", "source": "build", "target": "canary", "label": "Tests pass" },
+              { "id": "e4", "source": "canary", "target": "all", "label": "Healthy" }
+            ],
+            "scenarios": [
+              {
+                "id": "main",
+                "name": "A normal deploy",
+                "steps": [
+                  { "id": "s1", "title": "Overview", "description": "The stages every change passes through." },
+                  { "id": "s2", "title": "Review and merge", "description": "A code owner approves and the change merges to main.", "highlightNodes": ["pr", "build"], "highlightEdges": ["e1"] },
+                  { "id": "s3", "title": "Canary", "description": "5% of traffic sees the new version for 15 minutes while error rate and latency are compared.", "highlightNodes": ["build", "canary"], "highlightEdges": ["e3"] },
+                  { "id": "s4", "title": "Rollout", "description": "A healthy canary rolls out to every region.", "highlightNodes": ["canary", "all"], "highlightEdges": ["e4"] }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "metrics",
+          "title": "Our pipeline in numbers",
+          "items": [
+            { "label": "Deploys a day", "value": "42", "note": "average, September 2026", "trend": [31, 34, 36, 39, 40, 42] },
+            { "label": "Merge to live", "value": "35 min", "note": "median", "tone": "good" },
+            { "label": "Automatic rollbacks", "value": "3%", "note": "of deploys; each one is a bug caught early", "tone": "info" },
+            { "label": "Flaky test budget", "value": "0.5%", "note": "above this, the owning team fixes it first", "tone": "warn" }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "A good pull request",
+          "span": "half",
+          "items": [
+            { "title": "Keep it small", "text": "Under 400 changed lines. Split refactors from behaviour changes." },
+            { "title": "Say why", "text": "The description explains the problem, not just the change, and links the ticket." },
+            { "title": "Test it", "text": "New behaviour has a test. Say how you checked it by hand, if you did." },
+            { "title": "Flag what is unfinished", "text": "Anything users should not see yet goes behind a feature flag, off by default." }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Do not deploy on Friday afternoon",
+          "span": "half",
+          "tone": "warn",
+          "label": "House rule",
+          "body": "The pipeline stays open, but changes merged after 15:00 on a Friday wait for Monday unless they fix an incident. Fewer people are around to notice a slow-burning problem over the weekend."
+        },
+        {
+          "type": "table",
+          "title": "What blocks a merge",
+          "columns": ["Check", "Runs on", "If it fails"],
+          "rows": [
+            ["Unit and integration tests", "Every push", "Fix the test or the code; never skip it"],
+            ["Lint and formatting", "Every push", "Run `make fmt` locally"],
+            ["Dependency scan", "Every push", "Upgrade the package, or ask #security for an exception"],
+            ["Database migration check", "Changes to `migrations/`", "Make the migration backward compatible"],
+            ["Code-owner review", "Before merge", "Ask in your team channel for a reviewer"]
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "How does on-call work, and what do I do when I am paged?",
+        "title": "On-call basics",
+        "kicker": "Operations"
+      },
+      "answer": {
+        "headline": "You join your team's on-call rota in week six, after two shadow shifts. When paged, acknowledge within 5 minutes, open an incident channel and ask for help early: nobody handles a serious incident alone.",
+        "text": "Each team runs its own rota of one week at a time, Monday 10:00 to Monday 10:00. A secondary engineer backs up the primary, and an incident commander from the wider rota joins anything SEV-1 or SEV-2.",
+        "points": [
+          "On-call pays a flat weekly allowance plus time off in lieu for night pages",
+          "Your job is to restore service first; finding the root cause comes later",
+          "Every SEV-1 and SEV-2 gets a blameless review within 5 working days"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "steps",
+          "title": "When the pager goes off",
+          "items": [
+            { "title": "Acknowledge within 5 minutes", "text": "If you do not, the page goes to the secondary, then to your manager." },
+            { "title": "Judge the severity", "text": "Use the severity table. If unsure, pick the higher level; you can lower it later." },
+            { "title": "Open an incident channel", "text": "Type `/incident new` in Slack. It creates the channel, a timeline and a status page draft." },
+            { "title": "Stabilise", "text": "Roll back the last deploy, switch off the feature flag or fail over. Restore service before you debug." },
+            { "title": "Hand over or close", "text": "Write what you did in the channel, so the next person or the review can follow it." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Severity levels",
+          "detail": "severity",
+          "columns": ["Level", "Meaning", "Who joins"],
+          "rows": [
+            ["SEV-1", "Most customers cannot use a core feature, or data is at risk", "Primary, secondary, incident commander, comms"],
+            ["SEV-2", "A core feature is broken for some customers", "Primary, incident commander"],
+            ["SEV-3", "Degraded but usable, or an internal tool is down", "Primary, in working hours"],
+            ["SEV-4", "A bug with a workaround", "A ticket, no page"]
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Escalating is not failing",
+          "tone": "good",
+          "label": "Remember",
+          "body": "Paging the secondary or an incident commander at 03:00 is exactly what they are there for. The reviews we learn most from are the ones where someone asked for help in the first ten minutes."
+        },
+        {
+          "type": "checklist",
+          "title": "Before your first shift",
+          "items": [
+            { "text": "Two shadow shifts with an experienced engineer" },
+            { "text": "Install the paging app and test a page to your phone" },
+            { "text": "Read the runbooks for your team's top five alerts" },
+            { "text": "Confirm you can reach production consoles from home", "note": "VPN and hardware key" },
+            { "text": "Swap shifts in the rota tool, not in chat, so the pager follows" }
+          ]
+        }
+      ],
+      "details": {
+        "severity": {
+          "meta": { "title": "Choosing a severity" },
+          "answer": {
+            "headline": "Severity is about customer impact now, not how hard the fix looks. Pick the higher level when in doubt; lowering it later costs nothing.",
+            "points": [
+              "Data loss or a security exposure is always SEV-1",
+              "A problem that will become customer-facing within an hour is treated as if it already is",
+              "Severity sets who is paged and how often we update the status page"
+            ]
+          },
+          "blocks": [
+            {
+              "type": "table",
+              "title": "Examples",
+              "columns": ["Situation", "Severity"],
+              "rows": [
+                ["Login fails for every customer", "SEV-1"],
+                ["Payments fail in one region", "SEV-2"],
+                ["Search results take 4 seconds instead of 0.5", "SEV-3"],
+                ["The admin export button times out; the API still works", "SEV-4"],
+                ["A customer's data is visible to another customer", "SEV-1"]
+              ]
+            },
+            {
+              "type": "kv",
+              "title": "Status page updates",
+              "items": [
+                { "k": "SEV-1", "v": "Every 30 minutes" },
+                { "k": "SEV-2", "v": "Every hour" },
+                { "k": "SEV-3", "v": "When it starts and when it is fixed" },
+                { "k": "SEV-4", "v": "None" }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -22,6 +22,10 @@ import portfolioStatus from '../../examples/chart-portfolio-status.json';
 import slaMonitoring from '../../examples/chart-sla-monitoring.json';
 import hrHeadcount from '../../examples/chart-hr-headcount.json';
 import checkoutBook from '../../examples/book-checkout-explained.json';
+import bookEngineerOnboarding from '../../examples/book-engineer-onboarding.json';
+import bookGdprSmallBusiness from '../../examples/book-gdpr-small-business.json';
+import bookPostgresRunbook from '../../examples/book-postgres-runbook.json';
+import bookHowTheInternetWorks from '../../examples/book-how-the-internet-works.json';
 
 /** One-page answers to a question (explainers, decisions, incident write-ups). */
 export const PAGE_EXAMPLES = [
@@ -52,4 +56,9 @@ export const CHART_EXAMPLES = [
 ];
 
 /** Books: answer pages read in order (chapter `$ref`s are inlined at import time). */
-export const BOOK_EXAMPLES = [{ id: 'book-checkout-explained', name: 'Checkout, end to end (book)', kind: 'book', data: checkoutBook }];
+export const BOOK_EXAMPLES = [{ id: 'book-checkout-explained', name: 'Checkout, end to end (book)', kind: 'book', data: checkoutBook },
+  { id: 'book-engineer-onboarding', name: 'Engineer onboarding (book)', kind: 'book', data: bookEngineerOnboarding },
+  { id: 'book-gdpr-small-business', name: 'GDPR for a small clinic (book)', kind: 'book', data: bookGdprSmallBusiness },
+  { id: 'book-postgres-runbook', name: 'PostgreSQL runbook (book)', kind: 'book', data: bookPostgresRunbook },
+  { id: 'book-how-the-internet-works', name: 'How the internet works (book)', kind: 'book', data: bookHowTheInternetWorks }
+];

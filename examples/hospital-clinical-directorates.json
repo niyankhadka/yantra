@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "title": "St Aldric's Hospital clinical directorates",
+    "description": "How a 700-bed acute hospital is run: the executive team, the five clinical directorates under the chief operating officer, and the services inside each.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "compact": true
+    },
+    "summary": {
+      "headline": "Five clinical directorates run the hospital's services and report to the chief operating officer.",
+      "points": [
+        "Each directorate is led by a clinical director, a doctor who still sees patients.",
+        "The medical director and chief nurse own professional standards and patient safety across every directorate.",
+        "Diagnostics and pharmacy sit in clinical support because every ward depends on them."
+      ],
+      "facts": {
+        "Beds": "700",
+        "Staff": "5,400",
+        "Updated": "01/10/2026"
+      }
+    }
+  },
+  "roles": {
+    "exec": { "label": "Executive", "color": "violet", "icon": "award" },
+    "directorate": { "label": "Directorate", "color": "blue", "icon": "building" },
+    "service": { "label": "Service lead", "color": "teal", "icon": "heart" },
+    "professional": { "label": "Professional lead", "color": "amber", "icon": "shield" }
+  },
+  "nodes": [
+    { "id": "ceo", "type": "exec", "width": 200, "data": { "title": "Margaret Ellison", "subtitle": "Chief Executive", "badge": "CEO", "metadata": { "Reports": 3, "Board": "Trust board" } } },
+    { "id": "secretary", "type": "exec", "width": 200, "data": { "title": "Tom Pryce", "subtitle": "Trust Secretary", "badge": "Governance", "assistant": true, "description": "Runs the board and its committees and keeps the register of interests; advises the chief executive rather than managing a service." } },
+    { "id": "md", "type": "exec", "width": 200, "data": { "title": "Dr Samuel Adeyemi", "subtitle": "Medical Director", "badge": "Medical", "metadata": { "Doctors": 820 }, "description": "Responsible for medical standards, revalidation of doctors and the patient safety programme." } },
+    { "id": "cn", "type": "exec", "width": 200, "data": { "title": "Grace Holloway", "subtitle": "Chief Nurse", "badge": "Nursing", "metadata": { "Nurses and midwives": 2100 }, "description": "Responsible for nursing and midwifery standards, safe staffing, infection prevention and safeguarding." } },
+    { "id": "coo", "type": "exec", "width": 200, "data": { "title": "Imran Qureshi", "subtitle": "Chief Operating Officer", "badge": "COO", "metadata": { "Directorates": 5 }, "description": "Runs day-to-day operations: patient flow, waiting lists and the five clinical directorates." } },
+    { "id": "safety", "type": "professional", "width": 180, "data": { "title": "Dr Hannah Clough", "subtitle": "Patient safety lead", "badge": "Safety" } },
+    { "id": "education", "type": "professional", "width": 180, "data": { "title": "Dr Felix Amadi", "subtitle": "Director of medical education", "badge": "Education" } },
+    { "id": "ipc", "type": "professional", "width": 180, "data": { "title": "Joanne Marsh", "subtitle": "Infection prevention lead", "badge": "IPC" } },
+    { "id": "safeguarding", "type": "professional", "width": 180, "data": { "title": "Kofi Boateng", "subtitle": "Head of safeguarding", "badge": "Safeguarding" } },
+    { "id": "medicine", "type": "directorate", "width": 190, "data": { "title": "Dr Fiona Grant", "subtitle": "Clinical director, Medicine", "badge": "Medicine", "metadata": { "Beds": 260 } } },
+    { "id": "surgery", "type": "directorate", "width": 190, "data": { "title": "Mr Peter Lowe", "subtitle": "Clinical director, Surgery", "badge": "Surgery", "metadata": { "Theatres": 14 } } },
+    { "id": "womens", "type": "directorate", "width": 190, "data": { "title": "Dr Anjali Rao", "subtitle": "Clinical director, Women's and Children's", "badge": "W&C", "metadata": { "Births a year": 4800 } } },
+    { "id": "emergency", "type": "directorate", "width": 190, "data": { "title": "Dr Callum Reid", "subtitle": "Clinical director, Urgent care", "badge": "Urgent care", "metadata": { "Attendances a day": 310 } } },
+    { "id": "support", "type": "directorate", "width": 190, "data": { "title": "Dr Ruth Okonjo", "subtitle": "Clinical director, Clinical support", "badge": "Support" } },
+    { "id": "cardiology", "type": "service", "width": 180, "data": { "title": "Dr Owen Hughes", "subtitle": "Cardiology lead", "badge": "Cardiology" } },
+    { "id": "respiratory", "type": "service", "width": 180, "data": { "title": "Dr Leila Farouk", "subtitle": "Respiratory lead", "badge": "Respiratory" } },
+    { "id": "elderly", "type": "service", "width": 180, "data": { "title": "Dr Martin Shaw", "subtitle": "Elderly care lead", "badge": "Elderly care" } },
+    { "id": "ortho", "type": "service", "width": 180, "data": { "title": "Ms Priya Sandhu", "subtitle": "Orthopaedics lead", "badge": "Orthopaedics" } },
+    { "id": "general-surgery", "type": "service", "width": 180, "data": { "title": "Mr David Osei", "subtitle": "General surgery lead", "badge": "General surgery" } },
+    { "id": "theatres", "type": "service", "width": 180, "data": { "title": "Dr Erin Walsh", "subtitle": "Theatres and anaesthetics lead", "badge": "Theatres" } },
+    { "id": "maternity", "type": "service", "width": 180, "data": { "title": "Sarah Kemp", "subtitle": "Director of midwifery", "badge": "Maternity" } },
+    { "id": "paediatrics", "type": "service", "width": 180, "data": { "title": "Dr Nikhil Bose", "subtitle": "Paediatrics lead", "badge": "Paediatrics" } },
+    { "id": "ed", "type": "service", "width": 180, "data": { "title": "Dr Alice Moreno", "subtitle": "Emergency department lead", "badge": "ED" } },
+    { "id": "amu", "type": "service", "width": 180, "data": { "title": "Dr James Whitfield", "subtitle": "Acute medical unit lead", "badge": "AMU" } },
+    { "id": "radiology", "type": "service", "width": 180, "data": { "title": "Dr Mei Chen", "subtitle": "Radiology lead", "badge": "Radiology" } },
+    { "id": "pathology", "type": "service", "width": 180, "data": { "title": "Dr Rowan Ellis", "subtitle": "Pathology lead", "badge": "Pathology" } },
+    { "id": "pharmacy", "type": "service", "width": 180, "data": { "title": "Nadia Hussain", "subtitle": "Chief pharmacist", "badge": "Pharmacy" } }
+  ],
+  "edges": [
+    { "id": "ceo-secretary", "source": "ceo", "target": "secretary" },
+    { "id": "ceo-md", "source": "ceo", "target": "md" },
+    { "id": "ceo-cn", "source": "ceo", "target": "cn" },
+    { "id": "ceo-coo", "source": "ceo", "target": "coo" },
+    { "id": "md-safety", "source": "md", "target": "safety" },
+    { "id": "md-education", "source": "md", "target": "education" },
+    { "id": "cn-ipc", "source": "cn", "target": "ipc" },
+    { "id": "cn-safeguarding", "source": "cn", "target": "safeguarding" },
+    { "id": "coo-medicine", "source": "coo", "target": "medicine" },
+    { "id": "coo-surgery", "source": "coo", "target": "surgery" },
+    { "id": "coo-womens", "source": "coo", "target": "womens" },
+    { "id": "coo-emergency", "source": "coo", "target": "emergency" },
+    { "id": "coo-support", "source": "coo", "target": "support" },
+    { "id": "medicine-cardiology", "source": "medicine", "target": "cardiology" },
+    { "id": "medicine-respiratory", "source": "medicine", "target": "respiratory" },
+    { "id": "medicine-elderly", "source": "medicine", "target": "elderly" },
+    { "id": "surgery-ortho", "source": "surgery", "target": "ortho" },
+    { "id": "surgery-general", "source": "surgery", "target": "general-surgery" },
+    { "id": "surgery-theatres", "source": "surgery", "target": "theatres" },
+    { "id": "womens-maternity", "source": "womens", "target": "maternity" },
+    { "id": "womens-paediatrics", "source": "womens", "target": "paediatrics" },
+    { "id": "emergency-ed", "source": "emergency", "target": "ed" },
+    { "id": "emergency-amu", "source": "emergency", "target": "amu" },
+    { "id": "support-radiology", "source": "support", "target": "radiology" },
+    { "id": "support-pathology", "source": "support", "target": "pathology" },
+    { "id": "support-pharmacy", "source": "support", "target": "pharmacy" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Tour of the hospital",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Twenty-seven leaders in four levels. The trust secretary sits beside the chief executive; each directorate lists its service leads underneath. Use the fold buttons to hide or show a team." },
+        { "id": "executive", "title": "Executive team", "description": "The chief executive, medical director, chief nurse and chief operating officer form the executive team that answers to the trust board.", "highlightNodes": ["ceo", "secretary", "md", "cn", "coo"], "highlightEdges": ["ceo-secretary", "ceo-md", "ceo-cn", "ceo-coo"] },
+        { "id": "professional", "title": "Professional standards", "description": "The medical director and chief nurse do not run wards. They own safety, training, infection prevention and safeguarding across the whole hospital.", "highlightNodes": ["md", "safety", "education", "cn", "ipc", "safeguarding"], "highlightEdges": ["md-safety", "md-education", "cn-ipc", "cn-safeguarding"] },
+        { "id": "directorates", "title": "Five directorates", "description": "Operations is split into five clinical directorates, each led by a practising clinician who reports to the chief operating officer.", "highlightNodes": ["coo", "medicine", "surgery", "womens", "emergency", "support"], "highlightEdges": ["coo-medicine", "coo-surgery", "coo-womens", "coo-emergency", "coo-support"] },
+        { "id": "front-door", "title": "The front door", "description": "Urgent care runs the emergency department and the acute medical unit; most admitted patients then move to a Medicine ward.", "highlightNodes": ["emergency", "ed", "amu", "medicine", "cardiology", "respiratory", "elderly"], "highlightEdges": ["emergency-ed", "emergency-amu", "medicine-cardiology", "medicine-respiratory", "medicine-elderly"] },
+        { "id": "support", "title": "Clinical support", "description": "Radiology, pathology and pharmacy serve every directorate, so they sit together under one clinical director.", "highlightNodes": ["support", "radiology", "pathology", "pharmacy"], "highlightEdges": ["support-radiology", "support-pathology", "support-pharmacy"] }
+      ]
+    }
+  ]
+}

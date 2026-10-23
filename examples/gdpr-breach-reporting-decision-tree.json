@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "title": "Personal data breach: report or not?",
+    "description": "A UK GDPR decision tree for the data protection officer: four questions decide whether to report a breach within 72 hours and whether to tell the people affected.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB"
+    },
+    "summary": {
+      "headline": "Report to the regulator within 72 hours unless the breach is unlikely to put anyone at risk; tell the people affected when the risk is high.",
+      "points": [
+        "The 72 hours run from when you become aware of the breach, not from when the investigation ends.",
+        "A processor does not report to the regulator; it tells the controller without undue delay.",
+        "Every breach goes in the internal breach log, reported or not, with the reasons for the decision."
+      ],
+      "facts": {
+        "Owner": "Data protection officer",
+        "Basis": "UK GDPR Articles 33 and 34",
+        "Reviewed": "01/07/2026"
+      }
+    }
+  },
+  "roles": {
+    "question": { "label": "Question", "color": "blue", "icon": "crosshair" },
+    "urgent": { "label": "Report now", "color": "rose", "icon": "zap" },
+    "action": { "label": "Tell someone", "color": "amber", "icon": "mail" },
+    "record": { "label": "Record only", "color": "teal", "icon": "file-text" }
+  },
+  "nodes": [
+    { "id": "q-personal", "type": "question", "width": 250, "data": { "title": "Is personal data involved?", "subtitle": "Anything that identifies a living person", "badge": "Question 1" } },
+    { "id": "q-breach", "type": "question", "width": 240, "data": { "title": "Was it lost, exposed or changed?", "subtitle": "Or accessed or made unavailable", "badge": "Question 2", "description": "A breach covers accidents as well as attacks: an email to the wrong person, a lost laptop, ransomware that locks records." } },
+    { "id": "not-personal", "type": "record", "width": 210, "data": { "title": "Security incident only", "subtitle": "Follow the incident process", "badge": "Not GDPR", "description": "No personal data means no GDPR breach. Handle it under the normal security incident process." } },
+    { "id": "q-controller", "type": "question", "width": 230, "data": { "title": "Are we the controller?", "subtitle": "We decide why the data is used", "badge": "Question 3" } },
+    { "id": "near-miss", "type": "record", "width": 210, "data": { "title": "Near miss", "subtitle": "Log it and fix the weakness", "badge": "No breach" } },
+    { "id": "q-risk", "type": "question", "width": 240, "data": { "title": "How likely is harm to people?", "subtitle": "Fraud, distress, discrimination, loss", "badge": "Question 4", "description": "Weigh the type of data, how much of it, who could now see it and whether it was encrypted." } },
+    { "id": "tell-controller", "type": "action", "width": 210, "data": { "title": "Tell the controller", "subtitle": "Without undue delay", "badge": "Processor", "description": "As a processor, tell the client who controls the data straight away and give them what they need to decide." } },
+    { "id": "log-only", "type": "record", "width": 210, "data": { "title": "Record, do not report", "subtitle": "Breach log with the reasoning", "badge": "Log", "description": "For example, encrypted data on a lost device whose key was not lost. Write down why harm is unlikely." } },
+    { "id": "report", "type": "urgent", "width": 210, "data": { "title": "Report to the regulator", "subtitle": "Within 72 hours of awareness", "badge": "72 hours", "description": "Report what is known now and add detail later; explain any delay beyond 72 hours." } },
+    { "id": "report-and-tell", "type": "urgent", "width": 210, "data": { "title": "Report and tell people", "subtitle": "Regulator in 72 hours, people now", "badge": "72 hours", "description": "Report to the regulator and send the people affected a plain-language notice: what happened, the likely consequences and what they can do." } }
+  ],
+  "edges": [
+    { "id": "personal-yes", "source": "q-personal", "target": "q-breach", "label": "Yes" },
+    { "id": "personal-no", "source": "q-personal", "target": "not-personal", "label": "No" },
+    { "id": "breach-yes", "source": "q-breach", "target": "q-controller", "label": "Yes" },
+    { "id": "breach-no", "source": "q-breach", "target": "near-miss", "label": "No" },
+    { "id": "controller-yes", "source": "q-controller", "target": "q-risk", "label": "Yes" },
+    { "id": "controller-no", "source": "q-controller", "target": "tell-controller", "label": "No" },
+    { "id": "risk-unlikely", "source": "q-risk", "target": "log-only", "label": "Unlikely" },
+    { "id": "risk-likely", "source": "q-risk", "target": "report", "label": "Likely" },
+    { "id": "risk-high", "source": "q-risk", "target": "report-and-tell", "label": "High" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Assess a breach",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Start at the top as soon as an incident is raised. Red cards have a 72-hour deadline, amber means tell someone, teal means record it." },
+        { "id": "is-breach", "title": "Is it a personal data breach?", "description": "It is when personal data was lost, exposed, changed, accessed or made unavailable, by accident or on purpose. Anything else is logged elsewhere.", "highlightNodes": ["q-personal", "not-personal", "q-breach", "near-miss"], "highlightEdges": ["personal-yes", "personal-no", "breach-no"] },
+        { "id": "controller", "title": "Whose duty is it?", "description": "Only the controller reports. A processor's duty is to tell its controller quickly.", "highlightNodes": ["q-breach", "q-controller", "tell-controller"], "highlightEdges": ["breach-yes", "controller-no"] },
+        { "id": "risk", "title": "The 72-hour test", "description": "If harm is unlikely, record the breach and the reasons. If it is likely, report to the regulator within 72 hours.", "highlightNodes": ["q-controller", "q-risk", "log-only", "report"], "highlightEdges": ["controller-yes", "risk-unlikely", "risk-likely"] },
+        { "id": "individuals", "title": "High risk: tell the people too", "description": "Exposed bank details or health records are high risk: report and tell the individuals directly so they can protect themselves.", "highlightNodes": ["q-risk", "report-and-tell"], "highlightEdges": ["risk-high"] }
+      ]
+    }
+  ]
+}

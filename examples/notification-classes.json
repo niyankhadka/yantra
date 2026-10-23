@@ -1,0 +1,215 @@
+{
+  "meta": {
+    "title": "Notification service classes",
+    "description": "The domain model of a notification service for the fictional Parcelwise delivery app: messages, templates, recipient preferences and pluggable delivery channels.",
+    "layout": { "direction": "TB" },
+    "summary": {
+      "headline": "NotificationService depends only on the Channel interface and a ChannelSelector strategy, so adding WhatsApp means one new class and no changes elsewhere.",
+      "points": [
+        "A Notification is rendered from a Template and owns one DeliveryAttempt per channel it tried (composition).",
+        "ChannelSelector is a strategy: PreferenceSelector honours the recipient's settings, while urgent alerts can swap in a different one.",
+        "EmailChannel, SmsChannel and PushChannel realise Channel; each wraps one provider's API."
+      ]
+    }
+  },
+  "roles": {
+    "service": { "label": "Service", "color": "blue" },
+    "abstract": { "label": "Interface", "color": "violet" },
+    "domain": { "label": "Domain object", "color": "teal" },
+    "adapter": { "label": "Channel adapter", "color": "amber" }
+  },
+  "nodes": [
+    {
+      "id": "service",
+      "type": "service",
+      "data": {
+        "title": "NotificationService",
+        "icon": "settings",
+        "description": "Entry point used by the rest of the app, for example when a parcel is out for delivery.",
+        "sourceFile": "src/notify/NotificationService.ts",
+        "fields": [
+          { "name": "selector", "type": "ChannelSelector", "visibility": "-" },
+          { "name": "channels", "type": "Map<ChannelKind, Channel>", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "send", "params": "recipient, templateKey, vars", "type": "Notification", "visibility": "+" },
+          { "name": "retryFailed", "params": "since: Date", "type": "int", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "selector",
+      "type": "abstract",
+      "data": {
+        "title": "ChannelSelector",
+        "stereotype": "interface",
+        "icon": "crosshair",
+        "methods": [
+          { "name": "choose", "params": "n: Notification", "type": "List<ChannelKind>", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "preference",
+      "type": "domain",
+      "data": {
+        "title": "PreferenceSelector",
+        "icon": "user",
+        "description": "Default strategy: uses the recipient's opted-in channels and skips SMS during quiet hours.",
+        "fields": [{ "name": "quietHours", "type": "TimeRange", "visibility": "-" }],
+        "methods": [
+          { "name": "choose", "params": "n: Notification", "type": "List<ChannelKind>", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "notification",
+      "type": "domain",
+      "data": {
+        "title": "Notification",
+        "icon": "mail",
+        "description": "One message to one recipient. Its status is derived from its attempts: delivered once any attempt succeeds.",
+        "fields": [
+          { "name": "id", "type": "UUID", "visibility": "-" },
+          { "name": "recipient", "type": "Recipient", "visibility": "-" },
+          { "name": "subject", "type": "String", "visibility": "-" },
+          { "name": "body", "type": "String", "visibility": "-" },
+          { "name": "attempts", "type": "List<DeliveryAttempt>", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "record", "params": "attempt: DeliveryAttempt", "type": "void", "visibility": "+" },
+          { "name": "status", "type": "NotificationStatus", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "template",
+      "type": "domain",
+      "data": {
+        "title": "Template",
+        "icon": "file-text",
+        "fields": [
+          { "name": "key", "type": "String", "visibility": "-" },
+          { "name": "locale", "type": "String", "visibility": "-" },
+          { "name": "subject", "type": "String", "visibility": "-" },
+          { "name": "body", "type": "String", "visibility": "-" }
+        ],
+        "methods": [
+          { "name": "render", "params": "vars: Map", "type": "Rendered", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "attempt",
+      "type": "domain",
+      "data": {
+        "title": "DeliveryAttempt",
+        "icon": "activity",
+        "fields": [
+          { "name": "channel", "type": "ChannelKind", "visibility": "-" },
+          { "name": "providerId", "type": "String", "visibility": "-" },
+          { "name": "outcome", "type": "Outcome", "visibility": "-" },
+          { "name": "at", "type": "Instant", "visibility": "-" }
+        ]
+      }
+    },
+    {
+      "id": "channel",
+      "type": "abstract",
+      "data": {
+        "title": "Channel",
+        "stereotype": "interface",
+        "icon": "zap",
+        "methods": [
+          { "name": "kind", "type": "ChannelKind", "visibility": "+" },
+          { "name": "deliver", "params": "n: Notification", "type": "DeliveryAttempt", "visibility": "+" }
+        ]
+      }
+    },
+    {
+      "id": "email",
+      "type": "adapter",
+      "data": {
+        "title": "EmailChannel",
+        "icon": "mail",
+        "fields": [{ "name": "smtpRelay", "type": "SmtpClient", "visibility": "-" }],
+        "methods": [{ "name": "deliver", "params": "n: Notification", "type": "DeliveryAttempt", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "sms",
+      "type": "adapter",
+      "data": {
+        "title": "SmsChannel",
+        "icon": "monitor",
+        "fields": [
+          { "name": "senderId", "type": "String", "visibility": "-" },
+          { "name": "maxSegments", "type": "int", "visibility": "-" }
+        ],
+        "methods": [{ "name": "deliver", "params": "n: Notification", "type": "DeliveryAttempt", "visibility": "+" }]
+      }
+    },
+    {
+      "id": "push",
+      "type": "adapter",
+      "data": {
+        "title": "PushChannel",
+        "icon": "cloud",
+        "fields": [{ "name": "appId", "type": "String", "visibility": "-" }],
+        "methods": [{ "name": "deliver", "params": "n: Notification", "type": "DeliveryAttempt", "visibility": "+" }]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "service-selector", "source": "service", "target": "selector", "relation": "association", "label": "asks", "sourceLabel": "1", "targetLabel": "1" },
+    { "id": "selector-preference", "source": "selector", "target": "preference", "relation": "realization" },
+    { "id": "service-channel", "source": "service", "target": "channel", "relation": "aggregation", "label": "channels", "sourceLabel": "1", "targetLabel": "1..*" },
+    { "id": "service-notification", "source": "service", "target": "notification", "relation": "dependency", "label": "creates" },
+    { "id": "template-notification", "source": "template", "target": "notification", "relation": "dependency", "label": "renders" },
+    { "id": "notification-attempt", "source": "notification", "target": "attempt", "relation": "composition", "label": "attempts", "sourceLabel": "1", "targetLabel": "0..*" },
+    { "id": "channel-email", "source": "channel", "target": "email", "relation": "realization" },
+    { "id": "channel-sms", "source": "channel", "target": "sms", "relation": "realization" },
+    { "id": "channel-push", "source": "channel", "target": "push", "relation": "realization" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the model",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Ten types. Dashed lines with hollow triangles mean a class implements an interface; diamonds sit on the owning side."
+        },
+        {
+          "id": "strategy",
+          "title": "Choosing channels",
+          "description": "The service asks a ChannelSelector which channels to use. PreferenceSelector is the default strategy; another can be swapped in without touching the service.",
+          "highlightNodes": ["service", "selector", "preference"],
+          "highlightEdges": ["service-selector", "selector-preference"]
+        },
+        {
+          "id": "message",
+          "title": "Building the message",
+          "description": "send() looks up a Template by key and locale and renders it into a new Notification for one recipient.",
+          "highlightNodes": ["service", "template", "notification"],
+          "highlightEdges": ["service-notification", "template-notification"]
+        },
+        {
+          "id": "channels",
+          "title": "Delivery channels",
+          "description": "The service holds one or more Channel implementations. Email, SMS and push each wrap a single provider behind the same deliver() call.",
+          "highlightNodes": ["service", "channel", "email", "sms", "push"],
+          "highlightEdges": ["service-channel", "channel-email", "channel-sms", "channel-push"]
+        },
+        {
+          "id": "attempts",
+          "title": "Recording attempts",
+          "description": "Every deliver() returns a DeliveryAttempt, owned by its Notification (filled diamond). retryFailed() resends those with no successful attempt.",
+          "highlightNodes": ["notification", "attempt"],
+          "highlightEdges": ["notification-attempt"]
+        }
+      ]
+    }
+  ]
+}

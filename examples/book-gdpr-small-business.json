@@ -1,0 +1,243 @@
+{
+  "kind": "book",
+  "meta": {
+    "title": "Data protection for a small clinic",
+    "description": "A plain guide to UK GDPR for a five-person physiotherapy practice: what data we hold, why we may hold it, answering access requests and handling a breach.",
+    "author": "Brightwater Physiotherapy, practice manager",
+    "date": "12/10/2026",
+    "reading": "book"
+  },
+  "summary": "We hold contact, payment and health records for about 2,300 patients; health data is special category data and needs extra care. Each kind of data has a lawful basis written down before we collect it. A patient who asks for their data gets it free within one month, and a breach that risks patients' rights is reported to the ICO within 72 hours of us becoming aware of it.",
+  "chapters": [
+    {
+      "meta": {
+        "question": "What personal data do we hold, and where?",
+        "title": "What we hold",
+        "kicker": "Data map"
+      },
+      "answer": {
+        "headline": "We hold personal data on about 2,300 patients and 5 staff across four systems; the clinical notes are health data, which UK GDPR treats as special category and protects most strictly.",
+        "text": "You cannot protect data you do not know you have. This map is our record of processing: the ICO expects one, and it is the starting point for every other chapter.",
+        "points": [
+          "Clinical notes, booking details and invoices are the main records",
+          "Paper intake forms are scanned and shredded within 7 days",
+          "Records are kept 8 years after a patient's last appointment, then deleted"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Our record of processing",
+          "columns": ["Data", "Whose", "Where it lives", "Kept for"],
+          "rows": [
+            ["Name, phone, email, date of birth", "Patients", "Booking system", "8 years after last visit"],
+            ["Clinical notes, assessments, GP letters", "Patients", "Practice management system", "8 years after last visit (adults)"],
+            ["Card payments and invoices", "Patients", "Card terminal provider, accounts software", "6 years (tax records)"],
+            ["Newsletter list", "Patients who opted in", "Email marketing tool", "Until they unsubscribe"],
+            ["Contracts, bank details, sickness records", "Staff", "Payroll provider, locked cabinet", "6 years after leaving"]
+          ]
+        },
+        {
+          "type": "chart",
+          "kind": "bar",
+          "title": "Records by system",
+          "span": "half",
+          "caption": "Count of people with a record in each system, October 2026.",
+          "data": [
+            { "label": "Booking system", "value": 2310 },
+            { "label": "Practice management", "value": 2180 },
+            { "label": "Accounts software", "value": 1460 },
+            { "label": "Newsletter", "value": 640 }
+          ]
+        },
+        {
+          "type": "points",
+          "title": "Why health data is different",
+          "span": "half",
+          "items": [
+            { "title": "Special category", "text": "Health data needs a lawful basis *and* a separate condition under Article 9, such as providing health care.", "tone": "warn" },
+            { "title": "Higher harm", "text": "A leak of clinical notes can cause real distress, so breaches are more likely to be reportable." },
+            { "title": "Confidentiality duty", "text": "As health professionals we also owe patients a duty of confidence, separate from GDPR." }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "We pay the ICO fee",
+          "tone": "info",
+          "label": "Housekeeping",
+          "body": "Most organisations that process personal data must pay the ICO an annual data protection fee. Ours renews every March; the practice manager holds the reminder."
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "What gives us the right to use each kind of data?",
+        "title": "Lawful basis",
+        "kicker": "Principles"
+      },
+      "answer": {
+        "headline": "Each use of personal data needs one of six lawful bases, chosen before we start. For us, treatment rests on contract, invoices on legal obligation and the newsletter on consent.",
+        "text": "The basis is not a box-ticking label: it decides what rights the patient has and what we must do if they object. Consent is often the wrong choice, because a patient can withdraw it at any time.",
+        "points": [
+          "Treating patients: contract, plus the health care condition for health data",
+          "Keeping invoices: legal obligation (HMRC requires 6 years)",
+          "Newsletter: consent, with a clear opt-in and an easy way out"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "title": "The six lawful bases",
+          "columns": ["Basis", "Use it when", "Our example"],
+          "rows": [
+            ["Consent", "The person has a real choice and can say no without losing out", "Newsletter sign-up"],
+            ["Contract", "You need the data to provide what they asked for", "Booking and treating a patient"],
+            ["Legal obligation", "A law requires you to process it", "Keeping invoices for HMRC"],
+            ["Vital interests", "Someone's life is at risk", "Passing details to paramedics"],
+            ["Public task", "You carry out a public function", "Not used: we are a private clinic"],
+            ["Legitimate interests", "A balanced, expected use that does not override their rights", "Appointment reminder texts"]
+          ]
+        },
+        {
+          "type": "compare",
+          "title": "Appointment reminders: which basis?",
+          "options": [
+            {
+              "name": "Consent",
+              "summary": "Ask every patient to tick a box.",
+              "pros": ["Feels transparent"],
+              "cons": ["Reminders stop if consent is withdrawn", "We must record and refresh every consent"]
+            },
+            {
+              "name": "Legitimate interests",
+              "summary": "Reminders are expected and help the patient.",
+              "pros": ["Patients expect them", "Fewer missed appointments for everyone"],
+              "cons": ["Needs a short written balancing test", "Patients can still object, and we must stop"],
+              "verdict": "Our choice, documented 02/03/2026",
+              "recommended": true
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Do not switch basis later",
+          "tone": "warn",
+          "label": "Common mistake",
+          "body": "If you rely on consent and it is withdrawn, you cannot quietly switch to legitimate interests to carry on. Pick the right basis at the start and tell people in the privacy notice."
+        },
+        {
+          "type": "checklist",
+          "title": "Before collecting anything new",
+          "items": [
+            { "text": "Write down what the data is for and the lawful basis", "done": true },
+            { "text": "For health data, note the Article 9 condition as well", "done": true },
+            { "text": "Update the privacy notice on the website and intake form" },
+            { "text": "Add the new data to the record of processing" }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "What do we do when a patient asks for a copy of their data?",
+        "title": "Subject access requests",
+        "kicker": "How-to"
+      },
+      "answer": {
+        "headline": "Confirm who they are, find everything we hold about them and send a copy free of charge within one calendar month of receiving the request.",
+        "text": "A request does not need a form or the words 'subject access': an email, a letter or a remark at reception all count. The clock starts the day we receive it, not the day the right person notices.",
+        "points": [
+          "One month, extendable by two more only for complex or numerous requests",
+          "Usually free; a reasonable fee only if a request is manifestly unfounded or excessive",
+          "Remove other people's personal data before sending, unless they agree"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "steps",
+          "title": "Handling a request",
+          "items": [
+            { "title": "Log it the same day", "text": "Add it to the request log with the date received. The deadline is the same date next month." },
+            { "title": "Check identity", "text": "Ask for ID only if we are unsure who they are. The clock pauses until we have it." },
+            { "title": "Search every system", "text": "Booking, clinical notes, accounts, email and the paper archive." },
+            { "title": "Redact", "text": "Remove details about other people, such as a family member mentioned in notes." },
+            { "title": "Send securely", "text": "Encrypted email or a printed copy collected in person, with a cover letter explaining what is included." }
+          ]
+        },
+        {
+          "type": "metrics",
+          "title": "Our requests this year",
+          "items": [
+            { "label": "Requests received", "value": "9", "note": "01/01/2026 to 30/09/2026" },
+            { "label": "Answered on time", "value": "9 of 9", "tone": "good" },
+            { "label": "Average time to answer", "value": "11 days", "note": "limit: one calendar month", "tone": "good" }
+          ]
+        },
+        {
+          "type": "faq",
+          "title": "Tricky cases",
+          "items": [
+            { "q": "A parent asks for their 15-year-old's records. Do we send them?", "a": "Not automatically. A child who understands their rights can make their own request, and we should consider their wishes. Ask the child, and take advice if unsure." },
+            { "q": "A solicitor asks for a patient's notes for a claim.", "a": "Ask for the patient's signed authority. With it, treat it as the patient's own request." },
+            { "q": "Could releasing a note cause serious harm to the patient?", "a": "Health data has a narrow exemption where disclosure would be likely to cause serious harm. The treating physiotherapist must decide, and we record why." }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "What do we do if personal data is lost, stolen or sent to the wrong person?",
+        "title": "Breaches",
+        "kicker": "Incident plan"
+      },
+      "answer": {
+        "headline": "Contain it, assess the risk to patients and, if it is likely to harm their rights, report it to the ICO within 72 hours of becoming aware. Tell the patients directly if the risk is high.",
+        "text": "A breach is any loss of confidentiality, integrity or availability of personal data: an email to the wrong address, a stolen laptop or ransomware locking the notes. Every breach goes in our breach log, even ones we do not report.",
+        "points": [
+          "The 72 hours include weekends and bank holidays",
+          "We can report what we know and add detail later",
+          "Not reporting a reportable breach can lead to a fine"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "timeline",
+          "title": "The first 72 hours",
+          "items": [
+            { "date": "Hour 0", "title": "Someone notices", "text": "Tell the practice manager at once, by phone if out of hours.", "tone": "warn" },
+            { "date": "Hour 1", "title": "Contain", "text": "Recall the email, ask the recipient to delete it, change passwords or isolate the device." },
+            { "date": "Hour 4", "title": "Assess", "text": "Whose data, how sensitive, how many people, and what could happen to them." },
+            { "date": "Hour 24", "title": "Decide", "text": "Reportable or not, recorded with the reasons in the breach log." },
+            { "date": "Before hour 72", "title": "Report", "text": "Report to the ICO online or by phone, and contact affected patients if the risk is high.", "tone": "bad" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Report it or not?",
+          "columns": ["What happened", "Report to ICO?", "Tell patients?"],
+          "rows": [
+            ["Appointment time emailed to the wrong patient, deleted on request", "No: low risk; log it", "No"],
+            ["Unencrypted laptop with clinical notes stolen", "Yes", "Yes"],
+            ["Encrypted laptop stolen, key not with it", "No: data unreadable; log it", "No"],
+            ["Ransomware locks notes for two days, backups restore them", "Yes: availability lost for care", "Usually, if treatment was affected"]
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Encryption is the cheapest protection",
+          "tone": "good",
+          "label": "Prevention",
+          "body": "All laptops and phones that hold patient data use full-disk encryption and a screen lock. A lost encrypted device is a log entry; a lost unencrypted one is a report to the ICO and a letter to every patient on it."
+        },
+        {
+          "type": "sources",
+          "title": "Further reading",
+          "items": [
+            { "title": "ICO: Guide to the UK GDPR", "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/" },
+            { "title": "ICO: Personal data breaches, a guide", "url": "https://ico.org.uk/for-organisations/report-a-breach/" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "title": "Where should this workload run?",
+    "description": "A decision tree for cloud hosting: five questions about how the code runs and is packaged lead to functions, containers, an app platform or virtual machines.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "collapsed": ["q-duration"]
+    },
+    "summary": {
+      "headline": "Pick the most managed option that fits; drop a level only for a concrete reason.",
+      "points": [
+        "Short event-driven jobs go to functions; long ones to batch containers.",
+        "A handful of containerised services suit serverless containers; Kubernetes pays off only with a platform team.",
+        "Virtual machines are for software that needs the operating system or a licence tied to it."
+      ],
+      "facts": {
+        "Owner": "Cloud platform team",
+        "Reviewed": "15/08/2026"
+      }
+    }
+  },
+  "roles": {
+    "question": { "label": "Question", "color": "blue", "icon": "crosshair" },
+    "serverless": { "label": "Fully managed", "color": "green", "icon": "cloud" },
+    "containers": { "label": "Containers", "color": "teal", "icon": "package" },
+    "self-managed": { "label": "Self-managed", "color": "orange", "icon": "server" }
+  },
+  "nodes": [
+    { "id": "q-shape", "type": "question", "width": 260, "data": { "title": "How does the code run?", "subtitle": "Always on, or triggered by events", "badge": "Question 1" } },
+    { "id": "q-duration", "type": "question", "width": 220, "data": { "title": "Each run under 15 minutes?", "subtitle": "Including retries", "badge": "Question 2" } },
+    { "id": "functions", "type": "serverless", "width": 200, "data": { "title": "Functions", "subtitle": "Pay per call, scale to zero", "badge": "Serverless", "description": "Queue consumers, webhooks and scheduled tasks. Watch cold starts on user-facing paths." } },
+    { "id": "batch", "type": "containers", "width": 200, "data": { "title": "Batch containers", "subtitle": "Jobs that run for hours", "badge": "Batch", "description": "Nightly imports, video encoding, model training. Use spot capacity where the job can restart." } },
+    { "id": "q-containers", "type": "question", "width": 230, "data": { "title": "Already packaged as containers?", "subtitle": "A Dockerfile that builds and runs", "badge": "Question 2" } },
+    { "id": "q-os", "type": "question", "width": 220, "data": { "title": "Needs OS-level control?", "subtitle": "Kernel modules, licensed software", "badge": "Question 3" } },
+    { "id": "vms", "type": "self-managed", "width": 200, "data": { "title": "Virtual machines", "subtitle": "You patch the operating system", "badge": "VMs", "description": "Use an autoscaling group built from a hardened image; never hand-built servers." } },
+    { "id": "paas", "type": "serverless", "width": 200, "data": { "title": "App platform", "subtitle": "Push code, the platform runs it", "badge": "PaaS", "description": "Simplest for a web app or API in a mainstream language; containerise later if needed." } },
+    { "id": "q-many", "type": "question", "width": 230, "data": { "title": "Over 10 services and a platform team?", "subtitle": "People to run a cluster", "badge": "Question 3" } },
+    { "id": "kubernetes", "type": "self-managed", "width": 200, "data": { "title": "Managed Kubernetes", "subtitle": "Shared cluster per environment", "badge": "Kubernetes", "description": "Worth it at scale for shared networking, policy and tooling, but needs people who own the cluster." } },
+    { "id": "serverless-containers", "type": "containers", "width": 200, "data": { "title": "Serverless containers", "subtitle": "Run a container, no cluster", "badge": "Containers", "description": "Scales per request, including to zero; no nodes to upgrade." } }
+  ],
+  "edges": [
+    { "id": "shape-events", "source": "q-shape", "target": "q-duration", "label": "Event-driven" },
+    { "id": "shape-always", "source": "q-shape", "target": "q-containers", "label": "Always on" },
+    { "id": "duration-yes", "source": "q-duration", "target": "functions", "label": "Yes" },
+    { "id": "duration-no", "source": "q-duration", "target": "batch", "label": "No" },
+    { "id": "containers-no", "source": "q-containers", "target": "q-os", "label": "No" },
+    { "id": "containers-yes", "source": "q-containers", "target": "q-many", "label": "Yes" },
+    { "id": "os-yes", "source": "q-os", "target": "vms", "label": "Yes" },
+    { "id": "os-no", "source": "q-os", "target": "paas", "label": "No" },
+    { "id": "many-yes", "source": "q-many", "target": "kubernetes", "label": "Yes" },
+    { "id": "many-no", "source": "q-many", "target": "serverless-containers", "label": "No" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Choose hosting",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Start at the top. Green options are fully managed, teal run containers for you, orange leave more to your team. The event-driven branch opens folded; the steps unfold it." },
+        { "id": "events", "title": "Event-driven work", "description": "Code that runs when something happens: short runs fit functions, long jobs need batch containers.", "highlightNodes": ["q-shape", "q-duration", "functions", "batch"], "highlightEdges": ["shape-events", "duration-yes", "duration-no"] },
+        { "id": "always-on", "title": "Always-on services", "description": "For an API or web app, the next question is whether it already ships as a container.", "highlightNodes": ["q-shape", "q-containers"], "highlightEdges": ["shape-always"] },
+        { "id": "no-containers", "title": "Not containerised", "description": "Software that needs the operating system goes on virtual machines; everything else is easiest on an app platform.", "highlightNodes": ["q-containers", "q-os", "vms", "paas"], "highlightEdges": ["containers-no", "os-yes", "os-no"] },
+        { "id": "containers", "title": "Containers: cluster or not", "description": "Kubernetes pays off with many services and a team to run it. A few services run more cheaply as serverless containers.", "highlightNodes": ["q-containers", "q-many", "kubernetes", "serverless-containers"], "highlightEdges": ["containers-yes", "many-yes", "many-no"] }
+      ]
+    }
+  ]
+}

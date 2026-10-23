@@ -1,0 +1,160 @@
+{
+  "meta": {
+    "title": "File upload with a presigned URL",
+    "description": "A large file goes straight from the browser to object storage with a short-lived presigned URL, then is scanned before anyone can download it.",
+    "view": "sequence",
+    "summary": {
+      "headline": "The API signs a URL instead of carrying the bytes, so a 2 GB upload never passes through the app servers, and nothing is shared until a scan marks it clean.",
+      "points": [
+        "The presigned URL allows one PUT to one key, for 15 minutes",
+        "The bucket checks the signature, content type and size, not the API",
+        "The bucket's event, not the browser, starts the virus scan",
+        "Files stay in a quarantine prefix until the scanner marks them ready"
+      ],
+      "facts": {
+        "URL lifetime": "15 minutes",
+        "Size limit": "2 GB",
+        "Storage": "S3-compatible, eu-west-2"
+      }
+    },
+    "layout": { "direction": "LR" }
+  },
+  "roles": {
+    "client": { "label": "Client", "color": "slate" },
+    "app": { "label": "Application", "color": "blue" },
+    "storage": { "label": "Storage", "color": "teal" },
+    "worker": { "label": "Background", "color": "violet" }
+  },
+  "nodes": [
+    {
+      "id": "browser",
+      "type": "client",
+      "data": {
+        "title": "Browser",
+        "subtitle": "Upload page",
+        "tech": "fetch · XHR progress",
+        "icon": "monitor",
+        "description": "An architect at Calder Studio uploads a 1.4 GB site survey to share with a client."
+      }
+    },
+    {
+      "id": "api",
+      "type": "app",
+      "data": {
+        "title": "Files API",
+        "subtitle": "Calder Share backend",
+        "tech": "TypeScript · AWS SDK v3",
+        "icon": "server",
+        "description": "Checks the user may upload to the project, signs the URL and tracks each file's status. It never handles the file bytes."
+      }
+    },
+    {
+      "id": "storage",
+      "type": "storage",
+      "data": {
+        "title": "Object storage",
+        "subtitle": "uploads bucket",
+        "tech": "Amazon S3",
+        "icon": "cloud",
+        "description": "Accepts the PUT only if the signature, key, content type and expiry match. New objects land under quarantine/.",
+        "metadata": { "Encryption": "SSE-KMS", "Lifecycle": "quarantine/ deleted after 7 days" }
+      }
+    },
+    {
+      "id": "queue",
+      "type": "worker",
+      "data": {
+        "title": "Event queue",
+        "subtitle": "Bucket notifications",
+        "tech": "Amazon SQS",
+        "icon": "layers",
+        "description": "Receives an ObjectCreated event for every new object under quarantine/."
+      }
+    },
+    {
+      "id": "scanner",
+      "type": "worker",
+      "data": {
+        "title": "Scanner",
+        "subtitle": "Virus scan and type check",
+        "tech": "ClamAV on Fargate",
+        "icon": "shield",
+        "description": "Streams the object, scans it and checks the real file type against the declared one."
+      }
+    },
+    {
+      "id": "db",
+      "type": "app",
+      "data": {
+        "title": "Files database",
+        "subtitle": "File records and status",
+        "tech": "PostgreSQL",
+        "icon": "database",
+        "description": "One row per file: owner, project, key, size and status (pending, scanning, ready or blocked)."
+      }
+    }
+  ],
+  "edges": [
+    { "id": "ask", "source": "browser", "target": "api", "label": "POST /uploads" },
+    { "id": "pending", "source": "api", "target": "db", "label": "insert: pending" },
+    { "id": "url", "source": "api", "target": "browser", "label": "presigned PUT URL" },
+    { "id": "put", "source": "browser", "target": "storage", "label": "PUT file bytes" },
+    { "id": "stored", "source": "storage", "target": "browser", "label": "200 + ETag" },
+    { "id": "complete", "source": "browser", "target": "api", "label": "POST /complete" },
+    { "id": "scanning", "source": "api", "target": "db", "label": "status: scanning" },
+    { "id": "notify", "source": "storage", "target": "queue", "label": "ObjectCreated", "type": "event" },
+    { "id": "consume", "source": "queue", "target": "scanner", "label": "scan job" },
+    { "id": "fetch", "source": "scanner", "target": "storage", "label": "GET, then move" },
+    { "id": "ready", "source": "scanner", "target": "db", "label": "status: ready" }
+  ],
+  "scenarios": [
+    {
+      "id": "upload",
+      "name": "Upload a large file",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "The file goes from the browser straight to the bucket. The API only signs the URL and tracks the record; the bucket's event starts the scan."
+        },
+        {
+          "id": "ask",
+          "title": "The browser asks for an upload URL",
+          "description": "The browser sends the name, size and type. The API checks the user's project rights and the 2 GB limit, records the file as pending and signs a PUT URL for one key under quarantine/, valid for 15 minutes.",
+          "highlightNodes": ["browser", "api", "db"],
+          "highlightEdges": ["ask", "pending", "url"],
+          "payload": { "method": "POST", "endpoint": "/v1/uploads", "status": "201", "name": "site-survey.zip", "size": 1503238553, "contentType": "application/zip" }
+        },
+        {
+          "id": "put",
+          "title": "The bytes go straight to storage",
+          "description": "The browser PUTs the file to the signed URL and shows progress. The bucket checks the signature, expiry and content type itself; the app servers never carry the 1.4 GB.",
+          "highlightNodes": ["browser", "storage"],
+          "highlightEdges": ["put", "stored"],
+          "payload": { "method": "PUT", "endpoint": "/quarantine/7f3a91c2/site-survey.zip", "status": "200", "latency": "48 s" }
+        },
+        {
+          "id": "complete",
+          "title": "The browser reports completion",
+          "description": "The browser tells the API the upload finished. The API checks the object exists with the expected size and marks the record as scanning.",
+          "highlightNodes": ["browser", "api", "db"],
+          "highlightEdges": ["complete", "scanning"]
+        },
+        {
+          "id": "scan",
+          "title": "The bucket event starts the scan",
+          "description": "The new object raised an ObjectCreated event when it landed. The scanner takes the job, streams the object through ClamAV and checks its real type, then moves it out of quarantine/.",
+          "highlightNodes": ["storage", "queue", "scanner"],
+          "highlightEdges": ["notify", "consume", "fetch"]
+        },
+        {
+          "id": "ready",
+          "title": "The file is ready to share",
+          "description": "A clean file is marked ready and appears in the project for the client to download. An infected file would be marked blocked and deleted.",
+          "highlightNodes": ["scanner", "db"],
+          "highlightEdges": ["ready"]
+        }
+      ]
+    }
+  ]
+}

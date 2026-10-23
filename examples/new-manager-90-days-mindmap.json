@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "title": "A new manager's first 90 days",
+    "description": "Priya Nair's plan for her first 90 days leading the payments engineering team at a fictional fintech, as a mind map: people, the work, quick wins and her own learning.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "mindmap"
+    },
+    "summary": {
+      "headline": "Listen for 30 days, fix one visible problem by day 60, and agree a team plan by day 90.",
+      "points": [
+        "A one-to-one with every engineer in the first fortnight.",
+        "One quick win that the team chose, not the manager.",
+        "The 90-day plan is written with the team and shared upwards."
+      ],
+      "facts": {
+        "Team": "7 engineers",
+        "Start date": "05/01/2027"
+      }
+    }
+  },
+  "roles": {
+    "goal": { "label": "Goal", "color": "violet", "icon": "flag" },
+    "branch": { "label": "Theme", "color": "blue" },
+    "item": { "label": "Action", "color": "slate" }
+  },
+  "nodes": [
+    { "id": "goal", "type": "goal", "width": 240, "data": { "title": "Lead the payments team well", "subtitle": "First 90 days", "badge": "Goal" } },
+    { "id": "people", "type": "branch", "data": { "title": "People", "subtitle": "Know the team", "icon": "users" } },
+    { "id": "oneones", "type": "item", "width": 200, "data": { "title": "One-to-ones", "subtitle": "Every engineer, 45 minutes", "badge": "Days 1-14" } },
+    { "id": "stakeholders", "type": "item", "width": 200, "data": { "title": "Meet stakeholders", "subtitle": "Product, risk, support leads", "badge": "Days 1-30" } },
+    { "id": "careers", "type": "item", "width": 200, "data": { "title": "Career conversations", "subtitle": "Goals for the next year", "badge": "Days 45-75" } },
+    { "id": "work", "type": "branch", "data": { "title": "The work", "subtitle": "How it really runs", "icon": "activity" } },
+    { "id": "roadmap", "type": "item", "width": 200, "data": { "title": "Read the roadmap", "subtitle": "And the last two retros", "badge": "Week 1" } },
+    { "id": "oncall", "type": "item", "width": 200, "data": { "title": "Shadow on-call", "subtitle": "One full week of pages", "badge": "Week 3" } },
+    { "id": "metrics", "type": "item", "width": 200, "data": { "title": "Baseline metrics", "subtitle": "Lead time, incidents, toil", "badge": "Day 30" } },
+    { "id": "wins", "type": "branch", "data": { "title": "Quick wins", "subtitle": "Show things change", "icon": "zap" } },
+    { "id": "flaky", "type": "item", "width": 200, "data": { "title": "Fix flaky tests", "subtitle": "Team's top complaint", "badge": "Days 30-60" } },
+    { "id": "meetings", "type": "item", "width": 200, "data": { "title": "Trim meetings", "subtitle": "Two afternoons kept free", "badge": "Day 40" } },
+    { "id": "plan", "type": "item", "width": 200, "data": { "title": "Team 90-day plan", "subtitle": "Written together, shared up", "badge": "Day 90" } },
+    { "id": "self", "type": "branch", "data": { "title": "Own learning", "subtitle": "Grow into the role", "icon": "book-open" } },
+    { "id": "mentor", "type": "item", "width": 200, "data": { "title": "Find a mentor", "subtitle": "An experienced manager", "badge": "Fortnightly" } },
+    { "id": "domain", "type": "item", "width": 200, "data": { "title": "Learn card payments", "subtitle": "Schemes, disputes, PCI", "badge": "Weeks 1-6" } },
+    { "id": "feedback", "type": "item", "width": 200, "data": { "title": "Ask for feedback", "subtitle": "Anonymous survey at day 60", "badge": "Day 60" } }
+  ],
+  "edges": [
+    { "id": "goal-people", "source": "goal", "target": "people" },
+    { "id": "people-oneones", "source": "people", "target": "oneones" },
+    { "id": "people-stakeholders", "source": "people", "target": "stakeholders" },
+    { "id": "people-careers", "source": "people", "target": "careers" },
+    { "id": "goal-work", "source": "goal", "target": "work" },
+    { "id": "work-roadmap", "source": "work", "target": "roadmap" },
+    { "id": "work-oncall", "source": "work", "target": "oncall" },
+    { "id": "work-metrics", "source": "work", "target": "metrics" },
+    { "id": "goal-wins", "source": "goal", "target": "wins" },
+    { "id": "wins-flaky", "source": "wins", "target": "flaky" },
+    { "id": "wins-meetings", "source": "wins", "target": "meetings" },
+    { "id": "wins-plan", "source": "wins", "target": "plan" },
+    { "id": "goal-self", "source": "goal", "target": "self" },
+    { "id": "self-mentor", "source": "self", "target": "mentor" },
+    { "id": "self-domain", "source": "self", "target": "domain" },
+    { "id": "self-feedback", "source": "self", "target": "feedback" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Ninety days, theme by theme",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "One goal in the centre and four themes around it. Badges say when each action happens." },
+        { "id": "people", "title": "People first", "description": "Every engineer gets a one-to-one in the first fortnight; career conversations wait until there is trust.", "highlightNodes": ["goal", "people", "oneones", "stakeholders", "careers"], "highlightEdges": ["goal-people", "people-oneones", "people-stakeholders", "people-careers"] },
+        { "id": "work", "title": "Learn the work", "description": "Read what exists, live through a week of on-call, then write down a baseline before changing anything.", "highlightNodes": ["goal", "work", "roadmap", "oncall", "metrics"], "highlightEdges": ["goal-work", "work-roadmap", "work-oncall", "work-metrics"] },
+        { "id": "wins", "title": "Quick wins", "description": "Fix what the team complains about most, protect focus time, and finish with a plan the team wrote.", "highlightNodes": ["goal", "wins", "flaky", "meetings", "plan"], "highlightEdges": ["goal-wins", "wins-flaky", "wins-meetings", "wins-plan"] },
+        { "id": "self", "title": "Own learning", "description": "A mentor, the payments domain and honest feedback at day 60 keep the new manager learning too.", "highlightNodes": ["goal", "self", "mentor", "domain", "feedback"], "highlightEdges": ["goal-self", "self-mentor", "self-domain", "self-feedback"] }
+      ]
+    }
+  ]
+}

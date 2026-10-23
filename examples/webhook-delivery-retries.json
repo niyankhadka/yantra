@@ -1,0 +1,150 @@
+{
+  "meta": {
+    "title": "Webhook delivery with retries",
+    "description": "How a billing platform delivers a signed invoice.paid webhook, retries after a failure and how the receiver checks the signature.",
+    "view": "sequence",
+    "summary": {
+      "headline": "Delivery is at least once: the sender signs and retries until it gets a 2xx, and the receiver verifies, acknowledges fast and processes later.",
+      "points": [
+        "Every attempt is signed with HMAC-SHA256 over the timestamp and the raw body",
+        "Any non-2xx answer or a timeout schedules a retry with exponential backoff",
+        "The receiver rejects stale timestamps and bad signatures before it trusts the body",
+        "The receiver answers 200 at once and does the real work in a background job"
+      ],
+      "facts": {
+        "Retry schedule": "30 s, 5 min, 30 min, then hourly for 3 days",
+        "Attempt timeout": "10 seconds",
+        "Signature header": "Fernway-Signature: t=..., v1=..."
+      }
+    },
+    "layout": { "direction": "LR" }
+  },
+  "roles": {
+    "sender": { "label": "Sender", "color": "blue" },
+    "queue": { "label": "Queue", "color": "amber" },
+    "receiver": { "label": "Receiver", "color": "teal" }
+  },
+  "nodes": [
+    {
+      "id": "billing",
+      "type": "sender",
+      "data": {
+        "title": "Billing service",
+        "subtitle": "Fernway Billing platform",
+        "tech": "Go · PostgreSQL",
+        "icon": "credit-card",
+        "description": "Marks the invoice as paid and writes the event to an outbox table in the same transaction, so no event is lost if the service stops."
+      }
+    },
+    {
+      "id": "queue",
+      "type": "queue",
+      "data": {
+        "title": "Delivery queue",
+        "subtitle": "One job per endpoint",
+        "tech": "Amazon SQS",
+        "icon": "layers",
+        "description": "Holds a delivery job for each subscribed endpoint. Retries are scheduled by putting the job back with a delay."
+      }
+    },
+    {
+      "id": "dispatcher",
+      "type": "sender",
+      "data": {
+        "title": "Webhook dispatcher",
+        "subtitle": "Signs and sends attempts",
+        "tech": "Go workers",
+        "icon": "zap",
+        "description": "Takes a job, signs the payload with the endpoint's secret, posts it and records the response code and latency of every attempt.",
+        "metadata": { "Attempts kept": "30 days", "Disable after": "3 days of failures" }
+      }
+    },
+    {
+      "id": "receiver",
+      "type": "receiver",
+      "data": {
+        "title": "Customer endpoint",
+        "subtitle": "Hollins & Rowe accounts",
+        "tech": "POST /webhooks/fernway",
+        "icon": "server",
+        "description": "Verifies the signature and timestamp, stores the event id to ignore duplicates and hands the work to a background job."
+      }
+    },
+    {
+      "id": "worker",
+      "type": "receiver",
+      "data": {
+        "title": "Background job",
+        "subtitle": "Updates the ledger",
+        "tech": "Sidekiq",
+        "icon": "cpu",
+        "description": "Fetches the invoice from the billing API instead of trusting the body alone, then marks it settled in the customer's ledger."
+      }
+    }
+  ],
+  "edges": [
+    { "id": "emit", "source": "billing", "target": "queue", "label": "invoice.paid", "type": "event" },
+    { "id": "pull", "source": "queue", "target": "dispatcher", "label": "delivery job" },
+    { "id": "sign", "source": "dispatcher", "target": "dispatcher", "label": "sign HMAC-SHA256" },
+    { "id": "post", "source": "dispatcher", "target": "receiver", "label": "POST + signature" },
+    { "id": "fail", "source": "receiver", "target": "dispatcher", "label": "503 unavailable" },
+    { "id": "requeue", "source": "dispatcher", "target": "queue", "label": "retry in 30 s", "type": "async" },
+    { "id": "verify", "source": "receiver", "target": "receiver", "label": "verify signature" },
+    { "id": "enqueue", "source": "receiver", "target": "worker", "label": "enqueue job", "type": "async" },
+    { "id": "ok", "source": "receiver", "target": "dispatcher", "label": "200 OK" },
+    { "id": "fetch", "source": "worker", "target": "billing", "label": "GET invoice" }
+  ],
+  "scenarios": [
+    {
+      "id": "retry",
+      "name": "Delivery after one failure",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "An invoice is paid on Fernway. The customer's endpoint is mid-deploy for the first attempt, so the webhook arrives on the second one, 30 seconds later."
+        },
+        {
+          "id": "emit",
+          "title": "The event is queued and signed",
+          "description": "The billing service commits the payment and the outbox event together, and a relay puts one delivery job on the queue. The dispatcher picks it up and signs the timestamp and raw body with the endpoint's secret.",
+          "highlightNodes": ["billing", "queue", "dispatcher"],
+          "highlightEdges": ["emit", "pull", "sign"],
+          "payload": { "event": "invoice.paid", "id": "evt_8KQ2", "invoice": "inv_20431", "attempt": 1 }
+        },
+        {
+          "id": "fail",
+          "title": "The first attempt fails",
+          "description": "The customer's load balancer answers 503 while new instances start. The dispatcher records the attempt and puts the job back on the queue with a 30-second delay.",
+          "highlightNodes": ["dispatcher", "receiver", "queue"],
+          "highlightEdges": ["post", "fail", "requeue"],
+          "payload": { "method": "POST", "status": "503", "latency": "41 ms" }
+        },
+        {
+          "id": "retry",
+          "title": "The retry arrives and is verified",
+          "description": "The job comes back and is posted again with a fresh timestamp and signature. The endpoint recomputes the HMAC over the raw body, compares it in constant time and rejects timestamps older than five minutes.",
+          "highlightNodes": ["queue", "dispatcher", "receiver"],
+          "highlightEdges": ["pull", "post", "verify"],
+          "payload": { "method": "POST", "endpoint": "/webhooks/fernway", "header": "Fernway-Signature: t=1792915204, v1=5c1e...", "attempt": 2 }
+        },
+        {
+          "id": "ack",
+          "title": "Acknowledge first, work later",
+          "description": "The endpoint saves the event id, so a duplicate delivery is ignored, queues a background job and answers 200 within milliseconds. The dispatcher marks the delivery done.",
+          "highlightNodes": ["receiver", "worker", "dispatcher"],
+          "highlightEdges": ["enqueue", "ok"],
+          "payload": { "status": "200", "latency": "18 ms" }
+        },
+        {
+          "id": "process",
+          "title": "The job settles the invoice",
+          "description": "The background job fetches the invoice from the billing API to get its current state, then marks it settled in the customer's ledger.",
+          "highlightNodes": ["worker", "billing"],
+          "highlightEdges": ["fetch"],
+          "payload": { "method": "GET", "endpoint": "/v2/invoices/inv_20431" }
+        }
+      ]
+    }
+  ]
+}

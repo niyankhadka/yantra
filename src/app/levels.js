@@ -14,6 +14,7 @@ import { crumbWindow } from '../core/nesting.js';
 export const DRILL_TEXT = {
   crumbs: 'Diagram levels',
   back: (title) => `Back to ${title} (Esc)`,
+  backShort: 'Back',
   open: (title) => `Open detail: ${title}`,
   cardHint: 'opens a detail diagram (D)',
   opened: (title) => `Opened ${title}`,
@@ -30,6 +31,7 @@ export function setDrillLocale(L) {
   Object.assign(DRILL_TEXT, {
     crumbs: L.t('drill.crumbs'),
     back: (title) => `${L.t('drill.back', { title })} (Esc)`,
+    backShort: L.t('story.back'),
     open: (title) => L.t('drill.open', { title }),
     cardHint: `${L.t('drill.cardHint')} (D)`,
     opened: (title) => L.t('drill.opened', { title }),
@@ -42,7 +44,7 @@ export function setDrillLocale(L) {
   });
 }
 
-const BACK_ICON = '<svg class="y-flip" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+const BACK_ICON = '<svg class="y-flip" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>';
 
 export class Levels {
   constructor(root) {
@@ -136,15 +138,18 @@ export class Levels {
   }
 
   /**
-   * Breadcrumb: back button, then Overview › … › current (the last one is not
-   * a link). Deep paths keep the overview, the parent and the current level;
-   * the levels between fold into a "…" button that opens a menu.
+   * The level bar: a back button named after the parent level (Esc does the same),
+   * then Overview › … › current (the last one is not a link). Deep paths keep the
+   * overview, the parent and the current level; the levels between fold into a
+   * "…" button that opens a menu.
    */
   crumbsHtml() {
     if (!this.depth) return '';
     const items = this.crumbItems();
     const up = items[items.length - 2].title;
-    return `<button class="y-crumb-back" data-level="${this.depth - 1}" data-tip="${h(DRILL_TEXT.back(up))}" aria-label="${h(DRILL_TEXT.back(up))}">${BACK_ICON}</button>${crumbListHtml(items, DRILL_TEXT.more)}`;
+    // The button just says "Back" (its label names the parent); the path names every level once
+    const back = `<button class="y-level-back" data-level="${this.depth - 1}" data-tip="${h(DRILL_TEXT.back(up))}" aria-label="${h(DRILL_TEXT.back(up))}">${BACK_ICON}<span class="y-level-up">${h(DRILL_TEXT.backShort)}</span><kbd aria-hidden="true">Esc</kbd></button>`;
+    return `${back}<span class="y-level-sep" aria-hidden="true"></span>${crumbListHtml(items, DRILL_TEXT.more)}`;
   }
 }
 

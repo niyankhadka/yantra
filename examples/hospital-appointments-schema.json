@@ -1,0 +1,201 @@
+{
+  "meta": {
+    "title": "Hospital outpatient appointments schema",
+    "description": "Tables behind outpatient booking at the fictional Riverside General Hospital: patients, clinicians, clinic slots, appointments and what each visit produces.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "Appointments fill clinic slots: a slot belongs to one clinician, and booking it links a patient to that clinician for one visit.",
+      "points": [
+        "Clinicians work in departments; each publishes slots in advance, and a slot can hold at most one appointment.",
+        "A patient may be referred by their GP; the referral is what justifies a first appointment.",
+        "Clinical notes and prescriptions hang off the appointment, so every outcome traces back to a visit."
+      ],
+      "facts": { "Engine": "PostgreSQL 16", "Tables": 8 }
+    }
+  },
+  "roles": {
+    "patient": { "label": "Patient record", "color": "blue" },
+    "staff": { "label": "Staff and rota", "color": "teal" },
+    "booking": { "label": "Booking", "color": "violet" },
+    "clinical": { "label": "Clinical outcome", "color": "amber" }
+  },
+  "nodes": [
+    {
+      "id": "patients",
+      "type": "patient",
+      "data": {
+        "title": "patients",
+        "icon": "user",
+        "description": "One row per registered patient. nhs_number is unique and checked with the modulus 11 rule on entry.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "nhs_number", "type": "char(10)", "unique": true },
+          { "name": "full_name", "type": "varchar(120)" },
+          { "name": "date_of_birth", "type": "date" },
+          { "name": "phone", "type": "varchar(20)", "nullable": true }
+        ]
+      }
+    },
+    {
+      "id": "referrals",
+      "type": "patient",
+      "data": {
+        "title": "referrals",
+        "icon": "file-text",
+        "description": "A GP or another consultant asks for the patient to be seen. Urgent referrals must be booked within 14 days.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "patient_id", "type": "uuid", "fk": true, "ref": "patients.id" },
+          { "name": "department_id", "type": "uuid", "fk": true, "ref": "departments.id" },
+          { "name": "priority", "type": "referral_priority", "note": "routine, urgent or two_week_wait" },
+          { "name": "received_on", "type": "date" }
+        ]
+      }
+    },
+    {
+      "id": "departments",
+      "type": "staff",
+      "data": {
+        "title": "departments",
+        "icon": "building",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "code", "type": "varchar(8)", "unique": true },
+          { "name": "name", "type": "text" }
+        ]
+      }
+    },
+    {
+      "id": "clinicians",
+      "type": "staff",
+      "data": {
+        "title": "clinicians",
+        "icon": "heart",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "department_id", "type": "uuid", "fk": true, "ref": "departments.id" },
+          { "name": "gmc_number", "type": "char(7)", "unique": true },
+          { "name": "full_name", "type": "varchar(120)" },
+          { "name": "grade", "type": "text" }
+        ]
+      }
+    },
+    {
+      "id": "clinic_slots",
+      "type": "booking",
+      "data": {
+        "title": "clinic_slots",
+        "icon": "layers",
+        "description": "Published from the clinician's rota, usually six weeks ahead. Cancelled clinics mark their slots unavailable rather than deleting them.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "clinician_id", "type": "uuid", "fk": true, "ref": "clinicians.id" },
+          { "name": "starts_at", "type": "timestamptz" },
+          { "name": "length_min", "type": "smallint" },
+          { "name": "room", "type": "varchar(16)" },
+          { "name": "available", "type": "boolean" }
+        ]
+      }
+    },
+    {
+      "id": "appointments",
+      "type": "booking",
+      "data": {
+        "title": "appointments",
+        "icon": "activity",
+        "description": "The booking itself. slot_id is unique, so two patients can never hold the same slot.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "slot_id", "type": "uuid", "fk": true, "unique": true, "ref": "clinic_slots.id" },
+          { "name": "patient_id", "type": "uuid", "fk": true, "ref": "patients.id" },
+          { "name": "referral_id", "type": "uuid", "fk": true, "nullable": true, "ref": "referrals.id", "note": "Empty for follow-ups booked in clinic" },
+          { "name": "status", "type": "appt_status", "note": "booked, arrived, seen, did_not_attend or cancelled" },
+          { "name": "booked_at", "type": "timestamptz" }
+        ]
+      }
+    },
+    {
+      "id": "clinical_notes",
+      "type": "clinical",
+      "data": {
+        "title": "clinical_notes",
+        "icon": "file-text",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "appointment_id", "type": "uuid", "fk": true, "ref": "appointments.id" },
+          { "name": "author_id", "type": "uuid", "fk": true, "ref": "clinicians.id" },
+          { "name": "body", "type": "text" },
+          { "name": "signed_at", "type": "timestamptz", "nullable": true }
+        ]
+      }
+    },
+    {
+      "id": "prescriptions",
+      "type": "clinical",
+      "data": {
+        "title": "prescriptions",
+        "icon": "package",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "appointment_id", "type": "uuid", "fk": true, "ref": "appointments.id" },
+          { "name": "drug_code", "type": "varchar(18)", "note": "dm+d concept id" },
+          { "name": "dose", "type": "text" },
+          { "name": "days_supply", "type": "smallint" }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "patients-referrals", "source": "patients", "target": "referrals", "label": "referred", "sourceEnd": "one", "sourceField": "id", "targetField": "patient_id", "targetEnd": "zero-or-many" },
+    { "id": "departments-referrals", "source": "departments", "target": "referrals", "label": "receives", "sourceEnd": "one", "sourceField": "id", "targetField": "department_id", "targetEnd": "zero-or-many" },
+    { "id": "departments-clinicians", "source": "departments", "target": "clinicians", "label": "employs", "sourceEnd": "one", "sourceField": "id", "targetField": "department_id", "targetEnd": "one-or-many" },
+    { "id": "clinicians-slots", "source": "clinicians", "target": "clinic_slots", "label": "offers", "sourceEnd": "one", "sourceField": "id", "targetField": "clinician_id", "targetEnd": "zero-or-many" },
+    { "id": "slots-appointments", "source": "clinic_slots", "target": "appointments", "label": "books", "sourceEnd": "one", "sourceField": "id", "targetField": "slot_id", "targetEnd": "zero-or-one" },
+    { "id": "patients-appointments", "source": "patients", "target": "appointments", "label": "attends", "sourceEnd": "one", "sourceField": "id", "targetField": "patient_id", "targetEnd": "zero-or-many" },
+    { "id": "referrals-appointments", "source": "referrals", "target": "appointments", "label": "justifies", "sourceEnd": "zero-or-one", "sourceField": "id", "targetField": "referral_id", "targetEnd": "zero-or-many" },
+    { "id": "appointments-notes", "source": "appointments", "target": "clinical_notes", "label": "records", "sourceEnd": "one", "sourceField": "id", "targetField": "appointment_id", "targetEnd": "zero-or-many" },
+    { "id": "clinicians-notes", "source": "clinicians", "target": "clinical_notes", "label": "writes", "sourceEnd": "one", "sourceField": "id", "targetField": "author_id", "targetEnd": "zero-or-many" },
+    { "id": "appointments-prescriptions", "source": "appointments", "target": "prescriptions", "label": "issues", "sourceEnd": "one", "sourceField": "id", "targetField": "appointment_id", "targetEnd": "zero-or-many" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the schema",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Eight tables in four groups: the patient record, staff and rota, booking, and the clinical outcome of each visit."
+        },
+        {
+          "id": "rota",
+          "title": "Departments, clinicians and slots",
+          "description": "Every department employs at least one clinician, and each clinician publishes any number of clinic slots with a time, length and room.",
+          "highlightNodes": ["departments", "clinicians", "clinic_slots"],
+          "highlightEdges": ["departments-clinicians", "clinicians-slots"]
+        },
+        {
+          "id": "referral",
+          "title": "Referrals",
+          "description": "A referral names the patient and the department asked to see them. Its priority sets how quickly the first appointment must be booked.",
+          "highlightNodes": ["patients", "referrals", "departments"],
+          "highlightEdges": ["patients-referrals", "departments-referrals"]
+        },
+        {
+          "id": "booking",
+          "title": "Booking a slot",
+          "description": "An appointment fills exactly one slot for one patient. A first visit points at its referral; a follow-up booked in clinic leaves referral_id empty.",
+          "highlightNodes": ["clinic_slots", "appointments", "patients", "referrals"],
+          "highlightEdges": ["slots-appointments", "patients-appointments", "referrals-appointments"]
+        },
+        {
+          "id": "outcome",
+          "title": "What the visit produces",
+          "description": "The seeing clinician signs notes against the appointment and may issue prescriptions, so each outcome traces back to one visit.",
+          "highlightNodes": ["appointments", "clinical_notes", "prescriptions", "clinicians"],
+          "highlightEdges": ["appointments-notes", "clinicians-notes", "appointments-prescriptions"]
+        }
+      ]
+    }
+  ]
+}

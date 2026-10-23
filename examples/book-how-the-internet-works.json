@@ -1,0 +1,293 @@
+{
+  "kind": "book",
+  "meta": {
+    "title": "How the internet works",
+    "description": "Module 3 of Introduction to Computer Networks: what happens between typing a web address and seeing the page, in four short lessons.",
+    "author": "Northgate College, Department of Computing",
+    "date": "05/10/2026",
+    "reading": "book"
+  },
+  "summary": "DNS turns a name such as `www.example.org` into an IP address by asking a chain of servers, and caches the answer. IP moves packets between networks on a best-effort basis, and TCP turns them into a reliable, ordered stream. HTTP is the language browser and server speak over that stream, and TLS wraps it so nobody in between can read or change it.",
+  "chapters": [
+    {
+      "meta": {
+        "question": "How does my computer find the server behind a name?",
+        "title": "DNS: names to addresses",
+        "kicker": "Lesson 1"
+      },
+      "answer": {
+        "headline": "Your computer asks a recursive resolver, which asks a root server, then the top-level domain's server, then the domain's own authoritative server, and caches the answer for as long as its TTL allows.",
+        "text": "Computers route traffic by IP address, not by name. The Domain Name System is a distributed directory: no single server knows every name, but each knows who to ask next.",
+        "points": [
+          "Most lookups are answered from a cache in milliseconds",
+          "A full lookup from scratch takes three or four round trips",
+          "DNS normally uses UDP port 53, and TCP for large answers"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "diagram",
+          "title": "A lookup from scratch",
+          "interactive": true,
+          "height": 460,
+          "caption": "Step through the lookup for www.example.org when nothing is cached.",
+          "diagram": {
+            "meta": {
+              "title": "DNS resolution",
+              "description": "The laptop asks its resolver; the resolver walks down from the root to the authoritative server and returns the address.",
+              "layout": { "direction": "LR" }
+            },
+            "roles": {
+              "client": { "label": "Your side", "color": "amber" },
+              "resolver": { "label": "Resolver", "color": "blue" },
+              "auth": { "label": "Authoritative servers", "color": "teal" }
+            },
+            "nodes": [
+              { "id": "laptop", "type": "client", "data": { "title": "Laptop", "subtitle": "Stub resolver", "icon": "monitor" } },
+              { "id": "resolver", "type": "resolver", "data": { "title": "Recursive resolver", "subtitle": "ISP or public DNS", "icon": "server", "description": "Does the legwork and caches every answer it gets." } },
+              { "id": "root", "type": "auth", "data": { "title": "Root server", "subtitle": "Knows the TLD servers", "icon": "globe" } },
+              { "id": "tld", "type": "auth", "data": { "title": ".org TLD server", "subtitle": "Knows example.org's servers", "icon": "layers" } },
+              { "id": "ns", "type": "auth", "data": { "title": "example.org name server", "subtitle": "Holds the A record", "icon": "database" } }
+            ],
+            "edges": [
+              { "id": "e1", "source": "laptop", "target": "resolver", "label": "www.example.org?" },
+              { "id": "e2", "source": "resolver", "target": "root", "label": "Ask root" },
+              { "id": "e3", "source": "resolver", "target": "tld", "label": "Ask .org" },
+              { "id": "e4", "source": "resolver", "target": "ns", "label": "Ask example.org" }
+            ],
+            "scenarios": [
+              {
+                "id": "main",
+                "name": "Uncached lookup",
+                "steps": [
+                  { "id": "s1", "title": "The question", "description": "The laptop has no cached answer, so it asks its configured resolver.", "highlightNodes": ["laptop", "resolver"], "highlightEdges": ["e1"] },
+                  { "id": "s2", "title": "Root", "description": "The root server does not know the address, but replies with the servers for .org.", "highlightNodes": ["resolver", "root"], "highlightEdges": ["e2"] },
+                  { "id": "s3", "title": "Top-level domain", "description": "The .org server replies with the name servers for example.org.", "highlightNodes": ["resolver", "tld"], "highlightEdges": ["e3"] },
+                  { "id": "s4", "title": "Authoritative answer", "description": "example.org's name server returns the A record: the IP address and its TTL. The resolver caches it and answers the laptop.", "highlightNodes": ["resolver", "ns"], "highlightEdges": ["e4"] }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "table",
+          "title": "Common record types",
+          "columns": ["Record", "Holds", "Example"],
+          "rows": [
+            ["A", "An IPv4 address", "`192.0.2.10`"],
+            ["AAAA", "An IPv6 address", "`2001:db8::10`"],
+            ["CNAME", "Another name to look up instead", "`www` → `example.org`"],
+            ["MX", "The mail servers for the domain", "`10 mail.example.org`"],
+            ["NS", "The domain's authoritative name servers", "`ns1.example.org`"],
+            ["TXT", "Free text, often for verification", "`v=spf1 -all`"]
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Why a DNS change takes time to appear",
+          "tone": "info",
+          "label": "TTL",
+          "body": "Every record carries a time to live in seconds. A resolver that cached a record with a TTL of 3600 keeps using the old address for up to an hour after you change it. Lower the TTL a day before a planned move."
+        },
+        {
+          "type": "checklist",
+          "title": "Check your understanding",
+          "items": [
+            { "text": "Explain the difference between a recursive resolver and an authoritative server" },
+            { "text": "Say which server is asked first in an uncached lookup, and why it cannot answer directly" },
+            { "text": "Use `dig www.example.org +trace` and identify each step" }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "How do packets get to the server and arrive in order?",
+        "title": "TCP/IP: moving packets",
+        "kicker": "Lesson 2"
+      },
+      "answer": {
+        "headline": "IP carries each packet from network to network on a best-effort basis; TCP, running at both ends, numbers the bytes, resends what is lost and puts them back in order.",
+        "text": "The internet is a network of networks. Routers only look at the destination IP address and pass each packet one hop closer. They do not guarantee delivery, and packets can arrive late, twice or not at all.",
+        "points": [
+          "IP addresses find the machine; port numbers find the program on it",
+          "TCP opens a connection with a three-way handshake before any data",
+          "UDP skips all of this: faster, but the application must cope with loss"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "table",
+          "title": "The layers",
+          "columns": ["Layer", "Job", "Examples", "Unit"],
+          "rows": [
+            ["Application", "What the programs say to each other", "HTTP, DNS, SMTP", "Message"],
+            ["Transport", "Delivery between programs: reliable or not", "TCP, UDP, QUIC", "Segment or datagram"],
+            ["Internet", "Addressing and routing across networks", "IPv4, IPv6", "Packet"],
+            ["Link", "Moving frames on one physical network", "Ethernet, Wi-Fi", "Frame"]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "The TCP three-way handshake",
+          "span": "half",
+          "items": [
+            { "title": "SYN", "text": "The client picks a random starting sequence number and asks to connect." },
+            { "title": "SYN-ACK", "text": "The server acknowledges it and sends its own starting number." },
+            { "title": "ACK", "text": "The client acknowledges the server's number. Both sides can now send data." }
+          ]
+        },
+        {
+          "type": "points",
+          "title": "How TCP stays reliable",
+          "span": "half",
+          "items": [
+            { "title": "Sequence numbers", "text": "Every byte is numbered, so the receiver can reorder and spot gaps." },
+            { "title": "Acknowledgements", "text": "The receiver says what it has; anything unacknowledged is sent again." },
+            { "title": "Congestion control", "text": "The sender slows down when packets go missing, so the network is not overwhelmed." }
+          ]
+        },
+        {
+          "type": "compare",
+          "title": "TCP or UDP?",
+          "options": [
+            { "name": "TCP", "summary": "Reliable, ordered stream.", "pros": ["Nothing lost or reordered", "Built-in congestion control"], "cons": ["A handshake before any data", "One lost packet holds up everything behind it"], "verdict": "Web pages, email, file transfer" },
+            { "name": "UDP", "summary": "Independent datagrams, no promises.", "pros": ["No handshake", "Late data can simply be skipped"], "cons": ["The application must handle loss and order"], "verdict": "DNS queries, video calls, games, QUIC" }
+          ]
+        },
+        {
+          "type": "faq",
+          "title": "Questions students ask",
+          "items": [
+            { "q": "How does a router know where to send a packet?", "a": "It looks up the destination address in its routing table and picks the most specific matching route. Between large networks, the tables are built by BGP, which networks use to announce which addresses they can reach." },
+            { "q": "Why are there two kinds of IP address?", "a": "IPv4 has about 4.3 billion addresses, which ran out. IPv6 uses 128-bit addresses, enough that every device can have its own. Most networks now run both." }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "What do the browser and the server actually say to each other?",
+        "title": "HTTP: requests and responses",
+        "kicker": "Lesson 3"
+      },
+      "answer": {
+        "headline": "The browser sends a request naming a method and a path; the server sends back a status code, headers and a body. Every page is many of these exchanges, one for each file.",
+        "text": "HTTP is a request-response protocol. It is stateless: each request stands alone, and cookies are how a site remembers you between them.",
+        "points": [
+          "A typical page makes 50 to 100 requests: HTML, styles, scripts, images",
+          "HTTP/2 sends them all over one connection at once",
+          "HTTP/3 runs over QUIC on UDP, so one lost packet no longer blocks the rest"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "code",
+          "title": "A request and its response",
+          "language": "http",
+          "code": "GET /index.html HTTP/1.1\nHost: www.example.org\nAccept: text/html\n\nHTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nContent-Length: 1256\nCache-Control: max-age=600\n\n<!doctype html>\n<html> ..."
+        },
+        {
+          "type": "table",
+          "title": "Status codes worth knowing",
+          "columns": ["Code", "Meaning", "When you see it"],
+          "rows": [
+            ["200 OK", "Here is what you asked for", "Most successful requests"],
+            ["301 Moved Permanently", "It lives at another address now", "A site moved from http to https"],
+            ["304 Not Modified", "Your cached copy is still good", "Reloading a page"],
+            ["404 Not Found", "Nothing at this address", "A broken link"],
+            ["429 Too Many Requests", "Slow down", "Calling an API too fast"],
+            ["503 Service Unavailable", "The server cannot cope right now", "Overload or maintenance"]
+          ]
+        },
+        {
+          "type": "timeline",
+          "title": "Versions of HTTP",
+          "items": [
+            { "date": "1991", "title": "HTTP/0.9", "text": "One line: `GET /page`. No headers, HTML only." },
+            { "date": "1996", "title": "HTTP/1.0", "text": "Headers, status codes and other content types. One connection per request." },
+            { "date": "1997", "title": "HTTP/1.1", "text": "Connections kept open and reused; the `Host` header lets many sites share one server." },
+            { "date": "2015", "title": "HTTP/2", "text": "Binary framing; many requests in parallel over one TCP connection.", "tone": "info" },
+            { "date": "2022", "title": "HTTP/3", "text": "Runs over QUIC on UDP, with TLS built in.", "tone": "good" }
+          ]
+        },
+        {
+          "type": "chart",
+          "kind": "bar",
+          "title": "Where the time goes on a first visit",
+          "unit": " ms",
+          "caption": "Illustrative: a student in Leeds loading a page from a server in Frankfurt over TCP and TLS 1.3, nothing cached.",
+          "data": [
+            { "label": "DNS lookup", "value": 40 },
+            { "label": "TCP handshake", "value": 30 },
+            { "label": "TLS handshake", "value": 30 },
+            { "label": "Server builds the page", "value": 120 },
+            { "label": "Download HTML", "value": 35 },
+            { "label": "Fetch styles, scripts, images", "value": 410 }
+          ]
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "How does HTTPS keep the connection private?",
+        "title": "TLS: the padlock",
+        "kicker": "Lesson 4"
+      },
+      "answer": {
+        "headline": "TLS proves the server is who it claims with a certificate signed by a trusted authority, then both sides agree fresh encryption keys, so nobody in between can read or change the traffic.",
+        "text": "HTTPS is HTTP inside a TLS connection. TLS 1.3, published in 2018, needs only one round trip to set up and removes older, weaker options.",
+        "points": [
+          "The certificate proves identity; the key exchange provides secrecy",
+          "Keys are new for every connection, so a stolen server key cannot unlock old recordings",
+          "The padlock means the connection is private, not that the site is honest"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "steps",
+          "title": "The TLS 1.3 handshake",
+          "items": [
+            { "title": "Client hello", "text": "The browser lists the ciphers it supports and sends its half of a Diffie-Hellman key exchange." },
+            { "title": "Server hello", "text": "The server picks a cipher, sends its half of the key exchange and, already encrypted, its certificate and a signature." },
+            { "title": "Check the certificate", "text": "The browser checks the name matches, the dates are valid and the chain leads to a certificate authority it trusts." },
+            { "title": "Finished", "text": "Both sides derive the same session keys. The first HTTP request goes straight after, encrypted." }
+          ]
+        },
+        {
+          "type": "points",
+          "title": "What TLS gives you",
+          "items": [
+            { "title": "Confidentiality", "text": "The content is encrypted. An observer still sees which IP address you connect to and roughly how much data moves.", "tone": "good" },
+            { "title": "Integrity", "text": "Any change to the data in transit is detected and the connection is dropped.", "tone": "good" },
+            { "title": "Authentication", "text": "The certificate shows you reached the real owner of the domain name.", "tone": "good" }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "The padlock is not a trust badge",
+          "tone": "warn",
+          "label": "Common misconception",
+          "body": "Free, automated certificates mean a phishing site can have a padlock too. TLS tells you the connection to `examp1e-login.com` is private; it does not tell you `examp1e-login.com` is the bank."
+        },
+        {
+          "type": "faq",
+          "title": "Questions students ask",
+          "items": [
+            { "q": "Who decides which certificate authorities are trusted?", "a": "Browser and operating system makers each keep a root store, a list of authorities that meet their audit rules. An authority that breaks the rules can be removed." },
+            { "q": "Why do certificates expire?", "a": "Short lifetimes limit the damage if a key is stolen, and force automation. Public certificates are valid for at most 398 days, and that limit is being cut further." }
+          ]
+        },
+        {
+          "type": "sources",
+          "title": "Further reading",
+          "items": [
+            { "title": "RFC 8446: TLS 1.3", "url": "https://www.rfc-editor.org/rfc/rfc8446" },
+            { "title": "RFC 9110: HTTP semantics", "url": "https://www.rfc-editor.org/rfc/rfc9110" },
+            { "title": "RFC 1034: Domain names, concepts and facilities", "url": "https://www.rfc-editor.org/rfc/rfc1034" }
+          ]
+        }
+      ]
+    }
+  ]
+}

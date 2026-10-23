@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "title": "Monthly household budget",
+    "description": "A family of four's monthly budget, as a mind map: where the take-home pay goes on bills, everyday spending, savings and debt.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "mindmap"
+    },
+    "summary": {
+      "headline": "Of £3,600 take-home pay, bills take half, everyday spending a third, and £560 goes to savings and the car loan.",
+      "points": [
+        "Fixed bills are paid by direct debit the day after payday.",
+        "Groceries have a weekly limit, not a monthly one.",
+        "Savings move out first, so they are never what is left over."
+      ],
+      "facts": {
+        "Take-home pay": "£3,600 a month",
+        "Household": "2 adults, 2 children"
+      }
+    }
+  },
+  "roles": {
+    "goal": { "label": "Budget", "color": "violet", "icon": "flag" },
+    "branch": { "label": "Category", "color": "blue" },
+    "item": { "label": "Line", "color": "slate" }
+  },
+  "nodes": [
+    { "id": "budget", "type": "goal", "width": 240, "data": { "title": "£3,600 a month", "subtitle": "Take-home pay, two incomes", "badge": "Budget" } },
+    { "id": "bills", "type": "branch", "data": { "title": "Bills", "subtitle": "£1,790, fixed", "icon": "building" } },
+    { "id": "mortgage", "type": "item", "width": 200, "data": { "title": "Mortgage", "subtitle": "Fixed rate until 2029", "badge": "£1,150" } },
+    { "id": "counciltax", "type": "item", "width": 200, "data": { "title": "Council tax", "subtitle": "Band C, 10 instalments", "badge": "£190" } },
+    { "id": "energy", "type": "item", "width": 200, "data": { "title": "Energy and water", "subtitle": "Gas, electricity, water", "badge": "£310" } },
+    { "id": "broadband", "type": "item", "width": 200, "data": { "title": "Broadband and phones", "subtitle": "Contract ends in May", "badge": "£140" } },
+    { "id": "everyday", "type": "branch", "data": { "title": "Everyday spending", "subtitle": "£1,250, flexible", "icon": "package" } },
+    { "id": "groceries", "type": "item", "width": 200, "data": { "title": "Groceries", "subtitle": "£150 a week", "badge": "£650" } },
+    { "id": "transport", "type": "item", "width": 200, "data": { "title": "Fuel and bus passes", "subtitle": "One car, two school passes", "badge": "£260" } },
+    { "id": "children", "type": "item", "width": 200, "data": { "title": "Children", "subtitle": "Clubs, school trips, clothes", "badge": "£220" } },
+    { "id": "fun", "type": "item", "width": 200, "data": { "title": "Eating out and fun", "subtitle": "Agreed together each month", "badge": "£120" } },
+    { "id": "savings", "type": "branch", "data": { "title": "Savings", "subtitle": "£380, paid first", "icon": "shield" } },
+    { "id": "emergency", "type": "item", "width": 200, "data": { "title": "Emergency fund", "subtitle": "Target: three months of bills", "badge": "£200" } },
+    { "id": "holiday", "type": "item", "width": 200, "data": { "title": "Summer holiday", "subtitle": "Camping in August", "badge": "£100" } },
+    { "id": "pension", "type": "item", "width": 200, "data": { "title": "Extra pension", "subtitle": "On top of workplace schemes", "badge": "£80" } },
+    { "id": "debt", "type": "branch", "data": { "title": "Debt", "subtitle": "£180, ends 2028", "icon": "credit-card" } },
+    { "id": "carloan", "type": "item", "width": 200, "data": { "title": "Car loan", "subtitle": "6.9% APR, 20 payments left", "badge": "£180" } }
+  ],
+  "edges": [
+    { "id": "budget-bills", "source": "budget", "target": "bills" },
+    { "id": "bills-mortgage", "source": "bills", "target": "mortgage" },
+    { "id": "bills-counciltax", "source": "bills", "target": "counciltax" },
+    { "id": "bills-energy", "source": "bills", "target": "energy" },
+    { "id": "bills-broadband", "source": "bills", "target": "broadband" },
+    { "id": "budget-savings", "source": "budget", "target": "savings" },
+    { "id": "savings-emergency", "source": "savings", "target": "emergency" },
+    { "id": "savings-holiday", "source": "savings", "target": "holiday" },
+    { "id": "savings-pension", "source": "savings", "target": "pension" },
+    { "id": "budget-everyday", "source": "budget", "target": "everyday" },
+    { "id": "everyday-groceries", "source": "everyday", "target": "groceries" },
+    { "id": "everyday-transport", "source": "everyday", "target": "transport" },
+    { "id": "everyday-children", "source": "everyday", "target": "children" },
+    { "id": "everyday-fun", "source": "everyday", "target": "fun" },
+    { "id": "budget-debt", "source": "budget", "target": "debt" },
+    { "id": "debt-carloan", "source": "debt", "target": "carloan" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Where the money goes",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Take-home pay in the centre, four categories around it. Badges are monthly amounts." },
+        { "id": "savings", "title": "Savings come first", "description": "A standing order moves £380 out on payday, so saving never depends on what is left at the end of the month.", "highlightNodes": ["budget", "savings", "emergency", "holiday", "pension"], "highlightEdges": ["budget-savings", "savings-emergency", "savings-holiday", "savings-pension"] },
+        { "id": "bills", "title": "Fixed bills", "description": "Half the pay goes on bills that barely change. The broadband contract ending in May is the one to renegotiate.", "highlightNodes": ["budget", "bills", "mortgage", "counciltax", "energy", "broadband"], "highlightEdges": ["budget-bills", "bills-mortgage", "bills-counciltax", "bills-energy", "bills-broadband"] },
+        { "id": "everyday", "title": "Everyday spending", "description": "The flexible third. Groceries are capped weekly, which is easier to keep to than a monthly total.", "highlightNodes": ["budget", "everyday", "groceries", "transport", "children", "fun"], "highlightEdges": ["budget-everyday", "everyday-groceries", "everyday-transport", "everyday-children", "everyday-fun"] },
+        { "id": "debt", "title": "Debt", "description": "One car loan, with 20 payments left. When it ends, its £180 moves to the emergency fund.", "highlightNodes": ["budget", "debt", "carloan"], "highlightEdges": ["budget-debt", "debt-carloan"] }
+      ]
+    }
+  ]
+}

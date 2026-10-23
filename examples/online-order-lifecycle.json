@@ -1,0 +1,343 @@
+{
+  "meta": {
+    "title": "Online order lifecycle",
+    "description": "The states an online shop order moves through, from checkout to delivery, and the side roads to cancellation, returns and refunds.",
+    "layout": {
+      "direction": "LR"
+    },
+    "summary": {
+      "headline": "An order moves forward on warehouse and carrier events; every way out after payment ends in a refund, never a silent cancel.",
+      "points": [
+        "A declined payment cancels the order before any stock is touched.",
+        "Cancelling after payment but before packing refunds at once.",
+        "Carrier tracking scans keep the order in Shipped without changing its state.",
+        "A return is refunded only after the parcel arrives and passes inspection."
+      ],
+      "facts": {
+        "States": "8 plus a payment check, start and end",
+        "Return window": "30 days",
+        "Owner": "Order management, Nettlebank Home"
+      }
+    }
+  },
+  "roles": {
+    "pseudo": {
+      "label": "Start / end",
+      "color": "slate"
+    },
+    "state": {
+      "label": "Order state",
+      "color": "blue"
+    },
+    "decision": {
+      "label": "Decision",
+      "color": "amber"
+    },
+    "exception": {
+      "label": "Return or cancel",
+      "color": "rose"
+    }
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "type": "pseudo",
+      "shape": "initial",
+      "data": {
+        "title": "Start",
+        "description": "The customer presses Place order."
+      }
+    },
+    {
+      "id": "placed",
+      "type": "state",
+      "shape": "state",
+      "data": {
+        "title": "Placed",
+        "subtitle": "Stock reserved",
+        "icon": "file-text",
+        "description": "Stock is reserved for 20 minutes while the payment is authorised."
+      }
+    },
+    {
+      "id": "payment",
+      "type": "decision",
+      "shape": "choice",
+      "data": {
+        "title": "Payment authorised?",
+        "description": "The payment provider's answer: authorised, or declined after 3-D Secure or a fraud check."
+      }
+    },
+    {
+      "id": "paid",
+      "type": "state",
+      "shape": "state",
+      "data": {
+        "title": "Paid",
+        "subtitle": "Waiting for the warehouse",
+        "icon": "credit-card",
+        "metadata": {
+          "Target": "Packed within 24 h"
+        }
+      }
+    },
+    {
+      "id": "packed",
+      "type": "state",
+      "shape": "state",
+      "data": {
+        "title": "Packed",
+        "subtitle": "Label printed",
+        "icon": "package",
+        "description": "Picked, packed and weighed; the carrier label and the payment capture happen here."
+      }
+    },
+    {
+      "id": "shipped",
+      "type": "state",
+      "shape": "state",
+      "data": {
+        "title": "Shipped",
+        "subtitle": "With the carrier",
+        "icon": "truck",
+        "description": "Tracking scans update the delivery estimate shown to the customer."
+      }
+    },
+    {
+      "id": "delivered",
+      "type": "state",
+      "shape": "state",
+      "data": {
+        "title": "Delivered",
+        "subtitle": "Return window open",
+        "icon": "check-circle",
+        "metadata": {
+          "Return window": "30 days"
+        }
+      }
+    },
+    {
+      "id": "returning",
+      "type": "exception",
+      "shape": "state",
+      "data": {
+        "title": "Return requested",
+        "subtitle": "Parcel on its way back",
+        "icon": "warehouse",
+        "description": "The customer has a prepaid label. The warehouse inspects the item when it arrives, before any money goes back."
+      }
+    },
+    {
+      "id": "refunded",
+      "type": "exception",
+      "shape": "state",
+      "data": {
+        "title": "Refunded",
+        "subtitle": "Money sent back",
+        "icon": "credit-card",
+        "description": "Refunded to the original card; the bank shows it within 3 to 5 working days."
+      }
+    },
+    {
+      "id": "cancelled",
+      "type": "exception",
+      "shape": "state",
+      "data": {
+        "title": "Cancelled",
+        "subtitle": "Nothing charged",
+        "icon": "flag",
+        "description": "The stock reservation is released and the customer is emailed."
+      }
+    },
+    {
+      "id": "end",
+      "type": "pseudo",
+      "shape": "final",
+      "data": {
+        "title": "Closed",
+        "description": "The order is archived for seven years for accounting."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-placed",
+      "source": "start",
+      "target": "placed"
+    },
+    {
+      "id": "placed-payment",
+      "source": "placed",
+      "target": "payment",
+      "label": "payment result"
+    },
+    {
+      "id": "payment-paid",
+      "source": "payment",
+      "target": "paid",
+      "label": "authorised"
+    },
+    {
+      "id": "payment-cancelled",
+      "source": "payment",
+      "target": "cancelled",
+      "label": "declined"
+    },
+    {
+      "id": "paid-packed",
+      "source": "paid",
+      "target": "packed",
+      "label": "pick and pack"
+    },
+    {
+      "id": "paid-refunded",
+      "source": "paid",
+      "target": "refunded",
+      "label": "customer cancels"
+    },
+    {
+      "id": "packed-shipped",
+      "source": "packed",
+      "target": "shipped",
+      "label": "carrier collects"
+    },
+    {
+      "id": "shipped-scan",
+      "source": "shipped",
+      "target": "shipped",
+      "label": "tracking scan"
+    },
+    {
+      "id": "shipped-delivered",
+      "source": "shipped",
+      "target": "delivered",
+      "label": "delivery scan"
+    },
+    {
+      "id": "shipped-refunded",
+      "source": "shipped",
+      "target": "refunded",
+      "label": "lost in transit"
+    },
+    {
+      "id": "delivered-returning",
+      "source": "delivered",
+      "target": "returning",
+      "label": "request return"
+    },
+    {
+      "id": "returning-refunded",
+      "source": "returning",
+      "target": "refunded",
+      "label": "inspection passed"
+    },
+    {
+      "id": "delivered-end",
+      "source": "delivered",
+      "target": "end",
+      "label": "after 30 days"
+    },
+    {
+      "id": "refunded-end",
+      "source": "refunded",
+      "target": "end"
+    },
+    {
+      "id": "cancelled-end",
+      "source": "cancelled",
+      "target": "end"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Order lifecycle",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "The main road runs from Placed to Delivered. The rose states are the side roads: a cancelled order charges nothing, and every other way out after payment ends in a refund."
+        },
+        {
+          "id": "checkout",
+          "title": "Checkout and payment",
+          "description": "Placing the order reserves the stock. The payment result decides: authorised orders become Paid, declined ones are cancelled and the stock goes back on sale.",
+          "highlightNodes": [
+            "start",
+            "placed",
+            "payment",
+            "paid",
+            "cancelled"
+          ],
+          "highlightEdges": [
+            "start-placed",
+            "placed-payment",
+            "payment-paid",
+            "payment-cancelled"
+          ]
+        },
+        {
+          "id": "fulfil",
+          "title": "Warehouse and carrier",
+          "description": "The warehouse picks and packs the order, and the payment is captured when the label prints. Once the carrier collects it, tracking scans loop on Shipped until the delivery scan.",
+          "highlightNodes": [
+            "paid",
+            "packed",
+            "shipped",
+            "delivered"
+          ],
+          "highlightEdges": [
+            "paid-packed",
+            "packed-shipped",
+            "shipped-scan",
+            "shipped-delivered"
+          ]
+        },
+        {
+          "id": "returns",
+          "title": "Returns",
+          "description": "Within 30 days the customer can ask for a return and gets a prepaid label. The refund is issued only when the parcel is back and passes inspection.",
+          "highlightNodes": [
+            "delivered",
+            "returning",
+            "refunded"
+          ],
+          "highlightEdges": [
+            "delivered-returning",
+            "returning-refunded"
+          ]
+        },
+        {
+          "id": "refund-early",
+          "title": "Refunds before delivery",
+          "description": "A customer may cancel a paid order until it is packed, and a parcel the carrier loses is refunded too. Both skip the return steps.",
+          "highlightNodes": [
+            "paid",
+            "shipped",
+            "refunded"
+          ],
+          "highlightEdges": [
+            "paid-refunded",
+            "shipped-refunded"
+          ]
+        },
+        {
+          "id": "close",
+          "title": "Closing the order",
+          "description": "A delivered order closes when the return window ends; refunded and cancelled orders close at once.",
+          "highlightNodes": [
+            "delivered",
+            "refunded",
+            "cancelled",
+            "end"
+          ],
+          "highlightEdges": [
+            "delivered-end",
+            "refunded-end",
+            "cancelled-end"
+          ]
+        }
+      ]
+    }
+  ]
+}

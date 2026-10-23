@@ -1,0 +1,230 @@
+{
+  "meta": {
+    "title": "Airline operations at the airport",
+    "description": "How Kestrel Air gets passengers and their bags from the terminal door onto a flight at Northgate Airport; open check-in, baggage or boarding for the detail.",
+    "version": "1.0.0",
+    "summary": {
+      "headline": "Passengers and bags travel separately and meet again only on the aircraft; the departure control system keeps the two in step.",
+      "points": [
+        "Every check-in, bag and boarding scan is recorded in the departure control system",
+        "A bag only flies if its passenger has boarded",
+        "Check-in, Baggage and Boarding each open a detail diagram; Baggage goes one level deeper into the sorter"
+      ],
+      "facts": {
+        "Departures a day": "180",
+        "Levels": "Overview + 4 detail diagrams"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "passenger": { "label": "Passenger", "color": "amber", "icon": "user" },
+    "process": { "label": "Process", "color": "blue" },
+    "system": { "label": "System", "color": "violet" },
+    "aircraft": { "label": "Aircraft", "color": "teal" }
+  },
+  "nodes": [
+    { "id": "passenger", "type": "passenger", "data": { "title": "Passenger", "subtitle": "Booked on KS 412 to Lisbon", "icon": "user" } },
+    { "id": "checkin", "type": "process", "data": { "title": "Check-in", "subtitle": "App, kiosk or desk", "icon": "check-circle", "drill": "checkin", "description": "Confirms the passenger, collects passport data and issues the boarding pass. Open it for the three ways in.", "metadata": { "Opens": "3 hours before departure", "Closes": "45 minutes before" } } },
+    { "id": "security", "type": "process", "data": { "title": "Security", "subtitle": "Run by the airport", "icon": "shield", "description": "Airport staff screen passengers and cabin bags. The airline only sees the boarding pass scan." } },
+    { "id": "boarding", "type": "process", "data": { "title": "Boarding", "subtitle": "Gate to aircraft door", "icon": "users", "drill": "boarding", "description": "Scans boarding passes, closes the flight and sends the final figures to load control. Open it for the gate in detail." } },
+    { "id": "baggage", "type": "process", "data": { "title": "Baggage", "subtitle": "Screen, sort, load", "icon": "package", "drill": "baggage", "description": "Takes hold bags from bag drop to the aircraft hold. Open it for the baggage hall, then the sorter inside it." } },
+    { "id": "dcs", "type": "system", "data": { "title": "Departure control", "subtitle": "Passengers, bags, seats", "tech": "DCS", "icon": "database", "description": "The airline's record of who checked in, which bags they dropped and who boarded.", "metadata": { "Owner": "Airport systems team" } } },
+    { "id": "aircraft", "type": "aircraft", "data": { "title": "Aircraft", "subtitle": "A320, gate 14", "icon": "flag" } }
+  ],
+  "edges": [
+    { "id": "passenger-checkin", "source": "passenger", "target": "checkin", "label": "Booking reference" },
+    { "id": "checkin-dcs", "source": "checkin", "target": "dcs", "label": "Checked in" },
+    { "id": "checkin-security", "source": "checkin", "target": "security", "label": "Boarding pass" },
+    { "id": "checkin-baggage", "source": "checkin", "target": "baggage", "label": "Tagged bags" },
+    { "id": "security-boarding", "source": "security", "target": "boarding", "label": "Passenger airside" },
+    { "id": "dcs-boarding", "source": "dcs", "target": "boarding", "label": "Passenger list" },
+    { "id": "baggage-dcs", "source": "baggage", "target": "dcs", "label": "Bag loaded", "type": "async" },
+    { "id": "boarding-aircraft", "source": "boarding", "target": "aircraft", "label": "Boarded" },
+    { "id": "baggage-aircraft", "source": "baggage", "target": "aircraft", "label": "Loaded hold" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "A passenger flies to Lisbon",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Seven parts. Check-in, Baggage and Boarding carry a magnifier: each opens its own detail diagram." },
+        { "id": "checkin", "title": "Check in", "description": "The passenger checks in with their booking reference; the departure control system marks them as checked in.", "highlightNodes": ["passenger", "checkin", "dcs"], "highlightEdges": ["passenger-checkin", "checkin-dcs"] },
+        { "id": "split", "title": "Passenger and bag part", "description": "The passenger goes through security with a boarding pass; the tagged bag goes down to the baggage hall.", "highlightNodes": ["checkin", "security", "baggage"], "highlightEdges": ["checkin-security", "checkin-baggage"] },
+        { "id": "bags", "title": "The bag is loaded", "description": "Baggage loads the bag into the hold and reports it to departure control. Open Baggage to follow it through the sorter.", "highlightNodes": ["baggage", "dcs", "aircraft"], "highlightEdges": ["baggage-dcs", "baggage-aircraft"] },
+        { "id": "board", "title": "Board and close", "description": "The gate checks each boarding pass against the passenger list. Only when the counts match does the flight close.", "highlightNodes": ["security", "dcs", "boarding", "aircraft"], "highlightEdges": ["security-boarding", "dcs-boarding", "boarding-aircraft"] }
+      ]
+    }
+  ],
+  "diagrams": {
+    "checkin": {
+      "meta": {
+        "title": "Check-in",
+        "description": "Three ways to check in, one record in departure control, and passport data sent to the border agency.",
+        "layout": { "direction": "LR" }
+      },
+      "roles": {
+        "channel": { "label": "Channel", "color": "blue" },
+        "system": { "label": "System", "color": "violet" },
+        "external": { "label": "External", "color": "slate" },
+        "process": { "label": "Process", "color": "amber" }
+      },
+      "nodes": [
+        { "id": "ci-app", "type": "channel", "data": { "title": "Mobile app", "subtitle": "Opens 24 hours before", "icon": "monitor", "metadata": { "Share of passengers": "68%" } } },
+        { "id": "ci-kiosk", "type": "channel", "data": { "title": "Kiosk", "subtitle": "Prints pass and bag tags", "icon": "cpu", "metadata": { "Share of passengers": "21%" } } },
+        { "id": "ci-desk", "type": "channel", "data": { "title": "Check-in desk", "subtitle": "Agent, for special cases", "icon": "users", "description": "Unaccompanied minors, wheelchairs, pets and passengers whose documents need a check by eye.", "metadata": { "Share of passengers": "11%" } } },
+        { "id": "ci-dcs", "type": "system", "data": { "title": "Departure control", "subtitle": "Seat and boarding pass", "tech": "DCS", "icon": "database" } },
+        { "id": "ci-border", "type": "external", "data": { "title": "Border agency", "subtitle": "Advance passenger data", "icon": "globe", "description": "Receives each passenger's passport details and can refuse boarding before the passenger reaches the gate." } },
+        { "id": "ci-bagdrop", "type": "process", "data": { "title": "Bag drop", "subtitle": "Weigh, tag, belt", "icon": "package", "description": "Weighs each bag against the allowance, prints the tag and sends the bag down the belt to the baggage hall." } }
+      ],
+      "edges": [
+        { "id": "ci-app-dcs", "source": "ci-app", "target": "ci-dcs", "label": "Check in" },
+        { "id": "ci-kiosk-dcs", "source": "ci-kiosk", "target": "ci-dcs", "label": "Check in" },
+        { "id": "ci-desk-dcs", "source": "ci-desk", "target": "ci-dcs", "label": "Check in" },
+        { "id": "ci-dcs-border", "source": "ci-dcs", "target": "ci-border", "label": "Passport data" },
+        { "id": "ci-dcs-bagdrop", "source": "ci-dcs", "target": "ci-bagdrop", "label": "Bag allowance" }
+      ],
+      "scenarios": [
+        {
+          "id": "checkin-flow",
+          "name": "Check in for KS 412",
+          "steps": [
+            { "id": "overview", "title": "Inside check-in", "description": "Three channels feed one record in departure control, which talks to the border agency and the bag drop." },
+            { "id": "channels", "title": "Pick a channel", "description": "Most passengers use the app; the desk is kept for cases that need a person.", "highlightNodes": ["ci-app", "ci-kiosk", "ci-desk", "ci-dcs"], "highlightEdges": ["ci-app-dcs", "ci-kiosk-dcs", "ci-desk-dcs"] },
+            { "id": "border", "title": "Send passport data", "description": "Passport details go to the border agency; a refusal stops the boarding pass from being issued.", "highlightNodes": ["ci-dcs", "ci-border"], "highlightEdges": ["ci-dcs-border"] },
+            { "id": "bagdrop", "title": "Drop the bag", "description": "Bag drop checks the weight against the allowance in departure control, then tags the bag.", "highlightNodes": ["ci-dcs", "ci-bagdrop"], "highlightEdges": ["ci-dcs-bagdrop"] }
+          ]
+        }
+      ]
+    },
+    "baggage": {
+      "meta": {
+        "title": "Baggage hall",
+        "description": "How a hold bag is screened, sorted and loaded; open the sorter for the next level down.",
+        "layout": { "direction": "LR" }
+      },
+      "roles": {
+        "process": { "label": "Process", "color": "blue" },
+        "machine": { "label": "Machine", "color": "teal" },
+        "system": { "label": "System", "color": "violet" }
+      },
+      "groups": [
+        { "id": "bg-hall", "title": "Baggage hall", "nodes": [], "color": "slate", "style": "solid" },
+        { "id": "bg-screening", "title": "Screening", "nodes": ["bg-screen", "bg-recheck"], "parent": "bg-hall", "color": "amber" },
+        { "id": "bg-sorting", "title": "Sorting", "nodes": ["bg-sort", "bg-makeup"], "parent": "bg-hall", "color": "teal" },
+        { "id": "bg-apron", "title": "Apron", "nodes": ["bg-ramp"], "color": "blue" }
+      ],
+      "nodes": [
+        { "id": "bg-belt", "type": "process", "data": { "title": "Bag drop belt", "subtitle": "From check-in", "icon": "package" } },
+        { "id": "bg-screen", "type": "machine", "data": { "title": "CT scanner", "subtitle": "Every hold bag", "icon": "crosshair", "description": "Clears about 97% of bags automatically; the rest go to a screener." } },
+        { "id": "bg-recheck", "type": "process", "data": { "title": "Screener review", "subtitle": "Image, then by hand", "icon": "shield" } },
+        { "id": "bg-sort", "type": "machine", "data": { "title": "Sorter", "subtitle": "Routes bag to its flight", "icon": "settings", "drill": "sortation", "description": "Reads the bag tag and sends the bag to the chute for its flight. Open it for the sorter in detail." } },
+        { "id": "bg-makeup", "type": "process", "data": { "title": "Make-up area", "subtitle": "Bags into containers", "icon": "layers" } },
+        { "id": "bg-ramp", "type": "process", "data": { "title": "Ramp loading", "subtitle": "Containers into the hold", "icon": "truck" } },
+        { "id": "bg-brs", "type": "system", "data": { "title": "Bag reconciliation", "subtitle": "Is the owner on board?", "tech": "BRS", "icon": "database", "description": "Matches every loaded bag to a boarded passenger. A bag whose owner does not board is taken off." } }
+      ],
+      "edges": [
+        { "id": "bg-belt-screen", "source": "bg-belt", "target": "bg-screen", "label": "Bag" },
+        { "id": "bg-screen-recheck", "source": "bg-screen", "target": "bg-recheck", "label": "Not cleared" },
+        { "id": "bg-screen-sort", "source": "bg-screen", "target": "bg-sort", "label": "Cleared" },
+        { "id": "bg-recheck-sort", "source": "bg-recheck", "target": "bg-sort", "label": "Cleared" },
+        { "id": "bg-sort-makeup", "source": "bg-sort", "target": "bg-makeup", "label": "Flight chute" },
+        { "id": "bg-makeup-ramp", "source": "bg-makeup", "target": "bg-ramp", "label": "Container" },
+        { "id": "bg-ramp-brs", "source": "bg-ramp", "target": "bg-brs", "label": "Scan at hold", "type": "async" }
+      ],
+      "scenarios": [
+        {
+          "id": "bag-journey",
+          "name": "One bag to the hold",
+          "steps": [
+            { "id": "overview", "title": "Inside the baggage hall", "description": "Screening and sorting sit in the hall; loading happens on the apron. The sorter opens a further level." },
+            { "id": "screen", "title": "Screen the bag", "description": "Every bag goes through the CT scanner; bags it cannot clear are reviewed by a screener.", "highlightNodes": ["bg-belt", "bg-screen", "bg-recheck"], "highlightEdges": ["bg-belt-screen", "bg-screen-recheck"] },
+            { "id": "sort", "title": "Sort to the flight", "description": "Cleared bags reach the sorter, which drops each one at its flight's make-up area. Open the sorter for how it decides.", "highlightNodes": ["bg-screen", "bg-recheck", "bg-sort", "bg-makeup"], "highlightEdges": ["bg-screen-sort", "bg-recheck-sort", "bg-sort-makeup"] },
+            { "id": "load", "title": "Load and reconcile", "description": "Containers are driven to the aircraft; each bag is scanned into the hold and matched to a boarded passenger.", "highlightNodes": ["bg-makeup", "bg-ramp", "bg-brs"], "highlightEdges": ["bg-makeup-ramp", "bg-ramp-brs"] }
+          ]
+        }
+      ]
+    },
+    "sortation": {
+      "meta": {
+        "title": "Baggage sorter",
+        "description": "How the sorter reads a bag tag and decides where the bag goes.",
+        "layout": { "direction": "LR" }
+      },
+      "roles": {
+        "machine": { "label": "Machine", "color": "teal" },
+        "control": { "label": "Control", "color": "violet" },
+        "process": { "label": "Process", "color": "blue" }
+      },
+      "nodes": [
+        { "id": "so-scan", "type": "machine", "data": { "title": "Tag reader", "subtitle": "Barcode and RFID arch", "icon": "crosshair", "metadata": { "Read rate": "98.5%" } } },
+        { "id": "so-manual", "type": "process", "data": { "title": "Manual coding", "subtitle": "Agent keys the tag", "icon": "users", "description": "Bags whose tag cannot be read are diverted here; an agent types the ten-digit tag number." } },
+        { "id": "so-control", "type": "control", "data": { "title": "Sort control", "subtitle": "Tag to destination", "tech": "Sortation software", "icon": "cpu", "description": "Looks up the tag in the bag messages from departure control and picks a destination." } },
+        { "id": "so-tray", "type": "machine", "data": { "title": "Tilt-tray loop", "subtitle": "One bag per tray", "icon": "settings" } },
+        { "id": "so-store", "type": "process", "data": { "title": "Early bag store", "subtitle": "Held until 3 hours out", "icon": "warehouse" } },
+        { "id": "so-chute", "type": "machine", "data": { "title": "Flight chute", "subtitle": "To the make-up area", "icon": "layers" } }
+      ],
+      "edges": [
+        { "id": "so-scan-control", "source": "so-scan", "target": "so-control", "label": "Tag number" },
+        { "id": "so-scan-manual", "source": "so-scan", "target": "so-manual", "label": "No read" },
+        { "id": "so-manual-control", "source": "so-manual", "target": "so-control", "label": "Keyed tag" },
+        { "id": "so-control-tray", "source": "so-control", "target": "so-tray", "label": "Destination" },
+        { "id": "so-tray-store", "source": "so-tray", "target": "so-store", "label": "Too early" },
+        { "id": "so-tray-chute", "source": "so-tray", "target": "so-chute", "label": "On time" }
+      ],
+      "scenarios": [
+        {
+          "id": "sort-bag",
+          "name": "Sort one bag",
+          "steps": [
+            { "id": "overview", "title": "Inside the sorter", "description": "A reader, a control system and a loop of tilting trays decide where each bag goes." },
+            { "id": "read", "title": "Read the tag", "description": "The arch reads the tag; the rare bag it cannot read is coded by hand.", "highlightNodes": ["so-scan", "so-manual", "so-control"], "highlightEdges": ["so-scan-control", "so-scan-manual", "so-manual-control"] },
+            { "id": "route", "title": "Choose a destination", "description": "Sort control matches the tag to its flight and tells the tray where to tip.", "highlightNodes": ["so-control", "so-tray"], "highlightEdges": ["so-control-tray"] },
+            { "id": "tip", "title": "Tip the tray", "description": "A bag for a flight that is not yet open waits in the early bag store; otherwise it drops into the flight chute.", "highlightNodes": ["so-tray", "so-store", "so-chute"], "highlightEdges": ["so-tray-store", "so-tray-chute"] }
+          ]
+        }
+      ]
+    },
+    "boarding": {
+      "meta": {
+        "title": "Boarding",
+        "description": "How the gate boards a flight, closes it and hands the final figures to load control.",
+        "layout": { "direction": "LR" }
+      },
+      "roles": {
+        "process": { "label": "Process", "color": "blue" },
+        "system": { "label": "System", "color": "violet" },
+        "aircraft": { "label": "Aircraft", "color": "teal" }
+      },
+      "nodes": [
+        { "id": "bd-reader", "type": "process", "data": { "title": "Gate reader", "subtitle": "Scans each boarding pass", "icon": "crosshair" } },
+        { "id": "bd-dcs", "type": "system", "data": { "title": "Departure control", "subtitle": "Who has boarded", "tech": "DCS", "icon": "database" } },
+        { "id": "bd-agent", "type": "process", "data": { "title": "Gate agent", "subtitle": "Calls no-shows, closes flight", "icon": "users", "description": "Calls passengers who have checked in but not boarded, and closes the flight 15 minutes before departure." } },
+        { "id": "bd-offload", "type": "process", "data": { "title": "Offload bags", "subtitle": "No-show passengers", "icon": "truck", "description": "The ramp team takes off the bags of anyone who did not board, before the doors close." } },
+        { "id": "bd-load", "type": "system", "data": { "title": "Load control", "subtitle": "Weight and balance", "icon": "file-text", "description": "Turns the final passenger and bag figures into the loadsheet the captain signs." } },
+        { "id": "bd-crew", "type": "aircraft", "data": { "title": "Flight crew", "subtitle": "Signs the loadsheet", "icon": "flag" } }
+      ],
+      "edges": [
+        { "id": "bd-reader-dcs", "source": "bd-reader", "target": "bd-dcs", "label": "Pass scanned" },
+        { "id": "bd-dcs-agent", "source": "bd-dcs", "target": "bd-agent", "label": "Missing passengers" },
+        { "id": "bd-agent-offload", "source": "bd-agent", "target": "bd-offload", "label": "No-shows" },
+        { "id": "bd-agent-load", "source": "bd-agent", "target": "bd-load", "label": "Flight closed" },
+        { "id": "bd-load-crew", "source": "bd-load", "target": "bd-crew", "label": "Loadsheet" }
+      ],
+      "scenarios": [
+        {
+          "id": "board-flight",
+          "name": "Board and close KS 412",
+          "steps": [
+            { "id": "overview", "title": "Inside boarding", "description": "From the first scan at the gate to the loadsheet in the cockpit." },
+            { "id": "scan", "title": "Scan the passes", "description": "Each scan marks the passenger as boarded; departure control lists those still missing.", "highlightNodes": ["bd-reader", "bd-dcs", "bd-agent"], "highlightEdges": ["bd-reader-dcs", "bd-dcs-agent"] },
+            { "id": "noshow", "title": "Deal with no-shows", "description": "A passenger who does not come has their bags taken off; a bag never flies without its owner.", "highlightNodes": ["bd-agent", "bd-offload"], "highlightEdges": ["bd-agent-offload"] },
+            { "id": "close", "title": "Close the flight", "description": "Once the counts match, the agent closes the flight and load control sends the loadsheet to the crew.", "highlightNodes": ["bd-agent", "bd-load", "bd-crew"], "highlightEdges": ["bd-agent-load", "bd-load-crew"] }
+          ]
+        }
+      ]
+    }
+  }
+}

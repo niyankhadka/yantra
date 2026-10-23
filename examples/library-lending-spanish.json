@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "title": "Préstamo de libros en la biblioteca",
+    "description": "Cómo la Biblioteca Municipal de Valdeolmos presta un libro: reserva en el catálogo, recogida en el autopréstamo, avisos y devolución en el buzón.",
+    "lang": "es",
+    "version": "1.0.0",
+    "summary": {
+      "headline": "Todo préstamo pasa por el sistema de gestión de la biblioteca, que controla plazos, reservas y avisos.",
+      "points": [
+        "El carné de socio identifica al lector en todos los puntos",
+        "Un libro reservado espera en el estante de reservas cinco días",
+        "El sistema avisa dos días antes de que venza el préstamo"
+      ],
+      "facts": {
+        "Plazo de préstamo": "21 días",
+        "Máximo por socio": "6 libros"
+      }
+    },
+    "layout": {
+      "direction": "LR"
+    }
+  },
+  "roles": {
+    "lector": { "label": "Lector", "color": "amber", "icon": "user" },
+    "servicio": { "label": "Servicio", "color": "blue" },
+    "sistema": { "label": "Sistema", "color": "violet" },
+    "personal": { "label": "Personal", "color": "teal" }
+  },
+  "nodes": [
+    { "id": "lector", "type": "lector", "data": { "title": "Socia", "subtitle": "Carné de lector", "icon": "user", "description": "Lucía Medina, socia desde 2019. Busca una novela que tiene lista de espera." } },
+    { "id": "catalogo", "type": "servicio", "data": { "title": "Catálogo en línea", "subtitle": "Buscar y reservar", "icon": "monitor", "description": "Muestra cuántos ejemplares hay, cuáles están prestados y cuántas reservas tiene cada título." } },
+    { "id": "sigb", "type": "sistema", "data": { "title": "Sistema de gestión", "subtitle": "Préstamos, reservas, plazos", "tech": "SIGB", "icon": "database", "description": "Registra cada préstamo y devolución, ordena la lista de espera y calcula las fechas de vencimiento.", "metadata": { "Préstamos al año": "84.000" } } },
+    { "id": "personal", "type": "personal", "data": { "title": "Personal de sala", "subtitle": "Aparta las reservas", "icon": "users", "description": "Cada mañana saca de las estanterías los libros reservados y los coloca en el estante de reservas." } },
+    { "id": "estante", "type": "servicio", "data": { "title": "Estante de reservas", "subtitle": "Cinco días de espera", "icon": "book-open" } },
+    { "id": "autoprestamo", "type": "servicio", "data": { "title": "Autopréstamo", "subtitle": "Lee el carné y la etiqueta", "tech": "RFID", "icon": "cpu" } },
+    { "id": "avisos", "type": "sistema", "data": { "title": "Avisos", "subtitle": "Correo y SMS", "icon": "mail" } },
+    { "id": "buzon", "type": "servicio", "data": { "title": "Buzón de devolución", "subtitle": "Abierto las 24 horas", "icon": "package", "description": "Registra la devolución en el momento; si el libro tiene otra reserva, lo envía al carro de reservas." } }
+  ],
+  "edges": [
+    { "id": "lector-catalogo", "source": "lector", "target": "catalogo", "label": "Reserva" },
+    { "id": "catalogo-sigb", "source": "catalogo", "target": "sigb", "label": "Lista de espera" },
+    { "id": "sigb-personal", "source": "sigb", "target": "personal", "label": "Libros a apartar" },
+    { "id": "personal-estante", "source": "personal", "target": "estante", "label": "Libro apartado" },
+    { "id": "sigb-avisos", "source": "sigb", "target": "avisos", "label": "Cambio de estado", "type": "async" },
+    { "id": "avisos-lector", "source": "avisos", "target": "lector", "label": "Ya puede recogerlo", "type": "async" },
+    { "id": "estante-autoprestamo", "source": "estante", "target": "autoprestamo", "label": "Recogida" },
+    { "id": "autoprestamo-sigb", "source": "autoprestamo", "target": "sigb", "label": "Préstamo registrado" },
+    { "id": "buzon-sigb", "source": "buzon", "target": "sigb", "label": "Devolución" }
+  ],
+  "scenarios": [
+    {
+      "id": "principal",
+      "name": "Lucía reserva y toma prestada una novela",
+      "steps": [
+        { "id": "vista", "title": "Vista general", "description": "Ocho piezas alrededor del sistema de gestión, que lleva la cuenta de cada libro y cada socio." },
+        { "id": "reservar", "title": "Reservar", "description": "Lucía busca la novela en el catálogo; los tres ejemplares están prestados, así que entra en la lista de espera.", "highlightNodes": ["lector", "catalogo", "sigb"], "highlightEdges": ["lector-catalogo", "catalogo-sigb"] },
+        { "id": "apartar", "title": "Apartar el libro", "description": "Cuando vuelve un ejemplar, el sistema lo asigna a Lucía y el personal lo deja en el estante de reservas.", "highlightNodes": ["sigb", "personal", "estante"], "highlightEdges": ["sigb-personal", "personal-estante"] },
+        { "id": "avisar", "title": "Avisar a la socia", "description": "El sistema le envía un correo y un SMS: tiene cinco días para recogerlo.", "highlightNodes": ["sigb", "avisos", "lector"], "highlightEdges": ["sigb-avisos", "avisos-lector"] },
+        { "id": "prestar", "title": "Llevárselo", "description": "Lucía coge el libro del estante y lo pasa por el autopréstamo, que registra un préstamo de 21 días.", "highlightNodes": ["estante", "autoprestamo", "sigb"], "highlightEdges": ["estante-autoprestamo", "autoprestamo-sigb"] },
+        { "id": "devolver", "title": "Devolver", "description": "Tres semanas después lo deja en el buzón; la devolución queda registrada y el libro pasa al siguiente de la lista.", "highlightNodes": ["buzon", "sigb"], "highlightEdges": ["buzon-sigb"] }
+      ]
+    }
+  ]
+}

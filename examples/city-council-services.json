@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "title": "Brackenford City Council services",
+    "description": "Who runs which services at a unitary city council: the chief executive, five directorates and the heads of service who deliver them.",
+    "version": "1.0.0",
+    "layout": {
+      "algorithm": "tree",
+      "direction": "TB",
+      "compact": true
+    },
+    "summary": {
+      "headline": "Five directors report to the chief executive; adult and children's social care take most of the budget.",
+      "points": [
+        "Elected councillors set policy and the budget; the officers shown here deliver it.",
+        "Two statutory roles sit in the chart: the director of finance (section 151 officer) and the monitoring officer.",
+        "Bins, roads and planning all sit in the Place directorate."
+      ],
+      "facts": {
+        "Residents": "312,000",
+        "Net budget": "£548m",
+        "Updated": "01/08/2026"
+      }
+    }
+  },
+  "roles": {
+    "exec": { "label": "Chief officer", "color": "violet", "icon": "award" },
+    "care": { "label": "People services", "color": "rose", "icon": "heart" },
+    "place": { "label": "Place services", "color": "green", "icon": "globe" },
+    "corporate": { "label": "Corporate services", "color": "slate", "icon": "settings" }
+  },
+  "nodes": [
+    { "id": "chief-exec", "type": "exec", "width": 200, "data": { "title": "Deborah Hartley", "subtitle": "Chief Executive", "badge": "Head of paid service", "metadata": { "Directors": 5, "Staff": 4200 }, "description": "The council's most senior officer. Advises the leader and cabinet and is accountable for every service." } },
+    { "id": "policy", "type": "exec", "width": 200, "data": { "title": "Marcus Bell", "subtitle": "Head of Policy and Strategy", "badge": "Policy", "assistant": true, "description": "Prepares cabinet papers and the council plan; works directly to the chief executive." } },
+    { "id": "adults", "type": "care", "width": 200, "data": { "title": "Rosalind Achterberg", "subtitle": "Director of Adult Social Care", "badge": "Adults", "metadata": { "Budget": "£186m" } } },
+    { "id": "children", "type": "care", "width": 200, "data": { "title": "Patrick Mwangi", "subtitle": "Director of Children's Services", "badge": "Children", "metadata": { "Budget": "£142m" } } },
+    { "id": "place", "type": "place", "width": 200, "data": { "title": "Sunita Dhillon", "subtitle": "Director of Place", "badge": "Place", "metadata": { "Budget": "£88m" } } },
+    { "id": "housing", "type": "place", "width": 200, "data": { "title": "Owen Prichard", "subtitle": "Director of Housing and Communities", "badge": "Housing", "metadata": { "Council homes": 21000 } } },
+    { "id": "resources", "type": "corporate", "width": 200, "data": { "title": "Claire Ashby", "subtitle": "Director of Finance and Resources", "badge": "Section 151", "description": "The statutory chief finance officer: must report if the council is heading for an unbalanced budget." } },
+    { "id": "assessment", "type": "care", "width": 180, "data": { "title": "Bethan Rees", "subtitle": "Head of assessment and care management", "badge": "Assessment" } },
+    { "id": "commissioning", "type": "care", "width": 180, "data": { "title": "Viktor Horvat", "subtitle": "Head of care commissioning", "badge": "Commissioning" } },
+    { "id": "safeguarding-children", "type": "care", "width": 180, "data": { "title": "Abigail Norton", "subtitle": "Head of children's social care", "badge": "Social care" } },
+    { "id": "education", "type": "care", "width": 180, "data": { "title": "Hamid Rahimi", "subtitle": "Head of education and inclusion", "badge": "Schools" } },
+    { "id": "waste", "type": "place", "width": 180, "data": { "title": "Gemma Fraser", "subtitle": "Head of waste and street cleansing", "badge": "Waste" } },
+    { "id": "highways", "type": "place", "width": 180, "data": { "title": "Robert Kiernan", "subtitle": "Head of highways and transport", "badge": "Highways" } },
+    { "id": "planning", "type": "place", "width": 180, "data": { "title": "Yasmin Clarke", "subtitle": "Head of planning", "badge": "Planning" } },
+    { "id": "homelessness", "type": "place", "width": 180, "data": { "title": "Daniel Osborne", "subtitle": "Head of housing options", "badge": "Homelessness" } },
+    { "id": "libraries", "type": "place", "width": 180, "data": { "title": "Lucy Tremaine", "subtitle": "Head of libraries and leisure", "badge": "Communities" } },
+    { "id": "finance", "type": "corporate", "width": 180, "data": { "title": "Neil Forsyth", "subtitle": "Head of finance", "badge": "Finance" } },
+    { "id": "legal", "type": "corporate", "width": 180, "data": { "title": "Anita Sharma", "subtitle": "Head of legal; monitoring officer", "badge": "Legal", "description": "The statutory monitoring officer: makes sure council decisions are lawful." } },
+    { "id": "digital", "type": "corporate", "width": 180, "data": { "title": "Chris Adebayo", "subtitle": "Head of digital and customer services", "badge": "Digital" } }
+  ],
+  "edges": [
+    { "id": "ce-policy", "source": "chief-exec", "target": "policy" },
+    { "id": "ce-adults", "source": "chief-exec", "target": "adults" },
+    { "id": "ce-children", "source": "chief-exec", "target": "children" },
+    { "id": "ce-place", "source": "chief-exec", "target": "place" },
+    { "id": "ce-housing", "source": "chief-exec", "target": "housing" },
+    { "id": "ce-resources", "source": "chief-exec", "target": "resources" },
+    { "id": "adults-assessment", "source": "adults", "target": "assessment" },
+    { "id": "adults-commissioning", "source": "adults", "target": "commissioning" },
+    { "id": "children-social-care", "source": "children", "target": "safeguarding-children" },
+    { "id": "children-education", "source": "children", "target": "education" },
+    { "id": "place-waste", "source": "place", "target": "waste" },
+    { "id": "place-highways", "source": "place", "target": "highways" },
+    { "id": "place-planning", "source": "place", "target": "planning" },
+    { "id": "housing-homelessness", "source": "housing", "target": "homelessness" },
+    { "id": "housing-libraries", "source": "housing", "target": "libraries" },
+    { "id": "resources-finance", "source": "resources", "target": "finance" },
+    { "id": "resources-legal", "source": "resources", "target": "legal" },
+    { "id": "resources-digital", "source": "resources", "target": "digital" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Tour of the council",
+      "steps": [
+        { "id": "overview", "title": "Overview", "description": "Nineteen officers in three levels. The head of policy sits beside the chief executive; heads of service are listed under their director. Use the fold buttons to hide or show a directorate." },
+        { "id": "corporate-board", "title": "Corporate leadership team", "description": "The chief executive and five directors meet weekly and take proposals to the elected cabinet.", "highlightNodes": ["chief-exec", "policy", "adults", "children", "place", "housing", "resources"], "highlightEdges": ["ce-policy", "ce-adults", "ce-children", "ce-place", "ce-housing", "ce-resources"] },
+        { "id": "people", "title": "Social care", "description": "Adult and children's services are statutory duties and together take 60% of the net budget.", "highlightNodes": ["adults", "assessment", "commissioning", "children", "safeguarding-children", "education"], "highlightEdges": ["adults-assessment", "adults-commissioning", "children-social-care", "children-education"] },
+        { "id": "place", "title": "Services every resident sees", "description": "Bin collections, roads, planning, housing advice and libraries sit in Place and in Housing and Communities.", "highlightNodes": ["place", "waste", "highways", "planning", "housing", "homelessness", "libraries"], "highlightEdges": ["place-waste", "place-highways", "place-planning", "housing-homelessness", "housing-libraries"] },
+        { "id": "statutory", "title": "Statutory officers", "description": "The director of finance and the head of legal hold legal duties of their own: to warn about an unbalanced budget or an unlawful decision.", "highlightNodes": ["resources", "finance", "legal", "digital"], "highlightEdges": ["resources-finance", "resources-legal", "resources-digital"] }
+      ]
+    }
+  ]
+}

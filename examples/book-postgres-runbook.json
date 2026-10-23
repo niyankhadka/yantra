@@ -1,0 +1,242 @@
+{
+  "kind": "book",
+  "meta": {
+    "title": "Running the orders database",
+    "description": "The runbook for our production PostgreSQL cluster: how backups and restores work, how failover happens and how we upgrade without losing data.",
+    "author": "Meridian Freight, Data platform team",
+    "date": "21/10/2026",
+    "reading": "book"
+  },
+  "summary": "The orders database is a three-node PostgreSQL 16 cluster managed by Patroni, with continuous WAL archiving so we can restore to any second in the last 14 days. A failed primary is replaced automatically in about 30 seconds. Minor upgrades are a rolling restart; major upgrades use logical replication to a new cluster so the switch takes minutes, not hours.",
+  "chapters": [
+    {
+      "meta": {
+        "question": "How are the orders database backups taken, and how do we restore one?",
+        "title": "Backups and restores",
+        "kicker": "Runbook"
+      },
+      "answer": {
+        "headline": "pgBackRest takes a full backup every Sunday and a differential every night, and archives WAL continuously, so we can restore to any point in the last 14 days and lose at most 60 seconds of writes.",
+        "text": "A backup only counts once it has been restored. A scheduled job restores last night's backup to a scratch server every Monday and checks the row counts against production.",
+        "points": [
+          "Recovery point objective: 60 seconds; recovery time objective: 2 hours",
+          "Backups are encrypted and copied to a second region",
+          "Replicas are not backups: a bad `DELETE` reaches them in milliseconds"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "kv",
+          "title": "Backup facts",
+          "span": "half",
+          "items": [
+            { "k": "Tool", "v": "pgBackRest 2.x, repository in object storage" },
+            { "k": "Full backup", "v": "Sunday 02:00 UTC" },
+            { "k": "Differential", "v": "Monday to Saturday 02:00 UTC" },
+            { "k": "WAL archive", "v": "Continuous; `archive_timeout` 60 s" },
+            { "k": "Retention", "v": "2 full backups, 14 days of WAL" }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Check the archive, not just the backup",
+          "span": "half",
+          "tone": "warn",
+          "label": "Watch",
+          "body": "If WAL archiving fails, backups still succeed but point-in-time recovery has a gap, and `pg_wal` fills the disk. The `pg_stat_archiver` alert pages when `failed_count` rises or the last archived segment is older than 5 minutes."
+        },
+        {
+          "type": "steps",
+          "title": "Restoring to a point in time",
+          "items": [
+            { "title": "Agree the target time", "text": "Find the last good moment from the application logs, for example just before a bad migration ran. Write it in the incident channel." },
+            { "title": "Restore to a new server", "text": "Never restore over production. Provision a scratch server from the `pg-restore` template." },
+            { "title": "Run the restore", "text": "`pgbackrest --stanza=orders --type=time \"--target=2026-10-21 09:14:00+00\" restore`" },
+            { "title": "Check the data", "text": "Start PostgreSQL, let recovery finish and compare the affected tables with what the team expects." },
+            { "title": "Copy back or promote", "text": "For a few rows, copy them back with `COPY`. For the whole database, promote the restored server and repoint the application." }
+          ]
+        },
+        {
+          "type": "chart",
+          "kind": "column",
+          "title": "Weekly restore test duration",
+          "unit": " min",
+          "target": 120,
+          "caption": "Time to restore last night's backup to a scratch server. The objective is under 2 hours.",
+          "categories": ["31/08/2026", "07/09/2026", "14/09/2026", "21/09/2026", "28/09/2026", "05/10/2026", "12/10/2026", "19/10/2026"],
+          "series": [
+            { "name": "Restore time", "values": [71, 73, 74, 78, 77, 81, 84, 86] }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Restore time is creeping up",
+          "tone": "info",
+          "label": "Trend",
+          "body": "The database grows by about 40 GB a month, and restore time follows it. At this rate we reach the 2-hour objective in spring 2027; the plan is to take full backups twice a week from January."
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "What happens when the primary database fails?",
+        "title": "Failover",
+        "kicker": "Runbook"
+      },
+      "answer": {
+        "headline": "Patroni notices the primary has stopped renewing its leader lock and promotes the most up-to-date replica within about 30 seconds; the application reconnects through the load balancer without a config change.",
+        "text": "The cluster has one primary and two streaming replicas in different availability zones. Patroni stores the leader lock in etcd, so only one node can ever be primary.",
+        "points": [
+          "One replica is synchronous, so a committed order is never lost on failover",
+          "Writes fail for about 30 seconds; the application retries them",
+          "You almost never need to act; check that the old primary rejoins as a replica"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "diagram",
+          "title": "The cluster",
+          "interactive": true,
+          "height": 460,
+          "caption": "Step through a failover: pg-1 stops renewing its lock and pg-2, the synchronous replica, takes over.",
+          "diagram": {
+            "meta": {
+              "title": "Orders database cluster",
+              "description": "The application connects through HAProxy, which asks Patroni which node is primary. Patroni keeps the leader lock in etcd.",
+              "layout": { "direction": "LR" }
+            },
+            "roles": {
+              "app": { "label": "Application", "color": "blue" },
+              "route": { "label": "Routing", "color": "slate" },
+              "db": { "label": "PostgreSQL", "color": "violet" },
+              "coord": { "label": "Coordination", "color": "amber" }
+            },
+            "nodes": [
+              { "id": "app", "type": "app", "data": { "title": "Orders service", "subtitle": "Connection pool", "icon": "server" } },
+              { "id": "proxy", "type": "route", "data": { "title": "HAProxy", "subtitle": "Port 5000 = primary", "icon": "layers" } },
+              { "id": "pg1", "type": "db", "data": { "title": "pg-1", "subtitle": "Primary, zone A", "icon": "database" } },
+              { "id": "pg2", "type": "db", "data": { "title": "pg-2", "subtitle": "Sync replica, zone B", "icon": "database" } },
+              { "id": "pg3", "type": "db", "data": { "title": "pg-3", "subtitle": "Async replica, zone C", "icon": "database" } },
+              { "id": "etcd", "type": "coord", "data": { "title": "etcd", "subtitle": "Leader lock, 3 nodes", "icon": "key" } }
+            ],
+            "edges": [
+              { "id": "e1", "source": "app", "target": "proxy", "label": "SQL" },
+              { "id": "e2", "source": "proxy", "target": "pg1", "label": "Writes" },
+              { "id": "e3", "source": "pg1", "target": "pg2", "label": "WAL, sync" },
+              { "id": "e4", "source": "pg1", "target": "pg3", "label": "WAL, async" },
+              { "id": "e5", "source": "pg2", "target": "etcd", "label": "Takes lock" }
+            ],
+            "scenarios": [
+              {
+                "id": "main",
+                "name": "Failover",
+                "steps": [
+                  { "id": "s1", "title": "Normal running", "description": "Writes go to pg-1, which streams WAL to both replicas.", "highlightNodes": ["app", "proxy", "pg1"], "highlightEdges": ["e1", "e2"] },
+                  { "id": "s2", "title": "Promotion", "description": "pg-1 stops renewing its lock. After the 30-second TTL, pg-2, the synchronous replica, takes the lock and is promoted.", "highlightNodes": ["pg2", "etcd"], "highlightEdges": ["e5"] },
+                  { "id": "s3", "title": "Traffic moves", "description": "HAProxy's health check now sees pg-2 as primary and sends writes there.", "highlightNodes": ["app", "proxy"], "highlightEdges": ["e1"] }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "metrics",
+          "title": "Failover in practice",
+          "items": [
+            { "label": "Write outage", "value": "28 s", "note": "median of 6 drills in 2026", "tone": "good" },
+            { "label": "Data lost", "value": "0", "note": "synchronous replica", "tone": "good" },
+            { "label": "Unplanned failovers", "value": "2", "note": "in the last 12 months" }
+          ]
+        },
+        {
+          "type": "checklist",
+          "title": "After a failover",
+          "items": [
+            { "text": "Run `patronictl list` and confirm one Leader and two replicas streaming" },
+            { "text": "Check the old primary rejoined; if not, `patronictl reinit orders pg-1`" },
+            { "text": "Confirm replication lag is under 1 MB on both replicas" },
+            { "text": "Find out why the primary failed before closing the incident" }
+          ]
+        },
+        {
+          "type": "callout",
+          "title": "Never promote by hand while Patroni is running",
+          "tone": "bad",
+          "label": "Danger",
+          "body": "Running `pg_ctl promote` yourself can leave two primaries accepting writes, and their data then has to be merged by hand. Use `patronictl switchover` or `patronictl failover`, which take the lock first."
+        }
+      ]
+    },
+    {
+      "meta": {
+        "question": "How do we upgrade PostgreSQL without a long outage?",
+        "title": "Upgrades",
+        "kicker": "Runbook"
+      },
+      "answer": {
+        "headline": "Minor versions are a rolling restart, replicas first, with one 30-second switchover. Major versions are copied to a new cluster with logical replication and switched over in a planned window of about 5 minutes.",
+        "text": "Minor releases (16.4 to 16.5) only fix bugs and security issues, and share the on-disk format, so they are safe to apply quickly. Major releases (16 to 17) change the format and need either `pg_upgrade` or a copy.",
+        "points": [
+          "Apply minor releases within 30 days of release",
+          "Plan a major upgrade every year; each major version is supported for 5 years",
+          "Every major upgrade is rehearsed on a restored copy first"
+        ]
+      },
+      "blocks": [
+        {
+          "type": "compare",
+          "title": "Major upgrade methods",
+          "options": [
+            {
+              "name": "pg_upgrade --link",
+              "summary": "Upgrade the data files in place.",
+              "pros": ["Fast: minutes, whatever the size", "No second cluster needed"],
+              "cons": ["The database is down for the whole upgrade", "Replicas must be rebuilt afterwards", "Rollback means restoring a backup"]
+            },
+            {
+              "name": "Logical replication",
+              "summary": "Build a new cluster on the new version and stream changes into it.",
+              "pros": ["Switch-over in minutes", "Old cluster stays as a fallback", "Can test the new version with real data"],
+              "cons": ["Sequences and schema changes need care", "Twice the servers for a week"],
+              "verdict": "Our standard for the orders database",
+              "recommended": true
+            }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Major upgrade with logical replication",
+          "items": [
+            { "title": "Build the new cluster", "text": "Three new nodes on the new version, schema copied with `pg_dump --schema-only`." },
+            { "title": "Start replication", "text": "Create a publication on the old primary and a subscription on the new one. The initial copy takes about 6 hours." },
+            { "title": "Freeze schema changes", "text": "No migrations until the switch; logical replication does not copy DDL." },
+            { "title": "Switch over", "text": "Stop writes, wait for zero lag, copy sequence values, point HAProxy at the new cluster." },
+            { "title": "Keep the old cluster for 7 days", "text": "Then remove it once nothing has needed it." }
+          ]
+        },
+        {
+          "type": "gantt",
+          "title": "PostgreSQL 17 upgrade plan",
+          "today": "21/10/2026",
+          "items": [
+            { "id": "build", "title": "Build new cluster", "start": "02/11/2026", "days": 3 },
+            { "id": "rehearse", "title": "Rehearse on restored copy", "after": "build", "days": 5 },
+            { "id": "sync", "title": "Initial copy and catch-up", "after": "rehearse", "days": 4 },
+            { "id": "switch", "title": "Switch-over window", "after": "sync", "milestone": true, "tone": "good" },
+            { "id": "keep", "title": "Old cluster kept as fallback", "after": "switch", "days": 7 }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Versions we run",
+          "columns": ["Database", "Version", "End of community support", "Next step"],
+          "rows": [
+            ["Orders", "16", "November 2028", "Upgrade to 17 in November 2026"],
+            ["Tracking", "15", "November 2027", "Upgrade to 17 in Q1 2027"],
+            ["Reporting", "17", "November 2029", "None"]
+          ]
+        }
+      ]
+    }
+  ]
+}

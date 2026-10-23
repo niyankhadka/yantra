@@ -6,7 +6,8 @@
  * and the reader (reader.js) adds the book and present modes. Pure strings.
  */
 import { escapeHtml as h, mdInline as mi, mdBlock } from './text.js';
-import { pageParts, pageDocument, pageContents, pageToMarkdown, readKey, inline, isBook, md } from './page.js';
+import { pageParts, pageDocument, pageContents, pageToMarkdown, readKey, inline, isBook, md, detailSections } from './page.js';
+import { detailsOf } from './details.js';
 import { localeOf } from './i18n.js';
 
 export { isBook };
@@ -75,10 +76,15 @@ export function renderBook(book, { logos = {}, viewerHtml = null, frameSandbox =
     ${book.summary ? `<section class="p-answer" aria-label="${h(L.t('book.summary'))}"><span class="p-label">${h(L.t('book.summary'))}</span>${md(book.summary)}</section>` : ''}
     ${contents.length ? `<nav class="p-cover-list" aria-label="${h(L.t('page.contents'))}"><span class="p-label">${h(L.t('page.contents'))}</span><ol>${contents.map((c) => `<li><a href="#${h(c.id)}">${h(c.title)}</a></li>`).join('')}</ol></nav>` : ''}
   </div>`;
+  // Each chapter's detail pages (keys c1-id, c2-id, ...) come after the book, shown one at a time
+  const details = [];
   const chapters = list(book.chapters)
     .map((ch, i) => {
       const n = i + 1;
-      const parts = pageParts(chapterPage(ch, meta), { viewerHtml, frameSandbox, prefix: `c${n}-`, level: 2, kicker: L.t('book.chapter', { n: L.num(n) }) });
+      const page = chapterPage(ch, meta);
+      const keyPrefix = `c${n}-`;
+      const parts = pageParts(page, { viewerHtml, frameSandbox, prefix: `c${n}-`, level: 2, kicker: L.t('book.chapter', { n: L.num(n) }), details: detailsOf(page), detailKey: (id) => `${keyPrefix}${id}` });
+      details.push(detailSections(page, { viewerHtml, frameSandbox, prefix: `c${n}-`, keyPrefix, homeHref: `#c${n}`, homeTitle: page.meta.title || page.meta.question || '' }));
       return `<section class="p-chapter" id="c${n}" data-chapter="${n}">
   ${parts.lead}
   ${parts.grid}
@@ -89,7 +95,7 @@ export function renderBook(book, { logos = {}, viewerHtml = null, frameSandbox =
     meta,
     L,
     logos,
-    body: `${cover}\n${chapters}`,
+    body: `<div class="p-main">\n${cover}\n${chapters}\n</div>\n${details.join('\n')}`,
     title: meta.title || L.t('page.answer'),
     description: meta.description || book.summary || '',
     kicker: meta.kicker || '',
@@ -111,7 +117,7 @@ export function bookToMarkdown(book) {
   if (book.summary) out.push(mdBlock(book.summary), '');
   if (contents.length) out.push(`**${mi(L.t('page.contents'))}**`, '', ...contents.map((c, i) => `${i + 1}. [${mi(c.title)}](#${c.id})`), '');
   list(book.chapters).forEach((ch, i) => {
-    out.push(pageToMarkdown(chapterPage(ch, meta), { base: 1, prefix: `c${i + 1}-`, kicker: L.t('book.chapter', { n: L.num(i + 1) }) }).trim(), '');
+    out.push(pageToMarkdown(chapterPage(ch, meta), { base: 1, prefix: `c${i + 1}-`, kicker: L.t('book.chapter', { n: L.num(i + 1) }), detailKey: (id) => `c${i + 1}-${id}` }).trim(), '');
   });
   return `${out.join('\n').replace(/\n{3,}/g, '\n\n')}\n`;
 }

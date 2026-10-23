@@ -1,0 +1,216 @@
+{
+  "meta": {
+    "title": "SaaS multi-tenant billing schema",
+    "description": "Billing tables for the fictional Cobalt Analytics platform: tenant accounts, plans, subscriptions, metered usage, invoices and payments.",
+    "layout": { "direction": "LR" },
+    "summary": {
+      "headline": "Everything is scoped to an account: a subscription prices it, usage is metered against it, and each billing period becomes one invoice.",
+      "points": [
+        "account_id appears on every tenant table, so row-level security can filter by the signed-in tenant.",
+        "An invoice copies plan prices and usage totals into invoice_lines, so a later price change never rewrites old bills.",
+        "Payments are separate rows, so a failed card, a retry and a partial refund all stay on record."
+      ],
+      "facts": { "Engine": "PostgreSQL 16", "Tables": 8 }
+    }
+  },
+  "roles": {
+    "tenant": { "label": "Tenant", "color": "blue" },
+    "pricing": { "label": "Pricing", "color": "teal" },
+    "metering": { "label": "Metering", "color": "violet" },
+    "billing": { "label": "Billing", "color": "amber" }
+  },
+  "nodes": [
+    {
+      "id": "accounts",
+      "type": "tenant",
+      "data": {
+        "title": "accounts",
+        "icon": "building",
+        "description": "One row per customer organisation (the tenant). billing_email receives invoices; tax_id drives reverse-charge VAT.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "slug", "type": "varchar(40)", "unique": true },
+          { "name": "legal_name", "type": "text" },
+          { "name": "billing_email", "type": "varchar(255)" },
+          { "name": "tax_id", "type": "varchar(20)", "nullable": true },
+          { "name": "currency", "type": "char(3)" }
+        ]
+      }
+    },
+    {
+      "id": "users",
+      "type": "tenant",
+      "data": {
+        "title": "users",
+        "icon": "user",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "account_id", "type": "uuid", "fk": true, "ref": "accounts.id" },
+          { "name": "email", "type": "varchar(255)", "unique": true },
+          { "name": "role", "type": "user_role", "note": "owner, admin, billing or member" }
+        ]
+      }
+    },
+    {
+      "id": "plans",
+      "type": "pricing",
+      "data": {
+        "title": "plans",
+        "icon": "layers",
+        "description": "Published price points. A price change creates a new plan row and retires the old one, so existing subscriptions keep their terms.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "code", "type": "varchar(32)", "unique": true, "note": "e.g. team_monthly_v3" },
+          { "name": "interval", "type": "billing_interval" },
+          { "name": "base_price_minor", "type": "bigint" },
+          { "name": "included_units", "type": "bigint" },
+          { "name": "overage_price_minor", "type": "bigint" }
+        ]
+      }
+    },
+    {
+      "id": "subscriptions",
+      "type": "pricing",
+      "data": {
+        "title": "subscriptions",
+        "icon": "key",
+        "description": "Ties an account to a plan for a period. A partial unique index allows only one active subscription per account.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "account_id", "type": "uuid", "fk": true, "ref": "accounts.id" },
+          { "name": "plan_id", "type": "uuid", "fk": true, "ref": "plans.id" },
+          { "name": "status", "type": "sub_status", "note": "trialing, active, past_due or cancelled" },
+          { "name": "current_period_start", "type": "timestamptz" },
+          { "name": "current_period_end", "type": "timestamptz" },
+          { "name": "cancel_at", "type": "timestamptz", "nullable": true }
+        ]
+      }
+    },
+    {
+      "id": "usage_records",
+      "type": "metering",
+      "data": {
+        "title": "usage_records",
+        "icon": "activity",
+        "description": "Append-only meter readings sent by the product, for example rows processed. idempotency_key stops a retried event counting twice.",
+        "fields": [
+          { "name": "id", "type": "bigint", "pk": true },
+          { "name": "subscription_id", "type": "uuid", "fk": true, "ref": "subscriptions.id" },
+          { "name": "metric", "type": "varchar(40)" },
+          { "name": "quantity", "type": "bigint" },
+          { "name": "recorded_at", "type": "timestamptz" },
+          { "name": "idempotency_key", "type": "varchar(64)", "unique": true }
+        ]
+      }
+    },
+    {
+      "id": "invoices",
+      "type": "billing",
+      "data": {
+        "title": "invoices",
+        "icon": "file-text",
+        "description": "One invoice per subscription per billing period. number is sequential per account, as UK VAT rules require.",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "account_id", "type": "uuid", "fk": true, "ref": "accounts.id" },
+          { "name": "subscription_id", "type": "uuid", "fk": true, "ref": "subscriptions.id" },
+          { "name": "number", "type": "varchar(20)", "unique": true },
+          { "name": "status", "type": "invoice_status", "note": "draft, open, paid, void or uncollectible" },
+          { "name": "total_minor", "type": "bigint" },
+          { "name": "due_on", "type": "date" }
+        ]
+      }
+    },
+    {
+      "id": "invoice_lines",
+      "type": "billing",
+      "data": {
+        "title": "invoice_lines",
+        "icon": "layers",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "invoice_id", "type": "uuid", "fk": true, "ref": "invoices.id" },
+          { "name": "kind", "type": "line_kind", "note": "base_fee, overage, proration or credit" },
+          { "name": "description", "type": "text" },
+          { "name": "quantity", "type": "bigint" },
+          { "name": "unit_price_minor", "type": "bigint" },
+          { "name": "amount_minor", "type": "bigint" }
+        ]
+      }
+    },
+    {
+      "id": "payments",
+      "type": "billing",
+      "data": {
+        "title": "payments",
+        "icon": "credit-card",
+        "fields": [
+          { "name": "id", "type": "uuid", "pk": true },
+          { "name": "invoice_id", "type": "uuid", "fk": true, "ref": "invoices.id" },
+          { "name": "provider_ref", "type": "varchar(64)", "unique": true },
+          { "name": "amount_minor", "type": "bigint", "note": "Negative for refunds" },
+          { "name": "status", "type": "payment_status" },
+          { "name": "settled_at", "type": "timestamptz", "nullable": true }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "accounts-users", "source": "accounts", "target": "users", "label": "has", "sourceEnd": "one", "sourceField": "id", "targetField": "account_id", "targetEnd": "one-or-many" },
+    { "id": "accounts-subscriptions", "source": "accounts", "target": "subscriptions", "label": "subscribes", "sourceEnd": "one", "sourceField": "id", "targetField": "account_id", "targetEnd": "zero-or-many" },
+    { "id": "plans-subscriptions", "source": "plans", "target": "subscriptions", "label": "priced by", "sourceEnd": "one", "sourceField": "id", "targetField": "plan_id", "targetEnd": "zero-or-many" },
+    { "id": "subscriptions-usage", "source": "subscriptions", "target": "usage_records", "label": "meters", "sourceEnd": "one", "sourceField": "id", "targetField": "subscription_id", "targetEnd": "zero-or-many" },
+    { "id": "subscriptions-invoices", "source": "subscriptions", "target": "invoices", "label": "bills", "sourceEnd": "one", "sourceField": "id", "targetField": "subscription_id", "targetEnd": "zero-or-many" },
+    { "id": "accounts-invoices", "source": "accounts", "target": "invoices", "label": "owes", "sourceEnd": "one", "sourceField": "id", "targetField": "account_id", "targetEnd": "zero-or-many" },
+    { "id": "invoices-lines", "source": "invoices", "target": "invoice_lines", "label": "itemises", "sourceEnd": "one", "sourceField": "id", "targetField": "invoice_id", "targetEnd": "one-or-many" },
+    { "id": "invoices-payments", "source": "invoices", "target": "payments", "label": "settled by", "sourceEnd": "one", "sourceField": "id", "targetField": "invoice_id", "targetEnd": "zero-or-many" }
+  ],
+  "scenarios": [
+    {
+      "id": "main",
+      "name": "Reading the schema",
+      "steps": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Eight tables. The account is the tenant; pricing, metering and billing all hang off it."
+        },
+        {
+          "id": "tenant",
+          "title": "Tenants and their users",
+          "description": "Every account has at least one user, the owner who signed up. Each user belongs to exactly one account.",
+          "highlightNodes": ["accounts", "users"],
+          "highlightEdges": ["accounts-users"]
+        },
+        {
+          "id": "subscribe",
+          "title": "Subscribing to a plan",
+          "description": "A subscription links an account to one plan version for the current period. Plans are never edited in place, so old subscriptions keep their price.",
+          "highlightNodes": ["accounts", "subscriptions", "plans"],
+          "highlightEdges": ["accounts-subscriptions", "plans-subscriptions"]
+        },
+        {
+          "id": "usage",
+          "title": "Metering usage",
+          "description": "The product posts usage records against the active subscription during the period; anything above included_units is charged as overage.",
+          "highlightNodes": ["subscriptions", "usage_records"],
+          "highlightEdges": ["subscriptions-usage"]
+        },
+        {
+          "id": "invoice",
+          "title": "Closing the period",
+          "description": "At period end one invoice is raised for the account, with a base fee line, an overage line and any prorations. Lines copy the prices used.",
+          "highlightNodes": ["subscriptions", "invoices", "accounts", "invoice_lines"],
+          "highlightEdges": ["subscriptions-invoices", "accounts-invoices", "invoices-lines"]
+        },
+        {
+          "id": "pay",
+          "title": "Collecting payment",
+          "description": "Each charge attempt or refund is a payment row. The invoice is marked paid once settled payments cover total_minor.",
+          "highlightNodes": ["invoices", "payments"],
+          "highlightEdges": ["invoices-payments"]
+        }
+      ]
+    }
+  ]
+}

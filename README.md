@@ -280,8 +280,8 @@ The view state is mirrored in the URL hash, for example
 
 ## Examples
 
-[`examples/`](https://github.com/niyankhadka/yantra/tree/main/examples) holds 25 diagrams,
-13 answer pages and 7 chart pages, plus import samples for Mermaid, PlantUML, draw.io and
+[`examples/`](https://github.com/niyankhadka/yantra/tree/main/examples) holds 56 diagrams,
+13 answer pages, 7 chart pages and 5 books, plus import samples for Mermaid, PlantUML, draw.io and
 Visio. Every example validates with no warnings. `yantra examples` lists them and
 `yantra examples oauth-login -o oauth.json` copies one. Companies and data in the examples
 are fictional.

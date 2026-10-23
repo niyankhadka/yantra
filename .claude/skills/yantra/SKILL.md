@@ -109,6 +109,10 @@ For "explain how X works", make the diagram first, then the page around it
    `{ "$ref": "chapter.json" }`, with a `summary` on the cover. Use one when a single page is
    not enough (onboarding, a system part by part); each chapter keeps the page rules.
    `node bin/yantra.js new guide.json --book` writes a starter.
+7. **Detail pages** (`docs/pages.md`): when a block needs depth only some readers want, put
+   the deeper answer page in a top-level `details` map (`{ "id": page }` or `{ "$ref": … }`)
+   and add `"detail": "id"` to the block; details can link to other details of the same
+   map. Keep the page itself short; every detail must be linked from somewhere.
 
 ## Then, for every output
 
