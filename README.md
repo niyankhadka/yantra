@@ -8,7 +8,8 @@
 <h1 align="center">Yantra</h1>
 
 <p align="center">
-  <strong>Interactive, step-by-step diagrams and one-page answers, shipped as one offline HTML file.</strong>
+  <strong>Make your AI show its work.</strong><br>
+  Diagrams that explain, one step at a time. Don't draw it. Explain it.
 </p>
 
 <p align="center">
@@ -28,27 +29,45 @@
   <a href="https://github.com/niyankhadka/yantra/blob/main/CHANGELOG.md"><strong>Changelog</strong></a>
 </p>
 
-Yantra is an open-source diagram tool that turns a short JSON description into an
-interactive architecture diagram, sequence diagram, flowchart, state machine, ER diagram,
-org chart or mind map, or into a one-page answer with charts. It lays the diagram out, routes
-the edges, checks the result with a validator and writes **one HTML file that works
-offline**, with a walkthrough readers can step through. Use it from the command line, from
-coding agents through MCP, from any AI chat through the browser playground, or from Python.
+Diagrams take hours to draw and are out of date by Friday. Ask an AI instead and you get a
+wall of text, or a diagram where boxes overlap and arrows point nowhere.
 
+**Yantra is an open-source explanation engine.** Describe a system, a process or a decision,
+or ask your coding agent or AI chat to. Yantra lays it out, checks it, and turns it into a
+walkthrough anyone can step through: a diagram, an answer page or a book, ready to share.
+
+<!-- For a player with sound: in GitHub's web editor, drag site/assets/video/yantra-teaser-v1.0.0.mp4
+     onto this line and keep the github.com/user-attachments/... link GitHub inserts. -->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/niyankhadka/yantra/main/docs/images/walkthrough.png" alt="A cloud architecture diagram at step 3 of its walkthrough: two cards are highlighted, the rest are dimmed, and the storyboard below describes the step" width="900">
+  <a href="https://yantra.nbk.com.np/#teaser"><img src="https://yantra.nbk.com.np/video/yantra-teaser-preview.webp" alt="Yantra in action: an agent writes the JSON, the validator catches a broken edge, then the reader steps through the diagram. Don't draw it. Explain it." width="900"></a><br>
+  <a href="https://yantra.nbk.com.np/#teaser"><strong>▶ Watch the 42-second teaser with sound</strong></a>
 </p>
 
-## Why Yantra
+## How it works
 
-- **No boxes to place.** Layout, edge routing and label placement are automatic; there are
-  no coordinates in the JSON.
-- **A story, not just a picture.** Steps highlight the cards and edges involved, with a
-  description for each, so a reader can follow a request, a process or a decision.
-- **Checked before anyone sees it.** The validator reports broken references, overlaps,
-  edges through cards and label collisions, each with a stable code an agent can fix.
-- **One file to share.** The output makes no network requests: email it, attach it to a
-  ticket or open it from a USB stick. SVG, PNG and Markdown exports are there too.
+1. **Describe it.** Write a few lines of JSON, or ask Claude Code, Cursor, Codex,
+   Antigravity or any AI chat to write them. There are no boxes to place: layout, edge
+   routing and label placement are automatic.
+2. **Yantra checks it.** The validator catches broken references, overlapping cards, edges
+   through cards and colliding labels before anyone sees them. Every finding has a stable
+   code, so an agent can fix its own mistakes.
+3. **Readers step through it.** Each step lights up the cards and edges that matter, with a
+   short explanation, so anyone can follow a request, a process or a decision.
+4. **Share it anywhere.** You get one HTML file that makes no network requests: email it,
+   attach it to a ticket or open it offline. SVG, PNG and Markdown exports are there too.
+
+The same format makes diagrams of every kind, answer pages with charts, books read like an
+e-reader, and slides. Bring your Mermaid, PlantUML, draw.io or Visio diagrams with you.
+
+## What people explain with Yantra
+
+| Who | What they explain | Start here |
+|---|---|---|
+| Developers with a coding agent | "How does this codebase work?", answered as a walkthrough instead of a wall of text | [Diagrams from your codebase](https://yantra.nbk.com.np/docs/guides/coding-agents/) |
+| Tech leads and architects | Architecture reviews and onboarding a new hire can step through | [`platform-overview`](https://yantra.nbk.com.np/playground/#example=platform-overview) |
+| SRE and incident teams | Postmortems with the timeline, the cause and the fix on one page | [`answer-incident-review`](https://yantra.nbk.com.np/playground/#example=answer-incident-review) |
+| Teachers and technical writers | Lessons and processes, one step or one chapter at a time | [`book-checkout-explained`](https://yantra.nbk.com.np/playground/#example=book-checkout-explained) |
+| Mermaid, PlantUML, draw.io and Visio users | Existing diagrams, turned into a story | [Import a diagram](https://yantra.nbk.com.np/docs/guides/import/) |
 
 ## At a glance
 

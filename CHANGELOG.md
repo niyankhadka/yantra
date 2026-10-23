@@ -7,6 +7,24 @@ All notable changes to Yantra are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A 42-second teaser video (landscape and vertical) and the 68-second promo on the website,
+  under the hero (`/#teaser`); the README shows an animated preview that links to it. Videos
+  are versioned (`<name>-v<x.y.z>`, `site/assets/video/`); the site always shows the newest.
+- `scripts/video/`: the teaser's render pipeline. It takes a voice-over and real Yantra output
+  (a validator error, the exported diagram, the viewer and pages), times the cuts to the
+  voice, and renders both formats (`node scripts/video/make.mjs`).
+- The website: a "What people explain with Yantra" section, and FAQ answers to "What is
+  Yantra?" and "How is it different from Mermaid or draw.io?".
+
+### Changed
+
+- New positioning across the README, the website, the npm and PyPI descriptions and the
+  Python README: "Make your AI show its work", diagrams that explain one step at a time, and
+  the problem it solves, with one offline HTML file as a supporting point rather than the
+  headline.
+
 ## [1.2.0] - 2026-10-22
 
 Books and reading modes, a reworked playground, walkthrough settings and mini charts that

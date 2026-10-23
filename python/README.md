@@ -1,8 +1,8 @@
 # Yantra Python SDK
 
-Build [Yantra](https://yantra.nbk.com.np/) step-by-step diagrams and one-page answers from
-Python. The SDK writes the JSON payload; the Yantra CLI validates it and compiles a single
-offline HTML file with automatic layout and a walkthrough. No third-party Python
+Build [Yantra](https://yantra.nbk.com.np/) diagrams, answer pages and books from Python:
+explanations readers step through, one part at a time. The SDK writes the JSON payload; the
+Yantra CLI validates it and builds one HTML file with automatic layout and a walkthrough. No third-party Python
 dependencies; Python 3.9 or later.
 
 [Website](https://yantra.nbk.com.np/) ·

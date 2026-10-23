@@ -32,7 +32,7 @@ import { screenshot } from '../lib/browser.js';
 import { fileIncluder } from '../lib/includes.js';
 import { init, formatInit, AGENTS } from '../lib/init.js';
 
-const HELP = `Yantra - interactive, step-by-step diagrams
+const HELP = `Yantra - diagrams that explain, one step at a time
 
 Works with diagrams, one-page answers ("kind": "page") and books ("kind": "book").
 
