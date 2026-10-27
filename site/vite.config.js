@@ -14,6 +14,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { ROOT } from '../lib/build.js';
 import { themeCss } from '../src/core/theme.js';
+import { analyticsHead } from './build/analytics.js';
 import { inlineRefs, playgroundFiles } from './build/playground.js';
 
 const SITE_ENTRY = path.join(ROOT, 'site', 'src', 'site.js');
@@ -25,6 +26,21 @@ function themeTokens() {
     name: 'yantra-site-theme',
     resolveId: (id) => (id === THEME_ID ? `\0${THEME_ID}` : null),
     load: (id) => (id === `\0${THEME_ID}` ? themeCss() : null)
+  };
+}
+
+/**
+ * The optional analytics tags (build/analytics.js) on the playground; the other pages get them
+ * from pages.js. The playground is masked for Clarity so recordings never show a diagram.
+ */
+function analyticsTags() {
+  return {
+    name: 'yantra-site-analytics',
+    transformIndexHtml: (html) => {
+      const head = analyticsHead();
+      if (!head || html.includes('googletagmanager.com/gtm.js')) return html;
+      return html.replace('</title>', `</title>\n${head}`).replace('<body>', '<body data-clarity-mask="True">');
+    }
   };
 }
 
@@ -81,7 +97,7 @@ export default defineConfig({
   base: '/',
   appType: 'mpa',
   publicDir: false,
-  plugins: [inlineRefs(), playgroundFiles(), themeTokens(), sitePages()],
+  plugins: [inlineRefs(), playgroundFiles(), themeTokens(), analyticsTags(), sitePages()],
   server: { port: 3001, fs: { allow: [ROOT] } },
   preview: { port: 4174 },
   build: {

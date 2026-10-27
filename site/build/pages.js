@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { ROOT, buildHtml, resolveLevels } from '../../lib/build.js';
 import { renderSvg } from '../../src/core/svg.js';
 import { sceneForView } from '../../src/core/sequence.js';
+import { analyticsHead, consentLink, gtmId } from './analytics.js';
 import { GUIDES, SITE, guideUrl, referencePages, referenceUrl } from './content.js';
 import { escapeHtml as esc, highlight } from './highlight.js';
 import { renderMarkdown } from './markdown.js';
@@ -209,7 +210,7 @@ function footer() {
       </ul></div>
     </nav>
   </div>
-  <p class="footer-legal">MIT © ${esc(SITE.maintainer)}. The licence covers the code; the Yantra name and logo are covered by the <a href="${blob('TRADEMARKS.md')}">trademark policy</a>.</p>
+  <p class="footer-legal">MIT © ${esc(SITE.maintainer)}. The licence covers the code; the Yantra name and logo are covered by the <a href="${blob('TRADEMARKS.md')}">trademark policy</a>.${consentLink() ? ` ${consentLink()}` : ''}</p>
 </footer>`;
 }
 
@@ -248,7 +249,7 @@ ${modified ? `<meta property="article:modified_time" content="${modified}">\n` :
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <script>${THEME_SCRIPT}</script>
-${head}${assets.css.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
+${analyticsHead()}${head}${assets.css.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
 <script type="module" src="${assets.js}"></script>
 ${graph}</head>
 <body class="${bodyClass}">
@@ -317,12 +318,12 @@ const PAGE_CHIPS = [
   ['chart-survey-results', 'Survey results']
 ];
 
-const FAQ = [
+const faqs = () => [
   ['What is Yantra?', '<p>An open-source explanation engine. You describe a system, a process or a decision in a few lines of JSON, or ask your coding agent or AI chat to. Yantra lays it out, checks it with a validator and turns it into a walkthrough readers can step through: a diagram, an answer page or a book, in one HTML file.</p>'],
   ['How is it different from Mermaid or draw.io?', '<p>In draw.io you place every box by hand. Mermaid draws from text, but you get a picture rather than a story. Yantra adds walkthrough steps, answer pages and books, and a validator that checks the rendered result: overlaps, edges through cards and label collisions. It also imports Mermaid, PlantUML, draw.io and Visio files, so you can start from what you have.</p>'],
   ['Do the files really work offline?', '<p>Yes. <code>yantra build</code> writes one HTML file with the viewer, its styles and your data inlined. It makes no network requests, so it opens from an email attachment, a ticket or a USB stick. The playground also keeps working offline once it has loaded.</p>'],
   ['What does it cost, and what is the licence?', `<p>Nothing. Yantra is open source under the <a href="${SITE.repo}/blob/${SITE.branch}/LICENSE">MIT licence</a>, so you can use it at work and in commercial projects. The Yantra name and logo are covered by the <a href="${SITE.repo}/blob/${SITE.branch}/TRADEMARKS.md">trademark policy</a>. If it helps you, you can <a href="${SITE.sponsor}">sponsor the project</a>.</p>`],
-  ['Where does my data go?', '<p>Nowhere. The CLI, the MCP server and the Python SDK run on your machine. The playground validates and renders in your browser and uploads nothing. Built files make no external requests. This website loads no analytics or third-party scripts; it only remembers your colour theme in your browser.</p>'],
+  ['Where does my data go?', `<p>Nowhere. The CLI, the MCP server and the Python SDK run on your machine. The playground validates and renders in your browser and uploads nothing. Built files make no external requests. ${gtmId() ? 'This website uses Google Analytics and Microsoft Clarity only if you accept the cookie banner, and never sees your diagrams; <button class="faq-consent" type="button" data-consent-open>change your choice</button>.' : 'This website loads no analytics or third-party scripts; it only remembers your colour theme in your browser.'}</p>`],
   ['Which Node.js version do I need?', '<p>Node.js 20.19 or later, or 22.12 or later on Node 22. The Python SDK needs Python 3.9 or later and calls the CLI to validate and build, so Node.js is still needed for those steps. The playground needs only a browser.</p>'],
   ['Do I need an AI tool?', '<p>No. You can write the JSON by hand, generate it from a script or the Python SDK, or import a Mermaid, PlantUML, draw.io or Visio file. Coding agents and AI chats are a convenient way to write it, not a requirement.</p>'],
   ['Can I bring my existing diagrams?', '<p><code>yantra import</code> reads Mermaid, PlantUML, draw.io / diagrams.net (including PNG exports with the diagram embedded) and Visio <code>.vsdx</code>, then validates the result. The importers are best effort and print warnings for anything they skip. See <a href="/docs/guides/import/">the import guide</a>.</p>'],
@@ -397,7 +398,7 @@ function landingJsonLd() {
     {
       '@type': 'FAQPage',
       '@id': `${SITE.url}/#faq`,
-      mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: stripHtml(a) } }))
+      mainEntity: faqs().map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: stripHtml(a) } }))
     }
   ];
 }
@@ -419,7 +420,7 @@ function landing({ assets, thumbs, stars }) {
 
   const strip = STRIP.map(([id, name, tag]) => `<li><a class="ex" href="/playground/#example=${id}"><span class="ex-media">${themedImg(`/thumbs/${id}`, `${name} diagram`, thumbs[id])}</span><span class="ex-name">${esc(name)}</span><span class="ex-tag">${esc(tag)}</span></a></li>`).join('\n');
   const chips = PAGE_CHIPS.map(([id, name]) => `<li><a class="chip" href="/playground/#example=${id}">${esc(name)}</a></li>`).join('\n');
-  const faq = FAQ.map(([q, a]) => `<details class="faq-item"><summary>${esc(q)}</summary>${a}</details>`).join('\n');
+  const faq = faqs().map(([q, a]) => `<details class="faq-item"><summary>${esc(q)}</summary>${a}</details>`).join('\n');
   const teaser = latestVideo('yantra-teaser');
   // [who, outcome, text, href, link label, image]
   const shot = (src, alt, w = 1200, h = 750) => `<img src="${src}" width="${w}" height="${h}" alt="${esc(alt)}" loading="lazy" decoding="async">`;
