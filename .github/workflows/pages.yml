@@ -38,7 +38,7 @@ jobs:
           # Actions > Variables). Unset: no verification meta tag is written.
           YANTRA_SITE_GOOGLE_VERIFICATION: ${{ vars.YANTRA_SITE_GOOGLE_VERIFICATION }}
           YANTRA_SITE_BING_VERIFICATION: ${{ vars.YANTRA_SITE_BING_VERIFICATION }}
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist-pages
 
