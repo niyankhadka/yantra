@@ -199,6 +199,35 @@ test('verification meta tags come only from the build environment', async () => 
   }
 });
 
+test('analytics tags come only from the build environment, behind consent', async () => {
+  const { siteFiles } = await import('../site/build/pages.js');
+  const assets = { js: '/x.js', css: [] };
+  const stars = process.env.YANTRA_SITE_STARS;
+  process.env.YANTRA_SITE_STARS = '0';
+  const statics = { files: {}, thumbs: new Proxy({}, { get: () => ({ w: 1, h: 1 }) }) };
+  try {
+    const before = await siteFiles({ assets, statics });
+    assert.ok(!/googletagmanager|data-consent-open/.test(before['index.html']), 'none by default');
+    assert.match(before['index.html'], /loads no analytics/);
+    process.env.YANTRA_SITE_GTM_ID = 'not-an-id';
+    assert.ok(!/googletagmanager/.test((await siteFiles({ assets, statics }))['index.html']), 'malformed id ignored');
+    process.env.YANTRA_SITE_GTM_ID = 'GTM-TEST123';
+    const files = await siteFiles({ assets, statics });
+    for (const rel of ['index.html', '404.html']) {
+      const html = files[rel];
+      assert.match(html, /gtm\.js\?id='\+i\+dl[\s\S]*'GTM-TEST123'/, `${rel} loads the container`);
+      assert.ok(html.indexOf("'consent','default'") < html.indexOf('googletagmanager.com/gtm.js'), `${rel}: consent defaults first`);
+      assert.match(html, /analytics_storage:'denied'/);
+      assert.match(html, /data-consent-open/);
+    }
+    assert.match(files['index.html'], /only if you accept the cookie banner/);
+  } finally {
+    delete process.env.YANTRA_SITE_GTM_ID;
+    if (stars === undefined) delete process.env.YANTRA_SITE_STARS;
+    else process.env.YANTRA_SITE_STARS = stars;
+  }
+});
+
 test('no broken internal links, fragments or repository links', () => {
   const ids = new Map();
   const idsOf = (rel) => {

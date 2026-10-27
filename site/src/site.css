@@ -1914,6 +1914,17 @@ kbd {
   color: inherit;
 }
 
+.footer-consent,
+.faq-consent {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .footer-in {
     grid-template-columns: minmax(0, 1fr);
