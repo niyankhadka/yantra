@@ -206,6 +206,7 @@ function footer() {
         <li><a href="${blob('LICENSE')}">MIT licence</a></li>
         <li><a href="${blob('TRADEMARKS.md')}">Trademark policy</a></li>
         <li><a href="${blob('SECURITY.md')}">Security</a></li>
+        <li><a href="/privacy/">Privacy and cookies</a></li>
         <li><a href="${SITE.sponsor}">Sponsor</a></li>
       </ul></div>
     </nav>
@@ -323,7 +324,7 @@ const faqs = () => [
   ['How is it different from Mermaid or draw.io?', '<p>In draw.io you place every box by hand. Mermaid draws from text, but you get a picture rather than a story. Yantra adds walkthrough steps, answer pages and books, and a validator that checks the rendered result: overlaps, edges through cards and label collisions. It also imports Mermaid, PlantUML, draw.io and Visio files, so you can start from what you have.</p>'],
   ['Do the files really work offline?', '<p>Yes. <code>yantra build</code> writes one HTML file with the viewer, its styles and your data inlined. It makes no network requests, so it opens from an email attachment, a ticket or a USB stick. The playground also keeps working offline once it has loaded.</p>'],
   ['What does it cost, and what is the licence?', `<p>Nothing. Yantra is open source under the <a href="${SITE.repo}/blob/${SITE.branch}/LICENSE">MIT licence</a>, so you can use it at work and in commercial projects. The Yantra name and logo are covered by the <a href="${SITE.repo}/blob/${SITE.branch}/TRADEMARKS.md">trademark policy</a>. If it helps you, you can <a href="${SITE.sponsor}">sponsor the project</a>.</p>`],
-  ['Where does my data go?', `<p>Nowhere. The CLI, the MCP server and the Python SDK run on your machine. The playground validates and renders in your browser and uploads nothing. Built files make no external requests. ${gtmId() ? 'This website uses Google Analytics and Microsoft Clarity only if you accept the cookie banner, and never sees your diagrams; <button class="faq-consent" type="button" data-consent-open>change your choice</button>.' : 'This website loads no analytics or third-party scripts; it only remembers your colour theme in your browser.'}</p>`],
+  ['Where does my data go?', `<p>Nowhere. The CLI, the MCP server and the Python SDK run on your machine. The playground validates and renders in your browser and uploads nothing. Built files make no external requests. ${gtmId() ? 'This website uses Google Analytics and Microsoft Clarity only if you accept the cookie banner, and never sees your diagrams (<a href="/privacy/">privacy and cookies</a>); <button class="faq-consent" type="button" data-consent-open>change your choice</button>.' : 'This website loads no analytics or third-party scripts; it only remembers your colour theme in your browser.'}</p>`],
   ['Which Node.js version do I need?', '<p>Node.js 20.19 or later, or 22.12 or later on Node 22. The Python SDK needs Python 3.9 or later and calls the CLI to validate and build, so Node.js is still needed for those steps. The playground needs only a browser.</p>'],
   ['Do I need an AI tool?', '<p>No. You can write the JSON by hand, generate it from a script or the Python SDK, or import a Mermaid, PlantUML, draw.io or Visio file. Coding agents and AI chats are a convenient way to write it, not a requirement.</p>'],
   ['Can I bring my existing diagrams?', '<p><code>yantra import</code> reads Mermaid, PlantUML, draw.io / diagrams.net (including PNG exports with the diagram embedded) and Visio <code>.vsdx</code>, then validates the result. The importers are best effort and print warnings for anything they skip. See <a href="/docs/guides/import/">the import guide</a>.</p>'],
@@ -872,6 +873,60 @@ function notFound(assets) {
   return layout({ path: '/404.html', title: 'Page not found', description: 'This page does not exist on the Yantra website.', body, current: '', assets, bodyClass: 'is-404', noindex: true });
 }
 
+const UPDATED = '27/10/2026';
+const table = (head, rows) => `<div class="table-wrap"><table>
+<thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead>
+<tbody>
+${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('\n')}
+</tbody>
+</table></div>`;
+
+/** /privacy/: what the site stores and sends; the analytics sections only when the GTM container is set. */
+function privacyPage(assets) {
+  const analytics = Boolean(gtmId());
+  const storage = table(['Key', 'What it keeps'], [
+    ['<code>yantra:theme</code>', 'Your colour theme'],
+    ...(analytics ? [['<code>yantra:consent</code>', 'Your answer to the cookie banner']] : []),
+    ['<code>yantra:playground</code>', 'Your playground draft'],
+    ['<code>yantra:playground-layout</code>', 'The size of the playground panels'],
+    ['<code>yantra:textsize</code>', 'The text size you chose on answer pages']
+  ]);
+  const consented = `
+    <h2 id="analytics">Analytics, only if you accept</h2>
+    <p>The first time you visit, a banner asks whether we may use analytics cookies. If you click <strong>Accept</strong>, the site uses <strong>Google Analytics 4</strong> to count visits and see which pages people use, and <strong>Microsoft Clarity</strong> to show clicks, scrolling and anonymised session recordings, so we can find what is confusing or broken. Both are loaded through Google Tag Manager.</p>
+    <p>If you click <strong>Reject</strong>, or do not answer, neither of them runs and no analytics cookies are set. Google Tag Manager itself still loads, so it can read your choice, but it sets no cookies of its own.</p>
+    <p>The playground is fully masked for Clarity: recordings never show a diagram you paste or build. You can change your mind at any time with <button class="faq-consent" type="button" data-consent-open>Cookie settings</button>, also in the footer of every page; rejecting removes the cookies below.</p>
+    <h2 id="cookies">Cookies</h2>
+    ${table(['Cookie', 'Set by', 'Purpose', 'Lasts'], [
+      ['<code>_ga</code>', 'Google Analytics', 'Tells one browser apart from another', '2 years'],
+      ['<code>_ga_&lt;ID&gt;</code>', 'Google Analytics', 'Keeps the state of the current visit', '2 years'],
+      ['<code>_clck</code>', 'Microsoft Clarity', 'Keeps a Clarity user ID and settings', '1 year'],
+      ['<code>_clsk</code>', 'Microsoft Clarity', 'Joins the pages of one visit into one recording', '1 day']
+    ])}
+    <p>Clarity may also set cookies on Microsoft's own domains; see the <a href="https://privacy.microsoft.com/privacystatement">Microsoft privacy statement</a>. The site uses no advertising cookies.</p>
+    <h2 id="who">Who receives the data</h2>
+    <p>With your consent, Google and Microsoft process this data for us as service providers, and it may be processed outside the UK. See the <a href="https://policies.google.com/privacy">Google privacy policy</a> and the <a href="https://privacy.microsoft.com/privacystatement">Microsoft privacy statement</a>.</p>`;
+  const body = `<main id="main" class="legal">
+  <div class="wrap wrap-narrow"><div class="prose">
+    <h1>Privacy and cookies</h1>
+    <p class="lede">The Yantra website is a static site: no accounts, no forms and no server of its own. This page sets out what it keeps in your browser and what it sends elsewhere.</p>
+    <p class="muted">Last updated ${UPDATED}</p>
+    <h2 id="diagrams">Your diagrams</h2>
+    <p>The playground validates and renders in your browser. What you paste or build is not uploaded, and files made with <code>yantra build</code> make no network requests. The CLI, the MCP server and the Python SDK run on your own machine.</p>${analytics ? consented : `
+    <h2 id="cookies">Cookies and analytics</h2>
+    <p>This website sets no cookies and loads no analytics or third-party scripts.</p>`}
+    <h2 id="storage">Stored in your browser</h2>
+    <p>These settings use your browser's local storage, not cookies. They never leave your device, and clearing your site data removes them.</p>
+    ${storage}
+    <h2 id="hosting">Hosting</h2>
+    <p>The site is hosted on GitHub Pages. GitHub may log your IP address to run and secure the service; see the <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy statement</a>.</p>
+    <h2 id="rights">Your rights</h2>
+    <p>You can ask to see or delete data about you, or withdraw consent at any time. Contact the maintainer through <a href="${SITE.maintainerUrl}">GitHub</a>. You can also complain to your data protection authority; in the UK, that is the <a href="https://ico.org.uk/">Information Commissioner's Office</a>.</p>
+  </div></div>
+</main>`;
+  return layout({ path: '/privacy/', title: 'Privacy and cookies', description: 'What the Yantra website keeps in your browser, which cookies it sets with your consent, and what it sends elsewhere.', body, current: '', assets, bodyClass: 'is-legal', jsonLd: [breadcrumbs([['Home', '/'], ['Privacy and cookies', '/privacy/']])] });
+}
+
 function searchIndex(docs) {
   return JSON.stringify(docs.map((d) => ({
     t: d.title,
@@ -959,11 +1014,13 @@ export async function siteFiles({ assets, statics = staticFiles() }) {
     files[`${d.url.slice(1)}index.html`] = docPage(docs, i, assets);
   });
   files['404.html'] = notFound(assets);
+  files['privacy/index.html'] = privacyPage(assets);
   files['docs/search-index.json'] = searchIndex(docs);
   files['sitemap.xml'] = sitemap([
     ['/', lastModified('site/build/pages.js', 'site/build/content.js', 'package.json')],
     ['/playground/', lastModified('playground/index.html', 'playground/main.js', 'playground/prompt.js', 'playground/style.css')],
     ['/docs/', lastModified(...docs.map((d) => d.file))],
+    ['/privacy/', lastModified('site/build/pages.js', 'site/build/analytics.js')],
     ...docs.map((d) => [d.url, lastModified(d.file)])
   ]);
   return files;

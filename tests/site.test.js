@@ -209,6 +209,8 @@ test('analytics tags come only from the build environment, behind consent', asyn
     const before = await siteFiles({ assets, statics });
     assert.ok(!/googletagmanager|data-consent-open/.test(before['index.html']), 'none by default');
     assert.match(before['index.html'], /loads no analytics/);
+    assert.match(before['privacy/index.html'], /sets no cookies/);
+    assert.ok(!/_clck/.test(before['privacy/index.html']), 'no cookie table without analytics');
     process.env.YANTRA_SITE_GTM_ID = 'not-an-id';
     assert.ok(!/googletagmanager/.test((await siteFiles({ assets, statics }))['index.html']), 'malformed id ignored');
     process.env.YANTRA_SITE_GTM_ID = 'GTM-TEST123';
@@ -221,6 +223,7 @@ test('analytics tags come only from the build environment, behind consent', asyn
       assert.match(html, /data-consent-open/);
     }
     assert.match(files['index.html'], /only if you accept the cookie banner/);
+    for (const c of ['_ga', '_clck', '_clsk', 'yantra:consent']) assert.ok(files['privacy/index.html'].includes(c), `privacy page lists ${c}`);
   } finally {
     delete process.env.YANTRA_SITE_GTM_ID;
     if (stars === undefined) delete process.env.YANTRA_SITE_STARS;
